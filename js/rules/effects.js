@@ -1,23 +1,27 @@
 // Tijdelijke effecten op een deelnemer (5e 2014): op AC (+N, =N, minimaal N), op max HP (±N) of alleen een herinnering.
 // Duur zoals bij condities (zie makeDur in turns.js), "tot long rest", en optioneel gekoppeld aan de concentratie van een caster.
 // De basis-AC blijft in c.ac; de kaart toont effAc(c). Max HP-effecten passen c.max echt aan en onthouden hun verschil (hpd).
-import { fx, applyPcHp, revertMax } from "./combat.js";
+import { fx, applyPcHp, revertMax, newDs, setUncon, dropConc, merge } from "./combat.js";
 
-/** Presets. dur: sleutel uit DURS (turns.js) of "lr" (tot long rest). dex: 13 + Dex-mod (Mage Armor). */
+/**
+ * Presets. dur: sleutel uit DURS (turns.js) of "lr" (tot long rest). dex: 13 + Dex-mod (Mage Armor).
+ * sv: invloed op saves ({ ab, b } vaste bonus, alleen op die ability; { d } = ±1dN op elke save). grp: sluiten elkaar uit (cover).
+ */
 export const PRESETS = [
   { n: "Shield", st: "ac", op: "+", v: 5, dur: "tstart", react: true, txt: "reaction; ook geen schade van Magic Missile" },
   { n: "Shield of Faith", st: "ac", op: "+", v: 2, dur: "r100", conc: true },
   { n: "Haste", st: "ac", op: "+", v: 2, dur: "r10", conc: true, txt: "speed ×2, advantage op Dex saves, extra action", end: "1 beurt geen beweging of acties (lethargy)" },
   { n: "Mage Armor", st: "ac", op: "=", v: 13, dex: true, dur: "lr", txt: "alleen zonder armor" },
   { n: "Barkskin", st: "ac", op: "min", v: 16, dur: "inf", conc: true },
-  { n: "Half cover", st: "ac", op: "+", v: 2, dur: "inf", txt: "ook +2 op Dex saves" },
-  { n: "Three-quarters cover", st: "ac", op: "+", v: 5, dur: "inf", txt: "ook +5 op Dex saves" },
+  { n: "Half cover", st: "ac", op: "+", v: 2, dur: "inf", txt: "ook +2 op Dex saves", sv: { ab: "DEX", b: 2 }, grp: "cover" },
+  { n: "Three-quarters cover", st: "ac", op: "+", v: 5, dur: "inf", txt: "ook +5 op Dex saves", sv: { ab: "DEX", b: 5 }, grp: "cover" },
   { n: "Aid", st: "max", op: "+", v: 5, dur: "lr", txt: "+5 per slot-level boven de 2e" },
-  { n: "Bless", st: "", v: 0, dur: "r10", conc: true, txt: "+1d4 op attack rolls en saves" },
-  { n: "Bane", st: "", v: 0, dur: "r10", conc: true, txt: "−1d4 op attack rolls en saves" },
+  { n: "Bless", st: "", v: 0, dur: "r10", conc: true, txt: "+1d4 op attack rolls en saves", sv: { d: 4 } },
+  { n: "Bane", st: "", v: 0, dur: "r10", conc: true, txt: "−1d4 op attack rolls en saves", sv: { d: -4 } },
 ];
 
 const OPS = ["+", "=", "min"];
+const preset = (n) => PRESETS.find((p) => p.n.toLowerCase() === String(n).toLowerCase());
 const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(+v) || 0));
 
 /** Max HP zonder tijdelijke effecten (Aid e.d.): wat je bewerkt en wat een sheet geeft */
@@ -62,14 +66,15 @@ export function acBreakdown(c) {
 export function addEffect(c, spec, d, opt = {}) {
   const out = fx();
   const n = String(spec.n || "").trim().slice(0, 60) || "Effect";
-  const old = (c.eff || []).find((e) => e.n.toLowerCase() === n.toLowerCase());
-  if (old) removeEffect(c, old.id, null);
+  const g = (preset(n) || {}).grp; // Half cover → Three-quarters cover: de oude vervalt
+  for (const old of [...(c.eff || [])]) if (old.n.toLowerCase() === n.toLowerCase() || (g && (preset(old.n) || {}).grp === g)) removeEffect(c, old.id, null);
   const st = ["ac", "max"].includes(spec.st) ? spec.st : "";
   const op = st === "ac" && OPS.includes(spec.op) ? spec.op : "+";
   let v = st === "max" ? clampInt(spec.v, -999, 999) : st === "ac" ? clampInt(spec.v, op === "+" ? -20 : 0, 40) : 0;
   if (st === "ac" && spec.dex) v += c.dex || 0;
   const e = { id: opt.id || Math.random().toString(36).slice(2, 9), n, st, op, v, txt: String(spec.txt || "").slice(0, 120),
     end: String(spec.end || "").slice(0, 120), d: d || null, lr: !!opt.lr, by: opt.by || null, spell: opt.by ? String(opt.spell || n).slice(0, 120) : null, hpd: 0 };
+  if (opt.by && opt.cast) e.cast = String(opt.cast).slice(0, 60);
   c.eff = [...(c.eff || []), e];
   if (st === "max" && v && c.max > 0) { // zonder bekende HP alleen een herinnering
     if (v > 0) {
@@ -78,12 +83,54 @@ export function addEffect(c, spec, d, opt = {}) {
       else if (c.hp > 0) c.hp = Math.min(c.max, c.hp + v);
       e.hpd = v;
     } else {
-      const nm = Math.max(1, c.max + v);
+      // max blijft ≥ 1 (0 betekent in de app "HP onbekend"); de dood zelf staat in hp/ds
+      const zero = c.max + v <= 0, nm = Math.max(1, c.max + v);
+      const was = c.kind === "pc" ? !!(c.ds && c.ds.dead) : c.hp <= 0; // al dood of neer: geen tweede sterfmelding
       e.hpd = nm - c.max;
-      c.max = nm; c.hp = Math.min(c.hp, c.max);
+      c.max = nm; c.hp = zero ? 0 : Math.min(c.hp, c.max);
+      if (zero && !was) return merge(out, dieByMax(c, n));
     }
   }
   out.msgs.push(`${c.name}: ${n}${st ? ` (${effText(e)})` : e.txt ? ` (${e.txt})` : ""}.`);
+  return out;
+}
+
+/** Max HP tot 0 (Life Drain e.d., MM): het doelwit sterft. Speler: dood zoals bij 3 failures; monster: neer. */
+function dieByMax(c, n) {
+  const out = fx();
+  c.temp = 0;
+  if (c.kind === "pc") { c.ds = { ...newDs(), f: 3, dead: true }; setUncon(c, true); }
+  merge(out, dropConc(c, "max HP 0"));
+  out.why.push({ t: `max HP tot 0 door ${n}`, id: c.id }); out.msgs.unshift(`${c.name} sterft: max HP 0 (${n}).`);
+  return out;
+}
+
+/** Save-bonussen uit effecten (PHB: cover op Dex saves, hoogste telt; Bless/Bane ±1d4). → [{ n, b } of { n, d }] */
+export function saveMods(c, ab) {
+  let cover = null;
+  const out = [];
+  for (const e of c.eff || []) {
+    const p = preset(e.n);
+    if (!p || !p.sv || (p.sv.ab && p.sv.ab !== ab)) continue;
+    if (p.grp === "cover") { if (!cover || p.sv.b > cover.b) cover = { n: p.n, b: p.sv.b }; }
+    else out.push(p.sv.d ? { n: p.n, d: p.sv.d } : { n: p.n, b: p.sv.b });
+  }
+  return cover ? [cover, ...out] : out;
+}
+
+/** "+2 Half cover, +1d4 Bless" */
+export const modsText = (M) => M.map((m) => (m.d ? `${m.d > 0 ? "+" : "−"}1d${Math.abs(m.d)} ${m.n}` : `${m.b >= 0 ? "+" : "−"}${Math.abs(m.b)} ${m.n}`)).join(", ");
+
+/**
+ * Nieuwe cast van een concentratie-spell door dezelfde caster (Bless op nieuwe doelen): effecten uit een eerdere cast vervallen.
+ * cast = sleutel van deze cast (ronde + beurt); doelen die in dezelfde beurt worden aangetikt horen bij dezelfde cast.
+ */
+export function endOtherCasts(list, by, spell, cast) {
+  const out = fx();
+  for (const c of list) for (const e of [...(c.eff || [])]) {
+    if (e.by !== by || e.spell !== spell || e.cast === cast) continue;
+    const r = removeEffect(c, e.id, `${spell} opnieuw gecast`); out.msgs.push(...r.msgs); out.why.push(...r.why);
+  }
   return out;
 }
 

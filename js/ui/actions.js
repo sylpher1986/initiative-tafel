@@ -1,8 +1,8 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, show } from "./util.js";
-import { app, because, addWhy, undo, historySize, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
+import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
 import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, aoeTargets, aoePick, editPreview } from "./render.js";
-import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax } from "../rules/effects.js";
+import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods } from "../rules/effects.js";
 import { showSB, showSheet, doRoll } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
@@ -57,23 +57,38 @@ export function normalize(c) {
   if (c.casting === undefined) c.casting = castInfo(m);
 }
 
-/** Effect toepassen: duur, concentratie van de caster (start of koppelt), Shield = reaction. Eén undo-stap. */
-function applyEff(c, p, byId) {
+/**
+ * Effect toepassen: duur, concentratie van de caster (start of koppelt), Shield = reaction. Eén undo-stap.
+ * Concentratie-spell die de caster al heeft: doelen in dezelfde beurt horen bij dezelfde cast, een latere beurt is een
+ * nieuwe cast en de oude doelen vervallen (met "Hoort erbij" in de melding). join = cast-sleutel om bij aan te sluiten.
+ */
+function applyEff(c, p, byId, join = null) {
   const S = app.S, out = R.fx();
   const d = ["inf", "lr"].includes(p.dur) ? null : makeDur(c, { dur: p.dur }, S.active);
-  let by = null;
+  let by = null, cast = join || `${S.round}:${S.active || ""}`, old = null;
   if (p.conc) {
     const caster = S.list.find((x) => x.id === byId);
     if (caster) {
       by = caster.id;
-      if (!(caster.cond.includes("Concentrating") && caster.concSpell === p.n)) R.merge(out, R.startConc(caster, p.n)); // Bless op 3 doelen: alleen koppelen
+      if (caster.cond.includes("Concentrating") && caster.concSpell === p.n) { // Bless op 3 doelen: alleen koppelen
+        if (!join) {
+          const prev = S.list.flatMap((x) => (x.eff || []).filter((e) => e.by === by && e.spell === p.n && e.cast !== cast).map((e) => ({ x, e })));
+          if (prev.length) {
+            old = { cast: prev[0].e.cast || "", names: [...new Set(prev.map((o) => o.x.name))] };
+            out.why.push(...endOtherCasts(S.list, by, p.n, cast).why, { t: `${p.n} opnieuw gecast`, id: by }); // meldingen: één samenvatting hieronder
+          }
+        }
+      } else R.merge(out, R.startConc(caster, p.n));
     }
   }
-  R.merge(out, addEffect(c, p, d, { lr: p.dur === "lr", by, spell: p.n }));
+  R.merge(out, addEffect(c, p, d, { lr: p.dur === "lr", by, spell: p.n, cast }));
   if (p.react) c.reaction = true;
   addWhy(out.why);
   ui.effWho = null;
-  return { undoToast: out.msgs.join(" ") };
+  if (!old) return { undoToast: out.msgs.join(" ") };
+  ui.effJoin = { id: c.id, p, by, cast: old.cast, step: stepNo() + 1 }; // alleen geldig zolang dit de laatste stap is (commit volgt in render)
+  const caster = S.list.find((x) => x.id === by);
+  return { undoToast: `${p.n}: nieuwe cast van ${caster.name}. Vervalt bij ${old.names.join(", ")}.`, extra: `<button class="tundo" id="toast-join">Hoort erbij</button> ` };
 }
 
 /* ---------- acties per deelnemer: (c, knop, rij-element) ---------- */
@@ -207,6 +222,13 @@ function rowData(c, b) {
 /* ---------- algemene acties (op id) ---------- */
 const global = {
   "toast-undo"() { $("#toast").hidden = true; return global.undo(); },
+  /** Bless "nieuwe cast" was toch een extra doel: terugdraaien en bij de vorige cast aansluiten */
+  "toast-join"() {
+    const j = ui.effJoin; $("#toast").hidden = true; ui.effJoin = null;
+    if (!j || stepNo() !== j.step || !undo()) return;
+    const c = app.S.list.find((x) => x.id === j.id);
+    if (c) { const r = applyEff(c, j.p, j.by, j.cast || "-"); toastHtml(`${esc(r.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`); }
+  },
   undo() { if (undo()) { ui.confirmReset = false; toast(`Ongedaan gemaakt${historySize() ? ` (nog ${historySize()} stappen terug)` : ""}.`); } },
   // na starten of stoppen volgt de modus weer het gevecht (ui.mode = null)
   start() { apply(startCombat(app.S)); ui.mode = null; },
@@ -288,7 +310,7 @@ export function onClick(e) {
   if (fn === row.sb || fn === row.sheet) return;
   render();
   if (res === "scroll") scrollToCard(openId(), true);
-  if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} ${res.extra || ""}<button class="tundo" id="toast-undo">Ongedaan</button>`);
 }
 
 export function onChange(e) {
@@ -629,7 +651,7 @@ export function bindAoe() {
       const mons = aoeTargets().filter((c) => c.kind === "monster" && aoePick(a, c).sel);
       if (!mons.length) { toast("Kies eerst de monsters die een save doen."); return; }
       mons.forEach((c) => {
-        const m = findMon(c.ref), x = rollSave(saveBonus(m, a.ab), hasMagicRes(m));
+        const m = findMon(c.ref), x = rollSave(saveBonus(m, a.ab), hasMagicRes(m), Math.random, saveMods(c, a.ab));
         aoeSet(a, c.id, { roll: x, save: x.tot >= dc ? "half" : "fail", lr: false });
       });
     }

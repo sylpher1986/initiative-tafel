@@ -4,7 +4,7 @@ import { $, esc, n0 } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
 import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit } from "../rules/turns.js";
-import { PRESETS, effAc, effText, acBreakdown, baseMax } from "../rules/effects.js";
+import { PRESETS, effAc, effText, acBreakdown, baseMax, saveMods, modsText } from "../rules/effects.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText } from "../rules/aoe.js";
@@ -24,6 +24,7 @@ export const ui = {
   aoeLast: { type: "", ab: "DEX", dc: "" }, // laatst gebruikte type/save/DC (bijv. dezelfde breath weapon)
   edit: null,          // { id, name, ac, max, init } = concept in het bewerkpaneel (⋯)
   effWho: null,        // { id, i } = preset met concentratie wacht op "Wie cast?"
+  effJoin: null,       // { id, p, by, cast } = laatste "nieuwe cast" (Bless), voor "Hoort erbij" in de melding
   effCustom: false, effForm: {}, // eigen effect: formulier open + concept
 };
 export const openId = () => (ui.open === null ? app.S.active : ui.open);
@@ -430,8 +431,9 @@ const SAVES = [["fail", "Gefaald"], ["half", "Geslaagd ½"], ["none", "0"]];
 function aoeRow(a, c, p, o, n) {
   const id = esc(c.id), nm = esc(c.name), dc = parseInt(a.dc);
   const end = !n ? "" : o.res ? ` · <b class="bad">${o.res}</b>` : c.hp > 0 ? ` · ${n0(c.hp)} → ${n0(o.hp)} HP` : "";
+  const mods = p.roll ? [] : saveMods(c, a.ab);
   const info = [
-    p.roll ? `${esc(a.ab)} save ${esc(rollText(p.roll, dc))}` : "",
+    p.roll ? `${esc(a.ab)} save ${esc(rollText(p.roll, dc))}` : mods.length ? `Bij de save: ${esc(modsText(mods))}` : "",
     p.auto && p.mode !== 1 && a.type ? `${MODE_LBL[p.mode]} (statblock)` : "",
     p.auto && p.def.cond ? `let op: ${esc(p.def.cond)}` : "",
   ].filter(Boolean).join(" · ");

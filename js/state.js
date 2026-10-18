@@ -8,7 +8,7 @@ import { endConcEffects } from "./rules/effects.js";
 /** Alle data van de app. S = de lopende encounter. */
 export const app = { S: null, party: [], lairs: {}, custom: [], imported: [] };
 
-let hist = [], lastJSON = null, prevObj = null, pendingWhy = [];
+let hist = [], lastJSON = null, prevObj = null, pendingWhy = [], steps = 0;
 let warn = () => {}, warned = false;
 export const setWarn = (fn) => { warn = fn; };
 
@@ -17,6 +17,8 @@ export const because = (t, id) => pendingWhy.push({ t, id: id || null });
 export const addWhy = (arr) => pendingWhy.push(...arr);
 export const canUndo = () => hist.length > 0;
 export const historySize = () => hist.length;
+/** Loopt op bij elke vastgelegde stap en elke undo: "is er sindsdien iets gebeurd?" */
+export const stepNo = () => steps;
 
 function save(key, value) {
   store.set(key, value).then((ok) => {
@@ -58,7 +60,7 @@ export function commit() {
     if (hist.length > 80) hist.shift();
     if (writeLog(prevObj)) j = JSON.stringify(app.S);
   }
-  pendingWhy = [];
+  pendingWhy = []; steps++;
   lastJSON = j; prevObj = JSON.parse(j);
   save("state", prevObj);
   syncParty();
@@ -69,7 +71,7 @@ export function undo() {
   if (!hist.length) return false;
   const j = hist.pop();
   app.S = JSON.parse(j);
-  lastJSON = j; prevObj = JSON.parse(j); pendingWhy = [];
+  lastJSON = j; prevObj = JSON.parse(j); pendingWhy = []; steps++;
   save("state", prevObj);
   syncParty();
   return true;

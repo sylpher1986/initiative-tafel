@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aoeCalc, defMode, saveBonus, applyAoe } from "../js/rules/aoe.js";
+import { aoeCalc, defMode, saveBonus, applyAoe, rollSave, rollText } from "../js/rules/aoe.js";
 import { applyDamage, startConc } from "../js/rules/combat.js";
 
 const pc = (o = {}) => ({ id: "p", name: "Thalia", kind: "pc", init: 10, dex: 1, hp: 31, max: 38, cond: [], ...o });
@@ -124,4 +124,13 @@ test("defMode: nonsilver en eigen monster zonder ab", async () => {
   const r = rollSave(2, true, seq(4, 15));
   assert.equal(r.tot, 17);
   assert.match(rollText(r, 15), /\[4, 15\] \+2 = 17 ✓ \(advantage/);
+});
+
+test("save rollen met cover en Bless/Bane", () => {
+  const seq = [0.5, 0.5, 0.0]; let i = 0; const rng = () => seq[i++];
+  const x = rollSave(3, false, rng, [{ n: "Half cover", b: 2 }, { n: "Bless", d: 4 }, { n: "Bane", d: -4 }]);
+  // d20 = 11, Bless d4 = 3, Bane d4 = 1 → 11 + 3 + 2 + 3 − 1 = 18
+  assert.equal(x.tot, 18);
+  assert.equal(rollText(x, 15), "d20 [11] +3 + 2 Half cover + 1d4 [3] Bless − 1d4 [1] Bane = 18 ✓");
+  assert.equal(rollText(rollSave(-1, false, () => 0), 10), "d20 [1] -1 = 0 ✗", "zonder effecten ongewijzigd");
 });

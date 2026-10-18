@@ -15,6 +15,7 @@
 - Twee modi: **Voorbereiden** (spelers, monsters, party, lair actions, instellingen) en **Gevecht** (alleen lijst + beurtbalk); modus volgt het gevecht, wisselen kan altijd
 - Snel toevoegen in Gevecht (+): monsters die halverwege aansluiten, initiative rollen of invullen
 - Deelnemer bewerken (naam, AC, max HP, initiative) en tijdelijke effecten met duur en concentratie (Shield, Shield of Faith, Haste, Mage Armor, Barkskin, cover, Aid, Bless, Bane, eigen effect)
+- Effecten in saves: cover (Dex) en Bless/Bane-d4 bij monster-saves in het AoE-paneel; Bless opnieuw casten vervangt de oude doelen ("Hoort erbij" als het toch een extra doel was); max HP tot 0 = dood
 - Spelersscherm in een tweede venster (zelfde apparaat): volgorde, beurt, HP-status van monsters; monsters verbergen voor spelers
 - Spelers via D&D Beyond-link (publieke sheets, via de Worker): portret, AC/HP berekend met controle-markering, slots en resources; opnieuw ophalen werkt de speler in de party bij
 
@@ -34,9 +35,7 @@
 - [ ] Spelersscherm op andere apparaten: WebSocket-kamer (Durable Object) met kamercode, zelfde send/on als `js/share.js`; portretten apart en één keer per id sturen
 - [ ] Spelersscherm: zichtbaarheid (`VIS`) instelbaar maken; verbergen ook bij snel toevoegen
 
-- [ ] Effecten: cover-bonus ook op Dex saves in het AoE-paneel; Bless/Bane-d4 bij monster-saves
 - [ ] Lethargy na Haste als echte toestand (nu alleen een melding)
-- [ ] Effecten: Bless opnieuw casten op nieuwe doelen haalt de oude doelen niet weg; Life Drain tot max 0 = dood (nu min. 1)
 
 ## Fase 2: sync
 - [ ] Login en sync tussen apparaten (bijv. Supabase), local-first blijft de basis

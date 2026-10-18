@@ -22,12 +22,15 @@ export function pickFor(t, x, type) {
 /** Magic Resistance (advantage op saves tegen spells) staat bij de traits */
 export const hasMagicRes = (m) => !!(m && (m.t || []).some((r) => /^magic resistance/i.test(r[0])));
 
-/** Save rollen; adv = 2d20, de hoogste telt */
-export function rollSave(bo, adv, rng = Math.random) {
+/** Save rollen; adv = 2d20, de hoogste telt. mods uit saveMods (effects.js): cover vast, Bless/Bane een d4 erbij */
+export function rollSave(bo, adv, rng = Math.random, mods = []) {
   const r = d(20, rng), r2 = adv ? d(20, rng) : null;
-  return { r, r2, bo, tot: Math.max(r, r2 ?? r) + bo };
+  const x = mods.map((m) => (m.d ? { n: m.n, d: m.d, r: d(Math.abs(m.d), rng) } : { n: m.n, b: m.b }));
+  const extra = x.reduce((s, m) => s + (m.d ? Math.sign(m.d) * m.r : m.b), 0);
+  return { r, r2, bo, x, tot: Math.max(r, r2 ?? r) + bo + extra };
 }
-export const rollText = (x, dc) => `d20 [${x.r}${x.r2 != null ? `, ${x.r2}` : ""}] ${x.bo >= 0 ? "+" : ""}${x.bo} = ${x.tot}${dc > 0 ? (x.tot >= dc ? " ✓" : " ✗") : ""}${x.r2 != null ? " (advantage: Magic Resistance)" : ""}`;
+const sg = (v) => (v >= 0 ? "+" : "−");
+export const rollText = (x, dc) => `d20 [${x.r}${x.r2 != null ? `, ${x.r2}` : ""}] ${x.bo >= 0 ? "+" : ""}${x.bo}${(x.x || []).map((m) => (m.d ? ` ${sg(m.d)} 1d${Math.abs(m.d)} [${m.r}] ${m.n}` : ` ${sg(m.b)} ${Math.abs(m.b)} ${m.n}`)).join("")} = ${x.tot}${dc > 0 ? (x.tot >= dc ? " ✓" : " ✗") : ""}${x.r2 != null ? " (advantage: Magic Resistance)" : ""}`;
 
 /** Wat er met één doel gebeurt, op een kopie (voor de preview): dealt en een korte uitkomst */
 export function aoeOutcome(c, pick, raw) {

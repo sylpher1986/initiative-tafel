@@ -53,7 +53,7 @@ const cleanEff = (e) => {
   const st = ["ac", "max"].includes(e.st) ? e.st : "";
   return { id: str(e.id, 40) || Math.random().toString(36).slice(2, 9), n: str(e.n, 60) || "Effect", st,
     op: st === "ac" && ["+", "=", "min"].includes(e.op) ? e.op : "+", v: st === "ac" ? lim(e.v, -20, 40) : st ? lim(e.v, -999, 999) : 0, txt: str(e.txt, 120), end: str(e.end, 120),
-    d: obj(e.d) ? cleanDur(e.d) : null, lr: !!e.lr, by: e.by ? str(e.by, 40) : null, spell: e.spell ? str(e.spell, 120) : null, hpd: st === "max" ? lim(e.hpd, -9999, 9999) : 0 };
+    d: obj(e.d) ? cleanDur(e.d) : null, lr: !!e.lr, by: e.by ? str(e.by, 40) : null, spell: e.spell ? str(e.spell, 120) : null, ...(e.by && e.cast ? { cast: str(e.cast, 60) } : {}), hpd: st === "max" ? lim(e.hpd, -9999, 9999) : 0 };
 };
 
 export function cleanCombatant(c) {

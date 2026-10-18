@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PRESETS, effAc, effText, acBreakdown, addEffect, removeEffect, endConcEffects, endFightEffects, baseMax } from "../js/rules/effects.js";
+import { PRESETS, effAc, effText, acBreakdown, addEffect, removeEffect, endConcEffects, endFightEffects, baseMax, saveMods, modsText, endOtherCasts } from "../js/rules/effects.js";
 import { diffLog } from "../js/log.js";
 import { cleanCombatant } from "../js/backup.js";
 import { mergeSheet } from "../js/ddbjson.js";
@@ -82,9 +82,28 @@ test("max HP: Aid verhoogt max en huidige HP (ook vanaf 0), terug bij einde; Lif
   const f2 = pc({ hp: 20 }); addEffect(f2, P("Aid"), null); removeEffect(f2, f2.eff[0].id);
   assert.equal(f2.hp, 25, "20 + 5 = 25; onder het nieuwe max blijft HP staan");
   const g = gob({ hp: 7, max: 7 });
-  addEffect(g, { n: "Life Drain", st: "max", v: -10 }, null);
-  assert.deepEqual([g.max, g.hp, g.eff[0].hpd], [1, 1, -6], "max minstens 1");
-  removeEffect(g, g.eff[0].id); assert.deepEqual([g.max, g.hp], [7, 1]);
+  addEffect(g, { n: "Life Drain", st: "max", v: -3 }, null);
+  assert.deepEqual([g.max, g.hp, g.eff[0].hpd], [4, 4, -3]);
+  removeEffect(g, g.eff[0].id); assert.deepEqual([g.max, g.hp], [7, 4]);
+});
+
+test("max HP tot 0 (Life Drain) = dood; speler als 3 failures, concentratie weg, terugdraaien wekt niet op", () => {
+  const g = gob({ hp: 7, max: 7, cond: ["Concentrating"], concSpell: "Hold Person" });
+  const r = addEffect(g, { n: "Life Drain", st: "max", v: -10 }, null);
+  assert.deepEqual([g.max, g.hp, g.cond], [1, 0, []], "max blijft ≥ 1 (0 = onbekend), hp 0");
+  assert.match(r.msgs[0], /Goblin sterft: max HP 0 \(Life Drain\)/);
+  assert.ok(r.why.some((w) => /max HP tot 0/.test(w.t)));
+  const f = pc({ hp: 12, temp: 5 });
+  addEffect(f, { n: "Life Drain", st: "max", v: -30 }, null);
+  assert.deepEqual([f.hp, f.temp, f.ds.dead, f.ds.f, f.cond.includes("Unconscious")], [0, 0, true, 3, true]);
+  removeEffect(f, f.eff[0].id);
+  assert.deepEqual([f.max, f.hp, f.ds.dead], [30, 0, true], "long rest/weghalen herstelt max, niet het leven");
+  const dead = pc({ hp: 0, ds: { s: 0, f: 3, stable: false, dead: true } });
+  const r2 = addEffect(dead, { n: "Life Drain", st: "max", v: -40 }, null);
+  assert.ok(!r2.msgs.some((m) => /sterft/.test(m)), "al dood: geen tweede sterfmelding");
+  const down = gob({ hp: 0 });
+  const r3 = addEffect(down, { n: "Life Drain", st: "max", v: -10 }, null);
+  assert.ok(!r3.msgs.some((m) => /sterft/.test(m)) && down.hp === 0, "monster al neer: geen sterfmelding");
 });
 
 test("herinnering zonder getal; geen effect op AC of HP", () => {
@@ -191,4 +210,34 @@ test("sheet bijwerken (D&D Beyond) houdt Aid bovenop de nieuwe max", () => {
   assert.deepEqual([f.max, f.hp, baseMax(f)], [45, 35, 40]);
   assert.ok(ch.some((t) => t === "max HP 30 → 40"));
   removeEffect(f, f.eff[0].id); assert.equal(f.max, 40);
+});
+
+test("save-bonussen: cover alleen op DEX (hoogste telt), Bless/Bane op elke save", () => {
+  const f = pc();
+  addEffect(f, P("Half cover"), null); addEffect(f, P("Bless"), null);
+  assert.deepEqual(saveMods(f, "DEX"), [{ n: "Half cover", b: 2 }, { n: "Bless", d: 4 }]);
+  assert.deepEqual(saveMods(f, "WIS"), [{ n: "Bless", d: 4 }]);
+  addEffect(f, P("Three-quarters cover"), null);
+  assert.deepEqual(f.eff.map((e) => e.n), ["Bless", "Three-quarters cover"], "cover vervangt cover");
+  assert.equal(effAc(f), 21);
+  assert.equal(modsText(saveMods(f, "DEX")), "+5 Three-quarters cover, +1d4 Bless");
+  const b = gob(); addEffect(b, P("Bane"), null);
+  assert.equal(modsText(saveMods(b, "CON")), "−1d4 Bane");
+  assert.deepEqual(saveMods(gob(), "DEX"), []);
+  const own = pc(); addEffect(own, { n: "bless", st: "", txt: "eigen" }, null);
+  assert.deepEqual(saveMods(own, "STR"), [{ n: "Bless", d: 4 }], "naam telt, hoofdletters maken niet uit");
+});
+
+test("Bless opnieuw casten: doelen uit dezelfde beurt blijven, een latere cast haalt de oude doelen weg", () => {
+  const cl = cleric({ cond: ["Concentrating"], concSpell: "Bless" }), a = pc({ id: "a", name: "A" }), b = pc({ id: "b", name: "B" }), g = gob();
+  const L = [cl, a, b, g];
+  addEffect(a, P("Bless"), null, { by: "c", spell: "Bless", cast: "1:c" });
+  assert.equal(endOtherCasts(L, "c", "Bless", "1:c").msgs.length, 0, "zelfde beurt: zelfde cast");
+  addEffect(b, P("Bless"), null, { by: "c", spell: "Bless", cast: "1:c" });
+  addEffect(g, P("Bane"), null, { by: "c", spell: "Bane", cast: "1:c" });
+  const r = endOtherCasts(L, "c", "Bless", "2:c");
+  assert.deepEqual([a.eff, b.eff].map((e) => e.length), [0, 0]);
+  assert.equal(g.eff.length, 1, "andere spell blijft");
+  assert.match(r.msgs[0], /A: Bless is voorbij \(Bless opnieuw gecast\)/);
+  assert.equal(cleanCombatant({ kind: "pc", name: "X", eff: [{ n: "Bless", by: "c", cast: "1:c" }, { n: "Shield", cast: "1:c" }] }).eff.map((e) => e.cast).join(","), "1:c,");
 });
