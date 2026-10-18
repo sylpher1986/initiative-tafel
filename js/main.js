@@ -42,6 +42,8 @@ async function boot() {
   document.addEventListener("toggle", onToggle, true);
   bindForms(); bindParty(); bindLog(); bindQadd(); bindAoe();
   bindBackup(start);
+  // echte hoogte van de beurtbalk: het statblock op de telefoon staat er precies boven
+  if ("ResizeObserver" in window) new ResizeObserver(([e]) => document.documentElement.style.setProperty("--dock-h", Math.ceil(e.target.getBoundingClientRect().height) + "px")).observe($("#dock"));
 
   if (!app.S) {
     app.S = sample();

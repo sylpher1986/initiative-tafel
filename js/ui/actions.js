@@ -3,7 +3,7 @@ import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
 import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, aoeTargets, aoePick, editPreview } from "./render.js";
 import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods } from "../rules/effects.js";
-import { showSB, showSheet, doRoll } from "./statblock.js";
+import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, sbTop } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
 import { step, startCombat, makeDur, parseInit } from "../rules/turns.js";
@@ -95,6 +95,9 @@ function applyEff(c, p, byId, join = null) {
 const row = {
   sb: (c) => showSB(c.ref, c.name),
   sheet: (c) => showSheet(c),
+  "atk-open"(c) { ui.atkOpen = c.id; },
+  "atk-close"() { ui.atkOpen = null; },
+  "atk-rx"(c) { ui.atkRx = ui.atkRx === c.id ? null : c.id; },
   del(c) {
     if (c.kind !== "lair" && ui.confirmDel !== c.id) { ui.confirmDel = c.id; return; }
     const S = app.S; S.list = S.list.filter((x) => x !== c); if (S.active === c.id) S.active = null; ui.confirmDel = null; ui.panel = null;
@@ -249,13 +252,14 @@ const global = {
     if (!window.open("speler", "it-spelers")) toast("Het venster werd geblokkeerd. Sta pop-ups toe voor deze site.");
     return false;
   },
-  sbclose() { $("#sbwrap").dataset.open = "false"; return false; },
+  sbclose() { closeSB(); return false; },
+  sbbig() { toggleBigSB(); return false; },
 };
 
 export function scrollToCard(id, onlyIfHidden, instant) {
   const el = id && document.querySelector(`.c[data-id="${CSS.escape(id)}"]`);
   if (!el) return;
-  const r = el.getBoundingClientRect(), dock = $("#dock").getBoundingClientRect().top;
+  const r = el.getBoundingClientRect(), dock = Math.min($("#dock").getBoundingClientRect().top, sbTop()); // open statblock op telefoon dekt ook af
   if (onlyIfHidden && r.top >= 0 && r.bottom <= dock) return;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   window.scrollBy({ top: r.top - 64, behavior: reduce || instant ? "auto" : "smooth" });
@@ -275,6 +279,7 @@ export function onClick(e) {
     const lab = b.dataset.label || b.closest(".entry")?.querySelector("i")?.textContent.replace(/\.$/, "");
     return doRoll(b.dataset.roll, lab, !!b.dataset.hit);
   }
+  if (b.dataset.dmg) return doDmgRoll(b.dataset.dmg, b.dataset.label);
   if (b.dataset.setmode) {
     ui.mode = b.dataset.setmode; ui.confirmReset = false;
     render();
@@ -291,7 +296,7 @@ export function onClick(e) {
     if (["start", "next", "prev"].includes(b.id)) {
       // een niet-opgeslagen bewerking blijft open staan; anders volgt de open kaart de beurt
       if (ui.edit && ui.edit.dirty) ui.open = ui.edit.id; else { ui.open = null; ui.panel = null; ui.edit = null; }
-      ui.castPick = null; ui.effWho = null;
+      ui.castPick = null; ui.effWho = null; ui.atkOpen = null; ui.atkRx = null;
     }
     render();
     if (["start", "next", "prev"].includes(b.id)) scrollToCard(app.S.active);

@@ -233,11 +233,17 @@ textarea{min-height:120px;resize:vertical}
 .pre{white-space:pre-wrap}
 .credit{font-size:.75rem;color:var(--muted);margin-top:14px}
 
+.sbbtns{display:flex;gap:6px;flex:0 0 auto}
+.sbbig{display:none}
+/* Telefoon: statblock half hoog boven de beurtbalk (Volgende blijft bereikbaar), Groot = tot bijna bovenaan */
 @media (max-width:899px){
-  .sbwrap{position:fixed;inset:auto 0 0 0;z-index:20;padding:0 max(8px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(8px,env(safe-area-inset-left,0px));top:auto}
+  .sbwrap{position:fixed;left:0;right:0;top:auto;bottom:var(--dock-h);z-index:14;padding:0 max(8px,env(safe-area-inset-right,0px)) 0 max(8px,env(safe-area-inset-left,0px))}
   .sbwrap[data-open="false"]{display:none}
-  .sb{max-height:72vh;border-radius:12px 12px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.25)}
-  .closebtn{display:inline-flex}
+  .sb{max-height:45vh;max-height:45dvh;border-radius:12px 12px 0 0;border-bottom:0;box-shadow:0 -8px 30px rgba(0,0,0,.25);padding-top:10px}
+  .sbwrap[data-big="true"] .sb{max-height:calc(100vh - var(--dock-h) - env(safe-area-inset-top,0px) - 12px);max-height:calc(100dvh - var(--dock-h) - env(safe-area-inset-top,0px) - 12px)}
+  .sbhead{position:sticky;top:-10px;background:var(--surface);z-index:1;padding-top:2px}
+  .closebtn,.sbbig{display:inline-flex;min-height:44px;min-width:56px;align-items:center;justify-content:center}
+  body[data-sb="open"]{padding-bottom:calc(var(--dock-h) + 45vh + 24px);padding-bottom:calc(var(--dock-h) + 45dvh + 24px)}
 }
 
 /* Roll toast */
@@ -482,3 +488,24 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .pvwait{text-align:center;padding:2em 1em}
 /* smal (telefoon): HP op een eigen regel, zodat de naam ruimte houdt */
 @media (max-width:560px){.pvnow .r{text-align:left}.pvhp{grid-column:2/4;flex-direction:row;align-items:center;justify-content:flex-start}.pvhp:empty{display:none}.pvhp .hpw{width:auto;flex:1}}
+
+/* Aanvallen op de monsterkaart: één regel per actie (to hit · damage), Multiattack erboven */
+.atk{display:grid;border:1px solid var(--line);border-radius:10px;padding:2px 10px;background:var(--surface)}
+.atk .multi{margin:0;padding:6px 0;font-size:.82rem;color:var(--muted);border-bottom:1px solid var(--line);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.atk .multi b{color:var(--fg)}
+.ar{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center;min-height:50px;padding:3px 0;border-bottom:1px solid var(--line)}
+.ar .an{font-weight:700;font-size:.92rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ar .an small{display:block;font-weight:400;font-size:.74rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.ar .d{min-height:44px;min-width:46px;border-radius:9px;border:1px solid var(--line);background:var(--bg);font-weight:700;font-size:.88rem;padding:2px 8px;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--fg);max-width:46vw}
+.ar .d.hit{color:var(--active);border-color:var(--active)}
+.ar .d.dm{min-width:94px}
+.ar .d.dm small{display:block;font-weight:400;font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ar .d:active{background:var(--sunk)}
+.ar .dc{font-size:.82rem;font-weight:700;color:var(--warn);white-space:nowrap}
+.ar .dflat{font-size:.82rem;color:var(--muted);white-space:nowrap}
+.atkmore{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:40px}
+.atkmore .link{min-height:40px}
+.atkfold{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-weight:700;font-size:.9rem;cursor:pointer;color:var(--fg)}
+.atk .atkfold{border:0;padding:0;border-radius:0}
+.atk .atkfold.sub{border-top:1px solid var(--line);font-size:.85rem;color:var(--muted)}
+.atkfold:focus-visible{outline:2px solid var(--active);outline-offset:2px}

@@ -18,12 +18,13 @@
 - Effecten in saves: cover (Dex) en Bless/Bane-d4 bij monster-saves in het AoE-paneel; Bless opnieuw casten vervangt de oude doelen ("Hoort erbij" als het toch een extra doel was); max HP tot 0 = dood; Lethargy na Haste als echt effect
 - Spelersscherm in een tweede venster (zelfde apparaat): volgorde, beurt, HP-status van monsters; monsters verbergen voor spelers
 - Spelers via D&D Beyond-link (publieke sheets, via de Worker): portret, AC/HP berekend met controle-markering, slots en resources; opnieuw ophalen werkt de speler in de party bij
+- Monsterbeurt zonder statblock: aanvallen op de kaart (open bij wie aan de beurt is, ingeklapt bij andere monsters voor opportunity attacks en legendary actions); statblock op telefoon half hoog boven de beurtbalk, volgt de beurt
 
 ## DM-review (oktober 2026), op prioriteit
 Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair, AoE, Bless, death saves, spelersscherm) op 320/390/1024 px.
 
 ### Prioriteit 1: speelt elke beurt
-- [ ] Monsterbeurt zonder statblock openen: aanvallen compact op de open kaart (Bite +11 · 2d10+6 …). Statblock op telefoon als half-hoog paneel bóven de beurtbalk dat bij Volgende meeschuift (nu dekt het de beurtbalk af: Volgende niet aan te tikken). Vervangt "Statblock-paneel versleepbaar" hieronder.
+- [x] Monsterbeurt zonder statblock openen: aanvallen compact op de kaart (to hit · damage, DC), statblock op telefoon half hoog boven de beurtbalk en volgt de beurt (1.7.0)
 - [ ] Legendary actions-herinnering: na elke beurt van een ander "Draak: 3 LA over" met één tik om er een te gebruiken (nu geen melding)
 - [ ] Saves afhandelen in de melding: condition-save einde beurt en concentration save. Monsters: knop "Rol (WIS +0)" met uitslag, geslaagd = conditie weg. Spelers: Geslaagd/Gefaald; gefaald = concentratie weg. Condition-save-melding komt nu pas bij de start van de volgende deelnemer
 - [ ] Recharge-aanval ↔ AoE: "Gebruik" op de recharge-chip opent AoE met gerolde schade, type, save en DC uit het statblock en zet de aanval op "op" (nu blijft Acid Breath "klaar" na de AoE)
@@ -35,7 +36,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [ ] Effect/conditie op meerdere doelen tegelijk (Bless, Hold Person, Hypnotic Pattern, Web), met de doelkeuze uit AoE; Bless op 3 doelen kost nu 9 tikken
 - [ ] Groepsbeurten: zelfde monster met dezelfde groepsworp als één beurt
 - [ ] Monsters zoeken op CR en type (nu alleen naam: "undead" of "cr 5" geeft niets) en statblock-preview vóór toevoegen
-- [ ] Desktop en tablet (breed scherm): statblock standaard open in de rechterkolom (er is ruimte genoeg), en die volgt wie aan de beurt is. Monster: statblock. Speler: de character sheet als die er is (D&D Beyond-link of PDF), anders een sheet opgebouwd uit wat bekend is (naam, ras, AC met effecten, HP en temp HP, initiative, Dex-mod, spell slots, resources, condities, effecten, death saves)
+- [ ] Desktop en tablet (breed scherm): statblock standaard open in de rechterkolom (er is ruimte genoeg), en die volgt wie aan de beurt is. Monster: statblock. Speler: de character sheet als die er is (D&D Beyond-link of PDF), anders een sheet opgebouwd uit wat bekend is (naam, ras, AC met effecten, HP en temp HP, initiative, Dex-mod, spell slots, resources, condities, effecten, death saves) — deels klaar (1.7.0): de kolom volgt het monster aan de beurt; nog open: standaard open en de speler-sheet
 - [ ] Spell-uitleg makkelijk lezen: tik op een spellnaam (statblock, spell slots, effecten zoals Bless) opent de beschrijving (level, casting time, range, duur, concentratie, tekst) in een paneel. Alleen SRD 5.1-spells meeleveren (CC-BY-4.0, zoals de monsters); andere spells via een eigen notitie
 - [ ] Voorbereiden-indeling: tabs staan onder de hele lijst (veel scrollen bij 10+ deelnemers) en "Instellingen" valt op 390 px buiten beeld; tabs bovenaan of toevoegen als paneel (samen met de welkomstkaart hieronder)
 
@@ -54,7 +55,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 
 ## UX-verbeterpunten (uit review)
 - [ ] Logboek dichter bij de beurtbalk: eigen tab, of de laatste 2 gebeurtenissen onder de beurtbalk
-- [ ] Statblock-paneel op telefoon versleepbaar (half/heel) en dicht met veeg omlaag
+- [x] Statblock-paneel op telefoon versleepbaar (half/heel) en dicht met veeg omlaag (vervangen door half/Groot boven de beurtbalk, 1.7.0)
 - [x] Lettertypes zelf meeleveren in plaats van Google Fonts (offline en privacy)
 - [ ] Welkomstkaart bovenaan ("Start met voorbeeld" / "Begin leeg") in plaats van de voorbeeld-hint onderaan
 

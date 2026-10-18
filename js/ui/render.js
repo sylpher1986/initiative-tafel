@@ -8,7 +8,9 @@ import { PRESETS, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWa
 import * as R from "../rules/combat.js";
 import { ORD, pickList } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText } from "../rules/aoe.js";
-import { diceify } from "./statblock.js";
+import { diceify, syncSB } from "./statblock.js";
+import { monsterActions, dmgKey, useful } from "../rules/attacks.js";
+import { sgn } from "../rules/dice.js";
 import { avatar } from "./avatar.js";
 
 /** UI-toestand die niet in de encounter (en dus niet in undo/opslag) hoort */
@@ -26,6 +28,8 @@ export const ui = {
   effWho: null,        // { id, i } = preset met concentratie wacht op "Wie cast?"
   effJoin: null,       // { id, p, by, cast } = laatste "nieuwe cast" (Bless), voor "Hoort erbij" in de melding
   effCustom: false, effForm: {}, // eigen effect: formulier open + concept
+  atkOpen: null,       // id: aanvallen uitgeklapt (ander monster) of alle regels (monster aan de beurt)
+  atkRx: null,         // id: reactions/legendary uitgeklapt bij het monster aan de beurt
 };
 export const openId = () => (ui.open === null ? app.S.active : ui.open);
 export const mode = () => ui.mode || (app.S.round ? "fight" : "prep");
@@ -44,6 +48,7 @@ export function render() {
   paintAoe();
   paintParty();
   paintLog();
+  syncSB(app.S);
   afterRender();
 }
 
@@ -258,6 +263,43 @@ function actionsBlock(c) {
   ${ui.panel === "conds" ? condPanel(c) : ui.panel === "more" ? morePanel(c) : ui.panel === "eff" && !gone ? effPanel(c) : ""}`;
 }
 
+/* ---------- aanvallen op de monsterkaart ---------- */
+const SHORT = { piercing: "pierc.", bludgeoning: "bludg.", slashing: "slash." };
+const MAIN_MAX = 4; // regels bij het monster aan de beurt (Multiattack telt mee), daarna "+N meer"
+
+function atkRow(a) {
+  // zonder worp of DC (Detect, Parry): korte tekst eronder, de rest staat in het statblock
+  const sub = [a.tag, a.reach, a.hit !== null && a.dc ? `DC ${a.dc.n} ${a.dc.ab}` : "", useful(a) ? "" : a.text].filter(Boolean).join(" · ");
+  const key = dmgKey(a.dmg), flat = a.dmg.filter((x) => !x.e);
+  const hit = a.hit !== null ? `<button class="d hit" data-roll="1d20${sgn(a.hit)}" data-hit="1" data-label="${esc(a.n)}" aria-label="${esc(a.n)}: aanval ${sgn(a.hit)} to hit">${sgn(a.hit)}</button>`
+    : a.dc ? `<span class="dc">DC ${a.dc.n} ${a.dc.ab}</span>` : "<span></span>";
+  const dmg = key ? `<button class="d dm" data-dmg="${esc(key)}" data-label="${esc(a.n)}" aria-label="${esc(a.n)}: damage rollen">${esc(a.dmg.map((x) => x.e || x.flat).join(" + "))}<small>${esc(a.dmg.map((x) => SHORT[x.type] || x.type).join(" + "))}</small></button>`
+    : flat.length ? `<span class="dflat">${esc(flat.map((x) => `${x.flat} ${x.type}`).join(" + "))}</span>` : "<span></span>";
+  return `<div class="ar"><span class="an">${esc(a.n)}${sub ? `<small>${esc(sub)}</small>` : ""}</span>${hit}${dmg}</div>`;
+}
+
+/** Monster aan de beurt: aanvallen open (max 4 regels); ander open monster: één ingeklapte regel (opportunity attack, legendary) */
+function atkBlock(c, S) {
+  if (c.kind !== "monster" || isOut(c)) return "";
+  const A = c.ref ? monsterActions(findMon(c.ref)) : null;
+  if (!A) return "";
+  const turn = c.id === S.active, all = ui.atkOpen === c.id;
+  const n = A.main.length + A.other.length;
+  if (!turn && !all) return `<button class="atkfold" data-a="atk-open" aria-expanded="false">Aanvallen${n ? ` (${n})` : ""} <span aria-hidden="true">▸</span></button>`;
+  const room = turn && !all ? Math.max(1, MAIN_MAX - (A.multi ? 1 : 0)) : A.main.length;
+  const hidden = A.main.length - room;
+  const rx = !turn || ui.atkRx === c.id;
+  const multi = A.multi ? `<p class="multi"><b>Multiattack:</b> ${esc(A.multi.text)}</p>` : "";
+  const other = !A.other.length ? "" : rx
+    ? `${turn ? `<button class="atkfold sub" data-a="atk-rx" aria-expanded="true">Reactions · Legendary <span aria-hidden="true">▾</span></button>` : ""}${A.other.map(atkRow).join("")}`
+    : `<button class="atkfold sub" data-a="atk-rx" aria-expanded="false">Reactions · Legendary (${A.other.length}) <span aria-hidden="true">▸</span></button>`;
+  return `<div class="atk">
+    ${!turn ? `<button class="atkfold" data-a="atk-close" aria-expanded="true">Aanvallen <span aria-hidden="true">▾</span></button>` : ""}
+    ${multi}${A.main.slice(0, room).map(atkRow).join("")}
+    <div class="atkmore">${hidden > 0 ? `<button class="link" data-a="atk-open">+${hidden} meer</button>` : "<span></span>"}<button class="link" data-a="sb">Volledig statblock</button></div>
+    ${other}</div>`;
+}
+
 function lairRow(c, S) {
   const acts = app.lairs[c.key] || [];
   const keys = [...new Set([c.key, ...Object.keys(app.lairs), ...S.list.filter((x) => x.la).map((x) => "Lair: " + x.ref)])];
@@ -295,11 +337,12 @@ function row(c, S) {
       ${acBreakdown(c) ? `<p class="hint acb">AC ${n0(effAc(c))} = ${esc(acBreakdown(c))}</p>` : ""}
       ${defLine(c)}
       ${dsBlock(c)}
+      ${atkBlock(c, S)}
+      ${c.rc && c.rc.length ? `<div class="rcs">${c.rc.map((r, i) => `<button class="rc" data-rc="${i}" aria-pressed="${!!r.ready}" title="Tik om te markeren als gebruikt of beschikbaar">${esc(r.n)} · ${r.ready ? "klaar" : r.rest ? "na rust" : `recharge ${n0(r.min)}–6`}</button>`).join("")}</div>` : ""}
+      ${pips(c.la, "la", "Legendary actions")}${pips(c.lr, "lr", "Legendary resistance per dag")}
       ${actionsBlock(c)}
       ${castBlock(c)}
       ${resBlock(c)}
-      ${c.rc && c.rc.length ? `<div class="rcs">${c.rc.map((r, i) => `<button class="rc" data-rc="${i}" aria-pressed="${!!r.ready}" title="Tik om te markeren als gebruikt of beschikbaar">${esc(r.n)} · ${r.ready ? "klaar" : r.rest ? "na rust" : `recharge ${n0(r.min)}–6`}</button>`).join("")}</div>` : ""}
-      ${pips(c.la, "la", "Legendary actions")}${pips(c.lr, "lr", "Legendary resistance per dag")}
     </div>` : badges(c, S)}
   </li>`;
 }
