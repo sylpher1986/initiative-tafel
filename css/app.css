@@ -439,3 +439,46 @@ label.warn input{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
 .ed3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .ed3 label small{text-transform:none;letter-spacing:0}
 .kpanel .bar .btn.tap{flex:1 1 120px}
+
+/* Verborgen voor spelers (DM-kaart) */
+.bd.hid{border-style:dashed}
+
+/* Spelersscherm (speler.html): groot en rustig, leesbaar op afstand (tv) of op een tablet */
+body.pv{font-size:clamp(16px,1.1rem + .9vw,30px);padding-bottom:max(24px,env(safe-area-inset-bottom,0px))}
+.pvwrap{max-width:1000px;margin:0 auto;display:grid;gap:.8em}
+.pvtop{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.pv h1{font-size:1.3em}
+.pvnow{background:var(--active-soft);border:1px solid var(--active);border-radius:var(--r);padding:.6em .9em;display:flex;justify-content:space-between;align-items:flex-end;gap:.4em 1.2em;flex-wrap:wrap}
+.pvnow:empty{display:none}
+.pvnow .l{display:block;font-size:.6em;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.pvnow b{font-family:var(--display);font-size:1.5em;color:var(--active);line-height:1.15;overflow-wrap:anywhere}
+.pvnow .r{text-align:right;font-family:var(--display);font-size:1.05em;overflow-wrap:anywhere}
+ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
+.pvc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);display:grid;grid-template-columns:1.8em minmax(0,1fr) auto;align-items:center;gap:.25em .6em;padding:.45em .7em .45em 0}
+.pvc.turn{border-color:var(--active);box-shadow:0 0 0 2px var(--active) inset}
+.pvc.out{opacity:.5}
+.pvc.out .av{filter:grayscale(1)}
+.pvi{text-align:center;font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted)}
+.pvi .tri{display:block;font-size:.6em;color:var(--active)}
+.pvn{display:flex;align-items:center;gap:.45em;min-width:0}
+.pvn .nm{flex:0 1 auto;min-width:0;font-weight:700;font-size:1.05em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pvn .av,.pvnext{flex:0 0 auto}
+.pvc .av{width:1.9em;height:1.9em}
+.pvc .av .ic{width:1.25em;height:1.25em}
+.pvc.pc .av{background:var(--active-soft);color:var(--active)}
+.pvc.lair .av{background:var(--sunk)}
+.pvc.lair .nm{font-family:var(--display);color:var(--muted)}
+.pvnext{font-size:.6em;padding:1px .5em;border:1px solid var(--active);color:var(--active);border-radius:99px;white-space:nowrap}
+.pvhp{display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:0}
+.pvhp .hpw{width:min(9em,30vw)}
+.pvhp .hpw .bar{height:.35em}
+.pvhp .hpn{font-size:.75em}
+.pvst{font-size:.75em;padding:1px .6em;border-radius:99px;border:1px solid var(--good);color:var(--good);white-space:nowrap}
+.pvst.mid{border-color:var(--warn);color:var(--warn)}
+.pvst.low{border-color:var(--bad);color:var(--bad)}
+.pvst.out{border-color:var(--line);color:var(--muted)}
+.pvc .badges{grid-column:2/4;padding:0}
+.pvc .bd{font-size:.62em}
+.pvwait{text-align:center;padding:2em 1em}
+/* smal (telefoon): HP op een eigen regel, zodat de naam ruimte houdt */
+@media (max-width:560px){.pvnow .r{text-align:left}.pvhp{grid-column:2/4;flex-direction:row;align-items:center;justify-content:flex-start}.pvhp:empty{display:none}.pvhp .hpw{width:auto;flex:1}}

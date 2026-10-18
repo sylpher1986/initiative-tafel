@@ -134,6 +134,7 @@ const row = {
   effdel(c, b) { apply(removeEffect(c, b.dataset.e)); },
   "sheet-open"(c, b) { ui.sheet = { id: c.id, kind: b.dataset.kind, val: "", mode: 1 }; },
   react(c) { c.reaction = !c.reaction; },
+  hide(c) { if (c.hidden) delete c.hidden; else c.hidden = true; },
   dropconc(c) { apply(R.dropConc(c, "beëindigd")); },
   topty(c) { const ex = app.party.find((m) => m.name.toLowerCase() === c.name.toLowerCase()); c.pid = ex ? ex.pid : uid(); toast(`${c.name} staat nu in de vaste party.`); },
   "ds-roll": (c) => apply(R.rollDs(c)),
@@ -222,6 +223,10 @@ const global = {
   reset() { ui.confirmReset = true; },
   "reset-no"() { ui.confirmReset = false; },
   "reset-yes"() { app.S = { list: [], round: 0, active: null, sample: false }; ui.confirmReset = false; ui.mode = null; },
+  spelers() {
+    if (!window.open("speler.html", "it-spelers")) toast("Het venster werd geblokkeerd. Sta pop-ups toe voor deze site.");
+    return false;
+  },
   sbclose() { $("#sbwrap").dataset.open = "false"; return false; },
 };
 

@@ -1,0 +1,97 @@
+// Spelersscherm: wat spelers mogen zien. Puur (geen DOM), getest.
+// Alleen deze snapshot verlaat het DM-scherm, nooit de volledige toestand. Zo kan dezelfde snapshot
+// later ook via een server naar andere apparaten zonder dat er DM-info meegaat.
+import { sortOrder, isOut } from "./rules/turns.js";
+import { iconId, cleanImg } from "./ui/avatar.js";
+
+/** Wat spelers zien. Eén plek om later aan te passen (of per tafel instelbaar te maken). */
+export const VIS = {
+  monHp: "status", // monsters: "status" (Ongedeerd … Bijna dood) | "none" | "exact"
+  pcHp: "exact",   // spelers: "exact" | "status" | "none"
+  init: false,     // initiativegetallen tonen (anders alleen de volgorde)
+  tags: true,      // condities en effecten (alleen namen, geen notities of bron)
+  lair: true,      // lair als regel in de volgorde
+};
+
+/** HP als status voor spelers, zonder getallen */
+export function hpStatus(c) {
+  if (!c.max) return "";
+  if (c.hp <= 0) {
+    if (c.kind !== "pc") return "Neer";
+    const d = c.ds || {};
+    return d.dead ? "Dood" : d.stable ? "Stabiel" : "Bewusteloos";
+  }
+  const p = c.hp / c.max;
+  return p >= 1 ? "Ongedeerd" : p > 0.5 ? "Gewond" : p > 0.25 ? "Bloodied" : "Bijna dood";
+}
+
+function hpFor(c, how) {
+  if (!c.max || how === "none") return null;
+  if (how === "exact") return { hp: Math.max(0, c.hp), max: c.max, temp: c.temp || 0, st: hpStatus(c) };
+  return { st: hpStatus(c) };
+}
+
+function tagsFor(c) {
+  const t = (c.cond || []).map((x) => (x === "Concentrating" && c.kind === "pc" && c.concSpell ? `Concentrating · ${c.concSpell}` : x));
+  for (const e of c.eff || []) if (!t.includes(e.n)) t.push(e.n);
+  return t;
+}
+
+/**
+ * Snapshot voor het spelersscherm.
+ * metaOf(c): creature type-tekst van een monster (voor het icoon); vis: zie VIS.
+ * Verborgen deelnemers (c.hidden) bestaan niet voor spelers: ook hun beurt niet.
+ */
+export function toPlayerView(S, metaOf = () => "", vis = VIS) {
+  const all = sortOrder(S.list || []);
+  const seen = (c) => !c.hidden && (c.kind !== "lair" || vis.lair);
+  const shown = all.filter(seen);
+  const active = shown.some((c) => c.id === S.active) ? S.active : null;
+  let next = null;
+  if (S.round && S.active) {
+    const i = all.findIndex((c) => c.id === S.active);
+    for (let k = 1; k <= all.length; k++) {
+      const c = all[(i + k) % all.length];
+      if (c.id !== S.active && seen(c) && !isOut(c)) { next = c.id; break; }
+    }
+  }
+  const list = shown.map((c) => {
+    if (c.kind === "lair") return { id: c.id, kind: "lair", name: "Lair", init: vis.init ? c.init : null };
+    const pc = c.kind === "pc";
+    const r = {
+      id: c.id, kind: pc ? "pc" : "monster", name: c.name, init: vis.init ? c.init : null,
+      icon: iconId(c, pc ? "" : metaOf(c)), img: pc ? cleanImg(c.img) : null,
+      out: isOut(c), hp: hpFor(c, pc ? vis.pcHp : vis.monHp), tags: vis.tags ? tagsFor(c) : [],
+    };
+    if (pc && c.max && c.hp <= 0 && c.ds && !c.ds.dead && !c.ds.stable) r.ds = { s: c.ds.s || 0, f: c.ds.f || 0 };
+    return r;
+  });
+  return { v: 1, round: S.round || 0, active, next, list };
+}
+
+/* ---------- ontvangen: snapshot opschonen (nu uit een ander venster, later uit het netwerk) ---------- */
+const str = (v, n) => (typeof v === "string" ? v.slice(0, n) : "");
+const int = (v) => (Number.isFinite(+v) ? Math.round(+v) : 0);
+const ICON_RE = /^[rm]-[a-z]{2,20}$/;
+
+/** Onbetrouwbare snapshot → schone snapshot, of null als het geen snapshot is */
+export function cleanView(d) {
+  if (!d || typeof d !== "object" || d.v !== 1 || !Array.isArray(d.list)) return null;
+  const list = d.list.slice(0, 60).filter((c) => c && typeof c === "object").map((c) => {
+    const kind = ["pc", "monster", "lair"].includes(c.kind) ? c.kind : "monster";
+    const r = { id: str(c.id, 40), kind, name: str(c.name, 120) || "?", init: c.init == null ? null : int(c.init) };
+    if (kind === "lair") return r;
+    const h = c.hp && typeof c.hp === "object" ? c.hp : null;
+    Object.assign(r, {
+      icon: ICON_RE.test(c.icon) ? c.icon : kind === "pc" ? "r-pc" : "m-monstrosity",
+      img: kind === "pc" ? cleanImg(c.img) : null, out: !!c.out,
+      hp: h ? (h.max != null ? { hp: int(h.hp), max: int(h.max), temp: int(h.temp), st: str(h.st, 20) } : { st: str(h.st, 20) }) : null,
+      tags: Array.isArray(c.tags) ? c.tags.slice(0, 20).map((t) => str(t, 80)).filter(Boolean) : [],
+    });
+    if (c.ds && typeof c.ds === "object") r.ds = { s: Math.max(0, Math.min(3, int(c.ds.s))), f: Math.max(0, Math.min(3, int(c.ds.f))) };
+    return r;
+  });
+  const ids = new Set(list.map((c) => c.id));
+  const pick = (v) => (typeof v === "string" && ids.has(v) ? v : null);
+  return { v: 1, round: Math.max(0, int(d.round)), active: pick(d.active), next: pick(d.next), list };
+}

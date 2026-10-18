@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Spelersscherm · Initiative Tafel</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#8a1f14" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#13161d" media="(prefers-color-scheme: dark)">
+<script src="js/theme.js"></script>
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/app.css">
+<script type="module" src="js/speler.js"></script>
+</head>
+<body class="pv">
+<main class="pvwrap">
+  <header class="pvtop">
+    <h1>Initiative <span>Tafel</span></h1>
+    <div class="pvtools">
+      <button type="button" class="btn small" id="pv-full">Volledig scherm</button>
+    </div>
+  </header>
+  <section class="pvnow" id="pv-now" aria-live="polite"></section>
+  <ol class="pvlist" id="pv-list"></ol>
+  <p class="hint pvwait" id="pv-wait">Wacht op het DM-scherm… Open Initiative Tafel in een ander venster of tabblad van deze browser op dit apparaat.</p>
+</main>
+<noscript><p style="padding:16px">Het spelersscherm heeft JavaScript nodig.</p></noscript>
+</body>
+</html>

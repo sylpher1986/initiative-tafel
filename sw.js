@@ -1,6 +1,6 @@
 // Service worker: maakt de app offline bruikbaar. Verhoog VERSION bij elke release zodat de cache ververst.
 // Gelijk houden aan js/version.js (de test bewaakt dat); dit is ook het nummer dat de app toont.
-const VERSION = "1.5.0";
+const VERSION = "1.6.0";
 const CACHE = "initiative-tafel-" + VERSION;
 const ASSETS = [
   "./",
@@ -26,12 +26,15 @@ const ASSETS = [
   "./js/ddbjson.js",
   "./js/log.js",
   "./js/main.js",
+  "./js/playerview.js",
   "./js/rules/aoe.js",
   "./js/rules/combat.js",
   "./js/rules/dice.js",
   "./js/rules/effects.js",
   "./js/rules/spells.js",
   "./js/rules/turns.js",
+  "./js/share.js",
+  "./js/speler.js",
   "./js/state.js",
   "./js/storage.js",
   "./js/theme.js",
@@ -42,6 +45,7 @@ const ASSETS = [
   "./js/ui/util.js",
   "./js/version.js",
   "./manifest.webmanifest",
+  "./speler.html",
 ];
 
 self.addEventListener("install", (e) => {

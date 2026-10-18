@@ -29,6 +29,10 @@ export const ui = {
 export const openId = () => (ui.open === null ? app.S.active : ui.open);
 export const mode = () => ui.mode || (app.S.round ? "fight" : "prep");
 
+/** Na elke render (bijv. het spelersscherm bijwerken); render zelf blijft zonder bijwerkingen op de data */
+let afterRender = () => {};
+export const setAfterRender = (fn) => { afterRender = fn; };
+
 export function render() {
   commit();
   paintMode();
@@ -39,6 +43,7 @@ export function render() {
   paintAoe();
   paintParty();
   paintLog();
+  afterRender();
 }
 
 /** Voorbereiden: alles. Gevecht: alleen lijst + beurtbalk (CSS verbergt de rest via body[data-mode]) */
@@ -87,8 +92,10 @@ function effChips(c, S, interactive) {
   }).join("");
 }
 
+const hidBadge = (c) => (c.hidden ? `<span class="bd hid" title="Spelers zien deze deelnemer niet">verborgen</span>` : "");
+
 function badges(c, S) {
-  const out = [condChips(c, S, false), effChips(c, S, false)];
+  const out = [hidBadge(c), condChips(c, S, false), effChips(c, S, false)];
   if (c.kind === "pc" && c.max && c.hp <= 0) {
     const d = c.ds || R.newDs();
     out.push(d.dead ? `<span class="bd r">Dood</span>` : d.stable ? `<span class="bd g">Stabiel</span>` : `<span class="bd r">Death saves ✓${d.s} ✗${d.f}</span>`);
@@ -199,6 +206,7 @@ function morePanel(c) {
       <div class="bar"><button class="btn tap" data-a="ed-cancel">Annuleer</button><button class="btn primary tap" data-a="ed-save">Opslaan</button></div>
     </div>
     <div class="bar">${c.kind === "pc" && !c.pid ? `<button class="btn small" data-a="topty">Naar vaste party</button>` : ""}
+    ${c.kind === "monster" ? `<button class="btn small" data-a="hide" aria-pressed="${!!c.hidden}">${c.hidden ? "Tonen aan spelers" : "Verbergen voor spelers"}</button>` : ""}
     <button class="btn small danger" data-a="del">${del ? "Zeker? Tik nogmaals" : "Verwijder uit gevecht"}</button></div></div>`;
 }
 
@@ -280,7 +288,7 @@ function row(c, S) {
       ${c.max ? hpBar(c) : ""}
     </button>
     ${open ? `<div class="kbody">
-      ${c.cond.length || (c.eff || []).length ? `<div class="badges">${condChips(c, S, true)}${effChips(c, S, true)}</div>` : ""}
+      ${c.hidden || c.cond.length || (c.eff || []).length ? `<div class="badges">${hidBadge(c)}${condChips(c, S, true)}${effChips(c, S, true)}</div>` : ""}
       ${acBreakdown(c) ? `<p class="hint acb">AC ${n0(effAc(c))} = ${esc(acBreakdown(c))}</p>` : ""}
       ${defLine(c)}
       ${dsBlock(c)}

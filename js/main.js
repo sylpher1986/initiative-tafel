@@ -1,7 +1,9 @@
 // Opstarten: data laden, events koppelen, eerste render, service worker.
 import { app, load, resetBaseline, setWarn } from "./state.js";
-import { loadSrd } from "./data/monsters.js";
-import { render, ui } from "./ui/render.js";
+import { loadSrd, findMon } from "./data/monsters.js";
+import { render, ui, setAfterRender } from "./ui/render.js";
+import { toPlayerView } from "./playerview.js";
+import { localChannel, dmLink } from "./share.js";
 import { $, toast } from "./ui/util.js";
 import { VERSION } from "./version.js";
 import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, bindAoe, addMonsters, normalize } from "./ui/actions.js";
@@ -43,6 +45,12 @@ async function boot() {
     app.S = sample();
     addMonsters("Goblin", 2, "avg", "each", true);
     addMonsters("Hobgoblin", 1, "avg", "each", true);
+  }
+  // spelersscherm (ander venster op dit apparaat): krijgt alleen de gefilterde snapshot
+  const ch = localChannel();
+  if (ch) {
+    const link = dmLink(ch, () => toPlayerView(app.S, (c) => (c.ref ? findMon(c.ref)?.meta : "")));
+    setAfterRender(link.update);
   }
   start();
 
