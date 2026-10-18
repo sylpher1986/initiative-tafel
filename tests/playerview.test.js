@@ -73,6 +73,7 @@ test("death saves alleen zolang ze lopen; concentratie-spell alleen bij spelers"
   assert.deepEqual(V.list[0].ds, { s: 1, f: 2 });
   assert.deepEqual(V.list[1].tags, ["Concentrating"]);
   assert.equal(V.list[2].ds, undefined);
+  assert.deepEqual(toPlayerView(S([pc({ id: "c", name: "C", init: 1, hp: 0 })])).list[0].ds, { s: 0, f: 0 }, "net op 0 HP, nog geen ds-object");
 });
 
 test("cleanView: rommel en scripts eruit, onbekende ids weg", () => {
@@ -89,6 +90,7 @@ test("cleanView: rommel en scripts eruit, onbekende ids weg", () => {
   assert.deepEqual(a.tags, ["Prone"]);
   assert.deepEqual(a.ds, { s: 3, f: 0 });
   assert.equal(l.kind, "lair");
+  assert.equal(cleanView({ v: 1, list: [{ id: "q", hp: { st: "constructor" } }] }).list[0].hp.st, "", "alleen bekende statussen");
   // een echte snapshot komt er ongeschonden doorheen
   const real = toPlayerView(S([pc({ id: "a", name: "A", init: 5 }), mon({ id: "m", name: "M", init: 3 })]));
   assert.deepEqual(cleanView(JSON.parse(JSON.stringify(real))), real);

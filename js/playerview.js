@@ -63,7 +63,8 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS) {
       icon: iconId(c, pc ? "" : metaOf(c)), img: pc ? cleanImg(c.img) : null,
       out: isOut(c), hp: hpFor(c, pc ? vis.pcHp : vis.monHp), tags: vis.tags ? tagsFor(c) : [],
     };
-    if (pc && c.max && c.hp <= 0 && c.ds && !c.ds.dead && !c.ds.stable) r.ds = { s: c.ds.s || 0, f: c.ds.f || 0 };
+    const d = c.ds || {}; // zonder ds-object nog geen worpen (zoals de DM-kaart met newDs())
+    if (pc && c.max && c.hp <= 0 && !d.dead && !d.stable) r.ds = { s: d.s || 0, f: d.f || 0 };
     return r;
   });
   return { v: 1, round: S.round || 0, active, next, list };
@@ -73,6 +74,9 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS) {
 const str = (v, n) => (typeof v === "string" ? v.slice(0, n) : "");
 const int = (v) => (Number.isFinite(+v) ? Math.round(+v) : 0);
 const ICON_RE = /^[rm]-[a-z]{2,20}$/;
+/** Alle statussen uit hpStatus; iets anders komt niet door */
+export const STATUS = ["Ongedeerd", "Gewond", "Bloodied", "Bijna dood", "Neer", "Bewusteloos", "Stabiel", "Dood"];
+const st = (v) => (STATUS.includes(v) ? v : "");
 
 /** Onbetrouwbare snapshot → schone snapshot, of null als het geen snapshot is */
 export function cleanView(d) {
@@ -85,7 +89,7 @@ export function cleanView(d) {
     Object.assign(r, {
       icon: ICON_RE.test(c.icon) ? c.icon : kind === "pc" ? "r-pc" : "m-monstrosity",
       img: kind === "pc" ? cleanImg(c.img) : null, out: !!c.out,
-      hp: h ? (h.max != null ? { hp: int(h.hp), max: int(h.max), temp: int(h.temp), st: str(h.st, 20) } : { st: str(h.st, 20) }) : null,
+      hp: h ? (h.max != null ? { hp: int(h.hp), max: Math.max(0, int(h.max)), temp: Math.max(0, int(h.temp)), st: st(h.st) } : { st: st(h.st) }) : null,
       tags: Array.isArray(c.tags) ? c.tags.slice(0, 20).map((t) => str(t, 80)).filter(Boolean) : [],
     });
     if (c.ds && typeof c.ds === "object") r.ds = { s: Math.max(0, Math.min(3, int(c.ds.s))), f: Math.max(0, Math.min(3, int(c.ds.f))) };
