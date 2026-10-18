@@ -15,6 +15,23 @@ Live: https://initiative-tafel.ft4mgzj72j.workers.dev (Cloudflare Workers, publi
 - Data lokaal in IndexedDB (`js/storage.js`). Export/import als JSON met `format`/`version` (`js/backup.js`); bij een formaatwijziging: versie ophogen en een migratie toevoegen.
 - Alles uit een bestand of import is onbetrouwbaar: opschonen (`cleanCombatant`, `sanitizeOwn`) en altijd `esc()` bij HTML.
 
+## Twee vaste reviewers (verplicht)
+Bij elk nieuw idee of elke wijziging kijken twee rollen mee. Waar mogelijk als **aparte agent** die het werk niet zelf maakte, zodat het werk zichzelf niet beoordeelt.
+
+**Senior UX-designer: vóór het bouwen**
+- Bekijkt elk nieuw idee vanuit het gebruik aan tafel: één DM, telefoon in de hand, snel, soms zonder internet.
+- Zet minstens twee opties naast elkaar, kiest de meest geschikte en zegt waarom (aantal tikken, duimbereik, tikdoelen ≥ 44 px, leesbaarheid, wat er weg kan).
+- Maakt bij grotere wijzigingen eerst een schets of mockup ter goedkeuring.
+- Bewaakt consistentie met de bestaande keuzes hieronder.
+
+**Senior developer: na het bouwen, vóór de push**
+- Test de logica: klopt het met de 5e 2014-regels, randgevallen (0 HP, dood, lege lijst, undo, import van oude of rare data), en dekken de tests het af?
+- Kiest de meest efficiënte en eenvoudigste oplossing: geen dubbele code, geen onnodig werk per tik, regels puur in `js/rules/`, render zonder bijwerkingen.
+- Controleert veiligheid (escapen, opschonen van import) en dat bestaande functionaliteit niet verloren gaat.
+- Rapporteert kort wat er gevonden en verbeterd is.
+
+Meld bij oplevering in één of twee regels wat beide reviewers vonden en besloten.
+
 ## Bij elke wijziging
 1. `npm test` (Node 18+, geen installatie nodig) en nieuwe regels-logica krijgt een test.
 2. Controleer in een browser op 320, 360 en 390 px breed: geen horizontaal scrollen. Ook licht en donker.
