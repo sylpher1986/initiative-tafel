@@ -1,6 +1,6 @@
 // Service worker: maakt de app offline bruikbaar. Verhoog VERSION bij elke release zodat de cache ververst.
 // Gelijk houden aan js/version.js (de test bewaakt dat); dit is ook het nummer dat de app toont.
-const VERSION = "1.6.0";
+const VERSION = "1.6.1";
 const CACHE = "initiative-tafel-" + VERSION;
 const ASSETS = [
   "./",
@@ -45,11 +45,22 @@ const ASSETS = [
   "./js/ui/util.js",
   "./js/version.js",
   "./manifest.webmanifest",
-  "./speler.html",
+  "./speler",
 ];
 
+// Cloudflare stuurt /pagina.html door naar /pagina. Safari weigert een doorgestuurd antwoord uit de
+// service worker voor een pagina ("Response served by service worker has redirections"): bewaar en geef
+// daarom altijd een kopie zonder redirect-vlag.
+const unredirect = async (res) => (res && res.redirected
+  ? new Response(await res.blob(), { status: res.status, statusText: res.statusText, headers: res.headers })
+  : res);
+
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => Promise.all(ASSETS.map((a) =>
+    fetch(a, { cache: "reload" }).then((res) => {
+      if (!res.ok) throw new Error(`${a}: ${res.status}`);
+      return unredirect(res).then((r) => c.put(a, r));
+    })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (e) => {
@@ -63,7 +74,7 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(req.url), own = url.origin === self.location.origin;
   if (own && url.pathname.startsWith("/api/")) return; // live data (D&D Beyond): nooit uit de cache
   if (own) {
-    e.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req)));
+    e.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => (hit ? unredirect(hit) : fetch(req))));
   } else {
     e.respondWith(fetch(req).then((res) => {
       if (res.ok || res.type === "opaque") { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }

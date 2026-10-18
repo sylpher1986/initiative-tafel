@@ -224,7 +224,7 @@ const global = {
   "reset-no"() { ui.confirmReset = false; },
   "reset-yes"() { app.S = { list: [], round: 0, active: null, sample: false }; ui.confirmReset = false; ui.mode = null; },
   spelers() {
-    if (!window.open("speler.html", "it-spelers")) toast("Het venster werd geblokkeerd. Sta pop-ups toe voor deze site.");
+    if (!window.open("speler", "it-spelers")) toast("Het venster werd geblokkeerd. Sta pop-ups toe voor deze site.");
     return false;
   },
   sbclose() { $("#sbwrap").dataset.open = "false"; return false; },
