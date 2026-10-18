@@ -2,6 +2,7 @@
 import { d } from "./dice.js";
 import { fx } from "./combat.js";
 import { tickEffects } from "./effects.js";
+import { tickSaves, turnSaves } from "./saves.js";
 
 export const CONDS = ["Blinded", "Charmed", "Deafened", "Frightened", "Grappled", "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned", "Prone", "Restrained", "Stunned", "Unconscious", "Concentrating"];
 
@@ -61,14 +62,13 @@ export function durLabel(e, list, short = false) {
   return t;
 }
 
-/** Een beurtgrens ("start" of "end" van deelnemer id): duur aftellen, saves herinneren */
+/** Een beurtgrens ("start" of "end" van deelnemer id): duur aftellen (herhaal-saves: saves.js, open bij het begin van de beurt) */
 export function turnBoundary(list, at, id) {
   const out = fx();
   for (const c of list) {
     if (!c.cd) continue;
     for (const [n, e] of Object.entries(c.cd)) {
       if (!c.cond.includes(n)) { delete c.cd[n]; continue; }
-      if (at === "end" && c.id === id && e.save) out.msgs.push(`${c.name}: ${e.save.ab} save DC ${e.save.dc} tegen ${n} (einde beurt).`);
       if (e.who === id && e.at === at && e.count) {
         e.count--;
         if (e.count <= 0) {
@@ -109,10 +109,12 @@ export function step(state, dir, rng = Math.random) {
   if (dir < 0) return out;
 
   passed.push(["start", cur.id]);
+  out.why.push(...tickSaves(state).why);
   for (const [at, id] of passed) {
     const r = turnBoundary(state.list, at, id);
     out.msgs.push(...r.msgs); out.why.push(...r.why);
   }
+  turnSaves(state, cur.id);
   cur.reaction = false;
   if (cur.la) cur.la.left = cur.la.max;
   const rc = [];

@@ -550,3 +550,17 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .lah .btn{min-height:44px;min-width:88px}
 .lao .ar{border-bottom:0;border-top:1px solid var(--line)}
 .latxt{margin:0 0 6px;font-size:.82rem;color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+
+/* Open saves: regels in de beurtbalk + paneel */
+.svbar{display:grid;gap:6px;margin-bottom:8px}
+.svrow{display:flex;align-items:center;gap:6px;min-height:44px;padding:0 0 0 10px;border:1px solid var(--warn);border-radius:12px;background:var(--bg)}
+.svn{flex:1 1 auto;min-width:0;display:grid;line-height:1.15}
+.svn b{font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg);font-family:inherit}
+.svn small{font-size:.76rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dock .svrow button,.svrow button{flex:0 0 auto;min-height:44px;min-width:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:.95rem;color:var(--fg);padding:0 10px}
+.svrow .svroll{min-width:72px;color:var(--warn);border-color:var(--warn)}
+.svrow .svok{color:var(--good)}
+.svrow .svok.bad{color:var(--bad)}
+.dock .svall{width:100%;min-height:44px;font-size:.95rem;border-color:var(--warn);color:var(--warn)}
+.ssheet{gap:10px}
+.ssheet .hint{margin:0}

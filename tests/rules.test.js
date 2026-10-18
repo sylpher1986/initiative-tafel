@@ -36,7 +36,8 @@ test("concentration-check na schade en verbreken op 0 HP", () => {
   const c = pc({ hp: 30, max: 30 });
   startConc(c, "Fly");
   const r = applyDamage(c, 24);
-  assert.ok(r.msgs.some((m) => m.includes("DC 12")));
+  assert.equal(r.saves[0].dc, 12);
+  assert.equal(applyDamage(c, 3).saves[0].dc, 10, "minimaal DC 10");
   applyDamage(c, 10);
   assert.equal(c.hp, 0);
   assert.ok(!c.cond.includes("Concentrating"));
@@ -120,12 +121,6 @@ test("conditie-duur: 'tot einde volgende beurt' en rondes", () => {
   m.cd = { Prone: makeDur(m, { dur: "r1" }, S.active) }; // a is aan de beurt
   step(S, 1); step(S, 1); // terug bij a: begin beurt a → 1 ronde voorbij
   assert.ok(!m.cond.includes("Prone"));
-});
-
-test("herhaal-save wordt gemeld aan het einde van de beurt van het doelwit", () => {
-  const list = [pc({ id: "b", cond: ["Frightened"], cd: { Frightened: { kind: "inf", save: { ab: "WIS", dc: 15 } } } })];
-  const r = turnBoundary(list, "end", "b");
-  assert.ok(r.msgs[0].includes("WIS save DC 15"));
 });
 
 test("spellcasting, legendary en recharge uit een statblock", () => {

@@ -65,10 +65,10 @@ test("AoE: temp HP, concentration, 0 HP-speler en legendary resistance", () => {
   startConc(c, "Bless");
   applyAoe([{ c, save: "fail", mode: 1 }], 12, "12 fire");
   assert.equal(c.temp, 0); assert.equal(c.hp, 24);
-  // concentration-melding blijft ook bij een AoE
+  // concentration save komt ook bij een AoE als open save
   const c2 = pc({ hp: 30, max: 30 }); startConc(c2, "Fly");
   const r2 = applyAoe([{ c: c2, save: "fail", mode: 1 }], 24, "24 fire");
-  assert.ok(r2.msgs.some((m) => m.includes("DC 12")));
+  assert.deepEqual(r2.saves, [{ id: c2.id, kind: "conc", n: "Fly", ab: "CON", dc: 12 }]);
   // speler op 0 HP: schade = een death save failure
   const down = pc({ hp: 0, ds: { s: 0, f: 0, stable: true, dead: false }, cond: ["Unconscious"] });
   applyAoe([{ c: down, save: "half", mode: 1 }], 10, "10 fire");

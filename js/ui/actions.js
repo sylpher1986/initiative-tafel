@@ -1,7 +1,8 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
-import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, laOpts, aoeTargets, aoePick, editPreview } from "./render.js";
+import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, paintSv, laOpts, svBonus, aoeTargets, aoePick, editPreview } from "./render.js";
+import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
 import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods } from "../rules/effects.js";
 import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop } from "./statblock.js";
@@ -18,7 +19,7 @@ import { RACE_OPTS, raceKey, pickRace, cleanImg, icon, monType } from "./avatar.
 import { buildExport, parseImport } from "../backup.js";
 
 /** Fx uit de regels: meldingen tonen en oorzaken doorgeven aan het logboek */
-const apply = (fx) => { if (!fx) return; addWhy(fx.why); show(fx); };
+const apply = (fx) => { if (!fx) return; addWhy(fx.why); show(fx); if (fx.saves) fx.saves.forEach((x) => addSave(app.S, x)); };
 
 /* ---------- monsters toevoegen ---------- */
 /** initmode: "each" (per monster rollen), "group" (één worp) of "fixed" (initiative = fixed, bijv. al aan tafel gerold) */
@@ -234,12 +235,15 @@ const global = {
     const c = app.S.list.find((x) => x.id === j.id);
     if (c) { const r = applyEff(c, j.p, j.by, j.cast || "-"); toastHtml(`${esc(r.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`); }
   },
+  /** Gefaalde monster-save: toch Legendary Resistance, of opnieuw met advantage (Magic Resistance tegen een spell) */
+  "toast-svlr"() { svRetry((c, sid) => { if (!c.lr || c.lr.left < 1) return; c.lr.left--; because("legendary resistance gebruikt", c.id); svDone(c, sid, true, "legendary resistance", ""); }); },
+  "toast-svadv"() { svRetry((c, sid) => svRoll(sid, true)); },
   undo() { if (undo()) { ui.confirmReset = false; toast(`Ongedaan gemaakt${historySize() ? ` (nog ${historySize()} stappen terug)` : ""}.`); } },
   // na starten of stoppen volgt de modus weer het gevecht (ui.mode = null)
   start() { apply(startCombat(app.S)); ui.mode = null; },
   next() { apply(step(app.S, 1)); ui.laPulse = true; },
   prev() { apply(step(app.S, -1)); },
-  stop() { apply(endFightEffects(app.S.list)); app.S.round = 0; app.S.active = null; ui.mode = null; },
+  stop() { apply(endFightEffects(app.S.list)); app.S.round = 0; app.S.active = null; app.S.saves = []; ui.mode = null; },
   qadd() { ui.qadd = { q: "", sel: null, n: 1, init: "roll", fix: "" }; },
   aoe() { ui.sheet = null; ui.qadd = null; ui.aoe = { dmg: "", ...ui.aoeLast, t: {} }; },
   addlair() {
@@ -278,6 +282,7 @@ export function onClick(e) {
     return;
   }
   if (e.target.closest('.dim[data-lsh="close"]')) { closeLa(); return; } // achtergrond van het legendary-paneel
+  if (e.target.closest(".dim[data-svsheet]")) { ui.sv = false; render(); $("[data-svsheet]")?.focus(); return; } // achtergrond van het saves-paneel
   const b = e.target.closest("button");
   if (!b) return;
   if (b.dataset.roll) {
@@ -296,6 +301,10 @@ export function onClick(e) {
     document.querySelectorAll("[data-panel]").forEach((p) => (p.hidden = p.dataset.panel !== b.dataset.tab));
     return;
   }
+  if (b.dataset.svroll) { svRoll(b.dataset.svroll); return; }
+  if (b.dataset.svok) { const s = (app.S.saves || []).find((x) => x.sid === b.dataset.svok), c = s && app.S.list.find((x) => x.id === s.id); if (c) svDone(c, s.sid, b.dataset.v === "1", "", ""); return; }
+  if (b.dataset.svrollall) { svRollAll(); return; }
+  if (b.dataset.svsheet) { ui.sv = b.dataset.svsheet === "1"; if (ui.sv) { ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = null; } render(); if (ui.sv) $("#ssheet .ssheet")?.focus(); else $("[data-svsheet]")?.focus(); return; }
   if (b.dataset.la) { openLa(b.dataset.la); return; }
   if (b.dataset.lsh === "close") { closeLa(); return; }
   if (b.dataset.lause) { laUse(b.dataset.lause, +b.dataset.i); return; }
@@ -350,6 +359,7 @@ export function onKey(e) {
   if (ui.qadd && e.key === "Escape") { e.preventDefault(); closeQadd(); return; }
   if (ui.aoe && e.key === "Escape") { e.preventDefault(); closeAoe(); return; }
   if (ui.la && e.key === "Escape") { e.preventDefault(); closeLa(); return; }
+  if (ui.sv && e.key === "Escape") { e.preventDefault(); ui.sv = false; paintSv(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); ui.qadd = null; ui.aoe = null; global.undo(); render(); return; }
   if (ui.sheet && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
     const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" ? ["apply"] : null;
@@ -621,6 +631,51 @@ function qGo() {
   ui.qadd = null;
   render();
   $("#qadd").focus();
+}
+
+/* ---------- open saves (regels in de beurtbalk) ---------- */
+/** Monster-save rollen: statblock-bonus plus Bless/Bane/cover; uitslag verwerken. Geeft de toast-tekst terug (zonder te tonen) als quiet. */
+function svRoll(sid, adv = false, quiet = false) {
+  const S = app.S, s = (S.saves || []).find((x) => x.sid === sid), c = s && S.list.find((x) => x.id === s.id);
+  if (!c || !isValid(S, s)) return "";
+  const x = rollSave(svBonus(c, s.ab), adv, Math.random, saveMods(c, s.ab));
+  const ok = x.tot >= s.dc, txt = `${s.ab} ${rollText(x, s.dc)}`.replace(" (advantage: Magic Resistance)", adv ? " (advantage)" : "");
+  return svDone(c, sid, ok, txt, txt, quiet, adv);
+}
+
+/** Uitslag verwerken, renderen en melden met Ongedaan (gefaald monster: Legendary Resistance / Advantage erbij) */
+function svDone(c, sid, ok, note, shown, quiet = false, adv = false) {
+  const s = (app.S.saves || []).find((x) => x.sid === sid);
+  if (!s || !isValid(app.S, s)) return ""; // bijv. tweede concentration save nadat de eerste al faalde
+  addWhy(resolveSave(app.S, sid, ok, note).why); // de melding hieronder zegt al wat er gebeurde
+  if (!quiet) render(); // "Rol alle monsters" rendert één keer: één undo-stap
+  const m = c.kind === "monster" && c.ref ? findMon(c.ref) : null;
+  const res = s.kind === "conc" ? (ok ? "blijft concentreren" : "concentratie weg") : ok ? `${s.n} weg` : `${s.n} blijft`;
+  const line = esc(`${c.name}: ${shown || `${s.ab}-save ${ok ? "geslaagd" : "gefaald"}`} · ${res}`);
+  if (quiet) return line;
+  ui.svRetry = !ok && c.kind === "monster" ? { sid, id: c.id, step: stepNo() } : null;
+  const extra = !ui.svRetry ? ""
+    : (c.lr && c.lr.left > 0 ? `<button class="tundo" id="toast-svlr">Legendary Resistance (${c.lr.left})</button>` : "")
+      + (!adv && s.kind === "cond" && hasMagicRes(m) ? `<button class="tundo" id="toast-svadv">Spell? Advantage</button>` : "");
+  toastHtml(`${line} ${extra}<button class="tundo" id="toast-undo">Ongedaan</button>`);
+  return line;
+}
+
+/** Laatste gefaalde save terugdraaien en anders afhandelen (alleen als er sindsdien niets gebeurde) */
+function svRetry(fn) {
+  const j = ui.svRetry; $("#toast").hidden = true; ui.svRetry = null;
+  if (!j || stepNo() !== j.step || !undo()) return;
+  const c = app.S.list.find((x) => x.id === j.id);
+  if (c) fn(c, j.sid);
+}
+
+function svRollAll() {
+  const S = app.S;
+  const ids = openSaves(S).filter((s) => (S.list.find((x) => x.id === s.id) || {}).kind === "monster").map((s) => s.sid);
+  const lines = ids.map((sid) => svRoll(sid, false, true)).filter(Boolean);
+  ui.svRetry = null;
+  render();
+  if (lines.length) toastHtml(`${lines.join("<br>")} <button class="tundo" id="toast-undo">Ongedaan</button>`);
 }
 
 /* ---------- legendary actions (regel in de beurtbalk) ---------- */

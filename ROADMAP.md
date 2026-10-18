@@ -18,6 +18,7 @@
 - Effecten in saves: cover (Dex) en Bless/Bane-d4 bij monster-saves in het AoE-paneel; Bless opnieuw casten vervangt de oude doelen ("Hoort erbij" als het toch een extra doel was); max HP tot 0 = dood; Lethargy na Haste als echt effect
 - Spelersscherm in een tweede venster (zelfde apparaat): volgorde, beurt, HP-status van monsters; monsters verbergen voor spelers
 - Spelers via D&D Beyond-link (publieke sheets, via de Worker): portret, AC/HP berekend met controle-markering, slots en resources; opnieuw ophalen werkt de speler in de party bij
+- Open saves in de beurtbalk: condition- en concentration saves met één tik rollen (monster) of ✓/✗ (speler), met Ongedaan
 - Legendary actions in de beurtbalk: per monster wat er over is, één tik naar de opties met kosten en worpen, Gebruik met logregel en Ongedaan
 - Monsterbeurt zonder statblock: aanvallen op de kaart (open bij wie aan de beurt is, ingeklapt bij andere monsters voor opportunity attacks en legendary actions); statblock op telefoon half hoog boven de beurtbalk, volgt de beurt
 
@@ -27,7 +28,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 ### Prioriteit 1: speelt elke beurt
 - [x] Monsterbeurt zonder statblock openen: aanvallen compact op de kaart (to hit · damage, DC), statblock op telefoon half hoog boven de beurtbalk en volgt de beurt (1.7.0)
 - [x] Legendary actions-herinnering: vaste regel in de beurtbalk per LA-monster (●●○), licht op na Volgende; paneel met opties, kosten (2/3 LA), worp of verwezen aanval en Gebruik (1.9.0)
-- [ ] Saves afhandelen in de melding: condition-save einde beurt en concentration save. Monsters: knop "Rol (WIS +0)" met uitslag, geslaagd = conditie weg. Spelers: Geslaagd/Gefaald; gefaald = concentratie weg. Condition-save-melding komt nu pas bij de start van de volgende deelnemer
+- [x] Saves afhandelen: open saves als regels in de beurtbalk (condition-save al bij het begin van de beurt, "einde beurt"; concentration save na schade, ook uit AoE). Monster: "Rol +N" (statblock + Bless/Bane/cover), Legendary Resistance en "Spell? Advantage" in de melding; speler: ✓/✗; 3+: paneel met "Rol alle monsters"; niet afgehandeld vervalt na één extra beurtwissel (1.10.0)
 - [ ] Recharge-aanval ↔ AoE: "Gebruik" op de recharge-chip opent AoE met gerolde schade, type, save en DC uit het statblock en zet de aanval op "op" (nu blijft Acid Breath "klaar" na de AoE)
 - [ ] Worp direct toepassen: damage-worp uit het statblock met één tik op een doel; "+4 to hit" vergelijken met de AC van het doel; crit = dubbele dice
 
@@ -82,6 +83,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [ ] Kostenbeheer: login en een limiet per gebruiker voordat dit publiek gaat
 
 ## Technische schuld (uit code-review)
+- [ ] Open saves: ‹ Vorige telt de ttl niet terug (vervalt dan een beurt eerder); monster zonder statblock toont "Rol +0" zonder hint
 - [ ] pdf.js zelf hosten (nu via CDN, zonder SRI)
 - [ ] Character sheets zitten in elke undo-stap; apart opslaan scheelt geheugen
 - [ ] D&D Beyond: speler die al in de party staat toevoegen zonder Bijwerken zet de opgeslagen HP terug op vol (zelfde als bij de PDF)

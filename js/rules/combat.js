@@ -4,7 +4,8 @@
 import { d } from "./dice.js";
 
 export const fx = () => ({ msgs: [], why: [] });
-export const merge = (a, b) => { a.msgs.push(...b.msgs); a.why.push(...b.why); return a; };
+//   saves: (optioneel) nieuwe concentration saves, [{ id, kind: "conc", ab, dc }]; de UI zet ze in S.saves
+export const merge = (a, b) => { a.msgs.push(...b.msgs); a.why.push(...b.why); if (b.saves) (a.saves = a.saves || []).push(...b.saves); return a; };
 
 export const newDs = () => ({ s: 0, f: 0, stable: false, dead: false });
 
@@ -136,7 +137,7 @@ export function applyDamage(c, raw, mode = 1, quiet = false) {
       if (c.hp === 0) { out.msgs.push(`${c.name} is neer.`); merge(out, dropConc(c, "0 HP")); }
     }
   }
-  if (v > 0 && c.hp > 0 && c.cond.includes("Concentrating")) out.msgs.push(`${c.name}: concentration save DC ${Math.max(10, Math.floor(v / 2))}`);
+  if (v > 0 && c.hp > 0 && c.cond.includes("Concentrating")) out.saves = [{ id: c.id, kind: "conc", n: c.concSpell || "", ab: "CON", dc: Math.max(10, Math.floor(v / 2)) }];
   return out;
 }
 

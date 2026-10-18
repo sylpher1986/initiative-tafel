@@ -7,11 +7,12 @@ import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit } from "../
 import { PRESETS, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn } from "../rules/effects.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList } from "../rules/spells.js";
-import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText } from "../rules/aoe.js";
+import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus } from "../rules/aoe.js";
 import { diceify, syncSB } from "./statblock.js";
 import { monsterActions, dmgKey, useful } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
 import { laList, laStatus, laOptions } from "../rules/legendary.js";
+import { openSaves } from "../rules/saves.js";
 import { avatar } from "./avatar.js";
 
 /** UI-toestand die niet in de encounter (en dus niet in undo/opslag) hoort */
@@ -33,6 +34,8 @@ export const ui = {
   atkRx: null,         // id: reactions/legendary uitgeklapt bij het monster aan de beurt
   la: null,            // id of "*" = legendary-paneel open (één monster of alle)
   laPulse: false,      // net Volgende getikt: legendary-knoppen lichten één keer op
+  sv: false,           // paneel met alle open saves (bij 3 of meer)
+  svRetry: null,       // { sid, id, step } = laatst gerolde monster-save, voor "Legendary Resistance" / "Advantage" in de melding
 };
 export const openId = () => (ui.open === null ? app.S.active : ui.open);
 export const mode = () => ui.mode || (app.S.round ? "fight" : "prep");
@@ -50,6 +53,7 @@ export function render() {
   paintQadd();
   paintAoe();
   paintLa();
+  paintSv();
   paintParty();
   paintLog();
   syncSB(app.S, openId(), sbChips);
@@ -376,7 +380,7 @@ function paintDock() {
   const undoBtn = `<button id="undo" ${canUndo() ? "" : "disabled"} aria-label="Ongedaan maken" title="Ongedaan maken">↶</button>`;
   if (!S.round) {
     $("#dock").innerHTML = `<div class="who"><span><span class="l">Encounter</span><br><b>${L.length} deelnemer${L.length === 1 ? "" : "s"}</b></span></div>
-      <div class="row one">${undoBtn}<button class="nx" id="start" ${L.length ? "" : "disabled"}>Start gevecht</button></div>`;
+      ${svBar(S)}<div class="row one">${undoBtn}<button class="nx" id="start" ${L.length ? "" : "disabled"}>Start gevecht</button></div>`;
     return;
   }
   const i = L.findIndex((c) => c.id === S.active);
@@ -384,7 +388,45 @@ function paintDock() {
   let nxt = null;
   for (let k = 1; k <= L.length; k++) { const c = L[(i + k) % L.length]; if (c && !isOut(c) && c.id !== S.active) { nxt = c; break; } }
   $("#dock").innerHTML = `<div class="who"><span><span class="l">Aan de beurt</span><br><b>${act ? esc(act.name) : "–"}</b></span><span class="r">Ronde ${S.round}${nxt ? ` · volgende: ${esc(nxt.name)}` : ""}</span></div>
-    ${laBar(S, L)}<div class="row">${undoBtn}<button id="prev" aria-label="Vorige beurt">‹</button><button class="aoeb" id="aoe" aria-label="Area of effect: schade op meerdere doelen" ${aoeTargets().length ? "" : "disabled"}>AoE</button><button class="nx" id="next">Volgende<span class="nb"> beurt</span> ›</button></div>`;
+    ${svBar(S)}${laBar(S, L)}<div class="row">${undoBtn}<button id="prev" aria-label="Vorige beurt">‹</button><button class="aoeb" id="aoe" aria-label="Area of effect: schade op meerdere doelen" ${aoeTargets().length ? "" : "disabled"}>AoE</button><button class="nx" id="next">Volgende<span class="nb"> beurt</span> ›</button></div>`;
+}
+
+/* ---------- open saves: regels in de beurtbalk (max 2) of één knop met paneel ---------- */
+/** Bonus voor de knop "Rol": statblock-save of ability-modifier (Bless/Bane en cover tellen bij het rollen mee) */
+export const svBonus = (c, ab) => saveBonus(c.ref ? findMon(c.ref) : null, ab);
+
+function svRow(S, s) {
+  const c = S.list.find((x) => x.id === s.id);
+  const what = s.kind === "conc" ? `concentratie${c.concSpell ? ` · ${c.concSpell}` : ""}` : `${s.n} · einde beurt`;
+  const btns = c.kind === "monster"
+    ? `<button type="button" class="svroll" data-svroll="${esc(s.sid)}" aria-label="${esc(c.name)}: ${esc(s.ab)}-save rollen, DC ${s.dc}">Rol ${sgn(svBonus(c, s.ab))}</button>`
+    : `<button type="button" class="svok" data-svok="${esc(s.sid)}" data-v="1" aria-label="${esc(c.name)}: ${esc(s.ab)}-save geslaagd">✓</button><button type="button" class="svok bad" data-svok="${esc(s.sid)}" data-v="0" aria-label="${esc(c.name)}: ${esc(s.ab)}-save gefaald">✗</button>`;
+  return `<div class="svrow"><span class="svn"><b>${esc(c.name)}</b><small>${esc(`${s.ab} ${s.dc} · ${what}`)}</small></span>${btns}</div>`;
+}
+
+function svBar(S) {
+  const O = openSaves(S);
+  if (!O.length) return "";
+  if (O.length > 2) return `<div class="svbar"><button type="button" class="svall" data-svsheet="1">Saves · ${O.length} open <span aria-hidden="true">▸</span></button></div>`;
+  return `<div class="svbar">${O.map((s) => svRow(S, s)).join("")}</div>`;
+}
+
+export function paintSv() {
+  const el = $("#ssheet");
+  const O = ui.sv ? openSaves(app.S) : [];
+  if (!O.length) { ui.sv = false; el.hidden = true; el.innerHTML = ""; return; }
+  const mons = O.filter((s) => (app.S.list.find((x) => x.id === s.id) || {}).kind === "monster").length;
+  const old = el.querySelector(".ssheet"), top = old ? old.scrollTop : 0;
+  el.innerHTML = `<div class="dim" data-svsheet="0"></div>
+    <div class="sheet qsheet ssheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="s-title">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="shead"><h3 id="s-title">Open saves</h3><button type="button" class="link" data-svsheet="0">Sluit</button></div>
+      <div class="svbar">${O.map((s) => svRow(app.S, s)).join("")}</div>
+      ${mons > 1 ? `<button type="button" class="btn primary qgo" data-svrollall="1">Rol alle monsters (${mons})</button>` : ""}
+      <p class="hint">Niet afgehandeld vervalt na de volgende beurtwissel, zonder gevolg.</p>
+    </div>`;
+  el.hidden = false;
+  el.querySelector(".ssheet").scrollTop = top;
 }
 
 /* ---------- legendary actions: vaste regel in de beurtbalk + paneel ---------- */
