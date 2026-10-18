@@ -17,7 +17,7 @@
 ## UX-verbeterpunten (uit review)
 - [ ] Logboek dichter bij de beurtbalk: eigen tab, of de laatste 2 gebeurtenissen onder de beurtbalk
 - [ ] Statblock-paneel op telefoon versleepbaar (half/heel) en dicht met veeg omlaag
-- [ ] Lettertypes zelf meeleveren in plaats van Google Fonts (offline en privacy)
+- [x] Lettertypes zelf meeleveren in plaats van Google Fonts (offline en privacy)
 - [ ] Welkomstkaart bovenaan ("Start met voorbeeld" / "Begin leeg") in plaats van de voorbeeld-hint onderaan
 
 ## Functies

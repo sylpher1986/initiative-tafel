@@ -1,11 +1,18 @@
 // Service worker: maakt de app offline bruikbaar. Verhoog VERSION bij elke release zodat de cache ververst.
 // Gelijk houden aan js/version.js (de test bewaakt dat); dit is ook het nummer dat de app toont.
-const VERSION = "1.2.0";
+const VERSION = "1.2.1";
 const CACHE = "initiative-tafel-" + VERSION;
 const ASSETS = [
   "./",
   "./css/app.css",
   "./data/monsters.json",
+  "./fonts/alegreya-sans-400.woff2",
+  "./fonts/alegreya-sans-400-italic.woff2",
+  "./fonts/alegreya-sans-700.woff2",
+  "./fonts/alegreya-sans-700-italic.woff2",
+  "./fonts/alegreya-sc-500.woff2",
+  "./fonts/alegreya-sc-700.woff2",
+  "./fonts/alegreya-sc-800.woff2",
   "./icons/icon-180.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
@@ -17,6 +24,7 @@ const ASSETS = [
   "./js/ddb.js",
   "./js/log.js",
   "./js/main.js",
+  "./js/rules/aoe.js",
   "./js/rules/combat.js",
   "./js/rules/dice.js",
   "./js/rules/spells.js",
@@ -40,7 +48,7 @@ self.addEventListener("activate", (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });
 
-// Eigen bestanden: eerst cache (snel en offline). Externe (lettertypes, pdf.js): netwerk, met cache als terugval.
+// Eigen bestanden: eerst cache (snel en offline). Externe (pdf.js): netwerk, met cache als terugval.
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;

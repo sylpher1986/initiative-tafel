@@ -44,6 +44,7 @@ Meld bij oplevering in één of twee regels wat beide reviewers vonden en beslot
 - Twee modi: **Voorbereiden** (toevoegen, party, instellingen) en **Gevecht** (alleen lijst + beurtbalk). De modus volgt het gevecht (`ui.mode = null`), de DM kan altijd wisselen. In Gevecht voegt de **+** halverwege monsters toe; wie vóór de actieve beurt invoegt, doet pas volgende ronde mee.
 - Gevechtsweergave: compacte kaarten, **maar één kaart tegelijk open** (standaard wie aan de beurt is); beurtbalk vast onderaan; schade via cijferpaneel.
 - AoE via de knop **AoE** in de beurtbalk: één schadeworp, per doel save (Gefaald / Geslaagd ½ / 0 voor Evasion) en Normaal/Resist/×2/Immuun. Volgorde volgens PHB: eerst de save, daarna resistance/vulnerability (27 → 13 → 6). Resist/immuun komt automatisch uit het statblock bij een onvoorwaardelijke regel; voorwaardelijke regels ("from nonmagical attacks") alleen als hint. Spelers hebben (nog) geen opgeslagen resistances: handmatig aantikken. Regels in `js/rules/aoe.js`.
+- Lettertypes: Alegreya SC (koppen) en Alegreya Sans (tekst), zelf meegeleverd in `fonts/` als latin-subset woff2 (OFL). Geen externe font-diensten; een nieuw gewicht = bestand toevoegen + `@font-face` + `sw.js`.
 - Hosting: Cloudflare Workers (statische assets via `wrangler.jsonc`, uitsluitingen in `.assetsignore`). Gekozen omdat later serverfuncties nodig zijn voor AI (API-sleutel mag nooit in de browser).
 - Fase 1 is local-first zonder accounts. Sync/login (bijv. Supabase) pas in fase 2.
 
