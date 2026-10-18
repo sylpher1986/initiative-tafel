@@ -11,7 +11,7 @@ import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBon
 import { diceify, syncSB } from "./statblock.js";
 import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, atkText, partText, atkDamage } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
-import { laList, laStatus, laOptions } from "../rules/legendary.js";
+import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
 import { openSaves } from "../rules/saves.js";
 import { avatar } from "./avatar.js";
 
@@ -25,10 +25,10 @@ export const ui = {
   mode: null,          // "prep" | "fight"; null = volg het gevecht (loopt → Gevecht, anders Voorbereiden)
   qadd: null,          // { q, sel, n, init: "roll"|"fixed", fix } = snel-toevoegen-paneel open
   aoe: null,           // { dmg, type, ab, dc, t: { [id]: { sel, save, mode|null, roll, lr } } } = AoE-paneel open
-  aoeLast: { type: "", ab: "DEX", dc: "" },
+  aoeLast: { type: "", ab: "DEX", dc: "" }, // laatst gebruikte type/save/DC (bijv. dezelfde breath weapon)
   atk: null,           // { by, n, label, bo, key, adv, tid, r, parts, modes, force } = aanvalspaneel open (to-hit-knop)
   atkAdv: null,        // { by, v }: advantage/disadvantage blijft staan voor de volgende aanval van dezelfde aanvaller
-  atkPrev: null,       // { by, id }: vorige doel van deze aanvaller (bovenaan in de lijst) // laatst gebruikte type/save/DC (bijv. dezelfde breath weapon)
+  atkPrev: null,       // { by, id }: vorige doel van deze aanvaller (bovenaan in de lijst)
   edit: null,          // { id, name, ac, max, init } = concept in het bewerkpaneel (⋯)
   effWho: null,        // { id, i } = preset met concentratie wacht op "Wie cast?"
   effJoin: null,       // { id, p, by, cast } = laatste "nieuwe cast" (Bless), voor "Hoort erbij" in de melding
@@ -673,8 +673,8 @@ const AUTO_CRIT = ["Paralyzed", "Unconscious"];
 /** Wie een aanval kan krijgen: niet de aanvaller, geen lair, geen dode speler of monster op 0 HP (spelers op 0 HP wel) */
 export const atkTargets = (by) => sortOrder(app.S.list).filter((c) => c.kind !== "lair" && c.id !== by && !isOut(c));
 
-/** Shield (reaction, +5) aanbieden: speler, geraakt maar niet met een natuurlijke 20, en +5 AC zou missen */
-export const shieldOk = (c, x, res) => c.kind === "pc" && res.hit && !x.force.hit && x.r.nat !== 20 && !c.reaction
+/** Shield (reaction, +5) aanbieden: speler die kan reageren (niet op 0 HP/incapacitated), geraakt maar niet met een natuurlijke 20, en +5 AC zou missen */
+export const shieldOk = (c, x, res) => c.kind === "pc" && c.hp > 0 && !c.cond.some((k) => NO_ACT.includes(k)) && res.hit && !x.force.hit && x.r.nat !== 20 && !c.reaction
   && !(c.eff || []).some((e) => e.n === "Shield") && x.r.tot < effAc(c) + 5;
 
 function atkTgtRow(c, prev) {
@@ -726,7 +726,7 @@ function atkRes(x, c) {
 export function paintAtk() {
   const el = $("#xsheet"), x = ui.atk;
   const by = x && app.S.list.find((c) => c.id === x.by);
-  const c = x && x.tid && app.S.list.find((t) => t.id === x.tid);
+  const c = x && x.tid && app.S.list.find((t) => t.id === x.tid && !isOut(t)); // doel intussen dood/neer (Ongedaan): terug naar de lijst
   if (!x || !by) { el.hidden = true; el.innerHTML = ""; return; }
   el.innerHTML = `<div class="dim" data-xa="close"></div>
     <div class="sheet qsheet xsheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="x-title">

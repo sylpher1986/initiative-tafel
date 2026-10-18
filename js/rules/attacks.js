@@ -1,7 +1,7 @@
 // Acties uit een statblock compact maken voor de monsterkaart: to hit, damage (met type) en save-DC.
 // Puur: geen DOM. Statblocktekst kan uit een import komen; de UI escapet alles wat hieruit komt.
 import { d } from "./dice.js";
-import { applyDamage, critAtZero } from "./combat.js";
+import { applyDamage, critAtZero, merge } from "./combat.js";
 
 const ABIL = { strength: "STR", dexterity: "DEX", constitution: "CON", intelligence: "INT", wisdom: "WIS", charisma: "CHA" };
 const DICE = String.raw`(\d+d\d+(?:\s*[+−-]\s*\d+)?)`;
@@ -89,7 +89,9 @@ export function monsterActions(m) {
 }
 
 /** Damage-knop: "2d10+6:piercing|1d8:acid"; vaste delen tellen mee ("1:piercing|3d4:poison"). Alleen vaste schade: geen knop. */
-export const dmgKey = (dmg) => (dmg.some((x) => x.e) ? dmg.map((x) => `${x.e || x.flat}:${x.type}`).join("|") : "");
+export const dmgKey = (dmg) => (dmg.some((x) => x.e) ? partsKey(dmg) : "");
+/** Alle delen als sleutel, ook alleen vaste schade ("1:piercing"): voor de aanval op een doel en save-acties */
+export const partsKey = (dmg) => dmg.map((x) => `${x.e || x.flat}:${x.type}`).join("|");
 
 /** Rolt een dmgKey: { parts: [{e, type, rolls, mod, total}], total } of null bij een onleesbare sleutel */
 export function rollDmg(key, roll) {
@@ -117,7 +119,7 @@ export const rcIndex = (rc, n) => (Array.isArray(rc) ? rc.findIndex((r) => r && 
  */
 export function actionAoe(a, roll, types = []) {
   if (!isSaveAoe(a)) return null;
-  const r = rollDmg(a.dmg.map((x) => `${x.e || x.flat}:${x.type}`).join("|"), roll);
+  const r = rollDmg(partsKey(a.dmg), roll);
   if (!r) return null;
   const t0 = r.parts[0].type;
   const same = r.parts.filter((p) => p.type === t0), other = r.parts.filter((p) => p.type !== t0);
@@ -201,6 +203,8 @@ export function atkWhy(label, atk, ac, parts, res) {
  * ≥ max HP is: dan dood via applyDamage).
  */
 export function atkDamage(c, res) {
-  if (c.kind === "pc" && c.hp <= 0 && res.crit && res.dealt > 0 && res.dealt < c.max && !(c.ds && c.ds.dead)) return critAtZero(c);
-  return applyDamage(c, res.dealt, 1, true);
+  if (!(c.kind === "pc" && c.hp <= 0 && res.crit && !(c.ds && c.ds.dead))) return applyDamage(c, res.dealt, 1, true);
+  const temp = Math.min(c.temp || 0, res.dealt), rest = res.dealt - temp; // temp HP vangt eerst op, ook op 0 HP
+  if (rest <= 0 || rest >= c.max) return applyDamage(c, res.dealt, 1, true);
+  return merge(temp ? applyDamage(c, temp, 1, true) : { msgs: [], why: [] }, critAtZero(c));
 }

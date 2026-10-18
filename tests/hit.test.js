@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { rollAttack, rollDmgCrit, atkResult, atkText, atkWhy, partText, atkDamage } from "../js/rules/attacks.js";
+import { rollAttack, rollDmgCrit, atkResult, atkText, atkWhy, partText, atkDamage, partsKey, dmgKey } from "../js/rules/attacks.js";
 import { rollExpr } from "../js/rules/dice.js";
 
 /** rng die vaste d20-waarden geeft (1..20) */
@@ -86,4 +86,17 @@ test("schade toepassen: crit op een speler op 0 HP = twee failures, ≥ max HP =
   const r = atkDamage(m, { crit: false, dealt: 24 });
   assert.equal(m.hp, 16);
   assert.deepEqual(r.saves, [{ id: "m", kind: "conc", n: "Fly", ab: "CON", dc: 12 }]);
+});
+
+test("crit op 0 HP: temp HP vangt eerst op; alles opgevangen = geen failures", () => {
+  const pc = (o) => ({ id: "t", name: "T", kind: "pc", hp: 0, max: 40, temp: 0, cond: ["Unconscious"], ds: { s: 0, f: 0, stable: false, dead: false }, ...o });
+  const a = pc({ temp: 5 }); atkDamage(a, { crit: true, dealt: 4 }); assert.equal(a.temp, 1); assert.equal(a.ds.f, 0);
+  const b = pc({ temp: 5 }); atkDamage(b, { crit: true, dealt: 9 }); assert.equal(b.temp, 0); assert.equal(b.ds.f, 2);
+  const c = pc({ temp: 5 }); atkDamage(c, { crit: true, dealt: 44 }); assert.equal(c.ds.f, 2); assert.equal(c.ds.dead, false, "44 − 5 temp = 39 < max: niet dood");
+});
+
+test("partsKey: ook alleen vaste schade (dmgKey geeft dan geen knop)", () => {
+  assert.equal(partsKey([{ flat: 1, type: "piercing" }]), "1:piercing");
+  assert.equal(dmgKey([{ flat: 1, type: "piercing" }]), "");
+  assert.equal(partsKey([{ flat: 1, type: "piercing" }, { e: "3d4", type: "poison" }]), dmgKey([{ flat: 1, type: "piercing" }, { e: "3d4", type: "poison" }]));
 });

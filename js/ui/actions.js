@@ -8,10 +8,10 @@ import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCas
 import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
-import { step, startCombat, makeDur, parseInit } from "../rules/turns.js";
+import { step, startCombat, makeDur, parseInit, isOut } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, defMode } from "../rules/aoe.js";
-import { monsterActions, actionAoe, rcIndex, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
+import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
 import { castInfo, legInfo, rcInfo, pickList, CONC_SPELLS, cleanSpell } from "../rules/spells.js";
 import { logText } from "../log.js";
 import { readSheetPdf, fetchDdb } from "../ddb.js";
@@ -246,7 +246,7 @@ const global = {
   prev() { apply(step(app.S, -1)); },
   stop() { apply(endFightEffects(app.S.list)); app.S.round = 0; app.S.active = null; app.S.saves = []; ui.mode = null; },
   qadd() { ui.qadd = { q: "", sel: null, n: 1, init: "roll", fix: "" }; },
-  aoe() { ui.sheet = null; ui.qadd = null; ui.aoe = { dmg: "", ...ui.aoeLast, t: {} }; },
+  aoe() { ui.sheet = null; ui.qadd = null; ui.atk = null; ui.aoe = { dmg: "", ...ui.aoeLast, t: {} }; },
   addlair() {
     const lm = app.S.list.find((x) => x.la);
     const key = lm ? "Lair: " + lm.ref : Object.keys(app.lairs)[0] || "Lair";
@@ -307,7 +307,7 @@ export function onClick(e) {
   if (b.dataset.svroll) { svRoll(b.dataset.svroll); return; }
   if (b.dataset.svok) { const s = (app.S.saves || []).find((x) => x.sid === b.dataset.svok), c = s && app.S.list.find((x) => x.id === s.id); if (c) svDone(c, s.sid, b.dataset.v === "1", "", ""); return; }
   if (b.dataset.svrollall) { svRollAll(); return; }
-  if (b.dataset.svsheet) { ui.sv = b.dataset.svsheet === "1"; if (ui.sv) { ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = null; } render(); if (ui.sv) $("#ssheet .ssheet")?.focus(); else $("[data-svsheet]")?.focus(); return; }
+  if (b.dataset.svsheet) { ui.sv = b.dataset.svsheet === "1"; if (ui.sv) { ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = null; ui.atk = null; } render(); if (ui.sv) $("#ssheet .ssheet")?.focus(); else $("[data-svsheet]")?.focus(); return; }
   if (b.dataset.la) { openLa(b.dataset.la); return; }
   if (b.dataset.lsh === "close") { closeLa(); return; }
   if (b.dataset.lause) { laUse(b.dataset.lause, +b.dataset.i); return; }
@@ -685,7 +685,7 @@ function svRollAll() {
 /* ---------- legendary actions (regel in de beurtbalk) ---------- */
 let laFrom = null; // knop die het paneel opende, voor de focus bij sluiten
 function openLa(id) {
-  ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = id;
+  ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.atk = null; ui.la = id;
   laFrom = id;
   render();
   const sh = $("#lsheet .lsheet"); if (sh) sh.focus();
@@ -787,7 +787,7 @@ function openActAoe(cid, name) {
   if (!x) { toast("Deze actie kon niet gelezen worden. Gebruik de knop AoE in de beurtbalk."); return; }
   const ri = rcIndex(c.rc, name);
   ui.aoe = null; paintAoe(); // paneel opnieuw opbouwen met de titel van deze actie
-  ui.sheet = null; ui.qadd = null; ui.la = null;
+  ui.sheet = null; ui.qadd = null; ui.la = null; ui.atk = null;
   ui.aoe = Object.assign(a, { dmg: String(x.dmg), type: x.type, ab: x.ab, dc: String(x.dc), half: x.half, roll: x.roll, extra: x.extra,
     title: `${name} · ${c.name}`, used: ri >= 0 && !c.rc[ri].ready });
   aoeTargets(a.src).forEach((t) => { if (t.kind === "pc") aoeSet(ui.aoe, t.id, { sel: true }); });
@@ -828,7 +828,7 @@ function openAtk(cid, name, label) {
   if (!a) return;
   ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = null; ui.sv = false;
   const adv = ui.atkAdv && ui.atkAdv.by === by.id ? ui.atkAdv.v : 0;
-  ui.atk = { by: by.id, n: a.n, label: label || a.n, bo: a.hit, key: a.dmg.map((p) => `${p.e || p.flat}:${p.type}`).join("|"), adv, tid: null, r: null, parts: null, modes: {}, force: {} };
+  ui.atk = { by: by.id, n: a.n, label: label || a.n, bo: a.hit, key: partsKey(a.dmg), adv, tid: null, r: null, parts: null, modes: {}, force: {} };
   render();
   focusAtk();
 }
@@ -851,7 +851,7 @@ function atkTarget(x, id) {
 
 function atkGo() {
   const x = ui.atk, by = x && app.S.list.find((c) => c.id === x.by), c = x && app.S.list.find((t) => t.id === x.tid);
-  if (!by || !c || !c.max) return;
+  if (!by || !c || !c.max || isOut(c)) return;
   const ac = effAc(c) || 0, res = atkResult(x.r, ac, x.parts, x.modes, x.force);
   if (!res.hit || !res.dealt) return;
   const before = c.hp;
