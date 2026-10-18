@@ -1,7 +1,7 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
-import { render, ui, paintLog, paintParty } from "./render.js";
+import { render, ui, openId, paintLog, paintParty } from "./render.js";
 import { showSB, showSheet, doRoll } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
@@ -52,14 +52,20 @@ export function normalize(c) {
 const row = {
   sb: (c) => showSB(c.ref, c.name),
   sheet: (c) => showSheet(c),
-  del(c) { const S = app.S; S.list = S.list.filter((x) => x !== c); if (S.active === c.id) S.active = null; },
+  del(c) {
+    if (c.kind !== "lair" && ui.confirmDel !== c.id) { ui.confirmDel = c.id; return; }
+    const S = app.S; S.list = S.list.filter((x) => x !== c); if (S.active === c.id) S.active = null; ui.confirmDel = null; ui.panel = null;
+  },
+  open(c) {
+    const isOpen = openId() === c.id;
+    ui.open = isOpen ? "" : c.id; ui.panel = null; ui.confirmDel = null; ui.castPick = null;
+    return "scroll";
+  },
+  panel(c, b) { ui.panel = ui.panel === b.dataset.p ? null : b.dataset.p; ui.confirmDel = null; },
+  "sheet-open"(c, b) { ui.sheet = { id: c.id, kind: b.dataset.kind, val: "", mode: 1 }; },
   react(c) { c.reaction = !c.reaction; },
   dropconc(c) { apply(R.dropConc(c, "beëindigd")); },
   topty(c) { const ex = app.party.find((m) => m.name.toLowerCase() === c.name.toLowerCase()); c.pid = ex ? ex.pid : uid(); toast(`${c.name} staat nu in de vaste party.`); },
-  mode(c) { const m = ui.dmgMode[c.id] || 1; ui.dmgMode[c.id] = m === 1 ? 0.5 : m === 0.5 ? 2 : 1; },
-  dmg(c, b, li) { const v = amount(li); if (!v) return false; const m = ui.dmgMode[c.id] || 1; delete ui.dmgMode[c.id]; apply(R.applyDamage(c, v, m)); },
-  heal(c, b, li) { const v = amount(li); if (!v) return false; apply(R.heal(c, v)); },
-  thp(c, b, li) { const v = amount(li); if (!v) return false; apply(R.giveTemp(c, v)); },
   "ds-roll": (c) => apply(R.rollDs(c)),
   "ds-crit": (c) => apply(R.critAtZero(c)),
   "cast-reset"(c) {
@@ -75,7 +81,26 @@ const row = {
   "lair-del"(c, b) { app.lairs[c.key].splice(+b.dataset.i, 1); saveLairs(); },
   "lair-use"(c, b) { c.last = app.lairs[c.key][+b.dataset.i].n; },
 };
-const amount = (li) => Math.max(0, parseInt(li.querySelector('[data-f="amt"]').value) || 0);
+
+/* ---------- schade-paneel (data-sk) ---------- */
+function sheetKey(k, v) {
+  const s = ui.sheet;
+  if (!s) return;
+  if (k === "close") { ui.sheet = null; return; }
+  if (k === "d") { if (s.val.length < 4) s.val = (s.val + v).replace(/^0+/, ""); return; }
+  if (k === "back") { s.val = s.val.slice(0, -1); return; }
+  if (k === "clear") { s.val = ""; return; }
+  if (k === "kind") { s.kind = v; return; }
+  if (k === "mode") { s.mode = +v; return; }
+  if (k === "apply") {
+    const c = app.S.list.find((x) => x.id === s.id), n = parseInt(s.val) || 0;
+    if (!c || !n) return;
+    apply(s.kind === "dmg" ? R.applyDamage(c, n, s.mode) : s.kind === "heal" ? R.heal(c, n) : R.giveTemp(c, n));
+    const before = { dmg: `−${Math.floor(n * s.mode)}`, heal: `+${n}`, thp: `+${n} temp` }[s.kind];
+    ui.sheet = null;
+    return { undoToast: `${c.name} ${before} HP → ${c.hp}/${c.max}${c.temp ? ` (+${c.temp} temp)` : ""}` };
+  }
+}
 
 /** Klikken op bolletjes, condities en spell-keuzes (herkend aan data-attributen) */
 function rowData(c, b) {
@@ -85,7 +110,7 @@ function rowData(c, b) {
     const k = ds.cond; c.cd = c.cd || {};
     if (c.cond.includes(k)) { c.cond = c.cond.filter((x) => x !== k); delete c.cd[k]; if (k === "Concentrating") c.concSpell = null; }
     else { c.cond = [...c.cond, k]; const e = makeDur(c, ui.condOpt[c.id] || {}, app.S.active); if (e) c.cd[k] = e; }
-    return "keepConds";
+    return true;
   }
   if (ds.slot !== undefined || ds.daily !== undefined) {
     const o = ds.slot !== undefined ? c.casting.slots[+ds.slot] : (([g, i]) => c.casting.daily[g].items[i])(ds.daily.split(".").map(Number));
@@ -110,6 +135,7 @@ function rowData(c, b) {
 
 /* ---------- algemene acties (op id) ---------- */
 const global = {
+  "toast-undo"() { $("#toast").hidden = true; return global.undo(); },
   undo() { if (undo()) { ui.confirmReset = false; toast(`Ongedaan gemaakt${historySize() ? ` (nog ${historySize()} stappen terug)` : ""}.`); } },
   start() { apply(startCombat(app.S)); },
   next() { apply(step(app.S, 1)); },
@@ -126,7 +152,23 @@ const global = {
   sbclose() { $("#sbwrap").dataset.open = "false"; return false; },
 };
 
+export function scrollToCard(id, onlyIfHidden) {
+  const el = id && document.querySelector(`.c[data-id="${CSS.escape(id)}"]`);
+  if (!el) return;
+  const r = el.getBoundingClientRect(), dock = $("#dock").getBoundingClientRect().top;
+  if (onlyIfHidden && r.top >= 0 && r.bottom <= dock) return;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.scrollBy({ top: r.top - 64, behavior: reduce ? "auto" : "smooth" });
+}
+
 export function onClick(e) {
+  const sk = e.target.closest("[data-sk]");
+  if (sk) {
+    const res = sheetKey(sk.dataset.sk, sk.dataset.v);
+    render();
+    if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+    return;
+  }
   const b = e.target.closest("button");
   if (!b) return;
   if (b.dataset.roll) {
@@ -138,7 +180,13 @@ export function onClick(e) {
     document.querySelectorAll("[data-panel]").forEach((p) => (p.hidden = p.dataset.panel !== b.dataset.tab));
     return;
   }
-  if (b.id && global[b.id]) { if (global[b.id]() !== false) render(); return; }
+  if (b.id && global[b.id]) {
+    if (global[b.id]() === false) return;
+    if (["start", "next", "prev"].includes(b.id)) { ui.open = null; ui.panel = null; ui.castPick = null; }
+    render();
+    if (["start", "next", "prev"].includes(b.id)) scrollToCard(app.S.active);
+    return;
+  }
   const li = b.closest(".c");
   if (!li) return;
   const c = app.S.list.find((x) => x.id === li.dataset.id);
@@ -148,7 +196,7 @@ export function onClick(e) {
   if (res === false) return;
   if (fn === row.sb || fn === row.sheet) return;
   render();
-  if (res === "keepConds") { const det = document.querySelector(`.c[data-id="${CSS.escape(c.id)}"] details.conds`); if (det) det.open = true; }
+  if (res === "scroll") scrollToCard(openId(), true);
 }
 
 export function onChange(e) {
@@ -167,7 +215,10 @@ export function onChange(e) {
 
 export function onKey(e) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); global.undo(); render(); return; }
-  if (e.key === "Enter" && e.target.dataset.f === "amt") { e.preventDefault(); e.target.closest(".dmg").querySelector(".hit").click(); }
+  if (ui.sheet && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
+    const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" ? ["apply"] : null;
+    if (k) { e.preventDefault(); const res = sheetKey(...k); render(); if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`); }
+  }
 }
 
 export function onToggle(e) {

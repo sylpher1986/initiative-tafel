@@ -1,26 +1,74 @@
-// Tekent de encounter, de party en het logboek. Render past de data niet aan.
+// Tekent de encounter (compacte kaarten, één tegelijk open), de beurtbalk, het schade-paneel,
+// de party en het logboek. Render past de data niet aan.
 import { $, esc, n0 } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon } from "../data/monsters.js";
 import { sortOrder, CONDS, DURS, durText, isOut } from "../rules/turns.js";
-import { newDs } from "../rules/combat.js";
+import * as R from "../rules/combat.js";
 import { ORD, pickList } from "../rules/spells.js";
 import { diceify } from "./statblock.js";
 
 /** UI-toestand die niet in de encounter (en dus niet in undo/opslag) hoort */
-export const ui = { dmgMode: {}, condOpt: {}, openCast: new Set(), castPick: null, confirmReset: false, logOpen: false, editLog: null, partyInit: {} };
+export const ui = {
+  open: null,          // id van de open kaart; null = volg wie aan de beurt is; "" = geen
+  panel: null,         // "conds" of "more" binnen de open kaart
+  sheet: null,         // { id, kind: "dmg"|"heal"|"thp", val: "", mode: 1|0.5|2 }
+  condOpt: {}, openCast: new Set(), castPick: null, confirmReset: false, confirmDel: null,
+  logOpen: false, editLog: null, partyInit: {},
+};
+export const openId = () => (ui.open === null ? app.S.active : ui.open);
 
 export function render() {
   commit();
   paintEncounter();
+  paintDock();
+  paintSheet();
   paintParty();
   paintLog();
+}
+
+/* ---------- onderdelen van een kaart ---------- */
+const hpBar = (c) => {
+  const pct = c.max ? Math.max(0, c.hp) / c.max : 1;
+  const cls = pct <= 0.25 ? "low" : pct <= 0.5 ? "mid" : "";
+  return `<div class="hpw"><div class="bar" aria-hidden="true"><i class="${cls}" style="width:${pct * 100}%"></i></div>
+    <span class="hpn">${n0(c.hp)}/${n0(c.max)}${c.temp ? ` <span class="thp">+${n0(c.temp)}</span>` : ""}</span></div>`;
+};
+
+function condChips(c, S, interactive) {
+  return c.cond.map((x) => {
+    const dt = durText(c, x, S.list);
+    const dl = dt ? ` · ${esc(dt)}` : "";
+    if (x === "Concentrating") {
+      const label = `Concentrating${c.concSpell ? ` · ${esc(c.concSpell)}` : ""}${dl}`;
+      return interactive ? `<button class="bd cc cbtn" data-a="dropconc" title="Concentratie beëindigen">${label} <span aria-hidden="true">✕</span><span class="vh">beëindigen</span></button>` : `<span class="bd cc">${label}</span>`;
+    }
+    return `<span class="bd cc">${x}${dl}</span>`;
+  }).join("");
+}
+
+/** Samenvatting voor een gesloten kaart */
+function badges(c, S) {
+  const out = [condChips(c, S, false)];
+  if (c.kind === "pc" && c.max && c.hp <= 0) {
+    const d = c.ds || R.newDs();
+    out.push(d.dead ? `<span class="bd r">Dood</span>` : d.stable ? `<span class="bd g">Stabiel</span>` : `<span class="bd r">Death saves ✓${d.s} ✗${d.f}</span>`);
+  }
+  if (c.casting && c.casting.slots.length) out.push(`<span class="bd b">Slots ${c.casting.slots.map((x) => n0(x.left)).join("·")}</span>`);
+  else if (c.casting && c.casting.daily.length) out.push(`<span class="bd b">Spells</span>`);
+  (c.res || []).forEach((r) => out.push(`<span class="bd b">${esc(r.n)} ${n0(r.left)}/${n0(r.max)}</span>`));
+  (c.rc || []).forEach((r) => out.push(`<span class="bd ${r.ready ? "g" : ""}">${esc(r.n)} ${r.ready ? "klaar" : "op"}</span>`));
+  if (c.la) out.push(`<span class="bd r">LA ${n0(c.la.left)}</span>`);
+  if (c.lr) out.push(`<span class="bd r">LR ${n0(c.lr.left)}/dag</span>`);
+  if (c.reaction) out.push(`<span class="bd">Reaction gebruikt</span>`);
+  const html = out.join("");
+  return html ? `<div class="badges">${html}</div>` : "";
 }
 
 function pips(o, key, label) {
   if (!o) return "";
   return `<div class="pips"><span class="lbl">${label} ${n0(o.left)}/${n0(o.max)}</span>${Array.from({ length: n0(o.max) }, (_, i) =>
-    `<button class="pip" data-pip="${key}" data-i="${i}" aria-pressed="${i >= o.left}" aria-label="${label} ${i + 1}"></button>`).join("")}</div>`;
+    `<button class="pip ${key}" data-pip="${key}" data-i="${i}" aria-pressed="${i >= o.left}" aria-label="${label} ${i + 1}"></button>`).join("")}</div>`;
 }
 
 function defLine(c) {
@@ -35,7 +83,7 @@ function defLine(c) {
 
 function dsBlock(c) {
   if (c.kind !== "pc" || !c.max || c.hp > 0) return "";
-  const d = c.ds || newDs();
+  const d = c.ds || R.newDs();
   const p = (k, n, l) => Array.from({ length: 3 }, (_, i) => `<button class="dsp ${k}" data-ds="${k}" data-i="${i}" aria-pressed="${i < n}" aria-label="${l} ${i + 1}"></button>`).join("");
   const st = d.dead ? `<span class="st dead">Dood</span>` : d.stable ? `<span class="st ok">Stabiel</span>`
     : `<button class="btn small primary" data-a="ds-roll">Rol death save</button><button class="link" data-a="ds-crit">Kritiek geraakt (+2)</button>`;
@@ -51,7 +99,7 @@ function castBlock(c) {
   const pick = (x) => ui.castPick && ui.castPick.id === c.id && ui.castPick.lvl === x.lvl
     ? `<div class="pick"><span class="hint">Welke spell?</span>${pickList(c, x.lvl).map((sp) =>
       `<button class="btn small ${sp.conc ? "conc" : ""}" data-pickspell="${esc(sp.n)}" data-conc="${sp.conc ? 1 : ""}">${esc(sp.n)}${sp.lv < x.lvl ? ` (${sp.lv}e, upcast)` : ""}${sp.conc ? " · conc." : ""}</button>`).join("")}<button class="link" data-pickspell="">Andere / overslaan</button></div>` : "";
-  return `<details class="cast" data-cast ${ui.openCast.has(c.id) ? "open" : ""}><summary class="link strong">Spells <span style="font-weight:400">(${sum})</span></summary>
+  return `<details class="cast" data-cast ${ui.openCast.has(c.id) || ui.castPick?.id === c.id ? "open" : ""}><summary class="link strong">Spells <span style="font-weight:400">(${sum})</span></summary>
     <div class="castbox">
       ${k.slots.map((x, i) => `<div class="slotrow"><span class="lv">${ORD[x.lvl] || ""}</span><span class="pp">${pp(x, `data-slot="${i}"`)}</span><span class="sp">${esc(x.spells)}</span></div>${pick(x)}`).join("")}
       ${k.daily.map((g, gi) => g.items.map((it, ii) => `<div class="slotrow"><span class="lv">${esc(g.label.split(" ")[0])}</span><span class="pp">${pp(it, `data-daily="${gi}.${ii}"`)}</span><span class="sp">${esc(it.n)}</span></div>`).join("")).join("")}
@@ -61,18 +109,50 @@ function castBlock(c) {
 
 function resBlock(c) {
   if (!c.res || !c.res.length) return "";
-  return `<div class="castbox" style="margin-top:6px">${c.res.map((o, i) => `<div class="resrow"><span class="rn">${esc(o.n)}</span>
+  return `<div class="castbox">${c.res.map((o, i) => `<div class="resrow"><span class="rn">${esc(o.n)}</span>
     <span class="pp">${o.max <= 10 ? Array.from({ length: n0(o.max) }, (_, j) => `<button class="pip" data-res="${i}" data-i="${j}" aria-pressed="${j >= o.left}" aria-label="${esc(o.n)} ${j + 1}"></button>`).join("")
       : `<button class="btn small" data-res="${i}" data-step="-1">−</button><b style="font-variant-numeric:tabular-nums;padding:0 6px">${n0(o.left)}/${n0(o.max)}</b><button class="btn small" data-res="${i}" data-step="1">+</button>`}</span>
     <span class="sp">${o.max <= 10 ? `${n0(o.left)}/${n0(o.max)} · ` : ""}per ${o.rest === "Short Rest" ? "short rest" : "long rest"}</span></div>`).join("")}</div>`;
 }
 
+function condPanel(c) {
+  const opt = ui.condOpt[c.id] || {};
+  return `<div class="kpanel">
+    <div class="durrow">
+      <label>Duur bij aanzetten<select data-f="cdur">${DURS.map(([v, l]) => `<option value="${v}" ${(opt.dur || "inf") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      <label>Save aan einde beurt<span style="display:flex;gap:4px"><select data-f="cab"><option value="">geen</option>${["STR", "DEX", "CON", "INT", "WIS", "CHA"].map((a) => `<option ${opt.ab === a ? "selected" : ""}>${a}</option>`).join("")}</select><input data-f="cdc" type="number" inputmode="numeric" placeholder="DC" value="${esc(opt.dc || "")}" style="width:64px"></span></label>
+    </div>
+    <div class="condgrid">${CONDS.map((x) => `<button type="button" data-cond="${x}" aria-pressed="${c.cond.includes(x)}">${x}</button>`).join("")}</div></div>`;
+}
+
+function morePanel(c) {
+  const del = ui.confirmDel === c.id;
+  return `<div class="kpanel more">
+    <label class="inl">Initiative<input data-f="init" type="number" inputmode="numeric" value="${n0(c.init)}" aria-label="Initiative ${esc(c.name)}"></label>
+    ${c.kind === "pc" && !c.pid ? `<button class="btn small" data-a="topty">Naar vaste party</button>` : ""}
+    <button class="btn small danger" data-a="del">${del ? "Zeker? Tik nogmaals" : "Verwijder uit gevecht"}</button></div>`;
+}
+
+function actionsBlock(c) {
+  const sideBtn = c.ref ? `<button data-a="sb">Statblock</button>` : c.sheet ? `<button data-a="sheet">Sheet</button>` : `<button data-a="panel" data-p="more" aria-pressed="${ui.panel === "more"}">⋯</button>`;
+  return `<div class="acts">
+    ${c.max ? `<button class="dmg2 wide" data-a="sheet-open" data-kind="dmg">− Schade</button><button class="heal2" data-a="sheet-open" data-kind="heal">+ Heal</button><button data-a="sheet-open" data-kind="thp">Temp HP</button>` : ""}
+    <button data-a="panel" data-p="conds" aria-pressed="${ui.panel === "conds"}">Conditie</button>
+    <button data-a="react" aria-pressed="${!!c.reaction}">${c.reaction ? "Reaction ✓" : "Reaction"}</button>
+    ${sideBtn}
+    ${c.ref || c.sheet ? `<button data-a="panel" data-p="more" aria-pressed="${ui.panel === "more"}" aria-label="Meer">⋯</button>` : ""}
+  </div>
+  ${ui.panel === "conds" ? condPanel(c) : ui.panel === "more" ? morePanel(c) : ""}`;
+}
+
 function lairRow(c, S) {
   const acts = app.lairs[c.key] || [];
   const keys = [...new Set([c.key, ...Object.keys(app.lairs), ...S.list.filter((x) => x.la).map((x) => "Lair: " + x.ref)])];
-  return `<li class="c lair ${c.id === S.active ? "active" : ""}" data-id="${esc(c.id)}">
-    <div class="init"><input aria-label="Initiative lair" data-f="init" type="number" inputmode="numeric" value="${n0(c.init)}"></div>
-    <div class="row1"><select class="lairsel" data-f="lairkey" aria-label="Welke lair">${keys.map((k) => `<option ${k === c.key ? "selected" : ""}>${esc(k)}</option>`).join("")}</select><span class="tag l">lair</span></div>
+  return `<li class="c k lair ${c.id === S.active ? "turn" : ""}" data-id="${esc(c.id)}">
+    <div class="i">${n0(c.init)}</div>
+    <div class="n"><select class="lairsel" data-f="lairkey" aria-label="Welke lair">${keys.map((k) => `<option ${k === c.key ? "selected" : ""}>${esc(k)}</option>`).join("")}</select></div>
+    <div class="meta">lair</div>
+    <div class="kbody">
     <div class="lacts">${acts.length ? acts.map((a, i) => `<div class="lact ${c.last === a.n ? "used" : ""}">
         <p><b>${esc(a.n)}.</b> ${diceify(a.t)}</p>
         <div class="bar">${c.last === a.n ? `<span class="hint">Vorige keer gebruikt, nu niet toegestaan</span>` : `<button class="btn small" data-a="lair-use" data-i="${i}">Gebruik</button>`}
@@ -83,62 +163,40 @@ function lairRow(c, S) {
         <label>Naam<input data-f="la-n" placeholder="bijv. Magma Eruption"></label>
         <label>Effect<textarea data-f="la-t" style="min-height:80px" placeholder="Magma erupts from a point... DC 15 Dexterity saving throw or take 21 (6d6) fire damage."></textarea></label>
         <button class="btn small primary" data-a="lair-add">Opslaan</button></div></details>
-    <div class="row3"><span class="hint">Initiative 20, verliest gelijke stand.</span><button class="link" data-a="del">Lair verwijderen</button></div></li>`;
+    <div class="row3"><span class="hint">Initiative 20, verliest gelijke stand.</span><button class="link" data-a="del">Lair verwijderen</button></div></div></li>`;
 }
 
 function row(c, S) {
   if (c.kind === "lair") return lairRow(c, S);
-  const pct = c.max ? Math.max(0, c.hp) / c.max : 1;
-  const cls = pct <= 0.25 ? "low" : pct <= 0.5 ? "mid" : "";
-  const mode = ui.dmgMode[c.id] || 1;
-  const opt = ui.condOpt[c.id] || {};
-  const chip = (x) => {
-    const dt = durText(c, x, S.list);
-    const dl = dt ? ` <span class="dl">· ${esc(dt)}</span>` : "";
-    return x === "Concentrating"
-      ? `<button class="chip cbtn" data-a="dropconc" title="Concentratie beëindigen">${x}${c.concSpell ? ` <span class="dl">· ${esc(c.concSpell)}</span>` : ""}${dl} <span aria-hidden="true">✕</span><span class="vh">beëindigen</span></button>`
-      : `<span class="chip">${x}${dl}</span>`;
-  };
-  return `<li class="c ${c.id === S.active ? "active" : ""} ${isOut(c) ? "down" : ""}" data-id="${esc(c.id)}">
-    <div class="init"><input aria-label="Initiative ${esc(c.name)}" data-f="init" type="number" inputmode="numeric" value="${n0(c.init)}">${c.roll ? `<small>d20 ${n0(c.roll)}</small>` : ""}</div>
-    <div class="row1"><span class="nm">${esc(c.name)}</span><span class="tag ${c.kind === "monster" ? "m" : ""}">${c.kind === "monster" ? "monster" : "speler"}</span>
-      ${c.ac ? `<span class="ac">AC <b>${n0(c.ac)}</b></span>` : ""}
-      <button class="react" data-a="react" aria-pressed="${!!c.reaction}" title="Reaction deze ronde gebruikt?">${c.reaction ? "Reaction gebruikt" : "Reaction"}</button></div>
-    ${c.max ? `<div class="hp"><div class="hpbar" aria-hidden="true"><i class="${cls}" style="width:${pct * 100}%"></i></div>
-      <span class="hpnum">${n0(c.hp)} / ${n0(c.max)}${c.temp ? ` <span class="thp">+${n0(c.temp)} temp</span>` : ""}</span>
-      <span class="dmg"><input aria-label="Hoeveelheid voor ${esc(c.name)}" data-f="amt" type="number" inputmode="numeric" min="0" placeholder="0">
-      <button class="mode ${mode !== 1 ? "on" : ""}" data-a="mode" title="Resistance (×½) of vulnerability (×2)">${{ 1: "×1", 0.5: "×½", 2: "×2" }[mode]}</button>
-      <button class="hit" data-a="dmg" title="Schade">−</button><button class="heal" data-a="heal" title="Genezen">+</button><button class="tmp" data-a="thp" title="Tijdelijke HP geven">THP</button></span></div>
-      ${defLine(c)}` : ""}
-    ${dsBlock(c)}
-    ${castBlock(c)}
-    ${resBlock(c)}
-    ${c.rc && c.rc.length ? `<div class="rcs">${c.rc.map((r, i) => `<button class="rc" data-rc="${i}" aria-pressed="${!!r.ready}" title="Tik om te markeren als gebruikt of beschikbaar">${esc(r.n)} · ${r.ready ? "klaar" : r.rest ? "na rust" : `recharge ${n0(r.min)}–6`}</button>`).join("")}</div>` : ""}
-    ${pips(c.la, "la", "Legendary actions")}${pips(c.lr, "lr", "Legendary resistance")}
-    <div class="row3">
-      ${c.cond.map(chip).join("")}
-      <details class="conds"><summary class="link">Condities</summary>
-        <div class="durrow">
-          <label>Duur bij aanzetten<select data-f="cdur">${DURS.map(([v, l]) => `<option value="${v}" ${(opt.dur || "inf") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
-          <label>Save aan einde beurt<span style="display:flex;gap:4px"><select data-f="cab"><option value="">geen</option>${["STR", "DEX", "CON", "INT", "WIS", "CHA"].map((a) => `<option ${opt.ab === a ? "selected" : ""}>${a}</option>`).join("")}</select><input data-f="cdc" type="number" inputmode="numeric" placeholder="DC" value="${esc(opt.dc || "")}" style="width:64px"></span></label>
-        </div>
-        <div class="condgrid">${CONDS.map((x) => `<button type="button" data-cond="${x}" aria-pressed="${c.cond.includes(x)}">${x}</button>`).join("")}</div></details>
-      ${c.ref ? `<button class="link strong" data-a="sb">Statblock</button>` : ""}${c.sheet ? `<button class="link strong" data-a="sheet">Sheet</button>` : ""}${c.kind === "pc" && !c.pid ? `<button class="link" data-a="topty">Naar party</button>` : ""}
-      <button class="link" data-a="del">Verwijder</button>
-    </div></li>`;
+  const open = openId() === c.id;
+  const turn = c.id === S.active;
+  return `<li class="c k ${c.kind === "pc" ? "pc" : "mon"} ${open ? "open" : ""} ${turn ? "turn" : ""} ${isOut(c) ? "out" : ""}" data-id="${esc(c.id)}">
+    <button class="khead" data-a="open" aria-expanded="${open}" aria-label="${esc(c.name)}${open ? ", sluiten" : ", openen"}">
+      <span class="i">${n0(c.init)}${turn ? `<span class="tri" aria-hidden="true">▶</span>` : ""}</span>
+      <span class="n"><span>${esc(c.name)}</span></span>
+      <span class="meta">${isOut(c) && c.kind === "monster" ? "neer" : c.ac ? `AC <b>${n0(c.ac)}</b>` : ""}</span>
+      ${c.max ? hpBar(c) : ""}
+    </button>
+    ${open ? `<div class="kbody">
+      ${c.cond.length ? `<div class="badges">${condChips(c, S, true)}</div>` : ""}
+      ${defLine(c)}
+      ${dsBlock(c)}
+      ${actionsBlock(c)}
+      ${castBlock(c)}
+      ${resBlock(c)}
+      ${c.rc && c.rc.length ? `<div class="rcs">${c.rc.map((r, i) => `<button class="rc" data-rc="${i}" aria-pressed="${!!r.ready}" title="Tik om te markeren als gebruikt of beschikbaar">${esc(r.n)} · ${r.ready ? "klaar" : r.rest ? "na rust" : `recharge ${n0(r.min)}–6`}</button>`).join("")}</div>` : ""}
+      ${pips(c.la, "la", "Legendary actions")}${pips(c.lr, "lr", "Legendary resistance per dag")}
+    </div>` : badges(c, S)}
+  </li>`;
 }
 
 function paintEncounter() {
   const S = app.S;
   const L = sortOrder(S.list);
-  $("#round").textContent = S.round || "–";
-  const act = L.find((c) => c.id === S.active);
-  const undoBtn = `<button class="btn small" id="undo" ${canUndo() ? "" : "disabled"} title="Laatste wijziging terugdraaien">↶ Undo</button>`;
-  $("#now").innerHTML = S.round
-    ? `<div><div class="lbl">Aan de beurt</div><div class="who">${act ? esc(act.name) : "–"}</div></div>
-       <div class="bar">${undoBtn}<button class="btn small" id="prev">Vorige</button><button class="btn primary" id="next">Volgende beurt</button></div>`
-    : `<div><div class="lbl">Encounter</div><div class="who" style="color:var(--fg)">${L.length} deelnemers klaar</div></div>
-       <div class="bar">${undoBtn}<button class="btn primary" id="start" ${L.length ? "" : "disabled"}>Start gevecht</button></div>`;
+  const pcs = S.list.filter((c) => c.kind === "pc"), mons = S.list.filter((c) => c.kind === "monster");
+  $("#sum").innerHTML = L.length
+    ? `${S.round ? `<span>Ronde <b>${S.round}</b></span>` : ""}${pcs.length ? `<span>Party <b>${pcs.filter((c) => !c.max || c.hp > 0).length}/${pcs.length}</b></span>` : ""}${mons.length ? `<span>Vijanden <b>${mons.filter((c) => c.hp > 0).length}/${mons.length}</b></span>` : ""}`
+    : "";
   $("#order").innerHTML = L.map((c) => row(c, S)).join("")
     || `<li class="hint" style="padding:20px;text-align:center">Nog niemand aan tafel. Voeg hieronder spelers en monsters toe.</li>`;
   $("#resetbar").innerHTML = ui.confirmReset
@@ -147,6 +205,69 @@ function paintEncounter() {
        ${S.sample ? `<p class="note">De deelnemers hierboven zijn voorbeelden. Wis ze en voeg je eigen groep toe.</p>` : ""}`;
 }
 
+function paintDock() {
+  const S = app.S;
+  const L = sortOrder(S.list);
+  const undoBtn = `<button id="undo" ${canUndo() ? "" : "disabled"} aria-label="Ongedaan maken" title="Ongedaan maken">↶</button>`;
+  if (!S.round) {
+    $("#dock").innerHTML = `<div class="who"><span><span class="l">Encounter</span><br><b>${L.length} deelnemer${L.length === 1 ? "" : "s"}</b></span></div>
+      <div class="row one">${undoBtn}<button class="nx" id="start" ${L.length ? "" : "disabled"}>Start gevecht</button></div>`;
+    return;
+  }
+  const i = L.findIndex((c) => c.id === S.active);
+  const act = L[i];
+  let nxt = null;
+  for (let k = 1; k <= L.length; k++) { const c = L[(i + k) % L.length]; if (c && !isOut(c) && c.id !== S.active) { nxt = c; break; } }
+  $("#dock").innerHTML = `<div class="who"><span><span class="l">Aan de beurt</span><br><b>${act ? esc(act.name) : "–"}</b></span><span class="r">Ronde ${S.round}${nxt ? ` · volgende: ${esc(nxt.name)}` : ""}</span></div>
+    <div class="row">${undoBtn}<button id="prev" aria-label="Vorige beurt">‹</button><button class="nx" id="next">Volgende beurt ›</button></div>`;
+}
+
+/* ---------- schade-paneel ---------- */
+export function sheetPreview(c, kind, v, mode) {
+  const sim = structuredClone(c);
+  let fx;
+  if (kind === "dmg") fx = R.applyDamage(sim, v, mode);
+  else if (kind === "heal") fx = R.heal(sim, v);
+  else fx = R.giveTemp(sim, v);
+  return { sim, fx };
+}
+
+function paintSheet() {
+  const el = $("#sheet");
+  const s = ui.sheet;
+  const c = s && app.S.list.find((x) => x.id === s.id);
+  if (!c) { el.hidden = true; el.innerHTML = ""; return; }
+  const v = parseInt(s.val) || 0;
+  let preview = "";
+  if (v) {
+    const { sim } = sheetPreview(c, s.kind, v, s.mode);
+    const hp = (x) => `${n0(x.hp)}${x.temp ? ` (+${n0(x.temp)} temp)` : ""}`;
+    preview = `${hp(c)} → <b>${hp(sim)} HP</b>`;
+    if (s.kind === "dmg") {
+      const dealt = Math.floor(v * s.mode);
+      if (s.mode !== 1) preview += ` · ${dealt} na ${s.mode === 0.5 ? "resist" : "kwetsbaar"}`;
+      if (sim.ds && sim.ds.dead && !(c.ds && c.ds.dead)) preview += ` · <b class="bad">sterft</b>`;
+      else if (sim.hp === 0 && c.hp > 0) preview += ` · <b class="bad">${c.kind === "pc" ? "bewusteloos" : "neer"}</b>`;
+      else if (c.cond.includes("Concentrating") && sim.hp > 0 && dealt > 0) preview += ` · concentration save <b>DC ${Math.max(10, Math.floor(dealt / 2))}</b>`;
+    }
+  } else preview = `Nu ${n0(c.hp)}/${n0(c.max)} HP${c.temp ? ` (+${n0(c.temp)} temp)` : ""}`;
+  const kinds = [["dmg", "Schade"], ["heal", "Heal"], ["thp", "Temp HP"]];
+  const label = { dmg: `${v || ""} schade toepassen`, heal: `${v || ""} HP genezen`, thp: `${v || ""} temp HP geven` }[s.kind];
+  el.hidden = false;
+  el.innerHTML = `<div class="dim" data-sk="close"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(c.name)}: ${kinds.find((k) => k[0] === s.kind)[1]}">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="shead"><h3>${esc(c.name)}</h3><button class="link" data-sk="close">Annuleer</button></div>
+      <div class="seg2">${kinds.map(([k, l]) => `<button data-sk="kind" data-v="${k}" aria-pressed="${s.kind === k}">${l}</button>`).join("")}</div>
+      ${s.kind === "dmg" ? `<div class="seg2 sm">${[[1, "Normaal"], [0.5, "Resist ½"], [2, "Kwetsbaar ×2"]].map(([m, l]) => `<button data-sk="mode" data-v="${m}" aria-pressed="${s.mode === m}">${l}</button>`).join("")}</div>` : ""}
+      <div class="disp" aria-live="polite">${esc(s.val || "0")}</div>
+      <div class="preview">${preview}</div>
+      <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-sk="d" data-v="${n}">${n}</button>`).join("")}<button data-sk="back" aria-label="Wissen">⌫</button><button data-sk="d" data-v="0">0</button><button data-sk="clear" aria-label="Alles wissen">C</button>
+        <button class="go go-${s.kind}" data-sk="apply" ${v ? "" : "disabled"}>${label}</button></div>
+    </div>`;
+}
+
+/* ---------- party en logboek ---------- */
 export function paintParty() {
   const el = $("#party-panel");
   const at = new Set(app.S.list.filter((c) => c.pid).map((c) => c.pid));
