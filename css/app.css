@@ -173,6 +173,7 @@ textarea{min-height:120px;resize:vertical}
 .mlist .cr{color:var(--muted);font-size:.85rem;font-variant-numeric:tabular-nums;white-space:nowrap}
 .hint{font-size:.85rem;color:var(--muted);margin:0}
 /* Instellingen: kopjes en een gesegmenteerde keuze (Systeem/Licht/Donker) */
+.appver{text-align:center;margin-top:8px;font-variant-numeric:tabular-nums}
 .sethead{font:700 .75rem/1.2 var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:4px 0 0}
 .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{flex:1 1 0;min-width:0;min-height:44px;border:0;border-left:1px solid var(--line);background:var(--surface);color:var(--fg);font:inherit;padding:0 6px}

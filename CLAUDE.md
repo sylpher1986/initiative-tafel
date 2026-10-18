@@ -35,7 +35,7 @@ Meld bij oplevering in één of twee regels wat beide reviewers vonden en beslot
 ## Bij elke wijziging
 1. `npm test` (Node 18+, geen installatie nodig) en nieuwe regels-logica krijgt een test.
 2. Controleer in een browser op 320, 360 en 390 px breed: geen horizontaal scrollen. Ook licht en donker.
-3. Verhoog `VERSION` in `sw.js`, anders zien geïnstalleerde apps de update niet.
+3. Verhoog de versie in `js/version.js` én `sw.js` (de test bewaakt dat ze gelijk zijn), anders zien geïnstalleerde apps de update niet. Schema: `1.0.x` kleine aanpassingen, `1.x.0` grotere aanpassingen, `x.0.0` volledig nieuwe functionaliteit. De app toont het nummer onderaan Instellingen.
 4. Commit in het Nederlands, push naar `main`.
 
 ## Gemaakte keuzes

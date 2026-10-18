@@ -3,6 +3,7 @@ import { app, load, resetBaseline, setWarn } from "./state.js";
 import { loadSrd } from "./data/monsters.js";
 import { render } from "./ui/render.js";
 import { $, toast } from "./ui/util.js";
+import { VERSION } from "./version.js";
 import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, addMonsters, normalize } from "./ui/actions.js";
 
 const sample = () => ({
@@ -23,6 +24,7 @@ function start() {
 
 async function boot() {
   setWarn(toast);
+  $("#app-version").textContent = `Initiative Tafel ${VERSION}`;
   try {
     await Promise.all([load(), loadSrd()]);
   } catch (e) {
