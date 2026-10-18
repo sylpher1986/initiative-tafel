@@ -19,6 +19,35 @@
 - Spelersscherm in een tweede venster (zelfde apparaat): volgorde, beurt, HP-status van monsters; monsters verbergen voor spelers
 - Spelers via D&D Beyond-link (publieke sheets, via de Worker): portret, AC/HP berekend met controle-markering, slots en resources; opnieuw ophalen werkt de speler in de party bij
 
+## DM-review (oktober 2026), op prioriteit
+Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair, AoE, Bless, death saves, spelersscherm) op 320/390/1024 px.
+
+### Prioriteit 1: speelt elke beurt
+- [ ] Monsterbeurt zonder statblock openen: aanvallen compact op de open kaart (Bite +11 · 2d10+6 …). Statblock op telefoon als half-hoog paneel bóven de beurtbalk dat bij Volgende meeschuift (nu dekt het de beurtbalk af: Volgende niet aan te tikken). Vervangt "Statblock-paneel versleepbaar" hieronder.
+- [ ] Legendary actions-herinnering: na elke beurt van een ander "Draak: 3 LA over" met één tik om er een te gebruiken (nu geen melding)
+- [ ] Saves afhandelen in de melding: condition-save einde beurt en concentration save. Monsters: knop "Rol (WIS +0)" met uitslag, geslaagd = conditie weg. Spelers: Geslaagd/Gefaald; gefaald = concentratie weg. Condition-save-melding komt nu pas bij de start van de volgende deelnemer
+- [ ] Recharge-aanval ↔ AoE: "Gebruik" op de recharge-chip opent AoE met gerolde schade, type, save en DC uit het statblock en zet de aanval op "op" (nu blijft Acid Breath "klaar" na de AoE)
+- [ ] Worp direct toepassen: damage-worp uit het statblock met één tik op een doel; "+4 to hit" vergelijken met de AC van het doel; crit = dubbele dice
+
+### Prioriteit 2: voorbereiding en tempo
+- [ ] Volgende encounter: "Monsters wissen, spelers houden" (nu wist "Encounter wissen" ook de party). Samen met encounters vooraf klaarzetten en XP-moeilijkheid (zie Functies)
+- [ ] Initiative van spelers bij Start gevecht: één paneel met alle spelers en een cijferpad
+- [ ] Effect/conditie op meerdere doelen tegelijk (Bless, Hold Person, Hypnotic Pattern, Web), met de doelkeuze uit AoE; Bless op 3 doelen kost nu 9 tikken
+- [ ] Groepsbeurten: zelfde monster met dezelfde groepsworp als één beurt
+- [ ] Monsters zoeken op CR en type (nu alleen naam: "undead" of "cr 5" geeft niets) en statblock-preview vóór toevoegen
+- [ ] Voorbereiden-indeling: tabs staan onder de hele lijst (veel scrollen bij 10+ deelnemers) en "Instellingen" valt op 390 px buiten beeld; tabs bovenaan of toevoegen als paneel (samen met de welkomstkaart hieronder)
+
+### Prioriteit 3: kleine bugs en afwerking
+- [ ] Na herladen (app terug uit de achtergrond) springt de lijst niet naar wie aan de beurt is; undo-geschiedenis is dan weg
+- [ ] Meldingen staan bovenaan over modusknop, + en kaarten; meerdere meldingen in één blok. Liever net boven de beurtbalk
+- [ ] Logboek: "+ reden" bij elke regel is ruis (pas tonen bij tik); bug: één los monster krijgt "groepsworp" als die keuze nog aanstond
+- [ ] Monster-tab: knoptekst zonder aantal ("Bugbear toevoegen" bij aantal 3; snel toevoegen zegt wel "3× …")
+- [ ] Spelersscherm op tv: 11 deelnemers passen niet op 720p; compacter of twee kolommen
+- [ ] Tablet: statblock rechts volgt de beurt niet; automatisch het actieve monster tonen
+- [ ] Dode monsters inklappen of onderaan zetten
+- [ ] Surprise (2014): vinkje "verrast" bij start, eerste beurt overslaan
+- [ ] Slots en effecten: Bless via Effect verbruikt geen slot. Voorstel: niet koppelen maar spelers-slots optioneel maken (spelers houden die vaak zelf bij)
+
 ## UX-verbeterpunten (uit review)
 - [ ] Logboek dichter bij de beurtbalk: eigen tab, of de laatste 2 gebeurtenissen onder de beurtbalk
 - [ ] Statblock-paneel op telefoon versleepbaar (half/heel) en dicht met veeg omlaag
