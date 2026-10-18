@@ -1,7 +1,7 @@
 // Beurtvolgorde, conditie-duur en alles wat aan het begin/einde van een beurt gebeurt.
 import { d } from "./dice.js";
 import { fx } from "./combat.js";
-import { tickEffects } from "./effects.js";
+import { tickEffects, endFightEffects } from "./effects.js";
 import { tickSaves, turnSaves } from "./saves.js";
 
 export const CONDS = ["Blinded", "Charmed", "Deafened", "Frightened", "Grappled", "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned", "Prone", "Restrained", "Stunned", "Unconscious", "Concentrating"];
@@ -136,4 +136,24 @@ export function startCombat(state, rng = Math.random) {
   state.round = 1;
   state.active = null;
   return step(state, 1, rng);
+}
+
+/** Gevecht stoppen: ronde-effecten weg, geen ronde of beurt, open saves vervallen */
+export function stopCombat(state) {
+  const out = endFightEffects(state.list);
+  state.round = 0; state.active = null; state.saves = [];
+  return out;
+}
+
+/**
+ * Volgende encounter: gevecht stoppen en alle monsters en lairs weghalen (ook verborgen monsters).
+ * Spelers blijven met HP, slots, condities, death saves en lange effecten; het logboek blijft.
+ * Concentratie-effecten van een weggehaalde caster verdwijnen in commit() (endConcEffects).
+ */
+export function clearMonsters(state) {
+  const out = stopCombat(state);
+  const n = state.list.filter((c) => c.kind === "monster").length;
+  state.list = state.list.filter((c) => c.kind !== "monster" && c.kind !== "lair");
+  out.why.push({ t: "volgende encounter: monsters gewist", id: null });
+  return Object.assign(out, { n });
 }
