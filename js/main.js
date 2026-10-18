@@ -1,10 +1,10 @@
 // Opstarten: data laden, events koppelen, eerste render, service worker.
 import { app, load, resetBaseline, setWarn } from "./state.js";
 import { loadSrd } from "./data/monsters.js";
-import { render } from "./ui/render.js";
+import { render, ui } from "./ui/render.js";
 import { $, toast } from "./ui/util.js";
 import { VERSION } from "./version.js";
-import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, addMonsters, normalize } from "./ui/actions.js";
+import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, addMonsters, normalize } from "./ui/actions.js";
 
 const sample = () => ({
   list: [
@@ -15,6 +15,7 @@ const sample = () => ({
 });
 
 function start() {
+  ui.mode = null; // ook na een import: de modus volgt weer het gevecht
   app.S.list.forEach(normalize);
   bindForms.renderMonList();
   bindForms.impStatus();
@@ -35,7 +36,7 @@ async function boot() {
   document.addEventListener("change", onChange);
   document.addEventListener("keydown", onKey);
   document.addEventListener("toggle", onToggle, true);
-  bindForms(); bindParty(); bindLog();
+  bindForms(); bindParty(); bindLog(); bindQadd();
   bindBackup(start);
 
   if (!app.S) {

@@ -2,8 +2,8 @@
 // de party en het logboek. Render past de data niet aan.
 import { $, esc, n0 } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
-import { findMon } from "../data/monsters.js";
-import { sortOrder, CONDS, DURS, durText, isOut } from "../rules/turns.js";
+import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
+import { sortOrder, CONDS, DURS, durText, isOut, parseInit } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList } from "../rules/spells.js";
 import { diceify } from "./statblock.js";
@@ -15,16 +15,29 @@ export const ui = {
   sheet: null,         // { id, kind: "dmg"|"heal"|"thp", val: "", mode: 1|0.5|2 }
   condOpt: {}, openCast: new Set(), castPick: null, confirmReset: false, confirmDel: null,
   logOpen: false, editLog: null, partyInit: {},
+  mode: null,          // "prep" | "fight"; null = volg het gevecht (loopt → Gevecht, anders Voorbereiden)
+  qadd: null,          // { q, sel, n, init: "roll"|"fixed", fix } = snel-toevoegen-paneel open
 };
 export const openId = () => (ui.open === null ? app.S.active : ui.open);
+export const mode = () => ui.mode || (app.S.round ? "fight" : "prep");
 
 export function render() {
   commit();
+  paintMode();
   paintEncounter();
   paintDock();
   paintSheet();
+  paintQadd();
   paintParty();
   paintLog();
+}
+
+/** Voorbereiden: alles. Gevecht: alleen lijst + beurtbalk (CSS verbergt de rest via body[data-mode]) */
+function paintMode() {
+  const m = mode();
+  document.body.dataset.mode = m;
+  document.querySelectorAll("[data-setmode]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.setmode === m));
+  $("#qadd").hidden = m !== "fight";
 }
 
 /* ---------- onderdelen van een kaart ---------- */
@@ -198,7 +211,7 @@ function paintEncounter() {
     ? `${S.round ? `<span>Ronde <b>${S.round}</b></span>` : ""}${pcs.length ? `<span>Party <b>${pcs.filter((c) => !c.max || c.hp > 0).length}/${pcs.length}</b></span>` : ""}${mons.length ? `<span>Vijanden <b>${mons.filter((c) => c.hp > 0).length}/${mons.length}</b></span>` : ""}`
     : "";
   $("#order").innerHTML = L.map((c) => row(c, S)).join("")
-    || `<li class="hint" style="padding:20px;text-align:center">Nog niemand aan tafel. Voeg hieronder spelers en monsters toe.</li>`;
+    || `<li class="hint" style="padding:20px;text-align:center">Nog niemand aan tafel. ${mode() === "fight" ? "Voeg spelers en monsters toe onder Voorbereiden." : "Voeg hieronder spelers en monsters toe."}</li>`;
   $("#resetbar").innerHTML = ui.confirmReset
     ? `<div class="confirm">Alles wissen?<button class="btn small primary" id="reset-yes">Ja, wis encounter</button><button class="btn small" id="reset-no">Annuleer</button></div>`
     : `${S.list.some((c) => c.kind === "lair") ? "" : `<button class="btn small" id="addlair">+ Lair actions (init 20)</button>`}${S.list.length ? `<button class="btn small ghost" id="reset">Encounter wissen</button>` : ""}${S.round ? `<button class="btn small ghost" id="stop">Gevecht stoppen</button>` : ""}
@@ -265,6 +278,42 @@ function paintSheet() {
       <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-sk="d" data-v="${n}">${n}</button>`).join("")}<button data-sk="back" aria-label="Wissen">⌫</button><button data-sk="d" data-v="0">0</button><button data-sk="clear" aria-label="Alles wissen">C</button>
         <button class="go go-${s.kind}" data-sk="apply" ${v ? "" : "disabled"}>${label}</button></div>
     </div>`;
+}
+
+/* ---------- snel toevoegen tijdens het gevecht ---------- */
+/** Bouwt het paneel één keer per opening en werkt daarna alleen de delen bij, zodat het zoekveld focus houdt */
+export function paintQadd() {
+  const el = $("#qsheet"), q = ui.qadd;
+  if (!q) { el.hidden = true; el.innerHTML = ""; return; }
+  if (!el.firstChild) {
+    el.innerHTML = `<div class="dim" data-q="close"></div>
+    <div class="sheet qsheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="q-title">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="shead"><h3 id="q-title">Mee in het gevecht</h3><button type="button" class="link" data-q="close">Annuleer</button></div>
+      <label>Zoek monster<input id="q-q" placeholder="goblin, wolf, cultist…" autocomplete="off" enterkeyhint="search"></label>
+      <div class="mlist qlist" id="q-list"></div>
+      <div class="qrow">
+        <div class="qcol"><span class="qlbl" id="q-nl">Aantal</span>
+          <div class="stepper" role="group" aria-labelledby="q-nl"><button type="button" data-q="n" data-v="-1" aria-label="Minder">−</button><output id="q-n" aria-live="polite"></output><button type="button" data-q="n" data-v="1" aria-label="Meer">+</button></div></div>
+        <div class="qcol"><span class="qlbl" id="q-il">Initiative</span>
+          <div class="seg2" role="group" aria-labelledby="q-il"><button type="button" data-q="init" data-v="roll">Rollen</button><button type="button" data-q="init" data-v="fixed">Invullen</button></div></div>
+      </div>
+      <label id="q-fixw">Initiative<input id="q-fix" type="number" inputmode="numeric" placeholder="bijv. 14"></label>
+      <p class="hint">Ze komen op hun initiative in de volgorde. Zit dat vóór wie nu aan de beurt is, dan doen ze pas volgende ronde mee.</p>
+      <button type="button" class="btn primary qgo" data-q="go"></button>
+    </div>`;
+    el.hidden = false;
+  }
+  const f = filterMonsters(allMonsters(), q.q, q.sel);
+  q.sel = f.sel; // UI-toestand: de selectie volgt wat zichtbaar is (zoals in de Monster-tab)
+  $("#q-list").innerHTML = f.L.map((m) => `<button type="button" data-qpick="${esc(m.n)}" aria-pressed="${m.n === q.sel}"><span>${esc(m.n)}${m.custom ? " · eigen" : ""}</span><span class="cr">CR ${esc(m.cr || "?")} · ${n0(m.hp) || "?"} HP</span></button>`).join("")
+    || `<p class="hint" style="padding:10px">Niets gevonden. Eigen monsters maak je onder Voorbereiden.</p>`;
+  $("#q-n").textContent = q.n;
+  el.querySelectorAll('[data-q="init"]').forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === q.init));
+  $("#q-fixw").hidden = q.init !== "fixed";
+  const go = el.querySelector(".qgo");
+  go.disabled = !q.sel || (q.init === "fixed" && parseInit(q.fix) === null);
+  go.textContent = q.sel ? `${q.n > 1 ? `${q.n}× ` : ""}${q.sel} toevoegen` : "Kies een monster";
 }
 
 /* ---------- party en logboek ---------- */

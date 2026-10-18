@@ -1,11 +1,11 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
-import { render, ui, openId, paintLog, paintParty } from "./render.js";
+import { render, ui, openId, paintLog, paintParty, paintQadd } from "./render.js";
 import { showSB, showSheet, doRoll } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
-import { step, startCombat, makeDur } from "../rules/turns.js";
+import { step, startCombat, makeDur, parseInit } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { castInfo, legInfo, rcInfo, pickList, CONC_SPELLS, cleanSpell } from "../rules/spells.js";
 import { logText } from "../log.js";
@@ -16,25 +16,30 @@ import { buildExport, parseImport } from "../backup.js";
 const apply = (fx) => { if (!fx) return; addWhy(fx.why); show(fx); };
 
 /* ---------- monsters toevoegen ---------- */
-export function addMonsters(name, n, hpmode, initmode, silent) {
+/** initmode: "each" (per monster rollen), "group" (één worp) of "fixed" (initiative = fixed, bijv. al aan tafel gerold) */
+export function addMonsters(name, n, hpmode, initmode, silent, fixed = null) {
   const S = app.S, m = findMon(name);
   if (!m) return;
   const dx = mod(m.ab ? m.ab[1] : m.dexScore || 10);
   // doornummeren vanaf het hoogste bestaande nummer, zodat "Goblin 2" na verwijderen niet dubbel ontstaat
   const nums = S.list.filter((c) => c.ref === name).map((c) => { const x = c.name.match(/ (\d+)$/); return x ? +x[1] : 1; });
   const next = nums.length ? Math.max(...nums) + 1 : 1;
+  const set = initmode === "fixed" && Number.isFinite(fixed);
   const group = initmode === "group" ? d(20) : null;
   const out = [];
   for (let i = 0; i < n; i++) {
-    const r = group ?? d(20);
+    const r = set ? undefined : group ?? d(20);
     let hp = m.hp;
     if (hpmode === "roll" && m.hd) { const x = rollExpr(m.hd); if (x) hp = Math.max(1, x.total); }
     const label = n > 1 || nums.length ? `${m.n} ${next + i}` : m.n;
-    const c = { id: uid(), name: label, kind: "monster", ref: m.n, init: r + dx, roll: r, dex: dx, ac: parseInt(m.ac) || 10, hp, max: hp, cond: [], ...legInfo(m), rc: rcInfo(m), casting: castInfo(m) };
+    const c = { id: uid(), name: label, kind: "monster", ref: m.n, init: set ? fixed : r + dx, roll: r, dex: dx, ac: parseInt(m.ac) || 10, hp, max: hp, cond: [], ...legInfo(m), rc: rcInfo(m), casting: castInfo(m) };
     S.list.push(c); out.push(c);
-    because(`d20 [${r}] ${sgn(dx)}${group !== null ? ", groepsworp" : ""}${hpmode === "roll" ? `, HP gerold (${m.hd})` : ""}`, c.id);
+    because(`${set ? "initiative ingevuld" : `d20 [${r}] ${sgn(dx)}`}${group !== null ? ", groepsworp" : ""}${hpmode === "roll" ? `, HP gerold (${m.hd})` : ""}`, c.id);
   }
-  if (!silent) { S.sample = false; toastHtml(out.map((c) => `${esc(c.name)}: d20 [${c.roll}] ${sgn(c.dex)} = <b>${c.init}</b>`).join("<br>")); }
+  if (!silent) {
+    S.sample = false;
+    toastHtml(out.map((c) => `${esc(c.name)}: ${c.roll === undefined ? "initiative" : `d20 [${c.roll}] ${sgn(c.dex)} =`} <b>${c.init}</b>`).join("<br>"));
+  }
 }
 
 /** Vult ontbrekende velden aan bij deelnemers uit oudere versies of imports */
@@ -137,10 +142,12 @@ function rowData(c, b) {
 const global = {
   "toast-undo"() { $("#toast").hidden = true; return global.undo(); },
   undo() { if (undo()) { ui.confirmReset = false; toast(`Ongedaan gemaakt${historySize() ? ` (nog ${historySize()} stappen terug)` : ""}.`); } },
-  start() { apply(startCombat(app.S)); },
+  // na starten of stoppen volgt de modus weer het gevecht (ui.mode = null)
+  start() { apply(startCombat(app.S)); ui.mode = null; },
   next() { apply(step(app.S, 1)); },
   prev() { apply(step(app.S, -1)); },
-  stop() { app.S.round = 0; app.S.active = null; },
+  stop() { app.S.round = 0; app.S.active = null; ui.mode = null; },
+  qadd() { ui.qadd = { q: "", sel: null, n: 1, init: "roll", fix: "" }; },
   addlair() {
     const lm = app.S.list.find((x) => x.la);
     const key = lm ? "Lair: " + lm.ref : Object.keys(app.lairs)[0] || "Lair";
@@ -148,7 +155,7 @@ const global = {
   },
   reset() { ui.confirmReset = true; },
   "reset-no"() { ui.confirmReset = false; },
-  "reset-yes"() { app.S = { list: [], round: 0, active: null, sample: false }; ui.confirmReset = false; },
+  "reset-yes"() { app.S = { list: [], round: 0, active: null, sample: false }; ui.confirmReset = false; ui.mode = null; },
   sbclose() { $("#sbwrap").dataset.open = "false"; return false; },
 };
 
@@ -175,6 +182,12 @@ export function onClick(e) {
     const lab = b.dataset.label || b.closest(".entry")?.querySelector("i")?.textContent.replace(/\.$/, "");
     return doRoll(b.dataset.roll, lab, !!b.dataset.hit);
   }
+  if (b.dataset.setmode) {
+    ui.mode = b.dataset.setmode; ui.confirmReset = false;
+    render();
+    window.scrollTo({ top: 0 });
+    return;
+  }
   if (b.dataset.tab) {
     document.querySelectorAll(".tabs button").forEach((x) => x.setAttribute("aria-selected", x === b));
     document.querySelectorAll("[data-panel]").forEach((p) => (p.hidden = p.dataset.panel !== b.dataset.tab));
@@ -185,6 +198,8 @@ export function onClick(e) {
     if (["start", "next", "prev"].includes(b.id)) { ui.open = null; ui.panel = null; ui.castPick = null; }
     render();
     if (["start", "next", "prev"].includes(b.id)) scrollToCard(app.S.active);
+    // focus in de dialog, maar niet op het zoekveld: dat zou op de telefoon meteen het toetsenbord openen
+    if (b.id === "qadd") $("#qsheet .qsheet").focus();
     return;
   }
   const li = b.closest(".c");
@@ -214,7 +229,8 @@ export function onChange(e) {
 }
 
 export function onKey(e) {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); global.undo(); render(); return; }
+  if (ui.qadd && e.key === "Escape") { e.preventDefault(); closeQadd(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); ui.qadd = null; global.undo(); render(); return; }
   if (ui.sheet && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
     const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" ? ["apply"] : null;
     if (k) { e.preventDefault(); const res = sheetKey(...k); render(); if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`); }
@@ -321,6 +337,52 @@ export function bindForms() {
     toast(`${conv.length} monsters ingelezen, ${app.imported.length - before} nieuw.`);
     e.target.value = "";
   });
+}
+
+/* ---------- snel toevoegen tijdens het gevecht (+ in Gevecht-modus) ---------- */
+function closeQadd() {
+  ui.qadd = null; paintQadd();
+  $("#qadd").focus();
+}
+
+export function bindQadd() {
+  const el = $("#qsheet");
+  // invoer: alleen het paneel bijwerken (geen volledige render), zodat het zoekveld focus houdt
+  el.addEventListener("input", (e) => {
+    const q = ui.qadd; if (!q) return;
+    if (e.target.id === "q-q") q.q = e.target.value;
+    else if (e.target.id === "q-fix") q.fix = e.target.value;
+    else return;
+    paintQadd();
+  });
+  el.addEventListener("click", (e) => {
+    const q = ui.qadd; if (!q) return;
+    const p = e.target.closest("[data-qpick]");
+    if (p) { q.sel = p.dataset.qpick; paintQadd(); return; }
+    const b = e.target.closest("[data-q]"); if (!b) return;
+    const k = b.dataset.q;
+    if (k === "close") { closeQadd(); return; }
+    if (k === "n") q.n = Math.min(20, Math.max(1, q.n + +b.dataset.v));
+    if (k === "init") q.init = b.dataset.v;
+    if (k === "go") { qGo(); return; }
+    paintQadd();
+    if (k === "init" && q.init === "fixed") $("#q-fix").focus();
+  });
+  // Enter (zoekknop van het toetsenbord) voegt toe zodra er een monster gekozen is
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.target.id === "q-q" || e.target.id === "q-fix")) { e.preventDefault(); qGo(); }
+  });
+}
+
+function qGo() {
+  const q = ui.qadd; if (!q || !q.sel) return;
+  const fix = parseInit(q.fix);
+  if (q.init === "fixed" && fix === null) { $("#q-fix").focus(); return; }
+  because("tijdens het gevecht toegevoegd");
+  addMonsters(q.sel, q.n, "avg", q.init === "fixed" ? "fixed" : "each", false, fix);
+  ui.qadd = null;
+  render();
+  $("#qadd").focus();
 }
 
 /* ---------- party-tab ---------- */

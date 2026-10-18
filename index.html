@@ -27,6 +27,14 @@
       <div class="sum" id="sum"></div>
     </header>
 
+    <div class="modes">
+      <div class="seg modeseg" role="group" aria-label="Modus">
+        <button type="button" data-setmode="prep" aria-pressed="true">Voorbereiden</button>
+        <button type="button" data-setmode="fight" aria-pressed="false">Gevecht</button>
+      </div>
+      <button type="button" class="qplus" id="qadd" aria-label="Monster toevoegen aan het gevecht" title="Monster toevoegen aan het gevecht" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+    </div>
+
     <ol class="order" id="order"></ol>
 
     <div class="bar" id="resetbar"></div>
@@ -118,6 +126,7 @@
 </div>
 <div class="dock" id="dock"></div>
 <div class="sheet-wrap" id="sheet" hidden></div>
+<div class="sheet-wrap" id="qsheet" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <noscript><p style="padding:16px">Initiative Tafel heeft JavaScript nodig.</p></noscript>
 </body>

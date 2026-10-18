@@ -337,6 +337,25 @@ ol.order{gap:6px}
 .pad .go.go-thp{background:var(--active);border-color:var(--active);color:var(--bg)}
 .pad .go:disabled{opacity:.45}
 
+/* ===== Modi: Voorbereiden (alles) en Gevecht (alleen lijst + beurtbalk) ===== */
+.modes{display:flex;gap:8px;align-items:stretch}
+.modeseg{flex:1 1 auto;min-width:0}
+.modeseg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);box-shadow:none}
+.qplus{flex:0 0 48px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);display:flex;align-items:center;justify-content:center;padding:0}
+.qplus:hover{border-color:var(--muted)}
+body[data-mode="fight"] .panel,body[data-mode="fight"] #resetbar{display:none}
+
+/* Snel toevoegen tijdens het gevecht */
+.qsheet{max-height:calc(100dvh - 24px);overflow:auto}
+.qlist{max-height:min(220px,32dvh)}
+.qrow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.qcol{display:grid;gap:3px;min-width:0}
+.qlbl{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.stepper{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;border:1px solid var(--line);border-radius:10px;overflow:hidden;align-items:center}
+.stepper button{min-height:44px;border:0;background:transparent;font-size:1.25rem;font-weight:700;color:var(--fg)}
+.stepper output{text-align:center;font-weight:700;font-size:1.1rem;font-variant-numeric:tabular-nums}
+.qgo{min-height:50px;font-size:1.05rem}
+
 /* Meldingen bovenaan, met ongedaan-knop */
 .toast{top:calc(12px + env(safe-area-inset-top,0px));bottom:auto!important;z-index:50}
 .tundo{margin-left:10px;background:none;border:0;color:#9cc2ff;font-weight:700;text-decoration:underline;cursor:pointer;font:inherit;font-weight:700}

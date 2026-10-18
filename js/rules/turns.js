@@ -20,7 +20,14 @@ export const sortOrder = (list) => [...list].sort((a, b) =>
   || ((b.kind === "pc") - (a.kind === "pc"))
   || a.name.localeCompare(b.name));
 
-export const isOut = (c) => (c.kind === "monster" && c.hp <= 0) || !!(c.ds && c.ds.dead);
+/** Ingevulde initiative ("14", 14, "-1") → heel getal binnen -10..40; leeg of ongeldig → null */
+export function parseInit(v) {
+  const s = String(v ?? "").trim();
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return null;
+  return Math.max(-10, Math.min(40, Math.round(+s)));
+}
+
+export const isOut =(c) => (c.kind === "monster" && c.hp <= 0) || !!(c.ds && c.ds.dead);
 
 /**
  * Duur van een nieuwe conditie. Teltrigger: begin of einde van de beurt van `who`.

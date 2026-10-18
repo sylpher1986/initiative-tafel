@@ -41,6 +41,7 @@ Meld bij oplevering in één of twee regels wat beide reviewers vonden en beslot
 ## Gemaakte keuzes
 - Regels: D&D 5e **2014**. Monsters: alle 322 SRD 5.1-monsters (CC-BY-4.0, via Open5e) in `data/monsters.json`. Geen niet-SRD content in de repo.
 - Spelers: handmatig of via D&D Beyond PDF-export (formuliervelden, `js/ddb.js`).
+- Twee modi: **Voorbereiden** (toevoegen, party, instellingen) en **Gevecht** (alleen lijst + beurtbalk). De modus volgt het gevecht (`ui.mode = null`), de DM kan altijd wisselen. In Gevecht voegt de **+** halverwege monsters toe; wie vóór de actieve beurt invoegt, doet pas volgende ronde mee.
 - Gevechtsweergave: compacte kaarten, **maar één kaart tegelijk open** (standaard wie aan de beurt is); beurtbalk vast onderaan; schade via cijferpaneel.
 - Hosting: Cloudflare Workers (statische assets via `wrangler.jsonc`, uitsluitingen in `.assetsignore`). Gekozen omdat later serverfuncties nodig zijn voor AI (API-sleutel mag nooit in de browser).
 - Fase 1 is local-first zonder accounts. Sync/login (bijv. Supabase) pas in fase 2.

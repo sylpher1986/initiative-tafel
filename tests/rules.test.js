@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { rollExpr, avgExpr, mod, sgn } from "../js/rules/dice.js";
 import { applyDamage, applyPcHp, rollDs, giveTemp, heal, startConc, restMember, critAtZero } from "../js/rules/combat.js";
-import { sortOrder, step, startCombat, makeDur, turnBoundary } from "../js/rules/turns.js";
+import { sortOrder, step, startCombat, makeDur, turnBoundary, parseInit } from "../js/rules/turns.js";
 import { castInfo, legInfo, rcInfo, pickList, splitSpells } from "../js/rules/spells.js";
 
 // rng die een vaste reeks d20/d6-uitkomsten oplevert: seq(5) → d6 geeft 5, d20 geeft 5
@@ -150,4 +150,28 @@ test("rust: long rest herstelt alles, short rest alleen short-rest resources", (
   assert.equal(m.res[0].left, 5); assert.equal(m.res[1].left, 0); assert.equal(m.hp, 3);
   restMember(m, true);
   assert.equal(m.hp, 20); assert.equal(m.temp, 0); assert.equal(m.casting.slots[0].left, 4); assert.equal(m.res[1].left, 3);
+});
+
+test("toegevoegd tijdens het gevecht: vóór de actieve beurt pas volgende ronde, erna nog deze ronde", () => {
+  const S = { list: [pc({ id: "a", init: 20 }), mon({ id: "b", init: 10 })], round: 0, active: null };
+  startCombat(S, seq6(1));
+  step(S, 1, seq6(1)); // ronde 1, b aan de beurt
+  assert.equal(S.active, "b");
+  S.list.push(mon({ id: "voor", name: "Goblin 2", init: 15 }), mon({ id: "na", name: "Goblin 3", init: 5 }));
+  step(S, 1, seq6(1));
+  assert.equal(S.active, "na"); // na b, nog in ronde 1
+  assert.equal(S.round, 1);
+  step(S, 1, seq6(1));
+  assert.deepEqual([S.active, S.round], ["a", 2]); // "voor" is overgeslagen in ronde 1
+  step(S, 1, seq6(1));
+  assert.equal(S.active, "voor");
+});
+
+test("ingevulde initiative wordt opgeschoond", () => {
+  assert.equal(parseInit("14"), 14);
+  assert.equal(parseInit(" -1 "), -1);
+  assert.equal(parseInit("12.6"), 13);
+  assert.equal(parseInit("99"), 40);
+  assert.equal(parseInit("-50"), -10);
+  for (const bad of ["", "  ", "1e5", "abc", null, undefined]) assert.equal(parseInit(bad), null);
 });

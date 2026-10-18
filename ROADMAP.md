@@ -10,9 +10,10 @@
 - Export/import (JSON, versie 1), offline PWA, Cloudflare-hosting
 - Weergave Systeem/Licht/Donker (tab Instellingen, keuze bewaard op het apparaat)
 - UX-ronde 1: compacte kaarten (één open), vaste beurtbalk, schade-paneel, meldingen met Ongedaan
+- Twee modi: **Voorbereiden** (spelers, monsters, party, lair actions, instellingen) en **Gevecht** (alleen lijst + beurtbalk); modus volgt het gevecht, wisselen kan altijd
+- Snel toevoegen in Gevecht (+): monsters die halverwege aansluiten, initiative rollen of invullen
 
 ## UX-verbeterpunten (uit review)
-- [ ] Twee modi: **Voorbereiden** (spelers/monsters toevoegen, party, lair actions) en **Gevecht** (alleen lijst + beurtbalk)
 - [ ] Logboek dichter bij de beurtbalk: eigen tab, of de laatste 2 gebeurtenissen onder de beurtbalk
 - [ ] Statblock-paneel op telefoon versleepbaar (half/heel) en dicht met veeg omlaag
 - [ ] Lettertypes zelf meeleveren in plaats van Google Fonts (offline en privacy)
