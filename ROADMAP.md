@@ -61,6 +61,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [ ] Welkomstkaart bovenaan ("Start met voorbeeld" / "Begin leeg") in plaats van de voorbeeld-hint onderaan
 
 ## Functies
+- [ ] Taaloptie Nederlands / English (Instellingen, keuze bewaard op het apparaat). Bij English alle Nederlandse tekst vervangen: knoppen, labels, meldingen, logboek, hints, formulieren, spelersscherm en foutmeldingen (ook van de Worker). D&D-termen zijn al Engels. Aanpak: teksten centraal in een vertaalbestand per taal (`js/i18n/nl.js`, `en.js`) met een `t("sleutel")`-functie; logboekregels als sleutel + waarden opslaan zodat ze na wisselen ook vertaald zijn; test die bewaakt dat elke sleutel in beide talen bestaat
 - [ ] Resistances/immunities per speler opslaan (nu handmatig in het AoE-paneel); kan uit de D&D Beyond-data komen
 - [ ] Knop "Bijwerken" per lid in de Party-tab (voor wie een D&D Beyond-link heeft), met hetzelfde bevestigvak
 - [ ] Pact Magic-slots apart bijhouden (komen terug na een short rest); nu opgeteld bij de gewone slots
