@@ -6,7 +6,7 @@ import { toPlayerView } from "./playerview.js";
 import { localChannel, dmLink } from "./share.js";
 import { $, toast } from "./ui/util.js";
 import { VERSION } from "./version.js";
-import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, bindAoe, addMonsters, normalize } from "./ui/actions.js";
+import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, bindAoe, addMonsters, normalize, scrollToCard } from "./ui/actions.js";
 
 const sample = () => ({
   list: [
@@ -23,6 +23,8 @@ function start() {
   bindForms.impStatus();
   resetBaseline();
   render();
+  // lopend gevecht na herladen, app uit de achtergrond of import: wie aan de beurt is in beeld
+  if (app.S.round) requestAnimationFrame(() => scrollToCard(app.S.active, true, true));
 }
 
 async function boot() {

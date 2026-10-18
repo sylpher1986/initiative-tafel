@@ -38,7 +38,7 @@ export function addMonsters(name, n, hpmode, initmode, silent, fixed = null) {
     const label = n > 1 || nums.length ? `${m.n} ${next + i}` : m.n;
     const c = { id: uid(), name: label, kind: "monster", ref: m.n, init: set ? fixed : r + dx, roll: r, dex: dx, ac: parseInt(m.ac) || 10, hp, max: hp, cond: [], ...legInfo(m), rc: rcInfo(m), casting: castInfo(m) };
     S.list.push(c); out.push(c);
-    because(`${set ? "initiative ingevuld" : `d20 [${r}] ${sgn(dx)}`}${group !== null ? ", groepsworp" : ""}${hpmode === "roll" ? `, HP gerold (${m.hd})` : ""}`, c.id);
+    because(`${set ? "initiative ingevuld" : `d20 [${r}] ${sgn(dx)}`}${group !== null && n > 1 ? ", groepsworp" : ""}${hpmode === "roll" ? `, HP gerold (${m.hd})` : ""}`, c.id);
   }
   if (!silent) {
     S.sample = false;
@@ -252,13 +252,13 @@ const global = {
   sbclose() { $("#sbwrap").dataset.open = "false"; return false; },
 };
 
-export function scrollToCard(id, onlyIfHidden) {
+export function scrollToCard(id, onlyIfHidden, instant) {
   const el = id && document.querySelector(`.c[data-id="${CSS.escape(id)}"]`);
   if (!el) return;
   const r = el.getBoundingClientRect(), dock = $("#dock").getBoundingClientRect().top;
   if (onlyIfHidden && r.top >= 0 && r.bottom <= dock) return;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  window.scrollBy({ top: r.top - 64, behavior: reduce ? "auto" : "smooth" });
+  window.scrollBy({ top: r.top - 64, behavior: reduce || instant ? "auto" : "smooth" });
 }
 
 export function onClick(e) {
@@ -501,23 +501,28 @@ export function bindForms() {
     e.target.value = "";
   });
 
+  const monN = () => Math.min(20, Math.max(1, parseInt($("#mon-n").value) || 1));
+  const monBtn = () => {
+    const btn = $("#mon-add"), n = monN();
+    btn.disabled = !selMon;
+    btn.textContent = selMon ? `${n > 1 ? `${n}× ` : ""}${selMon} toevoegen` : "Kies een monster";
+  };
   const renderMonList = () => {
     const f = filterMonsters(allMonsters(), $("#mon-q").value, selMon), L = f.L;
     selMon = f.sel; // UI-toestand, geen data: de selectie volgt wat zichtbaar is
-    const btn = $("#mon-add");
-    btn.disabled = !selMon;
-    btn.textContent = selMon ? `${selMon} toevoegen` : "Kies een monster";
+    monBtn();
     $("#mon-list").innerHTML = L.map((m) => `<button type="button" data-pick="${esc(m.n)}" aria-pressed="${m.n === selMon}"><span>${icon("m-" + monType(m.meta), "mi")}${esc(m.n)}${m.custom ? " · eigen" : ""}</span><span class="cr">CR ${esc(m.cr || "?")} · AC ${parseInt(m.ac) || "?"} · ${n0(m.hp) || "?"} HP</span></button>`).join("")
       || `<p class="hint" style="padding:10px">Niets gevonden. Voeg het toe onder "Eigen monster".</p>`;
   };
   bindForms.renderMonList = renderMonList;
   $("#mon-q").addEventListener("input", renderMonList);
+  $("#mon-n").addEventListener("input", monBtn);
   $("#mon-list").addEventListener("click", (e) => { const b = e.target.closest("[data-pick]"); if (!b) return; selMon = b.dataset.pick; renderMonList(); });
   $("#f-mon").addEventListener("submit", (e) => {
     e.preventDefault();
     if (!selMon) { toast("Tik eerst een monster in de lijst aan."); return; }
     $("#mon-q").blur();
-    addMonsters(selMon, Math.min(20, Math.max(1, parseInt($("#mon-n").value) || 1)), $("#mon-hpmode").value, $("#mon-initmode").value);
+    addMonsters(selMon, monN(), $("#mon-hpmode").value, $("#mon-initmode").value);
     render();
   });
 

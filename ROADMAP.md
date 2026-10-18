@@ -38,10 +38,12 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [ ] Voorbereiden-indeling: tabs staan onder de hele lijst (veel scrollen bij 10+ deelnemers) en "Instellingen" valt op 390 px buiten beeld; tabs bovenaan of toevoegen als paneel (samen met de welkomstkaart hieronder)
 
 ### Prioriteit 3: kleine bugs en afwerking
-- [ ] Na herladen (app terug uit de achtergrond) springt de lijst niet naar wie aan de beurt is; undo-geschiedenis is dan weg
+- [x] Na herladen, uit de achtergrond of na import springt de lijst naar wie aan de beurt is (1.6.4)
+- [ ] Undo-geschiedenis is weg na herladen
 - [ ] Meldingen staan bovenaan over modusknop, + en kaarten; meerdere meldingen in één blok. Liever net boven de beurtbalk
-- [ ] Logboek: "+ reden" bij elke regel is ruis (pas tonen bij tik); bug: één los monster krijgt "groepsworp" als die keuze nog aanstond
-- [ ] Monster-tab: knoptekst zonder aantal ("Bugbear toevoegen" bij aantal 3; snel toevoegen zegt wel "3× …")
+- [ ] Logboek: "+ reden" bij elke regel is ruis (pas tonen bij tik)
+- [x] Bug: één los monster kreeg "groepsworp" in het logboek (1.6.4)
+- [x] Monster-tab: knoptekst met aantal (1.6.4); was ("Bugbear toevoegen" bij aantal 3; snel toevoegen zegt wel "3× …")
 - [ ] Spelersscherm op tv: 11 deelnemers passen niet op 720p; compacter of twee kolommen
 - [ ] Tablet: statblock rechts volgt de beurt niet; automatisch het actieve monster tonen
 - [ ] Dode monsters inklappen of onderaan zetten
