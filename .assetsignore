@@ -1,0 +1,10 @@
+# Niet publiceren: alleen voor ontwikkeling
+.git
+.gitignore
+.assetsignore
+wrangler.jsonc
+package.json
+README.md
+tests
+node_modules
+.wrangler

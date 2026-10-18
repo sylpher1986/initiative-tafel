@@ -32,6 +32,10 @@ python3 -m http.server 8000     # of: npx serve
 npm test                        # Node 18+, geen installatie nodig
 ```
 
+## Publiceren
+
+Cloudflare Workers publiceert automatisch bij elke push naar `main` (instellingen in `wrangler.jsonc`, uitgesloten bestanden in `.assetsignore`).
+
 ## Nieuwe versie uitbrengen
 
 Verhoog `VERSION` in `sw.js`, anders blijven geïnstalleerde apps de oude bestanden uit hun cache gebruiken.
