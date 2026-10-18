@@ -10,6 +10,7 @@
 - Export/import (JSON, versie 1), offline PWA, Cloudflare-hosting
 - Weergave Systeem/Licht/Donker (tab Instellingen, keuze bewaard op het apparaat)
 - UX-ronde 1: compacte kaarten (één open), vaste beurtbalk, schade-paneel, meldingen met Ongedaan
+- Avatars: icoon per creature type (monsters) en ras (spelers), portret uit de D&D Beyond-PDF als die er een heeft
 - AoE-schade op meerdere doelen: save ½/0, resist/kwetsbaar/immuun (ook uit statblock), monster-saves rollen, legendary resistance; Immuun ook in het gewone schade-paneel
 - Twee modi: **Voorbereiden** (spelers, monsters, party, lair actions, instellingen) en **Gevecht** (alleen lijst + beurtbalk); modus volgt het gevecht, wisselen kan altijd
 - Snel toevoegen in Gevecht (+): monsters die halverwege aansluiten, initiative rollen of invullen

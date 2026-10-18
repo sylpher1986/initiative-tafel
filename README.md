@@ -43,3 +43,5 @@ Verhoog `VERSION` in `sw.js`, anders blijven geïnstalleerde apps de oude bestan
 ## Licentie van de monsterdata
 
 Bevat materiaal uit het System Reference Document 5.1 (2014) van Wizards of the Coast LLC, beschikbaar onder [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode), via [Open5e](https://open5e.com). Dungeons & Dragons is een handelsmerk van Wizards of the Coast; dit project is daar niet aan verbonden.
+
+Icoontjes voor rassen en creature types (`icons/creatures.svg`) komen van [game-icons.net](https://game-icons.net), door Lorc, Delapouite, Sbed en Cathelineau, onder [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Lettertypes Alegreya SC en Alegreya Sans: SIL Open Font License (`fonts/OFL.txt`).

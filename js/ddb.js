@@ -1,5 +1,6 @@
 // D&D Beyond character sheet: PDF-export met formuliervelden → speler met slots en resources.
 // parseDdbFields is puur (testbaar); readSheetPdf laadt pdf.js pas als het nodig is.
+import { isBlank, cleanImg } from "./ui/avatar.js";
 
 export function parseDdbFields(annots){
   const F={}; // genormaliseerde naam -> waarde (eerste niet-lege wint)
@@ -79,10 +80,50 @@ function loadPdfJs() {
 export async function readSheetPdf(file) {
   const lib = await loadPdfJs();
   const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
-  const annots = [];
-  for (let i = 1; i <= doc.numPages; i++) {
-    const pg = await doc.getPage(i);
-    for (const a of await pg.getAnnotations()) if (a.fieldName) annots.push({ page: i, fieldName: a.fieldName, fieldValue: a.fieldValue, rect: a.rect });
-  }
-  return parseDdbFields(annots);
+  try {
+    const annots = [];
+    for (let i = 1; i <= doc.numPages; i++) {
+      const pg = await doc.getPage(i);
+      for (const a of await pg.getAnnotations()) if (a.fieldName) annots.push({ page: i, fieldName: a.fieldName, fieldValue: a.fieldValue, rect: a.rect });
+    }
+    const sheet = parseDdbFields(annots);
+    if (!sheet) return null;
+    let img = null;
+    for (const a of annots.filter((x) => /character\s*image|portrait/i.test(x.fieldName))) {
+      try { img = await portrait(lib, doc, a); } catch { img = null; }
+      if (img) break;
+    }
+    return { sheet, img }; // portret apart: hoort op de deelnemer, niet nog eens in sheet
+  } finally { doc.destroy(); }
+}
+
+/** Portret uit een vak zoals "CHARACTER IMAGE": alleen dat vak renderen (±320 px), kader eraf, blanco → null, max 128 px jpeg. */
+async function portrait(lib, doc, a) {
+  if (!a.rect) return null;
+  const [x1, y1, x2, y2] = a.rect, w = Math.abs(x2 - x1), h = Math.abs(y2 - y1);
+  if (w < 20 || h < 20) return null;
+  const pg = await doc.getPage(a.page);
+  const scale = Math.min(4, 320 / Math.max(w, h));
+  const r = pg.getViewport({ scale }).convertToViewportRectangle(a.rect);
+  const L = Math.min(r[0], r[2]), T = Math.min(r[1], r[3]), W = Math.round(Math.abs(r[2] - r[0])), H = Math.round(Math.abs(r[3] - r[1]));
+  const vp = pg.getViewport({ scale, offsetX: -L, offsetY: -T }); // vak linksboven in het canvas
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  try {
+    const ctx = cv.getContext("2d", { willReadFrequently: true });
+    // ENABLE: ook de weergave van formulierknoppen tekenen (daar zit het portret in)
+    await pg.render({ canvasContext: ctx, viewport: vp, annotationMode: lib.AnnotationMode ? lib.AnnotationMode.ENABLE : 1 }).promise;
+    const ins = Math.round(Math.min(W, H) * 0.04); // kader overslaan
+    const sw = W - 2 * ins, sh = H - 2 * ins;
+    if (sw < 8 || sh < 8 || isBlank(ctx.getImageData(ins, ins, sw, sh).data)) return null;
+    const k = Math.min(1, 128 / Math.max(sw, sh));
+    const out = document.createElement("canvas");
+    out.width = Math.max(1, Math.round(sw * k)); out.height = Math.max(1, Math.round(sh * k));
+    const oc = out.getContext("2d");
+    oc.fillStyle = "#fff"; oc.fillRect(0, 0, out.width, out.height); // jpeg kent geen transparantie
+    oc.drawImage(cv, ins, ins, sw, sh, 0, 0, out.width, out.height);
+    const url = out.toDataURL("image/jpeg", 0.8);
+    out.width = out.height = 0;
+    return cleanImg(url);
+  } finally { cv.width = cv.height = 0; } // geheugen op de telefoon direct vrijgeven
 }

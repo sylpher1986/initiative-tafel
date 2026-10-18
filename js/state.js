@@ -87,7 +87,7 @@ function writeLog(prev) {
 }
 
 /* ---------- vaste party: HP, slots en resources lopen door van gevecht naar gevecht ---------- */
-const PKEYS = ["name", "ac", "max", "hp", "temp", "dex", "initBonus", "casting", "res", "sheet", "ds"];
+const PKEYS = ["name", "race", "img", "ac", "max", "hp", "temp", "dex", "initBonus", "casting", "res", "sheet", "ds"];
 
 export function syncParty() {
   let changed = false;

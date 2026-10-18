@@ -8,8 +8,8 @@ import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bind
 
 const sample = () => ({
   list: [
-    { id: "ex1", name: "Thalia (voorbeeld)", kind: "pc", init: 17, dex: 3, ac: 15, hp: 24, max: 24, cond: [] },
-    { id: "ex2", name: "Brom (voorbeeld)", kind: "pc", init: 9, dex: 0, ac: 18, hp: 31, max: 31, cond: [] },
+    { id: "ex1", name: "Thalia (voorbeeld)", kind: "pc", race: "Elf", init: 17, dex: 3, ac: 15, hp: 24, max: 24, cond: [] },
+    { id: "ex2", name: "Brom (voorbeeld)", kind: "pc", race: "Dwarf", init: 9, dex: 0, ac: 18, hp: 31, max: 31, cond: [] },
   ],
   round: 0, active: null, sample: true,
 });

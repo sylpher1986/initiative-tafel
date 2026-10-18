@@ -11,6 +11,7 @@ import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes
 import { castInfo, legInfo, rcInfo, pickList, CONC_SPELLS, cleanSpell } from "../rules/spells.js";
 import { logText } from "../log.js";
 import { readSheetPdf } from "../ddb.js";
+import { RACE_OPTS, raceKey, pickRace, cleanImg, icon, monType } from "./avatar.js";
 import { buildExport, parseImport } from "../backup.js";
 
 /** Fx uit de regels: meldingen tonen en oorzaken doorgeven aan het logboek */
@@ -248,9 +249,10 @@ export function onToggle(e) {
 }
 
 /* ---------- formulieren: speler, monster, eigen monster ---------- */
-let pendingSheet = null, selMon = "Goblin";
+let pendingSheet = null, pendingImg = null, selMon = "Goblin";
 
 export function bindForms() {
+  $("#pc-race").insertAdjacentHTML("beforeend", RACE_OPTS.map((r) => `<option>${esc(r)}</option>`).join(""));
   $("#f-pc").addEventListener("submit", (e) => {
     e.preventDefault();
     const max = parseInt($("#pc-hp").value) || 0;
@@ -262,11 +264,12 @@ export function bindForms() {
     let pid = null;
     if ($("#pc-party").checked) { const ex = app.party.find((m) => m.name.toLowerCase() === nm.toLowerCase()); pid = ex ? ex.pid : uid(); }
     const dex = parseInt($("#pc-dex").value) || 0;
+    const race = pickRace($("#pc-race").value, sh && sh.race);
     app.S.list.push({
-      id: uid(), pid, name: nm, kind: "pc", init: parseInt($("#pc-init").value) || 0, dex, ac: parseInt($("#pc-ac").value) || 0, hp: max, max, cond: [],
+      id: uid(), pid, name: nm, kind: "pc", race, img: pendingImg, init: parseInt($("#pc-init").value) || 0, dex, ac: parseInt($("#pc-ac").value) || 0, hp: max, max, cond: [],
       casting: manual || (sh && sh.casting ? structuredClone(sh.casting) : null), res: sh ? structuredClone(sh.res || []) : [], sheet: sh || null, initBonus: sh ? sh.initBonus : dex,
     });
-    pendingSheet = null; $("#pc-sheetinfo").textContent = ""; app.S.sample = false;
+    pendingSheet = null; pendingImg = null; $("#pc-sheetinfo").textContent = ""; app.S.sample = false;
     e.target.reset(); $("#pc-dex").value = 0; render(); $("#pc-name").focus();
   });
   $("#pc-roll").addEventListener("click", () => {
@@ -277,12 +280,13 @@ export function bindForms() {
     const f = e.target.files[0]; if (!f) return;
     $("#pc-sheetinfo").textContent = "Sheet wordt gelezen…";
     try {
-      const h = await readSheetPdf(f);
+      const got = await readSheetPdf(f), h = got && got.sheet;
       if (!h) { $("#pc-sheetinfo").textContent = "Geen D&D Beyond-formuliervelden gevonden. Is dit een PDF-export van D&D Beyond?"; return; }
-      pendingSheet = h;
+      pendingSheet = h; pendingImg = cleanImg(got.img);
       $("#pc-name").value = h.name; $("#pc-ac").value = h.ac || ""; $("#pc-hp").value = h.max || ""; $("#pc-dex").value = h.dex;
+      $("#pc-race").value = RACE_OPTS.find((r) => raceKey(r) === raceKey(h.race)) || "";
       const sl = h.casting ? h.casting.slots.map((x) => `${x.lvl}e: ${x.max}`).join(", ") : "geen";
-      $("#pc-sheetinfo").innerHTML = `<b>${esc(h.name)}</b> geladen (${esc(h.cls)}). Spell slots: ${esc(sl)}${h.res.length ? `. Resources: ${esc(h.res.map((r) => r.n + " " + r.max).join(", "))}` : ""}. Vul initiative in of tik op Rol.`;
+      $("#pc-sheetinfo").innerHTML = `<b>${esc(h.name)}</b> geladen (${esc([h.race, h.cls].filter(Boolean).join(", "))})${pendingImg ? `, met portret <img class="pv" src="${esc(pendingImg)}" alt="">` : ""}. Spell slots: ${esc(sl)}${h.res.length ? `. Resources: ${esc(h.res.map((r) => r.n + " " + r.max).join(", "))}` : ""}. Vul initiative in of tik op Rol.`;
     } catch { $("#pc-sheetinfo").textContent = "De PDF-lezer kon niet laden of het bestand niet openen. Controleer je verbinding en probeer het opnieuw."; }
     e.target.value = "";
   });
@@ -293,7 +297,7 @@ export function bindForms() {
     const btn = $("#mon-add");
     btn.disabled = !selMon;
     btn.textContent = selMon ? `${selMon} toevoegen` : "Kies een monster";
-    $("#mon-list").innerHTML = L.map((m) => `<button type="button" data-pick="${esc(m.n)}" aria-pressed="${m.n === selMon}"><span>${esc(m.n)}${m.custom ? " · eigen" : ""}</span><span class="cr">CR ${esc(m.cr || "?")} · AC ${parseInt(m.ac) || "?"} · ${n0(m.hp) || "?"} HP</span></button>`).join("")
+    $("#mon-list").innerHTML = L.map((m) => `<button type="button" data-pick="${esc(m.n)}" aria-pressed="${m.n === selMon}"><span>${icon("m-" + monType(m.meta), "mi")}${esc(m.n)}${m.custom ? " · eigen" : ""}</span><span class="cr">CR ${esc(m.cr || "?")} · AC ${parseInt(m.ac) || "?"} · ${n0(m.hp) || "?"} HP</span></button>`).join("")
       || `<p class="hint" style="padding:10px">Niets gevonden. Voeg het toe onder "Eigen monster".</p>`;
   };
   bindForms.renderMonList = renderMonList;

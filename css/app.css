@@ -137,7 +137,7 @@ details.conds summary::-webkit-details-marker{display:none}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .chk{display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.95rem;color:var(--fg)}
 .chk input{width:20px;height:20px;min-height:0;accent-color:var(--accent)}
-.pm{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.pm{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
 .pm:last-of-type{border-bottom:0}
 .pm .pn{font-weight:700}
 .pm .pi{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
@@ -179,6 +179,9 @@ textarea{min-height:120px;resize:vertical}
 .mlist button{display:flex;width:100%;justify-content:space-between;gap:8px;border:0;border-bottom:1px solid var(--line);background:transparent;padding:8px 10px;text-align:left}
 .mlist button:last-child{border-bottom:0}
 .mlist button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.mlist button>span:first-child{display:flex;align-items:flex-start;gap:8px;min-width:0}
+.mlist .mi{flex:0 0 18px;width:18px;height:18px;margin-top:2px;color:var(--muted)}
+.mlist button[aria-pressed="true"] .mi{color:var(--accent)}
 .mlist .cr{color:var(--muted);font-size:.85rem;font-variant-numeric:tabular-nums;white-space:nowrap}
 .hint{font-size:.85rem;color:var(--muted);margin:0}
 /* Instellingen: kopjes en een gesegmenteerde keuze (Systeem/Licht/Donker) */
@@ -272,7 +275,8 @@ ol.order{gap:6px}
 .c.k .i{font-family:var(--display);font-weight:800;font-size:1.2rem;text-align:center;font-variant-numeric:tabular-nums;line-height:1}
 .c.k .tri{display:block;font-size:.65rem;color:var(--active);margin-top:2px}
 .c.k .n{font-weight:700;font-size:1.02rem;min-width:0}
-.c.k .n>span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c.k .n{display:flex;align-items:center;gap:8px}
+.c.k .n>.nm{display:block;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .c.k .meta{font-size:.82rem;color:var(--muted);white-space:nowrap}
 .c.k .meta b{color:var(--fg)}
 .hpw{grid-column:2/4;display:flex;align-items:center;gap:8px}
@@ -280,6 +284,15 @@ ol.order{gap:6px}
 .hpw .bar i{display:block;height:100%;background:var(--good)}
 .hpw .bar i.mid{background:var(--warn)}.hpw .bar i.low{background:var(--bad)}
 .hpn{font-size:.85rem;font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+/* Avatar: portret of icoon (ras / creature type) */
+.av{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:inline-grid;place-items:center;overflow:hidden;background:var(--accent-soft);color:var(--accent)}
+.pm .av,.c.k.pc .av{background:var(--active-soft);color:var(--active)}
+.av .ic{width:20px;height:20px}
+.av.img{background:var(--sunk)}
+.av img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+.ic{fill:currentColor}
+.c.k.out .av{filter:grayscale(1)}
+.hint .pv{width:28px;height:28px;border-radius:50%;object-fit:cover;object-position:50% 20%;vertical-align:middle}
 .badges{display:flex;gap:5px;flex-wrap:wrap;padding:0 12px 10px 48px}
 .kbody .badges{padding:0 0 8px}
 .bd{flex:0 0 auto;font-size:.74rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap;background:transparent;font-family:inherit;line-height:1.5}

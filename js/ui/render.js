@@ -8,6 +8,7 @@ import * as R from "../rules/combat.js";
 import { ORD, pickList } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText } from "../rules/aoe.js";
 import { diceify } from "./statblock.js";
+import { avatar } from "./avatar.js";
 
 /** UI-toestand die niet in de encounter (en dus niet in undo/opslag) hoort */
 export const ui = {
@@ -190,7 +191,7 @@ function row(c, S) {
   return `<li class="c k ${c.kind === "pc" ? "pc" : "mon"} ${open ? "open" : ""} ${turn ? "turn" : ""} ${isOut(c) ? "out" : ""}" data-id="${esc(c.id)}">
     <button class="khead" data-a="open" aria-expanded="${open}" aria-label="${esc(c.name)}${open ? ", sluiten" : ", openen"}">
       <span class="i">${n0(c.init)}${turn ? `<span class="tri" aria-hidden="true">▶</span>` : ""}</span>
-      <span class="n"><span>${esc(c.name)}</span></span>
+      <span class="n">${avatar(c, c.ref ? findMon(c.ref)?.meta : "")}<span class="nm">${esc(c.name)}</span></span>
       <span class="meta">${isOut(c) && c.kind === "monster" ? "neer" : c.ac ? `AC <b>${n0(c.ac)}</b>` : ""}</span>
       ${c.max ? hpBar(c) : ""}
     </button>
@@ -402,7 +403,7 @@ export function paintParty() {
   el.innerHTML = `<div>${app.party.map((m) => {
     const sl = m.casting && m.casting.slots.length ? " · slots " + m.casting.slots.map((x) => `${n0(x.left)}/${n0(x.max)}`).join(" ") : "";
     const rs = (m.res || []).map((r) => ` · ${esc(r.n)} ${n0(r.left)}/${n0(r.max)}`).join("");
-    return `<div class="pm"><div><div class="pn">${esc(m.name)}</div><div class="pi">${m.sheet && m.sheet.cls ? esc(m.sheet.cls) + " · " : ""}${m.ac ? `AC ${n0(m.ac)} · ` : ""}${m.max ? `HP ${n0(m.hp)}/${n0(m.max)}${m.temp ? ` +${n0(m.temp)}` : ""}` : ""}${sl}${rs}</div></div>
+    return `<div class="pm">${avatar({ ...m, kind: "pc" })}<div><div class="pn">${esc(m.name)}</div><div class="pi">${m.sheet && m.sheet.cls ? esc(m.sheet.cls) + " · " : ""}${m.ac ? `AC ${n0(m.ac)} · ` : ""}${m.max ? `HP ${n0(m.hp)}/${n0(m.max)}${m.temp ? ` +${n0(m.temp)}` : ""}` : ""}${sl}${rs}</div></div>
       <div class="pc">${at.has(m.pid) ? `<span class="here">aan tafel</span>` : `<input data-pinit="${esc(m.pid)}" type="number" inputmode="numeric" placeholder="init" aria-label="Initiative ${esc(m.name)}" value="${esc(ui.partyInit[m.pid] ?? "")}"><button type="button" class="btn small" data-proll="${esc(m.pid)}">Rol</button>`}
         <button type="button" class="link" data-pdel="${esc(m.pid)}">Uit party</button></div></div>`;
   }).join("")}</div>
