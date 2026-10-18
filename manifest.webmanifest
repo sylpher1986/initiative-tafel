@@ -1,0 +1,16 @@
+{
+  "name": "Initiative Tafel",
+  "short_name": "Initiative",
+  "description": "Initiative tracker voor D&D 5e (2014)",
+  "lang": "nl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#13161d",
+  "theme_color": "#8a1f14",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

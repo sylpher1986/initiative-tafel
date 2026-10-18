@@ -1,0 +1,10 @@
+{
+  "name": "initiative-tafel",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Initiative tracker voor D&D 5e (2014)",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}

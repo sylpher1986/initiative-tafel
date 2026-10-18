@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Initiative Tafel</title>
+<meta name="description" content="Initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.">
+<meta name="theme-color" content="#8a1f14" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#13161d" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Initiative">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700;800&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap">
+<link rel="stylesheet" href="css/app.css">
+<script type="module" src="js/main.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <section style="display:grid;gap:12px;min-width:0">
+    <header class="top">
+      <h1>Initiative <span>Tafel</span></h1>
+      <div class="round"><span class="hint">Ronde</span> <b id="round">–</b></div>
+    </header>
+
+    <div class="now" id="now"></div>
+
+    <ol class="order" id="order"></ol>
+
+    <div class="bar" id="resetbar"></div>
+    <div id="logwrap"></div>
+
+    <div class="panel">
+      <div class="tabs" role="tablist">
+        <button role="tab" id="tab-pc" aria-selected="true" data-tab="pc">Speler</button>
+        <button role="tab" id="tab-mon" aria-selected="false" data-tab="mon">Monster</button>
+        <button role="tab" id="tab-custom" aria-selected="false" data-tab="custom">Eigen monster</button>
+        <button role="tab" id="tab-party" aria-selected="false" data-tab="party">Party</button>
+        <button role="tab" id="tab-data" aria-selected="false" data-tab="data">Opslag</button>
+      </div>
+
+      <form class="form" id="f-pc" data-panel="pc">
+        <label>Character sheet importeren (PDF van D&amp;D Beyond)<input id="pc-pdf" type="file" accept="application/pdf,.pdf"></label>
+        <p class="hint" id="pc-sheetinfo" aria-live="polite"></p>
+        <div class="f2">
+          <label>Naam<input id="pc-name" required placeholder="bijv. Thalia"></label>
+          <label>Initiative<span style="display:flex;gap:6px"><input id="pc-init" type="number" inputmode="numeric" required placeholder="worp + mod"><button type="button" class="btn small" id="pc-roll" title="d20 + initiative bonus">Rol</button></span></label>
+        </div>
+        <div class="f2">
+          <label>AC (optioneel)<input id="pc-ac" type="number" inputmode="numeric"></label>
+          <label>Max HP (optioneel)<input id="pc-hp" type="number" inputmode="numeric"></label>
+          <label>Dex-mod (tiebreak)<input id="pc-dex" type="number" inputmode="numeric" value="0"></label>
+        </div>
+        <details class="cast"><summary class="link">Spellcaster? Spell slots invullen</summary>
+          <div class="slotin" style="margin-top:8px"><label>1e<input id="pc-sl1" type="number" min="0" max="9" inputmode="numeric"></label><label>2e<input id="pc-sl2" type="number" min="0" max="9" inputmode="numeric"></label><label>3e<input id="pc-sl3" type="number" min="0" max="9" inputmode="numeric"></label><label>4e<input id="pc-sl4" type="number" min="0" max="9" inputmode="numeric"></label><label>5e<input id="pc-sl5" type="number" min="0" max="9" inputmode="numeric"></label><label>6e<input id="pc-sl6" type="number" min="0" max="9" inputmode="numeric"></label><label>7e<input id="pc-sl7" type="number" min="0" max="9" inputmode="numeric"></label><label>8e<input id="pc-sl8" type="number" min="0" max="9" inputmode="numeric"></label><label>9e<input id="pc-sl9" type="number" min="0" max="9" inputmode="numeric"></label></div>
+        </details>
+        <label class="chk"><input type="checkbox" id="pc-party" checked> Ook opslaan in vaste party</label>
+        <button class="btn primary" type="submit">Speler toevoegen</button>
+      </form>
+
+      <form class="form" id="f-mon" data-panel="mon" hidden>
+        <label>Zoek monster<input id="mon-q" placeholder="goblin, troll, cultist…" autocomplete="off"></label>
+        <div class="mlist" id="mon-list"></div>
+        <div class="f2">
+          <label>Aantal<input id="mon-n" type="number" min="1" max="20" value="1" inputmode="numeric"></label>
+          <label>HP<select id="mon-hpmode"><option value="avg">Gemiddeld</option><option value="roll">Rollen (hit dice)</option></select></label>
+          <label>Initiative<select id="mon-initmode"><option value="each">Per monster</option><option value="group">Eén worp voor de groep</option></select></label>
+        </div>
+        <button class="btn primary" type="submit" id="mon-add">Toevoegen en initiative rollen</button>
+      </form>
+
+      <div class="form" id="party-panel" data-panel="party" hidden></div>
+      <div class="form" id="data-panel" data-panel="data" hidden>
+        <p class="hint">Alles staat op dit apparaat. Maak af en toe een export: als backup, om naar een ander apparaat te gaan, of om je party met een co-DM te delen.</p>
+        <div class="bar"><button type="button" class="btn primary" id="exp-file">Exporteer als bestand</button><button type="button" class="btn small" id="exp-copy">Kopieer als tekst</button></div>
+        <label>Export importeren (bestand)<input id="imp-backup" type="file" accept=".json,application/json"></label>
+        <details class="cast"><summary class="link">Of plak de tekst van een export (bijv. uit de Claude-versie)</summary>
+          <div class="form" style="margin-top:8px"><textarea id="imp-text" placeholder='{"format":"initiative-tafel", …}'></textarea>
+          <button type="button" class="btn small" id="imp-text-go">Importeren</button></div></details>
+        <div id="imp-confirm"></div>
+        <p class="hint" id="data-info"></p>
+      </div>
+      <form class="form" id="f-custom" data-panel="custom" hidden>
+        <p class="hint">Voor monsters buiten de SRD. Ze worden in deze browser bewaard en verschijnen daarna gewoon in de monsterlijst.</p>
+        <div class="f2">
+          <label>Naam<input id="cu-name" required></label>
+          <label>CR<input id="cu-cr" placeholder="1/2"></label>
+        </div>
+        <div class="f2">
+          <label>AC<input id="cu-ac" type="number" required inputmode="numeric"></label>
+          <label>HP of dice<input id="cu-hp" required placeholder="22 of 5d8"></label>
+          <label>Dex-score<input id="cu-dex" type="number" value="10" inputmode="numeric"></label>
+        </div>
+        <label>Statblock (plak tekst)<textarea id="cu-text" placeholder="Multiattack. … &#10;Bite. Melee Weapon Attack: +4 to hit, reach 5 ft. Hit: 7 (2d4 + 2) piercing damage."></textarea></label>
+        <p class="hint">Dobbelstenen als (2d6 + 3) en "+4 to hit" worden in het statblock klikbaar.</p>
+        <button class="btn primary" type="submit">Monster opslaan</button>
+        <hr style="border:0;border-top:1px solid var(--line);margin:6px 0">
+        <label>Monsterbestand importeren (JSON)<input id="imp-file" type="file" accept=".json,application/json"></label>
+        <p class="hint">Werkt met <b>5e-SRD-Monsters.json</b> uit de 5e-database van 5e-bits op GitHub (map src/2014/en) en met een Open5e-export. Je eigen JSON-lijst in hetzelfde formaat mag ook. Meerdere bestanden na elkaar importeren mag; ze worden samengevoegd.</p>
+        <p class="hint" id="imp-status"></p>
+      </form>
+    </div>
+  </section>
+
+  <aside class="sbwrap" id="sbwrap" data-open="false" aria-label="Statblock">
+    <div class="sb" id="sb"><div class="sbempty">Tik op <b>Statblock</b> bij een monster om het hier te openen.</div></div>
+  </aside>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<noscript><p style="padding:16px">Initiative Tafel heeft JavaScript nodig.</p></noscript>
+</body>
+</html>
