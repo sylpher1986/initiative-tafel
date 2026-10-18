@@ -155,8 +155,11 @@ details.conds summary::-webkit-details-marker{display:none}
 /* Add panel */
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:-4px 0 12px}
-.tabs{overflow-x:auto}
-.tabs button{white-space:nowrap;border:0;background:none;padding:8px 10px;border-bottom:3px solid transparent;color:var(--muted);font-weight:700}
+.tabs{overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+/* grid-items mogen smaller worden dan hun inhoud, zodat brede onderdelen zelf scrollen i.p.v. de pagina op te rekken */
+.wrap>section>*{min-width:0}
+.tabs button{white-space:nowrap;flex:0 0 auto;border:0;background:none;padding:8px;border-bottom:3px solid transparent;color:var(--muted);font-weight:700}
 .tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
 .form{display:grid;gap:10px}
 .f2{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
