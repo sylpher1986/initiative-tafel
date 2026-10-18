@@ -25,6 +25,7 @@ Bij elk nieuw idee of elke wijziging kijken twee rollen mee. Waar mogelijk als *
 - Bewaakt consistentie met de bestaande keuzes hieronder.
 
 **Senior developer: na het bouwen, vóór de push**
+- Scope: standaard de diff plus wat er direct aan raakt (aanroepers van gewijzigde functies, bijbehorende regels in `js/rules/` en hun tests). Volledige review alleen bij een `1.x.0`- of `x.0.0`-versie, een formaatwijziging in `js/backup.js`, of op verzoek. `npm test` draait wel altijd volledig (± 1 s).
 - Test de logica: klopt het met de 5e 2014-regels, randgevallen (0 HP, dood, lege lijst, undo, import van oude of rare data), en dekken de tests het af?
 - Kiest de meest efficiënte en eenvoudigste oplossing: geen dubbele code, geen onnodig werk per tik, regels puur in `js/rules/`, render zonder bijwerkingen.
 - Controleert veiligheid (escapen, opschonen van import) en dat bestaande functionaliteit niet verloren gaat.
