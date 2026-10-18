@@ -168,15 +168,12 @@ export const initPcs = (list) => sortOrder(list.filter((c) => c.kind === "pc" &&
 
 /**
  * Initiative van spelers vastleggen (paneel bij Start gevecht). map = { id: tekst }.
- * Alleen geldige waarden (parseInit) worden gezet.
- * missing = namen van spelers zonder geldige waarde (dan start de UI het gevecht niet).
+ * Alles of niets: missing = namen van spelers zonder geldige waarde (parseInit); dan verandert er niets
+ * (de UI start het gevecht niet en Annuleer moet daarna echt niets veranderd hebben).
  */
 export function setInits(list, map) {
-  const out = Object.assign(fx(), { missing: [] });
-  for (const c of initPcs(list)) {
-    const v = parseInit(map[c.id]);
-    if (v === null) { out.missing.push(c.name); continue; }
-    if (v !== c.init) c.init = v; // het logboek noemt de wijziging zelf ("initiative 12 → 17")
-  }
+  const L = initPcs(list), vals = L.map((c) => parseInit(map[c.id]));
+  const out = Object.assign(fx(), { missing: L.filter((c, i) => vals[i] === null).map((c) => c.name) });
+  if (!out.missing.length) L.forEach((c, i) => { if (vals[i] !== c.init) c.init = vals[i]; }); // het logboek noemt de wijziging zelf ("initiative 12 → 17")
   return out;
 }

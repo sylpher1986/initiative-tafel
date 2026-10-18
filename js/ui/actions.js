@@ -378,7 +378,9 @@ export function onKey(e) {
   if (ui.aoe && e.key === "Escape") { e.preventDefault(); closeAoe(); return; }
   if (ui.atk && e.key === "Escape") { e.preventDefault(); closeAtk(); return; }
   if (ui.initDraft && !e.ctrlKey && !e.metaKey) {
-    const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" ? ["enter"] : null;
+    // Enter/spatie op een knop in het paneel (Rol, Start, …) doet wat die knop doet
+    const onBtn = e.target.closest?.("#isheet button");
+    const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" && !onBtn ? ["enter"] : null;
     if (k) { e.preventDefault(); initKey(...k); }
     return;
   }
@@ -942,6 +944,8 @@ function initGo() {
   ui.initDraft = null; ui.initSkip = true;
   paintInit();
   $("#start")?.click(); // zelfde afhandeling als de knop: gevecht starten, kaart van wie begint, één undo-stap
+  ui.initSkip = false; // click is synchroon; zonder (werkende) #start mag de vlag niet blijven hangen
+  render(); // vangnet: commit de nieuwe waarden als er toch niet gestart is (anders no-op)
 }
 
 /** Knop of toets in het paneel. k: d (cijfer), back, clear, sel, roll, next, enter, go, close */
