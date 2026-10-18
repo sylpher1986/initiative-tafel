@@ -1,5 +1,5 @@
 // Service worker: maakt de app offline bruikbaar. Verhoog VERSION bij elke release zodat de cache ververst.
-const VERSION = "v3";
+const VERSION = "v4";
 const CACHE = "initiative-tafel-" + VERSION;
 const ASSETS = [
   "./",
@@ -22,6 +22,7 @@ const ASSETS = [
   "./js/rules/turns.js",
   "./js/state.js",
   "./js/storage.js",
+  "./js/theme.js",
   "./js/ui/actions.js",
   "./js/ui/render.js",
   "./js/ui/statblock.js",

@@ -8,6 +8,7 @@
 - Spell slots en innate spells (monsters en spelers), concentration gekoppeld aan spells (incl. upcasting)
 - Recharge, legendary actions/resistance, lair actions (zelf in te voeren en bewaard), reactions
 - Export/import (JSON, versie 1), offline PWA, Cloudflare-hosting
+- Weergave Systeem/Licht/Donker (tab Instellingen, keuze bewaard op het apparaat)
 - UX-ronde 1: compacte kaarten (één open), vaste beurtbalk, schade-paneel, meldingen met Ongedaan
 
 ## UX-verbeterpunten (uit review)

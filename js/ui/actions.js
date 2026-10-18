@@ -385,6 +385,13 @@ async function copyText(t, okMsg, box) {
 
 /* ---------- opslag-tab: export en import ---------- */
 export function bindBackup(afterImport) {
+  const seg = $("#theme-seg");
+  const showTheme = (mode) => seg.querySelectorAll("[data-theme-set]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.themeSet === mode));
+  showTheme(window.itTheme?.get() ?? "system");
+  seg.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-theme-set]");
+    if (b && window.itTheme) showTheme(window.itTheme.set(b.dataset.themeSet));
+  });
   const json = () => JSON.stringify(buildExport(app));
   const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
   $("#exp-file").addEventListener("click", () => {

@@ -7,6 +7,7 @@
 <meta name="description" content="Initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.">
 <meta name="theme-color" content="#8a1f14" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#13161d" media="(prefers-color-scheme: dark)">
+<script src="js/theme.js"></script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -37,7 +38,7 @@
         <button role="tab" id="tab-mon" aria-selected="false" data-tab="mon">Monster</button>
         <button role="tab" id="tab-custom" aria-selected="false" data-tab="custom">Eigen monster</button>
         <button role="tab" id="tab-party" aria-selected="false" data-tab="party">Party</button>
-        <button role="tab" id="tab-data" aria-selected="false" data-tab="data">Opslag</button>
+        <button role="tab" id="tab-data" aria-selected="false" data-tab="data">Instellingen</button>
       </div>
 
       <form class="form" id="f-pc" data-panel="pc">
@@ -72,6 +73,13 @@
 
       <div class="form" id="party-panel" data-panel="party" hidden></div>
       <div class="form" id="data-panel" data-panel="data" hidden>
+        <h2 class="sethead" id="theme-head">Weergave</h2>
+        <div class="seg" role="group" aria-labelledby="theme-head" id="theme-seg">
+          <button type="button" data-theme-set="system" aria-pressed="true">Systeem</button>
+          <button type="button" data-theme-set="light" aria-pressed="false">Licht</button>
+          <button type="button" data-theme-set="dark" aria-pressed="false">Donker</button>
+        </div>
+        <h2 class="sethead">Opslag</h2>
         <p class="hint">Alles staat op dit apparaat. Maak af en toe een export: als backup, om naar een ander apparaat te gaan, of om je party met een co-DM te delen.</p>
         <div class="bar"><button type="button" class="btn primary" id="exp-file">Exporteer als bestand</button><button type="button" class="btn small" id="exp-copy">Kopieer als tekst</button></div>
         <label>Export importeren (bestand)<input id="imp-backup" type="file" accept=".json,application/json"></label>
