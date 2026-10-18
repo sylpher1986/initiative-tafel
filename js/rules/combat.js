@@ -140,9 +140,25 @@ export function applyDamage(c, raw, mode = 1, quiet = false) {
   return out;
 }
 
+/** Max HP instellen (bewerken, bijgewerkte sheet): opgelopen schade blijft; wie op 0 staat blijft daar, levend minstens 1 */
+export function setMax(c, nMax) {
+  nMax = Math.max(1, Math.min(9999, Math.round(+nMax) || 1));
+  if (!c.max) c.hp = nMax;
+  else if (c.hp > 0) c.hp = Math.max(1, nMax - Math.max(0, c.max - c.hp));
+  c.max = nMax;
+}
+
+/** Max HP-effect terugdraaien (Aid voorbij: max −5, huidige HP alleen omlaag als die erboven zit) */
+export function revertMax(c, hpd) {
+  c.max = Math.max(1, (c.max || 0) - hpd);
+  c.hp = Math.min(c.hp, c.max);
+}
+
 /** Short of long rest voor een speler (party-lid of deelnemer aan tafel) */
 export function restMember(m, long) {
   if (long) {
+    for (const e of m.eff || []) if (e.hpd) revertMax(m, e.hpd); // long rest: alle tijdelijke effecten voorbij
+    m.eff = [];
     m.hp = m.max; m.temp = 0; m.ds = null;
     if (m.cond) m.cond = m.cond.filter((x) => x !== "Unconscious");
     if (m.casting) {

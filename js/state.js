@@ -3,6 +3,7 @@ import * as store from "./storage.js";
 import { diffLog } from "./log.js";
 import { uid } from "./rules/dice.js";
 import { setLibrary } from "./data/monsters.js";
+import { endConcEffects } from "./rules/effects.js";
 
 /** Alle data van de app. S = de lopende encounter. */
 export const app = { S: null, party: [], lairs: {}, custom: [], imported: [] };
@@ -48,6 +49,8 @@ export function resetBaseline() {
  * Doet niets als er niets veranderde. Geeft true terug bij een wijziging.
  */
 export function commit() {
+  // effecten van een caster die geen concentratie meer heeft (0 HP, nieuwe spell, verwijderd) horen bij deze stap
+  pendingWhy.push(...endConcEffects(app.S.list).why);
   let j = JSON.stringify(app.S);
   if (j === lastJSON) { pendingWhy = []; return false; }
   if (lastJSON !== null) {
@@ -87,7 +90,7 @@ function writeLog(prev) {
 }
 
 /* ---------- vaste party: HP, slots en resources lopen door van gevecht naar gevecht ---------- */
-const PKEYS = ["name", "race", "img", "ac", "max", "hp", "temp", "dex", "initBonus", "casting", "res", "sheet", "ds", "ddbId"];
+const PKEYS = ["name", "race", "img", "ac", "max", "hp", "temp", "dex", "initBonus", "casting", "res", "sheet", "ds", "ddbId", "eff"];
 
 export function syncParty() {
   let changed = false;

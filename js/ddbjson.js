@@ -3,6 +3,9 @@
 // Het formaat is onofficieel en kan veranderen: alles defensief lezen. AC en HP staan niet kant-en-klaar in de
 // data en worden berekend; waar dat niet zeker is, komt een reden in check.ac / check.hp zodat de DM controleert.
 
+import { setMax } from "./rules/combat.js";
+import { baseMax } from "./rules/effects.js";
+
 const AB = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
 const SHORT = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
 const SKILLS = [["Acrobatics", 1], ["Animal Handling", 4], ["Arcana", 3], ["Athletics", 0], ["Deception", 5], ["History", 3], ["Insight", 4], ["Intimidation", 5], ["Investigation", 3], ["Medicine", 4], ["Nature", 3], ["Perception", 4], ["Performance", 5], ["Persuasion", 5], ["Religion", 3], ["Sleight of Hand", 1], ["Stealth", 1], ["Survival", 4]];
@@ -284,11 +287,10 @@ export function mergeSheet(t, f) {
   const oc = t.sheet && t.sheet.cls, nc = f.sheet && f.sheet.cls;
   if (oc && nc && oc !== nc) ch.push(`${oc} → ${nc}`);
   if (f.ac && t.ac !== f.ac) ch.push(`AC ${t.ac || "?"} → ${f.ac}`);
-  if (f.max && t.max !== f.max) ch.push(`max HP ${t.max || "?"} → ${f.max}`);
-  if (f.max) {
-    t.hp = !t.max ? f.max : (t.hp ?? t.max) <= 0 ? 0 : Math.max(1, keep(t.max, t.hp, f.max));
-    t.max = f.max;
-  }
+  // max HP van de sheet is zonder tijdelijke effecten (Aid): die blijven er bovenop
+  const oMax = baseMax(t), extra = (t.max || 0) - oMax;
+  if (f.max && oMax !== f.max) ch.push(`max HP ${oMax || "?"} → ${f.max}`);
+  if (f.max) { if (t.hp == null) t.hp = t.max; setMax(t, f.max + extra); }
   if (f.ac) t.ac = f.ac;
   for (const k of ["name", "race", "dex", "initBonus", "sheet", "ddbId"]) if (f[k] !== undefined) t[k] = f[k];
   if (f.img) t.img = f.img;

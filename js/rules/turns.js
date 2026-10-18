@@ -1,12 +1,14 @@
 // Beurtvolgorde, conditie-duur en alles wat aan het begin/einde van een beurt gebeurt.
 import { d } from "./dice.js";
 import { fx } from "./combat.js";
+import { tickEffects } from "./effects.js";
 
 export const CONDS = ["Blinded", "Charmed", "Deafened", "Frightened", "Grappled", "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned", "Prone", "Restrained", "Stunned", "Unconscious", "Concentrating"];
 
 export const DURS = [
   ["inf", "Onbeperkt"],
   ["tend", "Tot einde volgende beurt (doelwit)"],
+  ["tstart", "Tot begin volgende beurt (doelwit)"],
   ["sstart", "Tot begin volgende beurt (wie nu aan de beurt is)"],
   ["r1", "1 ronde"], ["r2", "2 rondes"], ["r3", "3 rondes"],
   ["r10", "1 minuut (10 rondes)"], ["r100", "10 minuten (100 rondes)"],
@@ -38,19 +40,23 @@ export function makeDur(c, opt, activeId) {
   const act = activeId || c.id;
   let e = null;
   if (dur === "tend") e = { kind: "tend", who: c.id, at: "end", count: activeId === c.id ? 2 : 1 };
+  else if (dur === "tstart") e = { kind: "tstart", who: c.id, at: "start", count: 1 };
   else if (dur === "sstart") e = { kind: "sstart", who: act, at: "start", count: 1 };
   else if (dur[0] === "r") e = { kind: "rounds", who: act, at: "start", count: +dur.slice(1) };
   if (opt.ab && opt.dc) (e = e || { kind: "inf" }).save = { ab: opt.ab, dc: +opt.dc };
   return e;
 }
 
-export function durText(c, n, list) {
-  const e = c.cd && c.cd[n];
+export const durText = (c, n, list) => durLabel(c.cd && c.cd[n], list);
+
+/** Resterende duur als korte tekst (condities en effecten) */
+export function durLabel(e, list, short = false) {
   if (!e) return "";
   const who = list.find((x) => x.id === e.who);
   let t = e.kind === "rounds" ? `${e.count}r`
-    : e.kind === "tend" ? (e.count > 1 ? "t/m einde volgende beurt" : "t/m einde beurt")
-    : e.kind === "sstart" ? `t/m beurt ${who ? who.name : "?"}` : "";
+    : e.kind === "tend" ? (short ? "einde beurt" : e.count > 1 ? "t/m einde volgende beurt" : "t/m einde beurt")
+    : e.kind === "tstart" ? (short ? "begin beurt" : "t/m begin volgende beurt")
+    : e.kind === "sstart" ? `${short ? "" : "t/m "}beurt ${who ? who.name : "?"}` : "";
   if (e.save) t += `${t ? ", " : ""}${e.save.ab} ${e.save.dc}`;
   return t;
 }
@@ -75,6 +81,8 @@ export function turnBoundary(list, at, id) {
       }
     }
   }
+  const r = tickEffects(list, at, id);
+  out.msgs.push(...r.msgs); out.why.push(...r.why);
   return out;
 }
 

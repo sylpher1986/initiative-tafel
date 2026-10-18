@@ -14,6 +14,7 @@
 - AoE-schade op meerdere doelen: save ½/0, resist/kwetsbaar/immuun (ook uit statblock), monster-saves rollen, legendary resistance; Immuun ook in het gewone schade-paneel
 - Twee modi: **Voorbereiden** (spelers, monsters, party, lair actions, instellingen) en **Gevecht** (alleen lijst + beurtbalk); modus volgt het gevecht, wisselen kan altijd
 - Snel toevoegen in Gevecht (+): monsters die halverwege aansluiten, initiative rollen of invullen
+- Deelnemer bewerken (naam, AC, max HP, initiative) en tijdelijke effecten met duur en concentratie (Shield, Shield of Faith, Haste, Mage Armor, Barkskin, cover, Aid, Bless, Bane, eigen effect)
 - Spelers via D&D Beyond-link (publieke sheets, via de Worker): portret, AC/HP berekend met controle-markering, slots en resources; opnieuw ophalen werkt de speler in de party bij
 
 ## UX-verbeterpunten (uit review)
@@ -26,11 +27,14 @@
 - [ ] Resistances/immunities per speler opslaan (nu handmatig in het AoE-paneel); kan uit de D&D Beyond-data komen
 - [ ] Knop "Bijwerken" per lid in de Party-tab (voor wie een D&D Beyond-link heeft), met hetzelfde bevestigvak
 - [ ] Pact Magic-slots apart bijhouden (komen terug na een short rest); nu opgeteld bij de gewone slots
-- [ ] Deelnemer bewerken: naam, AC, max HP (nu alleen initiative)
 - [ ] Encounters vooraf klaarzetten en per sessie inladen
 - [ ] Moeilijkheid berekenen: XP-budget tegen partylevel (DMG 2014, easy t/m deadly)
 - [ ] Herinnering om af en toe een export te maken
 - [ ] Spelersscherm voor tv/tablet: alleen volgorde en wie er aan de beurt is, zonder monster-HP
+
+- [ ] Effecten: cover-bonus ook op Dex saves in het AoE-paneel; Bless/Bane-d4 bij monster-saves
+- [ ] Lethargy na Haste als echte toestand (nu alleen een melding)
+- [ ] Effecten: Bless opnieuw casten op nieuwe doelen haalt de oude doelen niet weg; Life Drain tot max 0 = dood (nu min. 1)
 
 ## Fase 2: sync
 - [ ] Login en sync tussen apparaten (bijv. Supabase), local-first blijft de basis

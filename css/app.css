@@ -425,3 +425,17 @@ label.warn input{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
 .warnline{color:var(--warn)}
 
 #pc-match .bar .btn{flex:1 1 130px}
+
+/* Tijdelijke effecten en bewerken (open kaart) */
+.c.k .meta b.acx{color:var(--active)}
+.bd.ef{border-style:dashed;border-color:var(--active);color:var(--active);max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.kbody .bd.cbtn{min-height:44px}
+.acb{margin:-2px 0 8px}
+.effgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
+.effgrid .btn{display:grid;gap:1px;text-align:left;line-height:1.2;padding:6px 10px}
+.effgrid .btn small{font-size:.72rem;color:var(--muted);font-weight:400}
+.effgrid .btn[aria-pressed="true"]{border-color:var(--fg)}
+.effform,.edit{display:grid;gap:8px;margin-top:8px}
+.ed3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ed3 label small{text-transform:none;letter-spacing:0}
+.kpanel .bar .btn.tap{flex:1 1 120px}

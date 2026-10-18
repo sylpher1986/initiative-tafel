@@ -3,7 +3,8 @@
 import { $, esc, n0 } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
-import { sortOrder, CONDS, DURS, durText, isOut, parseInit } from "../rules/turns.js";
+import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit } from "../rules/turns.js";
+import { PRESETS, effAc, effText, acBreakdown, baseMax } from "../rules/effects.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText } from "../rules/aoe.js";
@@ -21,6 +22,9 @@ export const ui = {
   qadd: null,          // { q, sel, n, init: "roll"|"fixed", fix } = snel-toevoegen-paneel open
   aoe: null,           // { dmg, type, ab, dc, t: { [id]: { sel, save, mode|null, roll, lr } } } = AoE-paneel open
   aoeLast: { type: "", ab: "DEX", dc: "" }, // laatst gebruikte type/save/DC (bijv. dezelfde breath weapon)
+  edit: null,          // { id, name, ac, max, init } = concept in het bewerkpaneel (⋯)
+  effWho: null,        // { id, i } = preset met concentratie wacht op "Wie cast?"
+  effCustom: false, effForm: {}, // eigen effect: formulier open + concept
 };
 export const openId = () => (ui.open === null ? app.S.active : ui.open);
 export const mode = () => ui.mode || (app.S.round ? "fight" : "prep");
@@ -66,8 +70,25 @@ function condChips(c, S, interactive) {
 }
 
 /** Samenvatting voor een gesloten kaart */
+/** AC in de kop: effectief, in accentkleur als effecten hem veranderen */
+function acMeta(c) {
+  const ac = effAc(c);
+  return ac ? `AC <b class="${ac !== c.ac ? "acx" : ""}">${n0(ac)}</b>` : "";
+}
+
+/** Effect-chips: in de open kaart knoppen om weg te halen, dicht alleen tekst (korte duur) */
+function effChips(c, S, interactive) {
+  return (c.eff || []).map((e) => {
+    const by = e.by && e.by !== c.id ? S.list.find((x) => x.id === e.by) : null;
+    const dur = e.d ? durLabel(e.d, S.list, !interactive) : e.lr ? "long rest" : "";
+    const t = [`${e.n}${e.st ? " " + effText(e) : ""}`, dur, by ? by.name : ""].filter(Boolean).map(esc).join(" · ");
+    return interactive ? `<button class="bd ef cbtn" data-a="effdel" data-e="${esc(e.id)}" title="Effect weghalen">${t} <span aria-hidden="true">✕</span><span class="vh">weghalen</span></button>`
+      : `<span class="bd ef">${t}</span>`;
+  }).join("");
+}
+
 function badges(c, S) {
-  const out = [condChips(c, S, false)];
+  const out = [condChips(c, S, false), effChips(c, S, false)];
   if (c.kind === "pc" && c.max && c.hp <= 0) {
     const d = c.ds || R.newDs();
     out.push(d.dead ? `<span class="bd r">Dood</span>` : d.stable ? `<span class="bd g">Stabiel</span>` : `<span class="bd r">Death saves ✓${d.s} ✗${d.f}</span>`);
@@ -143,24 +164,87 @@ function condPanel(c) {
     <div class="condgrid">${CONDS.map((x) => `<button type="button" data-cond="${x}" aria-pressed="${c.cond.includes(x)}">${x}</button>`).join("")}</div></div>`;
 }
 
+
+/** Voorbeeld van het effect van Opslaan op de HP */
+export function editPreview(c) {
+  const ed = ui.edit;
+  if (!ed || ed.id !== c.id) return "";
+  const parts = [];
+  const nm = String(ed.max).trim() === "" ? null : parseInt(ed.max);
+  if (nm != null && nm > 0 && nm !== baseMax(c)) {
+    const sim = { ...c }; R.setMax(sim, nm + (c.max - baseMax(c)));
+    parts.push(`HP ${n0(c.hp)}/${n0(c.max)} → ${n0(sim.hp)}/${n0(sim.max)}`);
+  }
+  const ac = parseInt(ed.ac);
+  if ((c.eff || []).some((e) => e.st === "ac")) parts.push(`basis-AC; nu ${effAc({ ...c, ac: Number.isFinite(ac) ? ac : c.ac })} met effecten`);
+  if (c.pid) parts.push("wijzigt ook de vaste party");
+  if (!String(ed.name).trim()) parts.push(`<b class="bad">naam mag niet leeg zijn</b>`);
+  else if (app.S.list.some((x) => x !== c && x.name.toLowerCase() === String(ed.name).trim().toLowerCase())) parts.push("let op: deze naam bestaat al");
+  return parts.map((t) => (t.startsWith("<b") ? t : esc(t))).join(" · ");
+}
+
 function morePanel(c) {
   const del = ui.confirmDel === c.id;
+  const ed = ui.edit && ui.edit.id === c.id ? ui.edit : { name: c.name, ac: c.ac || "", max: baseMax(c) || "", init: c.init };
+  const hpd = (c.max || 0) - baseMax(c);
   return `<div class="kpanel more">
-    <label class="inl">Initiative<input data-f="init" type="number" inputmode="numeric" value="${n0(c.init)}" aria-label="Initiative ${esc(c.name)}"></label>
-    ${c.kind === "pc" && !c.pid ? `<button class="btn small" data-a="topty">Naar vaste party</button>` : ""}
-    <button class="btn small danger" data-a="del">${del ? "Zeker? Tik nogmaals" : "Verwijder uit gevecht"}</button></div>`;
+    <div class="edit">
+      <label>Naam<input data-f="ed-name" value="${esc(ed.name)}" autocomplete="off" maxlength="120"></label>
+      <div class="ed3">
+        <label>AC<input data-f="ed-ac" type="number" inputmode="numeric" min="0" max="40" value="${esc(ed.ac)}"></label>
+        <label>Max HP${hpd ? ` <small>(${hpd > 0 ? "+" : "−"}${Math.abs(hpd)} effect)</small>` : ""}<input data-f="ed-max" type="number" inputmode="numeric" min="1" value="${esc(ed.max)}"></label>
+        <label>Initiative<input data-f="ed-init" type="number" inputmode="numeric" value="${esc(ed.init)}"></label>
+      </div>
+      <p class="hint edprev" aria-live="polite">${editPreview(c)}</p>
+      <div class="bar"><button class="btn tap" data-a="ed-cancel">Annuleer</button><button class="btn primary tap" data-a="ed-save">Opslaan</button></div>
+    </div>
+    <div class="bar">${c.kind === "pc" && !c.pid ? `<button class="btn small" data-a="topty">Naar vaste party</button>` : ""}
+    <button class="btn small danger" data-a="del">${del ? "Zeker? Tik nogmaals" : "Verwijder uit gevecht"}</button></div></div>`;
+}
+
+/** Effectpaneel: presets (1 tik), "Wie cast?" voor concentratie zonder beurt, of een eigen effect */
+function effPanel(c) {
+  const S = app.S;
+  if (ui.effWho && ui.effWho.id === c.id) {
+    const p = PRESETS[ui.effWho.i];
+    return `<div class="kpanel"><p class="hint">Wie cast <b>${esc(p.n)}</b>? (concentratie)</p>
+      <div class="effgrid">${S.list.filter((x) => x.kind !== "lair").map((x) => `<button class="btn tap" data-a="effby" data-by="${esc(x.id)}">${esc(x.name)}</button>`).join("")}</div>
+      <button class="link" data-a="effwho-no">Annuleer</button></div>`;
+  }
+  const act = S.list.find((x) => x.id === S.active);
+  const f = ui.effForm;
+  const custom = ui.effCustom ? `<div class="effform">
+      <label>Naam<input data-f="ef-n" value="${esc(f.n || "")}" placeholder="bijv. Life Drain" maxlength="60"></label>
+      <div class="ed3">
+        <label>Op<select data-f="ef-k">${[["ac+", "AC +/−"], ["ac=", "AC wordt"], ["acmin", "AC minimaal"], ["max", "Max HP +/−"], ["txt", "Alleen tekst"]].map(([v, l]) => `<option value="${v}" ${(f.k || "ac+") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+        <label>Waarde<input data-f="ef-v" type="number" inputmode="numeric" value="${esc(f.v ?? "")}"></label>
+        <label>Duur<select data-f="ef-dur">${[...DURS, ["lr", "Tot long rest"]].map(([v, l]) => `<option value="${v}" ${(f.dur || "inf") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      </div>
+      <label>Notitie<input data-f="ef-txt" value="${esc(f.txt || "")}" placeholder="bijv. +1d4 op saves" maxlength="120"></label>
+      <label>Concentratie van<select data-f="ef-by"><option value="">geen</option>${S.list.filter((x) => x.kind !== "lair").map((x) => `<option value="${esc(x.id)}" ${f.by === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label>
+      <button class="btn primary tap" data-a="eff-add">Toevoegen</button></div>` : "";
+  return `<div class="kpanel">
+    <div class="effgrid">${PRESETS.map((p, i) => {
+      const off = p.st === "ac" && p.op === "+" && !c.ac;
+      return `<button class="btn tap" data-a="effp" data-i="${i}" ${off ? `disabled title="Vul eerst AC in (⋯)"` : ""}>${esc(p.n)}<small>${esc(p.dex ? "AC 13 + Dex" : p.st ? effText(p) : p.txt.split(" op ")[0])}${p.conc ? " · conc" : ""}</small></button>`;
+    }).join("")}<button class="btn tap" data-a="effcustom" aria-pressed="${ui.effCustom}">+ Eigen effect</button></div>
+    ${!c.ac ? `<p class="hint">Geen AC bekend: AC + is uit. Vul AC in via ⋯.</p>` : ""}
+    <p class="hint">Concentratie-spells: caster is ${act ? `<b>${esc(act.name)}</b> (aan de beurt)` : "je kiest zelf"}. Zelfde effect opnieuw = vernieuwen.</p>
+    ${custom}</div>`;
 }
 
 function actionsBlock(c) {
   const sideBtn = c.ref ? `<button data-a="sb">Statblock</button>` : c.sheet ? `<button data-a="sheet">Sheet</button>` : `<button data-a="panel" data-p="more" aria-pressed="${ui.panel === "more"}">⋯</button>`;
+  const gone = (c.ds && c.ds.dead) || (c.kind === "monster" && isOut(c));
   return `<div class="acts">
-    ${c.max ? `<button class="dmg2 wide" data-a="sheet-open" data-kind="dmg">− Schade</button><button class="heal2" data-a="sheet-open" data-kind="heal">+ Heal</button><button data-a="sheet-open" data-kind="thp">Temp HP</button>` : ""}
-    <button data-a="panel" data-p="conds" aria-pressed="${ui.panel === "conds"}">Conditie</button>
+    ${c.max ? `<button class="dmg2 wide" data-a="sheet-open" data-kind="dmg">− Schade</button><button class="heal2" data-a="sheet-open" data-kind="heal">+ Heal</button>` : ""}
     <button data-a="react" aria-pressed="${!!c.reaction}">${c.reaction ? "Reaction ✓" : "Reaction"}</button>
+    <button data-a="panel" data-p="conds" aria-pressed="${ui.panel === "conds"}">Conditie</button>
+    <button data-a="panel" data-p="eff" aria-pressed="${ui.panel === "eff"}" ${gone ? "disabled" : ""}>Effect</button>
     ${sideBtn}
     ${c.ref || c.sheet ? `<button data-a="panel" data-p="more" aria-pressed="${ui.panel === "more"}" aria-label="Meer">⋯</button>` : ""}
   </div>
-  ${ui.panel === "conds" ? condPanel(c) : ui.panel === "more" ? morePanel(c) : ""}`;
+  ${ui.panel === "conds" ? condPanel(c) : ui.panel === "more" ? morePanel(c) : ui.panel === "eff" && !gone ? effPanel(c) : ""}`;
 }
 
 function lairRow(c, S) {
@@ -192,11 +276,12 @@ function row(c, S) {
     <button class="khead" data-a="open" aria-expanded="${open}" aria-label="${esc(c.name)}${open ? ", sluiten" : ", openen"}">
       <span class="i">${n0(c.init)}${turn ? `<span class="tri" aria-hidden="true">▶</span>` : ""}</span>
       <span class="n">${avatar(c, c.ref ? findMon(c.ref)?.meta : "")}<span class="nm">${esc(c.name)}</span></span>
-      <span class="meta">${isOut(c) && c.kind === "monster" ? "neer" : c.ac ? `AC <b>${n0(c.ac)}</b>` : ""}</span>
+      <span class="meta">${isOut(c) && c.kind === "monster" ? "neer" : acMeta(c)}</span>
       ${c.max ? hpBar(c) : ""}
     </button>
     ${open ? `<div class="kbody">
-      ${c.cond.length ? `<div class="badges">${condChips(c, S, true)}</div>` : ""}
+      ${c.cond.length || (c.eff || []).length ? `<div class="badges">${condChips(c, S, true)}${effChips(c, S, true)}</div>` : ""}
+      ${acBreakdown(c) ? `<p class="hint acb">AC ${n0(effAc(c))} = ${esc(acBreakdown(c))}</p>` : ""}
       ${defLine(c)}
       ${dsBlock(c)}
       ${actionsBlock(c)}

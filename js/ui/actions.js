@@ -1,7 +1,8 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
-import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, aoeTargets, aoePick } from "./render.js";
+import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, aoeTargets, aoePick, editPreview } from "./render.js";
+import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax } from "../rules/effects.js";
 import { showSB, showSheet, doRoll } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
@@ -56,6 +57,25 @@ export function normalize(c) {
   if (c.casting === undefined) c.casting = castInfo(m);
 }
 
+/** Effect toepassen: duur, concentratie van de caster (start of koppelt), Shield = reaction. Eén undo-stap. */
+function applyEff(c, p, byId) {
+  const S = app.S, out = R.fx();
+  const d = ["inf", "lr"].includes(p.dur) ? null : makeDur(c, { dur: p.dur }, S.active);
+  let by = null;
+  if (p.conc) {
+    const caster = S.list.find((x) => x.id === byId);
+    if (caster) {
+      by = caster.id;
+      if (!(caster.cond.includes("Concentrating") && caster.concSpell === p.n)) R.merge(out, R.startConc(caster, p.n)); // Bless op 3 doelen: alleen koppelen
+    }
+  }
+  R.merge(out, addEffect(c, p, d, { lr: p.dur === "lr", by, spell: p.n }));
+  if (p.react) c.reaction = true;
+  addWhy(out.why);
+  ui.effWho = null;
+  return { undoToast: out.msgs.join(" ") };
+}
+
 /* ---------- acties per deelnemer: (c, knop, rij-element) ---------- */
 const row = {
   sb: (c) => showSB(c.ref, c.name),
@@ -66,10 +86,52 @@ const row = {
   },
   open(c) {
     const isOpen = openId() === c.id;
-    ui.open = isOpen ? "" : c.id; ui.panel = null; ui.confirmDel = null; ui.castPick = null;
+    ui.open = isOpen ? "" : c.id; ui.panel = null; ui.confirmDel = null; ui.castPick = null; ui.edit = null; ui.effWho = null; ui.effCustom = false; ui.effForm = {};
     return "scroll";
   },
-  panel(c, b) { ui.panel = ui.panel === b.dataset.p ? null : b.dataset.p; ui.confirmDel = null; },
+  panel(c, b) {
+    ui.panel = ui.panel === b.dataset.p ? null : b.dataset.p; ui.confirmDel = null; ui.effWho = null;
+    ui.edit = ui.panel === "more" ? { id: c.id, name: c.name, ac: c.ac || "", max: baseMax(c) || "", init: c.init, dirty: false } : null;
+  },
+  /* ---- bewerken (⋯) ---- */
+  "ed-cancel"() { ui.edit = null; ui.panel = null; },
+  "ed-save"(c) {
+    const ed = ui.edit;
+    if (!ed || ed.id !== c.id) return false;
+    const name = String(ed.name).trim().slice(0, 120);
+    if (!name) { toast("Naam mag niet leeg zijn."); return false; }
+    c.name = name;
+    const ac = parseInt(ed.ac);
+    c.ac = Number.isFinite(ac) ? Math.max(0, Math.min(40, ac)) : 0;
+    const mx = parseInt(ed.max), extra = (c.max || 0) - baseMax(c);
+    if (Number.isFinite(mx) && mx > 0 && mx !== baseMax(c)) R.setMax(c, mx + extra); // effecten (Aid) blijven bovenop
+    const ini = parseInit(ed.init);
+    if (ini !== null) c.init = ini;
+    because("bewerkt");
+    ui.edit = null; ui.panel = null;
+  },
+  /* ---- effecten ---- */
+  effp(c, b) {
+    const i = +b.dataset.i, p = PRESETS[i];
+    if (!p) return false;
+    if (p.conc && !app.S.active) { ui.effWho = { id: c.id, i }; return; } // geen beurt: vraag wie cast
+    return applyEff(c, p, p.conc ? app.S.active : null);
+  },
+  effby(c, b) { const w = ui.effWho; if (!w || w.id !== c.id) return false; return applyEff(c, PRESETS[w.i], b.dataset.by); },
+  "effwho-no"() { ui.effWho = null; },
+  effcustom() { ui.effCustom = !ui.effCustom; },
+  "eff-add"(c) {
+    const f = ui.effForm, k = f.k || "ac+";
+    const st = k.startsWith("ac") ? "ac" : k === "max" ? "max" : "";
+    const spec = { n: String(f.n || "").trim() || "Effect", st, op: k === "ac=" ? "=" : k === "acmin" ? "min" : "+", v: parseInt(f.v) || 0, txt: f.txt || "" };
+    if (st === "ac" && spec.op === "+" && !c.ac) { toast("Vul eerst AC in (⋯)."); return false; }
+    if (st && !spec.v) { toast("Vul een waarde in."); return false; }
+    if (!st && !spec.txt && !f.n) { toast("Geef het effect een naam of notitie."); return false; }
+    const by = f.by && app.S.list.some((x) => x.id === f.by) ? f.by : null;
+    ui.effForm = {}; ui.effCustom = false;
+    return applyEff(c, { ...spec, dur: f.dur || "inf", conc: !!by }, by);
+  },
+  effdel(c, b) { apply(removeEffect(c, b.dataset.e)); },
   "sheet-open"(c, b) { ui.sheet = { id: c.id, kind: b.dataset.kind, val: "", mode: 1 }; },
   react(c) { c.reaction = !c.reaction; },
   dropconc(c) { apply(R.dropConc(c, "beëindigd")); },
@@ -149,7 +211,7 @@ const global = {
   start() { apply(startCombat(app.S)); ui.mode = null; },
   next() { apply(step(app.S, 1)); },
   prev() { apply(step(app.S, -1)); },
-  stop() { app.S.round = 0; app.S.active = null; ui.mode = null; },
+  stop() { apply(endFightEffects(app.S.list)); app.S.round = 0; app.S.active = null; ui.mode = null; },
   qadd() { ui.qadd = { q: "", sel: null, n: 1, init: "roll", fix: "" }; },
   aoe() { ui.sheet = null; ui.qadd = null; ui.aoe = { dmg: "", ...ui.aoeLast, t: {} }; },
   addlair() {
@@ -199,7 +261,11 @@ export function onClick(e) {
   }
   if (b.id && global[b.id]) {
     if (global[b.id]() === false) return;
-    if (["start", "next", "prev"].includes(b.id)) { ui.open = null; ui.panel = null; ui.castPick = null; }
+    if (["start", "next", "prev"].includes(b.id)) {
+      // een niet-opgeslagen bewerking blijft open staan; anders volgt de open kaart de beurt
+      if (ui.edit && ui.edit.dirty) ui.open = ui.edit.id; else { ui.open = null; ui.panel = null; ui.edit = null; }
+      ui.castPick = null; ui.effWho = null;
+    }
     render();
     if (["start", "next", "prev"].includes(b.id)) scrollToCard(app.S.active);
     // focus in de dialog, maar niet op het zoekveld: dat zou op de telefoon meteen het toetsenbord openen
@@ -217,6 +283,7 @@ export function onClick(e) {
   if (fn === row.sb || fn === row.sheet) return;
   render();
   if (res === "scroll") scrollToCard(openId(), true);
+  if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
 }
 
 export function onChange(e) {
@@ -230,7 +297,12 @@ export function onChange(e) {
   const c = li && app.S.list.find((x) => x.id === li.dataset.id);
   if (!c) return;
   if (f === "lairkey") { c.key = c.name = t.value; c.last = null; render(); }
-  if (f === "init") { c.init = parseInt(t.value) || 0; render(); }
+  // concepten: niet renderen (dan verspringt de focus), alleen het voorbeeld bijwerken
+  if (f && f.startsWith("ed-") && ui.edit && ui.edit.id === c.id) {
+    ui.edit[f.slice(3)] = t.value; ui.edit.dirty = true;
+    const pv = li.querySelector(".edprev"); if (pv) pv.innerHTML = editPreview(c);
+  }
+  if (f && f.startsWith("ef-")) ui.effForm[f.slice(3)] = t.value;
 }
 
 export function onKey(e) {
@@ -603,6 +675,7 @@ export function bindParty() {
       because("party aan tafel gezet");
       todo.forEach((m) => {
         const c = structuredClone(m); delete c.pid;
+        endFightEffects([c]); // ronde-effecten van een vorig (niet gestopt) gevecht vervallen
         app.S.list.push({ ...c, id: uid(), pid: m.pid, kind: "pc", init: parseInt(ui.partyInit[m.pid]) || 0, cond: c.hp > 0 ? [] : ["Unconscious"], reaction: false });
         delete ui.partyInit[m.pid];
       });
