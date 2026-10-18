@@ -34,7 +34,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [ ] Aanval op een doel ook vanuit het statblock en het legendary-paneel (zelfde paneel); advantage/disadvantage automatisch uit condities
 
 ### Prioriteit 2: voorbereiding en tempo
-- [ ] Volgende encounter: "Monsters wissen, spelers houden" (nu wist "Encounter wissen" ook de party). Samen met encounters vooraf klaarzetten en XP-moeilijkheid (zie Functies)
+- [x] Volgende encounter: "Encounter wissen" vraagt "Monsters wissen, spelers houden" of "Alles"; spelers blijven met HP, slots en effecten, één Ongedaan (1.12.1). Encounters vooraf klaarzetten en XP-moeilijkheid: zie Functies
 - [ ] Initiative van spelers bij Start gevecht: één paneel met alle spelers en een cijferpad
 - [ ] Effect/conditie op meerdere doelen tegelijk (Bless, Hold Person, Hypnotic Pattern, Web), met de doelkeuze uit AoE; Bless op 3 doelen kost nu 9 tikken
 - [ ] Groepsbeurten: zelfde monster met dezelfde groepsworp als één beurt

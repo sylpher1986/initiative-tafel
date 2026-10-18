@@ -8,7 +8,7 @@ import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCas
 import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
-import { step, startCombat, makeDur, parseInit, isOut } from "../rules/turns.js";
+import { step, startCombat, stopCombat, clearMonsters, makeDur, parseInit, isOut } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, defMode } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
@@ -244,7 +244,16 @@ const global = {
   start() { apply(startCombat(app.S)); ui.mode = null; },
   next() { apply(step(app.S, 1)); ui.laPulse = true; },
   prev() { apply(step(app.S, -1)); },
-  stop() { apply(endFightEffects(app.S.list)); app.S.round = 0; app.S.active = null; app.S.saves = []; ui.mode = null; },
+  stop() { apply(stopCombat(app.S)); ui.mode = null; },
+  /** Volgende encounter: monsters en lair weg, spelers blijven met HP, slots en effecten (één undo-stap) */
+  "reset-mons"() {
+    const r = clearMonsters(app.S);
+    apply(r);
+    ui.confirmReset = false; ui.mode = null; ui.open = null; ui.panel = null; ui.edit = null; ui.atk = null; ui.aoe = null; ui.la = null; ui.sv = false;
+    render();
+    toastHtml(`${esc(`${r.n} monster${r.n === 1 ? "" : "s"} gewist. Spelers blijven; pas hun initiative aan via ⋯.`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+    return false;
+  },
   qadd() { ui.qadd = { q: "", sel: null, n: 1, init: "roll", fix: "" }; },
   aoe() { ui.sheet = null; ui.qadd = null; ui.atk = null; ui.aoe = { dmg: "", ...ui.aoeLast, t: {} }; },
   addlair() {

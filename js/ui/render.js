@@ -379,7 +379,9 @@ function paintEncounter() {
   $("#order").innerHTML = L.map((c) => row(c, S)).join("")
     || `<li class="hint" style="padding:20px;text-align:center">Nog niemand aan tafel. ${mode() === "fight" ? "Voeg spelers en monsters toe onder Voorbereiden." : "Voeg hieronder spelers en monsters toe."}</li>`;
   $("#resetbar").innerHTML = ui.confirmReset
-    ? `<div class="confirm">Alles wissen?<button class="btn small primary" id="reset-yes">Ja, wis encounter</button><button class="btn small" id="reset-no">Annuleer</button></div>`
+    ? S.list.some((c) => c.kind !== "pc")
+      ? `<div class="confirm">Wat wissen?<button class="btn small primary" id="reset-mons">Monsters wissen, spelers houden</button><button class="btn small ghost" id="reset-yes">Alles</button><button class="btn small" id="reset-no">Annuleer</button></div>`
+      : `<div class="confirm">Alles wissen?<button class="btn small primary" id="reset-yes">Ja, wis encounter</button><button class="btn small" id="reset-no">Annuleer</button></div>`
     : `${S.list.some((c) => c.kind === "lair") ? "" : `<button class="btn small" id="addlair">+ Lair actions (init 20)</button>`}${S.list.length ? `<button class="btn small ghost" id="reset">Encounter wissen</button>` : ""}${S.round ? `<button class="btn small ghost" id="stop">Gevecht stoppen</button>` : ""}
        ${S.sample ? `<p class="note">De deelnemers hierboven zijn voorbeelden. Wis ze en voeg je eigen groep toe.</p>` : ""}`;
 }
