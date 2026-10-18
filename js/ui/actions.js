@@ -1,7 +1,7 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
-import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, paintSv, laOpts, svBonus, aoeTargets, aoePick, editPreview } from "./render.js";
+import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, paintSv, laOpts, svBonus, aoeTargets, aoePick, okSave, editPreview } from "./render.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
 import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods } from "../rules/effects.js";
@@ -10,7 +10,8 @@ import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
 import { step, startCombat, makeDur, parseInit } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
-import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes } from "../rules/aoe.js";
+import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES } from "../rules/aoe.js";
+import { monsterActions, actionAoe, rcIndex } from "../rules/attacks.js";
 import { castInfo, legInfo, rcInfo, pickList, CONC_SPELLS, cleanSpell } from "../rules/spells.js";
 import { logText } from "../log.js";
 import { readSheetPdf, fetchDdb } from "../ddb.js";
@@ -290,6 +291,7 @@ export function onClick(e) {
     return doRoll(b.dataset.roll, lab, !!b.dataset.hit);
   }
   if (b.dataset.dmg) return doDmgRoll(b.dataset.dmg, b.dataset.label);
+  if (b.dataset.aoe) return openActAoe(b.dataset.cid, b.dataset.aoe);
   if (b.dataset.setmode) {
     ui.mode = b.dataset.setmode; ui.confirmReset = false;
     render();
@@ -725,7 +727,7 @@ export function bindAoe() {
       a.dc = ui.aoeLast.dc = e.target.value;
       // al gerolde saves opnieuw tegen de nieuwe DC leggen
       const dc = parseInt(a.dc);
-      Object.values(a.t).forEach((t) => { if (t.roll) { t.lr = false; t.save = dc > 0 && t.roll.tot >= dc ? "half" : "fail"; } });
+      Object.values(a.t).forEach((t) => { if (t.roll) { t.lr = false; t.save = dc > 0 && t.roll.tot >= dc ? okSave(a) : "fail"; } });
     }
     else return;
     paintAoe();
@@ -744,7 +746,8 @@ export function bindAoe() {
     if (k === "go") { aoeGo(); return; }
     if (k === "save") aoeSet(a, id, { save: b.dataset.v, lr: false });
     if (k === "mode") aoeSet(a, id, { mode: +b.dataset.v });
-    if (k === "lr") aoeSet(a, id, { save: "half", lr: true });
+    if (k === "lr") aoeSet(a, id, { save: okSave(a), lr: true });
+    if (k === "reroll") { const x = srcAoe(a); if (x) { a.dmg = String(x.dmg); a.roll = x.roll; a.extra = x.extra; $("#a-dmg").value = a.dmg; } }
     if (k === "all") aoeTargets().forEach((c) => aoeSet(a, c.id, { sel: !!b.dataset.v && c.kind === b.dataset.v }));
     if (k === "roll") {
       const dc = parseInt(a.dc);
@@ -753,7 +756,7 @@ export function bindAoe() {
       if (!mons.length) { toast("Kies eerst de monsters die een save doen."); return; }
       mons.forEach((c) => {
         const m = findMon(c.ref), x = rollSave(saveBonus(m, a.ab), hasMagicRes(m), Math.random, saveMods(c, a.ab));
-        aoeSet(a, c.id, { roll: x, save: x.tot >= dc ? "half" : "fail", lr: false });
+        aoeSet(a, c.id, { roll: x, save: x.tot >= dc ? okSave(a) : "fail", lr: false });
       });
     }
     paintAoe();
@@ -763,6 +766,30 @@ export function bindAoe() {
   });
 }
 
+/** De save-actie achter het paneel opnieuw opzoeken en rollen (monster kan intussen weg zijn) */
+function srcAoe(a) {
+  const c = app.S.list.find((x) => x.id === a.src), A = c && c.ref ? monsterActions(findMon(c.ref)) : null;
+  const act = A && [...A.main, ...A.other].find((x) => x.n === a.act);
+  return act ? actionAoe(act, (e) => rollExpr(e), DTYPES) : null;
+}
+
+/** "DC 18 DEX · AoE" op een aanvalsregel: AoE-paneel met gerolde schade, type, save en DC; spelers aangevinkt */
+function openActAoe(cid, name) {
+  const c = app.S.list.find((x) => x.id === cid);
+  if (!c) return;
+  const a = { src: c.id, srcName: c.name, act: name, t: {} };
+  const x = srcAoe(a);
+  if (!x) { toast("Deze actie kon niet gelezen worden. Gebruik de knop AoE in de beurtbalk."); return; }
+  const ri = rcIndex(c.rc, name);
+  ui.aoe = null; paintAoe(); // paneel opnieuw opbouwen met de titel van deze actie
+  ui.sheet = null; ui.qadd = null; ui.la = null;
+  ui.aoe = Object.assign(a, { dmg: String(x.dmg), type: x.type, ab: x.ab, dc: String(x.dc), half: x.half, roll: x.roll, extra: x.extra,
+    title: `${name} · ${c.name}`, used: ri >= 0 && !c.rc[ri].ready });
+  aoeTargets().forEach((t) => { if (t.kind === "pc") aoeSet(ui.aoe, t.id, { sel: true }); });
+  render();
+  $("#asheet .asheet")?.focus();
+}
+
 function aoeGo() {
   const a = ui.aoe; if (!a) return;
   const n = clampDmg(a.dmg), dc = parseInt(a.dc);
@@ -770,13 +797,17 @@ function aoeGo() {
     .map(({ c, p }) => ({ c, save: p.save, mode: p.mode, lr: p.lr, note: p.roll ? `${a.ab} save ${rollText(p.roll, dc)}` : "", up: c.hp > 0 }));
   if (!n || !picks.length) return;
   const L = picks.map((x) => x.c);
-  const label = `${n}${a.type ? " " + a.type : ""}${dc > 0 ? ` (${a.ab} DC ${dc})` : ""}`;
+  const label = `${a.act ? `${a.srcName}: ${a.act} ` : ""}${n}${a.type ? " " + a.type : ""}${dc > 0 ? ` (${a.ab} DC ${dc})` : ""}`;
   const r = applyAoe(picks, n, label);
   apply(r);
+  // recharge-actie: pas bij toepassen op "op", in dezelfde stap (één keer Ongedaan)
+  const src = a.src && app.S.list.find((x) => x.id === a.src), ri = src ? rcIndex(src.rc, a.act) : -1;
+  const rcUsed = ri >= 0 && src.rc[ri].ready;
+  if (rcUsed) src.rc[ri].ready = false;
   const down = picks.filter((x) => x.up && x.c.hp <= 0).length;
   ui.aoe = null;
   render();
-  toastHtml(`${esc(`AoE ${label}: ${L.length} doel${L.length === 1 ? "" : "en"}, ${r.hits.reduce((s, h) => s + h.dealt, 0)} schade${down ? `, ${down} neer` : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  toastHtml(`${esc(`${a.act || `AoE ${label}`}: ${L.length} doel${L.length === 1 ? "" : "en"}, ${r.hits.reduce((s, h) => s + h.dealt, 0)} schade${down ? `, ${down} neer` : ""}${rcUsed ? " · recharge op" : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
   const ab = $("#aoe"); if (ab) ab.focus();
 }
 

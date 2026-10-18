@@ -518,6 +518,9 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .ar .d.dm small{display:block;font-weight:400;font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ar .d:active{background:var(--sunk)}
 .ar .dc{font-size:.82rem;font-weight:700;color:var(--warn);white-space:nowrap}
+.ar .d.dcb{color:var(--warn);border-color:var(--warn);font-size:.82rem;white-space:nowrap}
+.ar .d.dcb small{display:block;font-weight:400;font-size:.68rem;color:var(--muted)}
+.asrc{margin:-2px 0 8px;font-variant-numeric:tabular-nums}
 .ar .dflat{font-size:.82rem;color:var(--muted);white-space:nowrap}
 .atkmore{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:40px}
 .atkmore .link{min-height:40px}

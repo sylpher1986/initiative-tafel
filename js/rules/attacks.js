@@ -100,3 +100,33 @@ export function rollDmg(key, roll) {
   }
   return parts.length ? { parts, total: parts.reduce((a, b) => a + b.total, 0) } : null;
 }
+
+/** Save-actie met schade (breath weapon, Fire Ray): kan via het AoE-paneel op meerdere doelen */
+export const isSaveAoe = (a) => !!a && a.hit === null && !!a.dc && a.dmg.length > 0;
+
+/** Recharge-chip die bij een actie hoort (op naam, zonder "(Recharge 5–6)"); -1 als er geen is */
+export const rcIndex = (rc, n) => (Array.isArray(rc) ? rc.findIndex((r) => r && String(r.n).toLowerCase() === String(n).toLowerCase()) : -1);
+
+/**
+ * Een save-actie klaarmaken voor het AoE-paneel: schade gerold, type, save-ability en DC uit de actie.
+ * Delen met hetzelfde type als het eerste tellen samen; een ander type ("plus 2d6 fire") komt als hint (apart toepassen).
+ * half = de tekst noemt halve schade bij een geslaagde save; anders is geslaagd = geen schade.
+ * types = bekende damage types (anders type leeg, bijv. "lightning or thunder"). roll = rollExpr.
+ */
+export function actionAoe(a, roll, types = []) {
+  if (!isSaveAoe(a)) return null;
+  const r = rollDmg(a.dmg.map((x) => `${x.e || x.flat}:${x.type}`).join("|"), roll);
+  if (!r) return null;
+  const t0 = r.parts[0].type;
+  const same = r.parts.filter((p) => p.type === t0), other = r.parts.filter((p) => p.type !== t0);
+  const txt = (p) => (p.rolls.length ? `${p.e} [${p.rolls.join(", ")}] = ${p.total}` : String(p.total));
+  return {
+    dmg: Math.min(999, same.reduce((s, p) => s + p.total, 0)),
+    type: types.includes(t0) ? t0 : "",
+    ab: a.dc.ab.split("/")[0],
+    dc: a.dc.n,
+    half: /\bhalf (?:as much|(?:the|that)(?: [a-z]+)?) damage/i.test(a.text),
+    roll: same.map(txt).join(" + ") + (same.length > 1 ? ` = ${same.reduce((s, p) => s + p.total, 0)}` : ""),
+    extra: other.map((p) => `plus ${p.e} ${p.type}`).join(", "),
+  };
+}

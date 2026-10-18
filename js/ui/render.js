@@ -9,7 +9,7 @@ import * as R from "../rules/combat.js";
 import { ORD, pickList } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus } from "../rules/aoe.js";
 import { diceify, syncSB } from "./statblock.js";
-import { monsterActions, dmgKey, useful } from "../rules/attacks.js";
+import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
 import { laList, laStatus, laOptions } from "../rules/legendary.js";
 import { openSaves } from "../rules/saves.js";
@@ -278,12 +278,13 @@ function actionsBlock(c) {
 const SHORT = { piercing: "pierc.", bludgeoning: "bludg.", slashing: "slash." };
 const MAIN_MAX = 4; // regels bij het monster aan de beurt (Multiattack telt mee), daarna "+N meer"
 
-function atkRow(a) {
+function atkRow(a, cid) {
   // zonder worp of DC (Detect, Parry): korte tekst eronder, de rest staat in het statblock
   const sub = [a.tag, a.reach, a.hit !== null && a.dc ? `DC ${a.dc.n} ${a.dc.ab}` : "", useful(a) ? "" : a.text].filter(Boolean).join(" · ");
   const lab = a.label || a.n; // label in de rolmelding (legendary: naam van de optie)
   const key = dmgKey(a.dmg), flat = a.dmg.filter((x) => !x.e);
   const hit = a.hit !== null ? `<button class="d hit" data-roll="1d20${sgn(a.hit)}" data-hit="1" data-label="${esc(lab)}" aria-label="${esc(lab)}: aanval ${sgn(a.hit)} to hit">${sgn(a.hit)}</button>`
+    : isSaveAoe(a) && cid ? `<button class="d dcb" data-aoe="${esc(a.n)}" data-cid="${esc(cid)}" aria-label="${esc(lab)}: DC ${a.dc.n} ${a.dc.ab}, AoE-paneel openen">DC ${a.dc.n} ${a.dc.ab}<small>AoE ▸</small></button>`
     : a.dc ? `<span class="dc">DC ${a.dc.n} ${a.dc.ab}</span>` : "<span></span>";
   const dmg = key ? `<button class="d dm" data-dmg="${esc(key)}" data-label="${esc(lab)}" aria-label="${esc(lab)}: damage rollen">${esc(a.dmg.map((x) => x.e || x.flat).join(" + "))}<small>${esc(a.dmg.map((x) => SHORT[x.type] || x.type).join(" + "))}</small></button>`
     : flat.length ? `<span class="dflat">${esc(flat.map((x) => `${x.flat} ${x.type}`).join(" + "))}</span>` : "<span></span>";
@@ -297,17 +298,21 @@ function atkBlock(c, S) {
   if (!A) return "";
   const turn = c.id === S.active, all = ui.atkOpen === c.id;
   const n = A.main.length + A.other.length;
+  // klare recharge-actie (Acid Breath) direct na Multiattack, zodat hij niet achter "+N meer" valt
+  const ready = (a) => { const i = rcIndex(c.rc, a.n); return i >= 0 && c.rc[i].ready; };
+  const main = A.main.some(ready) ? [...A.main.filter(ready), ...A.main.filter((a) => !ready(a))] : A.main;
+  const row = (a) => atkRow(a, c.id);
   if (!turn && !all) return `<button class="atkfold" data-a="atk-open" aria-expanded="false">Aanvallen${n ? ` (${n})` : ""} <span aria-hidden="true">▸</span></button>`;
   const room = turn && !all ? Math.max(1, MAIN_MAX - (A.multi ? 1 : 0)) : A.main.length;
   const hidden = A.main.length - room;
   const rx = !turn || ui.atkRx === c.id;
   const multi = A.multi ? `<p class="multi"><b>Multiattack:</b> ${esc(A.multi.text)}</p>` : "";
   const other = !A.other.length ? "" : rx
-    ? `${turn ? `<button class="atkfold sub" data-a="atk-rx" aria-expanded="true">Reactions · Legendary <span aria-hidden="true">▾</span></button>` : ""}${A.other.map(atkRow).join("")}`
+    ? `${turn ? `<button class="atkfold sub" data-a="atk-rx" aria-expanded="true">Reactions · Legendary <span aria-hidden="true">▾</span></button>` : ""}${A.other.map(row).join("")}`
     : `<button class="atkfold sub" data-a="atk-rx" aria-expanded="false">Reactions · Legendary (${A.other.length}) <span aria-hidden="true">▸</span></button>`;
   return `<div class="atk">
     ${!turn ? `<button class="atkfold" data-a="atk-close" aria-expanded="true">Aanvallen <span aria-hidden="true">▾</span></button>` : ""}
-    ${multi}${A.main.slice(0, room).map(atkRow).join("")}
+    ${multi}${main.slice(0, room).map(row).join("")}
     <div class="atkmore">${hidden > 0 ? `<button class="link" data-a="atk-open">+${hidden} meer</button>` : "<span></span>"}<button class="link" data-a="sb">Volledig statblock</button></div>
     ${other}</div>`;
 }
@@ -576,7 +581,7 @@ export function paintQadd() {
 
 /* ---------- AoE: één schadeworp op meerdere doelen ---------- */
 /** Wie geraakt kan worden: iedereen met HP die nog meedoet (spelers op 0 HP ook: dat kost een death save) */
-export const aoeTargets = () => sortOrder(app.S.list).filter((c) => c.kind !== "lair" && c.max && !isOut(c));
+export const aoeTargets = () => sortOrder(app.S.list).filter((c) => c.kind !== "lair" && c.max && !isOut(c) && !(ui.aoe && ui.aoe.src === c.id));
 
 /** Effectieve keuze per doelwit (mode null = volg het statblock voor het gekozen damage type) */
 export function aoePick(a, c) {
@@ -586,6 +591,9 @@ export function aoePick(a, c) {
 
 const MODES = [[1, "Normaal"], [0.5, "Resist"], [2, "×2"], [0, "Immuun"]];
 const SAVES = [["fail", "Gefaald"], ["half", "Geslaagd ½"], ["none", "0"]];
+const SAVES0 = [["fail", "Gefaald"], ["none", "Geslaagd 0"]]; // save-actie zonder halve schade (Wing Attack)
+/** Uitkomst van een geslaagde save in dit paneel */
+export const okSave = (a) => (a && a.half === false ? "none" : "half");
 
 function aoeRow(a, c, p, o, n) {
   const id = esc(c.id), nm = esc(c.name), dc = parseInt(a.dc);
@@ -603,7 +611,7 @@ function aoeRow(a, c, p, o, n) {
     <label class="atop"><input type="checkbox" data-ao="sel" data-id="${id}" ${p.sel ? "checked" : ""}>
       <span class="atn"><span>${nm}</span> <span class="tag ${c.kind === "pc" ? "" : "m"}">${c.kind === "pc" ? "speler" : "monster"}</span><small>${n0(c.hp)}/${n0(c.max)} HP${c.temp ? ` +${n0(c.temp)}` : ""}</small></span>
       ${p.sel && n ? `<b class="adealt ${o.dealt ? "" : "zero"}">−${o.dealt}</b>` : ""}</label>
-    ${p.sel ? `<div class="seg2 sm" role="group" aria-label="Save ${nm}">${SAVES.map(([v, l]) => `<button type="button" data-ao="save" data-id="${id}" data-v="${v}" aria-pressed="${p.save === v}"${v === "none" ? ` aria-label="Geen schade (bijv. Evasion)" title="Geen schade (bijv. Evasion)"` : ""}>${l}</button>`).join("")}</div>
+    ${p.sel ? `<div class="seg2 sm" role="group" aria-label="Save ${nm}">${(a.half === false ? SAVES0 : SAVES).map(([v, l]) => `<button type="button" data-ao="save" data-id="${id}" data-v="${v}" aria-pressed="${p.save === v}"${v === "none" ? ` aria-label="Geen schade (bijv. Evasion)" title="Geen schade (bijv. Evasion)"` : ""}>${l}</button>`).join("")}</div>
       <div class="seg2 sm" role="group" aria-label="Weerstand ${nm}">${MODES.map(([v, l]) => `<button type="button" data-ao="mode" data-id="${id}" data-v="${v}" aria-pressed="${p.mode === v}">${l}</button>`).join("")}</div>
       <div class="acalc">${n ? o.steps.join(" → ") + end : "Vul de schade in"}${info ? `<br>${info}` : ""}</div>${lrBtn}` : ""}
   </div>`;
@@ -617,11 +625,12 @@ export function paintAoe() {
     el.innerHTML = `<div class="dim" data-ao="close"></div>
     <div class="sheet qsheet asheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="a-title">
       <div class="grab" aria-hidden="true"></div>
-      <div class="shead"><h3 id="a-title">AoE-schade</h3><button type="button" class="link" data-ao="close">Annuleer</button></div>
+      <div class="shead"><h3 id="a-title">${a.title ? esc(a.title) : "AoE-schade"}</h3><button type="button" class="link" data-ao="close">Annuleer</button></div>
       <div class="arow">
         <label>Schade<input id="a-dmg" type="number" inputmode="numeric" min="0" max="999" placeholder="28" enterkeyhint="done"></label>
         <label>Damage type<select id="a-type"><option value="">geen / onbekend</option>${DTYPES.map((t) => `<option value="${t}">${t[0].toUpperCase() + t.slice(1)}</option>`).join("")}</select></label>
       </div>
+      <div class="asrc hint" id="a-src" aria-live="polite"></div>
       <div class="asave"><span class="qlbl">Save</span>
         <select id="a-ab" aria-label="Save-ability">${ABS.map((x) => `<option>${x}</option>`).join("")}</select>
         <input id="a-dc" type="number" inputmode="numeric" placeholder="DC" aria-label="DC" min="1" max="40">
@@ -634,6 +643,9 @@ export function paintAoe() {
     el.hidden = false;
   }
   // per paint één keer per doel: keuze (statblock-opzoeking) en uitkomst (gesimuleerd op een kopie)
+  const src = $("#a-src");
+  src.hidden = !a.roll;
+  if (a.roll) src.innerHTML = `${esc(a.roll)} <button type="button" class="link" data-ao="reroll">Opnieuw</button>${a.extra ? `<br>${esc(a.extra)}: apart toepassen` : ""}${a.used ? `<br><b class="bad">${esc(a.act)} is nog niet herladen</b>` : ""}`;
   const L = aoeTargets(), n = clampDmg(a.dmg);
   const rows = L.map((c) => { const p = aoePick(a, c); return { c, p, o: p.sel && n ? aoeOutcome(c, p, n) : { dealt: 0, steps: [], res: "", hp: c.hp } }; });
   const sel = rows.filter((x) => x.p.sel);
