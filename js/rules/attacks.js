@@ -125,7 +125,7 @@ export function actionAoe(a, roll, types = []) {
     type: types.includes(t0) ? t0 : "",
     ab: a.dc.ab.split("/")[0],
     dc: a.dc.n,
-    half: /\bhalf (?:as much|(?:the|that)(?: [a-z]+)?) damage/i.test(a.text),
+    half: /\bhalf (?:as much |(?:the|that)(?: [a-z]+)? )?damage/i.test(a.text),
     roll: same.map(txt).join(" + ") + (same.length > 1 ? ` = ${same.reduce((s, p) => s + p.total, 0)}` : ""),
     extra: other.map((p) => `plus ${p.e} ${p.type}`).join(", "),
   };

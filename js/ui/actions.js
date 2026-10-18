@@ -708,8 +708,11 @@ function laUse(id, i) {
 
 /* ---------- AoE: één schadeworp op meerdere doelen (knop AoE in de beurtbalk) ---------- */
 function closeAoe() {
+  const a = ui.aoe;
   ui.aoe = null; paintAoe();
-  const b = $("#aoe"); if (b) b.focus();
+  // geopend vanaf een save-actie op de kaart: focus terug op die knop, anders op AoE in de beurtbalk
+  const src = a && a.src && document.querySelector(`.c[data-id="${CSS.escape(a.src)}"] [data-aoe="${CSS.escape(a.act)}"]`);
+  (src || $("#aoe"))?.focus();
 }
 
 /** Keuze voor één doelwit bijwerken (UI-toestand, niet in undo) */
@@ -748,11 +751,11 @@ export function bindAoe() {
     if (k === "mode") aoeSet(a, id, { mode: +b.dataset.v });
     if (k === "lr") aoeSet(a, id, { save: okSave(a), lr: true });
     if (k === "reroll") { const x = srcAoe(a); if (x) { a.dmg = String(x.dmg); a.roll = x.roll; a.extra = x.extra; $("#a-dmg").value = a.dmg; } }
-    if (k === "all") aoeTargets().forEach((c) => aoeSet(a, c.id, { sel: !!b.dataset.v && c.kind === b.dataset.v }));
+    if (k === "all") aoeTargets(a.src).forEach((c) => aoeSet(a, c.id, { sel: !!b.dataset.v && c.kind === b.dataset.v }));
     if (k === "roll") {
       const dc = parseInt(a.dc);
       if (!(dc > 0)) { toast("Vul eerst de DC in."); $("#a-dc").focus(); return; }
-      const mons = aoeTargets().filter((c) => c.kind === "monster" && aoePick(a, c).sel);
+      const mons = aoeTargets(a.src).filter((c) => c.kind === "monster" && aoePick(a, c).sel);
       if (!mons.length) { toast("Kies eerst de monsters die een save doen."); return; }
       mons.forEach((c) => {
         const m = findMon(c.ref), x = rollSave(saveBonus(m, a.ab), hasMagicRes(m), Math.random, saveMods(c, a.ab));
@@ -785,7 +788,7 @@ function openActAoe(cid, name) {
   ui.sheet = null; ui.qadd = null; ui.la = null;
   ui.aoe = Object.assign(a, { dmg: String(x.dmg), type: x.type, ab: x.ab, dc: String(x.dc), half: x.half, roll: x.roll, extra: x.extra,
     title: `${name} · ${c.name}`, used: ri >= 0 && !c.rc[ri].ready });
-  aoeTargets().forEach((t) => { if (t.kind === "pc") aoeSet(ui.aoe, t.id, { sel: true }); });
+  aoeTargets(a.src).forEach((t) => { if (t.kind === "pc") aoeSet(ui.aoe, t.id, { sel: true }); });
   render();
   $("#asheet .asheet")?.focus();
 }
@@ -793,7 +796,7 @@ function openActAoe(cid, name) {
 function aoeGo() {
   const a = ui.aoe; if (!a) return;
   const n = clampDmg(a.dmg), dc = parseInt(a.dc);
-  const picks = aoeTargets().map((c) => ({ c, p: aoePick(a, c) })).filter((x) => x.p.sel)
+  const picks = aoeTargets(a.src).map((c) => ({ c, p: aoePick(a, c) })).filter((x) => x.p.sel)
     .map(({ c, p }) => ({ c, save: p.save, mode: p.mode, lr: p.lr, note: p.roll ? `${a.ab} save ${rollText(p.roll, dc)}` : "", up: c.hp > 0 }));
   if (!n || !picks.length) return;
   const L = picks.map((x) => x.c);

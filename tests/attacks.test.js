@@ -126,6 +126,8 @@ test("AoE uit een save-actie: geen halve schade (Wing Attack), 'half the bludgeo
   assert.equal(actionAoe(wing, max, DTYPES).half, false);
   const ww = parseAction("Whirlwind (Recharge 4–6)", "Each creature in the elemental's space must make a DC 13 Strength saving throw. On a failure, a target takes 15 (3d8 + 2) bludgeoning damage and is flung up 20 feet. If the saving throw is successful, the target takes half the bludgeoning damage and isn't flung away.");
   assert.equal(actionAoe(ww, max, DTYPES).half, true);
+  const hd = parseAction("Burst", "Each creature must make a DC 12 Dexterity saving throw, taking 7 (2d6) fire damage on a failed save, or half damage on a successful one.");
+  assert.equal(actionAoe(hd, max, DTYPES).half, true);
 });
 
 test("AoE uit een save-actie: zelfde type telt op, ander type als hint; onbekend type leeg", () => {

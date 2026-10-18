@@ -580,8 +580,8 @@ export function paintQadd() {
 }
 
 /* ---------- AoE: één schadeworp op meerdere doelen ---------- */
-/** Wie geraakt kan worden: iedereen met HP die nog meedoet (spelers op 0 HP ook: dat kost een death save) */
-export const aoeTargets = () => sortOrder(app.S.list).filter((c) => c.kind !== "lair" && c.max && !isOut(c) && !(ui.aoe && ui.aoe.src === c.id));
+/** Wie geraakt kan worden: iedereen met HP die nog meedoet (spelers op 0 HP ook: dat kost een death save). ex = bron van een save-actie */
+export const aoeTargets = (ex = null) => sortOrder(app.S.list).filter((c) => c.kind !== "lair" && c.max && !isOut(c) && c.id !== ex);
 
 /** Effectieve keuze per doelwit (mode null = volg het statblock voor het gekozen damage type) */
 export function aoePick(a, c) {
@@ -611,7 +611,7 @@ function aoeRow(a, c, p, o, n) {
     <label class="atop"><input type="checkbox" data-ao="sel" data-id="${id}" ${p.sel ? "checked" : ""}>
       <span class="atn"><span>${nm}</span> <span class="tag ${c.kind === "pc" ? "" : "m"}">${c.kind === "pc" ? "speler" : "monster"}</span><small>${n0(c.hp)}/${n0(c.max)} HP${c.temp ? ` +${n0(c.temp)}` : ""}</small></span>
       ${p.sel && n ? `<b class="adealt ${o.dealt ? "" : "zero"}">−${o.dealt}</b>` : ""}</label>
-    ${p.sel ? `<div class="seg2 sm" role="group" aria-label="Save ${nm}">${(a.half === false ? SAVES0 : SAVES).map(([v, l]) => `<button type="button" data-ao="save" data-id="${id}" data-v="${v}" aria-pressed="${p.save === v}"${v === "none" ? ` aria-label="Geen schade (bijv. Evasion)" title="Geen schade (bijv. Evasion)"` : ""}>${l}</button>`).join("")}</div>
+    ${p.sel ? `<div class="seg2 sm" role="group" aria-label="Save ${nm}">${(a.half === false ? SAVES0 : SAVES).map(([v, l]) => `<button type="button" data-ao="save" data-id="${id}" data-v="${v}" aria-pressed="${p.save === v}"${v === "none" && a.half !== false ? ` aria-label="Geen schade (bijv. Evasion)" title="Geen schade (bijv. Evasion)"` : ""}>${l}</button>`).join("")}</div>
       <div class="seg2 sm" role="group" aria-label="Weerstand ${nm}">${MODES.map(([v, l]) => `<button type="button" data-ao="mode" data-id="${id}" data-v="${v}" aria-pressed="${p.mode === v}">${l}</button>`).join("")}</div>
       <div class="acalc">${n ? o.steps.join(" → ") + end : "Vul de schade in"}${info ? `<br>${info}` : ""}</div>${lrBtn}` : ""}
   </div>`;
@@ -646,7 +646,7 @@ export function paintAoe() {
   const src = $("#a-src");
   src.hidden = !a.roll;
   if (a.roll) src.innerHTML = `${esc(a.roll)} <button type="button" class="link" data-ao="reroll">Opnieuw</button>${a.extra ? `<br>${esc(a.extra)}: apart toepassen` : ""}${a.used ? `<br><b class="bad">${esc(a.act)} is nog niet herladen</b>` : ""}`;
-  const L = aoeTargets(), n = clampDmg(a.dmg);
+  const L = aoeTargets(a.src), n = clampDmg(a.dmg);
   const rows = L.map((c) => { const p = aoePick(a, c); return { c, p, o: p.sel && n ? aoeOutcome(c, p, n) : { dealt: 0, steps: [], res: "", hp: c.hp } }; });
   const sel = rows.filter((x) => x.p.sel);
   $("#a-list").innerHTML = rows.map((x) => aoeRow(a, x.c, x.p, x.o, n)).join("") || `<p class="hint">Niemand om te raken.</p>`;
