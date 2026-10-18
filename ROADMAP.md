@@ -36,7 +36,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [ ] Effect/conditie op meerdere doelen tegelijk (Bless, Hold Person, Hypnotic Pattern, Web), met de doelkeuze uit AoE; Bless op 3 doelen kost nu 9 tikken
 - [ ] Groepsbeurten: zelfde monster met dezelfde groepsworp als één beurt
 - [ ] Monsters zoeken op CR en type (nu alleen naam: "undead" of "cr 5" geeft niets) en statblock-preview vóór toevoegen
-- [ ] Desktop en tablet (breed scherm): statblock standaard open in de rechterkolom (er is ruimte genoeg), en die volgt wie aan de beurt is. Monster: statblock. Speler: de character sheet als die er is (D&D Beyond-link of PDF), anders een sheet opgebouwd uit wat bekend is (naam, ras, AC met effecten, HP en temp HP, initiative, Dex-mod, spell slots, resources, condities, effecten, death saves) — deels klaar (1.7.0): de kolom volgt het monster aan de beurt; nog open: standaard open en de speler-sheet
+- [x] Desktop en tablet: zijkolom altijd gevuld en volgt de beurt (monster: statblock, speler: sheet met live HP/AC/condities/effecten/slots, plus de D&D Beyond-sheet als die er is); Vastzetten met "Beurt: X →"; zonder gevecht het laatst geopende of toegevoegde (1.8.0)
 - [ ] Spell-uitleg makkelijk lezen: tik op een spellnaam (statblock, spell slots, effecten zoals Bless) opent de beschrijving (level, casting time, range, duur, concentratie, tekst) in een paneel. Alleen SRD 5.1-spells meeleveren (CC-BY-4.0, zoals de monsters); andere spells via een eigen notitie
 - [ ] Voorbereiden-indeling: tabs staan onder de hele lijst (veel scrollen bij 10+ deelnemers) en "Instellingen" valt op 390 px buiten beeld; tabs bovenaan of toevoegen als paneel (samen met de welkomstkaart hieronder)
 

@@ -3,7 +3,7 @@ import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
 import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, aoeTargets, aoePick, editPreview } from "./render.js";
 import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods } from "../rules/effects.js";
-import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, sbTop } from "./statblock.js";
+import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
 import { step, startCombat, makeDur, parseInit } from "../rules/turns.js";
@@ -42,6 +42,7 @@ export function addMonsters(name, n, hpmode, initmode, silent, fixed = null) {
   }
   if (!silent) {
     S.sample = false;
+    wantSB(out[out.length - 1].id); // zijkolom toont het net toegevoegde monster
     toastHtml(out.map((c) => `${esc(c.name)}: ${c.roll === undefined ? "initiative" : `d20 [${c.roll}] ${sgn(c.dex)} =`} <b>${c.init}</b>`).join("<br>"));
   }
 }
@@ -93,7 +94,7 @@ function applyEff(c, p, byId, join = null) {
 
 /* ---------- acties per deelnemer: (c, knop, rij-element) ---------- */
 const row = {
-  sb: (c) => showSB(c.ref, c.name),
+  sb: (c) => showSB(c),
   sheet: (c) => showSheet(c),
   "atk-open"(c) { ui.atkOpen = c.id; },
   "atk-close"() { ui.atkOpen = null; },
@@ -254,6 +255,8 @@ const global = {
   },
   sbclose() { closeSB(); return false; },
   sbbig() { toggleBigSB(); return false; },
+  sbpin() { togglePinSB(); return false; },
+  sbfollow() { followTurn(); return false; },
 };
 
 export function scrollToCard(id, onlyIfHidden, instant) {

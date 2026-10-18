@@ -235,6 +235,21 @@ textarea{min-height:120px;resize:vertical}
 
 .sbbtns{display:flex;gap:6px;flex:0 0 auto}
 .sbbig{display:none}
+.sbpin{min-height:44px;min-width:56px}
+.sbpin[aria-pressed="true"]{background:var(--active-soft);border-color:var(--active);color:var(--active);font-weight:700}
+.sbturn{display:flex;align-items:center;gap:6px;width:100%;min-height:44px;margin:0 0 8px;padding:6px 12px;border:1px solid var(--active);border-radius:8px;background:var(--active-soft);color:var(--active);text-align:left}
+@media (min-width:900px){#sbturn:not(:empty)+.sb{max-height:calc(100vh - 76px)}} /* id-selector: niet over de telefoonhoogte heen */
+.sbturn b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* Speler-sheet: live-blok bovenaan (alleen-lezen; bediening zit op de kaart) */
+.livest{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;text-align:center;font-variant-numeric:tabular-nums}
+.livest>div{background:var(--sunk);border-radius:6px;padding:4px 2px}
+.livest .lk{display:block;font-size:.72rem;letter-spacing:.06em;color:var(--accent);font-weight:700}
+.livest b{font-family:var(--display);font-size:1.25rem}
+.livest b.acx{color:var(--active)}
+.sb .badges{padding:6px 0 0}
+.cnts{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.cnt{white-space:nowrap;font-variant-numeric:tabular-nums}
+.cnt b{color:var(--muted);font-weight:700}
 /* Telefoon: statblock half hoog boven de beurtbalk (Volgende blijft bereikbaar), Groot = tot bijna bovenaan */
 @media (max-width:899px){
   .sbwrap{position:fixed;left:0;right:0;top:auto;bottom:var(--dock-h);z-index:14;padding:0 max(8px,env(safe-area-inset-right,0px)) 0 max(8px,env(safe-area-inset-left,0px))}
@@ -243,6 +258,7 @@ textarea{min-height:120px;resize:vertical}
   .sbwrap[data-big="true"] .sb{max-height:calc(100vh - var(--dock-h) - env(safe-area-inset-top,0px) - 12px);max-height:calc(100dvh - var(--dock-h) - env(safe-area-inset-top,0px) - 12px)}
   .sbhead{position:sticky;top:-10px;background:var(--surface);z-index:1;padding-top:2px}
   .closebtn,.sbbig{display:inline-flex;min-height:44px;min-width:56px;align-items:center;justify-content:center}
+  .sbpin,#sbturn{display:none}
   body[data-sb="open"]{padding-bottom:calc(var(--dock-h) + 45vh + 24px);padding-bottom:calc(var(--dock-h) + 45dvh + 24px)}
 }
 

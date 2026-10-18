@@ -48,7 +48,7 @@ export function render() {
   paintAoe();
   paintParty();
   paintLog();
-  syncSB(app.S);
+  syncSB(app.S, openId(), sbChips);
   afterRender();
 }
 
@@ -99,6 +99,9 @@ function effChips(c, S, interactive) {
       : `<span class="${cls}">${t}</span>`;
   }).join("");
 }
+
+/** Conditie- en effect-chips (alleen tekst) voor de speler-sheet in het zijpaneel */
+const sbChips = (c) => condChips(c, app.S, false) + effChips(c, app.S, false);
 
 const hidBadge = (c) => (c.hidden ? `<span class="bd hid" title="Spelers zien deze deelnemer niet">verborgen</span>` : "");
 
