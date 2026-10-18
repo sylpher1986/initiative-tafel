@@ -35,6 +35,8 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [ ] Effect/conditie op meerdere doelen tegelijk (Bless, Hold Person, Hypnotic Pattern, Web), met de doelkeuze uit AoE; Bless op 3 doelen kost nu 9 tikken
 - [ ] Groepsbeurten: zelfde monster met dezelfde groepsworp als één beurt
 - [ ] Monsters zoeken op CR en type (nu alleen naam: "undead" of "cr 5" geeft niets) en statblock-preview vóór toevoegen
+- [ ] Desktop en tablet (breed scherm): statblock standaard open in de rechterkolom (er is ruimte genoeg), en die volgt het actieve monster; bij een speler aan de beurt blijft het laatste monster staan
+- [ ] Spell-uitleg makkelijk lezen: tik op een spellnaam (statblock, spell slots, effecten zoals Bless) opent de beschrijving (level, casting time, range, duur, concentratie, tekst) in een paneel. Alleen SRD 5.1-spells meeleveren (CC-BY-4.0, zoals de monsters); andere spells via een eigen notitie
 - [ ] Voorbereiden-indeling: tabs staan onder de hele lijst (veel scrollen bij 10+ deelnemers) en "Instellingen" valt op 390 px buiten beeld; tabs bovenaan of toevoegen als paneel (samen met de welkomstkaart hieronder)
 
 ### Prioriteit 3: kleine bugs en afwerking
@@ -45,7 +47,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [x] Bug: één los monster kreeg "groepsworp" in het logboek (1.6.4)
 - [x] Monster-tab: knoptekst met aantal (1.6.4); was ("Bugbear toevoegen" bij aantal 3; snel toevoegen zegt wel "3× …")
 - [ ] Spelersscherm op tv: 11 deelnemers passen niet op 720p; compacter of twee kolommen
-- [ ] Tablet: statblock rechts volgt de beurt niet; automatisch het actieve monster tonen
+- Tablet: statblock rechts volgt de beurt niet → opgenomen in "Desktop en tablet" bij prioriteit 2
 - [ ] Dode monsters inklappen of onderaan zetten
 - [ ] Surprise (2014): vinkje "verrast" bij start, eerste beurt overslaan
 - [ ] Slots en effecten: Bless via Effect verbruikt geen slot. Voorstel: niet koppelen maar spelers-slots optioneel maken (spelers houden die vaak zelf bij)
