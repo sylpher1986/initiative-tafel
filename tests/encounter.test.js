@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clearMonsters, stopCombat } from "../js/rules/turns.js";
+import { clearMonsters, stopCombat, setInits, initPcs } from "../js/rules/turns.js";
 import { addEffect, endConcEffects, PRESETS } from "../js/rules/effects.js";
 
 const pc = (id, o = {}) => ({ id, name: id, kind: "pc", init: 12, dex: 1, ac: 15, hp: 20, max: 30, cond: [], ...o });
@@ -38,4 +38,31 @@ test("gevecht stoppen: geen ronde, beurt of open saves; deelnemers blijven", () 
   stopCombat(S);
   assert.equal(S.round, 0); assert.equal(S.active, null); assert.deepEqual(S.saves, []);
   assert.equal(S.list.length, 2);
+});
+
+test("initiative spelers bij start: geldige waarden gezet, ongeldig/leeg = ontbreekt, dode speler telt niet", () => {
+  const L = [pc("a", { init: 12 }), pc("b", { init: 8 }), pc("c", { init: 5, ds: { s: 0, f: 3, stable: false, dead: true } }), pc("d", { init: 3, hidden: true }), mon("m", { init: 14 })];
+  assert.deepEqual(initPcs(L).map((c) => c.id), ["a", "b", "d"]);
+  const r = setInits(L, { a: "17", b: "8", d: "abc", m: "1" });
+  assert.equal(L[0].init, 17);
+  assert.equal(L[1].init, 8);
+  assert.equal(L[3].init, 3, "ongeldig: niets veranderd");
+  assert.equal(L[4].init, 14, "monsters niet");
+  assert.deepEqual(r.missing, ["d"]);
+  setInits(L, { a: "99", b: "-3", d: "4" });
+  assert.equal(L[0].init, 40); assert.equal(L[1].init, -3);
+});
+
+test("volgende encounter: conditieduur die aan een gewist monster hing vervalt, de conditie blijft (save ook)", () => {
+  const p = pc("a", { cond: ["Frightened", "Poisoned", "Prone"], cd: {
+    Frightened: { kind: "tend", who: "g1", at: "end", count: 1 },
+    Poisoned: { kind: "tend", who: "g1", at: "end", count: 1, save: { ab: "CON", dc: 12 } },
+    Prone: { kind: "tend", who: "a", at: "end", count: 1 } } });
+  const S = { round: 1, active: "a", saves: [], list: [p, mon("g1")] };
+  const r = clearMonsters(S);
+  assert.deepEqual(p.cond, ["Frightened", "Poisoned", "Prone"]);
+  assert.equal(p.cd.Frightened, undefined);
+  assert.deepEqual(p.cd.Poisoned, { kind: "inf", save: { ab: "CON", dc: 12 } });
+  assert.equal(p.cd.Prone.who, "a");
+  assert.equal(r.n, 1); assert.equal(r.lairs, 0);
 });

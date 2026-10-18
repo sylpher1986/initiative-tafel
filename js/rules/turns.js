@@ -152,8 +152,31 @@ export function stopCombat(state) {
  */
 export function clearMonsters(state) {
   const out = stopCombat(state);
+  const gone = new Set(state.list.filter((c) => c.kind === "monster" || c.kind === "lair").map((c) => c.id));
   const n = state.list.filter((c) => c.kind === "monster").length;
-  state.list = state.list.filter((c) => c.kind !== "monster" && c.kind !== "lair");
+  state.list = state.list.filter((c) => !gone.has(c.id));
+  // conditieduur die aan de beurt van een gewist monster hing telt nooit meer af: conditie blijft, zonder duur
+  for (const c of state.list) for (const [k, e] of Object.entries(c.cd || {})) if (e && gone.has(e.who)) {
+    if (e.save) c.cd[k] = { kind: "inf", save: e.save }; else delete c.cd[k];
+  }
   out.why.push({ t: "volgende encounter: monsters gewist", id: null });
-  return Object.assign(out, { n });
+  return Object.assign(out, { n, lairs: gone.size - n });
+}
+
+/** Spelers die bij Start gevecht hun initiative opgeven: levend (niet dood), ook verborgen of op 0 HP */
+export const initPcs = (list) => sortOrder(list.filter((c) => c.kind === "pc" && !(c.ds && c.ds.dead)));
+
+/**
+ * Initiative van spelers vastleggen (paneel bij Start gevecht). map = { id: tekst }.
+ * Alleen geldige waarden (parseInit) worden gezet.
+ * missing = namen van spelers zonder geldige waarde (dan start de UI het gevecht niet).
+ */
+export function setInits(list, map) {
+  const out = Object.assign(fx(), { missing: [] });
+  for (const c of initPcs(list)) {
+    const v = parseInit(map[c.id]);
+    if (v === null) { out.missing.push(c.name); continue; }
+    if (v !== c.init) c.init = v; // het logboek noemt de wijziging zelf ("initiative 12 → 17")
+  }
+  return out;
 }

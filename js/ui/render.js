@@ -3,7 +3,7 @@
 import { $, esc, n0 } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
-import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit } from "../rules/turns.js";
+import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs } from "../rules/turns.js";
 import { PRESETS, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn } from "../rules/effects.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList } from "../rules/spells.js";
@@ -28,6 +28,7 @@ export const ui = {
   aoeLast: { type: "", ab: "DEX", dc: "" }, // laatst gebruikte type/save/DC (bijv. dezelfde breath weapon)
   atk: null,           // { by, n, label, bo, key, adv, tid, r, parts, modes, force } = aanvalspaneel open (to-hit-knop)
   atkAdv: null,        // { by, v }: advantage/disadvantage blijft staan voor de volgende aanval van dezelfde aanvaller
+  initDraft: null,     // { v: { id: tekst }, act: id, fresh, rolls: { id: tekst } } = initiative-paneel bij Start gevecht
   atkPrev: null,       // { by, id }: vorige doel van deze aanvaller (bovenaan in de lijst)
   edit: null,          // { id, name, ac, max, init } = concept in het bewerkpaneel (⋯)
   effWho: null,        // { id, i } = preset met concentratie wacht op "Wie cast?"
@@ -56,6 +57,7 @@ export function render() {
   paintQadd();
   paintAoe();
   paintAtk();
+  paintInit();
   paintLa();
   paintSv();
   paintParty();
@@ -735,6 +737,27 @@ export function paintAtk() {
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3 id="x-title">${esc(x.label)} → ${c ? esc(c.name) : "doel?"}</h3><button type="button" class="link" data-xa="close">Annuleer</button></div>
       ${c ? atkRes(x, c) : atkPick(x, by)}
+    </div>`;
+  el.hidden = false;
+}
+
+/* ---------- initiative van spelers bij Start gevecht ---------- */
+export function paintInit() {
+  const el = $("#isheet"), x = ui.initDraft;
+  if (!x) { el.hidden = true; el.innerHTML = ""; return; }
+  const L = initPcs(app.S.list), mons = app.S.list.filter((c) => c.kind === "monster").length;
+  const last = L.length && L[L.length - 1].id === x.act;
+  el.innerHTML = `<div class="dim" data-ia="close"></div>
+    <div class="sheet qsheet isheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="i-title">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="shead"><h3 id="i-title">Initiative spelers</h3><button type="button" class="link" data-ia="close">Annuleer</button></div>
+      ${mons ? `<p class="hint">Monsters: initiative al gerold (${mons}).</p>` : ""}
+      <div class="ilist">${L.map((c) => `<div class="ir ${c.id === x.act ? "act" : ""}">
+        <button type="button" class="irn" data-ia="sel" data-id="${esc(c.id)}" aria-pressed="${c.id === x.act}" aria-label="${esc(c.name)}: initiative ${esc(x.v[c.id] || "leeg")}"><span>${esc(c.name)}</span>${x.rolls[c.id] ? `<small>${esc(x.rolls[c.id])}</small>` : ""}</button>
+        <b class="iv" aria-hidden="true">${x.v[c.id] !== "" && x.v[c.id] != null ? esc(x.v[c.id]) : "—"}</b>
+        <button type="button" class="btn small" data-ia="roll" data-id="${esc(c.id)}" aria-label="Initiative rollen voor ${esc(c.name)}">Rol</button></div>`).join("")}</div>
+      <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button type="button" data-ia="d" data-v="${n}">${n}</button>`).join("")}<button type="button" data-ia="back" aria-label="Wissen">⌫</button><button type="button" data-ia="d" data-v="0">0</button><button type="button" data-ia="clear" aria-label="Leegmaken">C</button></div>
+      <div class="ifoot"><button type="button" class="btn" data-ia="next" ${last ? "disabled" : ""}>Volgende ›</button><button type="button" class="btn primary qgo" data-ia="go">Start gevecht</button></div>
     </div>`;
   el.hidden = false;
 }

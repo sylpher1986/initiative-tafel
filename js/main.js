@@ -6,7 +6,7 @@ import { toPlayerView } from "./playerview.js";
 import { localChannel, dmLink } from "./share.js";
 import { $, toast } from "./ui/util.js";
 import { VERSION } from "./version.js";
-import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, bindAoe, bindAtk, addMonsters, normalize, scrollToCard } from "./ui/actions.js";
+import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, bindAoe, bindAtk, bindInit, addMonsters, normalize, scrollToCard } from "./ui/actions.js";
 
 const sample = () => ({
   list: [
@@ -40,7 +40,7 @@ async function boot() {
   document.addEventListener("change", onChange);
   document.addEventListener("keydown", onKey);
   document.addEventListener("toggle", onToggle, true);
-  bindForms(); bindParty(); bindLog(); bindQadd(); bindAoe(); bindAtk();
+  bindForms(); bindParty(); bindLog(); bindQadd(); bindAoe(); bindAtk(); bindInit();
   bindBackup(start);
   // echte hoogte van de beurtbalk: het statblock op de telefoon staat er precies boven
   if ("ResizeObserver" in window) new ResizeObserver(([e]) => document.documentElement.style.setProperty("--dock-h", Math.ceil(e.target.getBoundingClientRect().height) + "px")).observe($("#dock"));

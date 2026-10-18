@@ -1,14 +1,14 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
-import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, paintSv, paintAtk, laOpts, svBonus, aoeTargets, aoePick, okSave, editPreview } from "./render.js";
+import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, svBonus, aoeTargets, aoePick, okSave, editPreview } from "./render.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
 import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc } from "../rules/effects.js";
 import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
-import { step, startCombat, stopCombat, clearMonsters, makeDur, parseInit, isOut } from "../rules/turns.js";
+import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, defMode } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
@@ -241,7 +241,12 @@ const global = {
   "toast-svadv"() { svRetry((c, sid) => svRoll(sid, true)); },
   undo() { if (undo()) { ui.confirmReset = false; toast(`Ongedaan gemaakt${historySize() ? ` (nog ${historySize()} stappen terug)` : ""}.`); } },
   // na starten of stoppen volgt de modus weer het gevecht (ui.mode = null)
-  start() { apply(startCombat(app.S)); ui.mode = null; },
+  start() {
+    // spelers eerst hun initiative (paneel); vanuit het paneel komt start terug met initSkip
+    if (!ui.initSkip && !app.S.round && initPcs(app.S.list).length) { openInit(); return false; }
+    ui.initSkip = false;
+    apply(startCombat(app.S)); ui.mode = null;
+  },
   next() { apply(step(app.S, 1)); ui.laPulse = true; },
   prev() { apply(step(app.S, -1)); },
   stop() { apply(stopCombat(app.S)); ui.mode = null; },
@@ -249,9 +254,10 @@ const global = {
   "reset-mons"() {
     const r = clearMonsters(app.S);
     apply(r);
-    ui.confirmReset = false; ui.mode = null; ui.open = null; ui.panel = null; ui.edit = null; ui.atk = null; ui.aoe = null; ui.la = null; ui.sv = false;
+    Object.assign(ui, { confirmReset: false, mode: null, open: null, panel: null, edit: null, atk: null, aoe: null, la: null, sv: false,
+      effWho: null, castPick: null, atkOpen: null, atkRx: null, atkAdv: null, atkPrev: null, svRetry: null, confirmDel: null });
     render();
-    toastHtml(`${esc(`${r.n} monster${r.n === 1 ? "" : "s"} gewist. Spelers blijven; pas hun initiative aan via ⋯.`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+    toastHtml(`${esc(`${r.n ? `${r.n} monster${r.n === 1 ? "" : "s"}` : ""}${r.n && r.lairs ? " en " : ""}${r.lairs ? "lair" : ""} gewist. Spelers blijven; hun initiative vul je in bij Start gevecht.`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
     return false;
   },
   qadd() { ui.qadd = { q: "", sel: null, n: 1, init: "roll", fix: "" }; },
@@ -371,9 +377,14 @@ export function onKey(e) {
   if (ui.qadd && e.key === "Escape") { e.preventDefault(); closeQadd(); return; }
   if (ui.aoe && e.key === "Escape") { e.preventDefault(); closeAoe(); return; }
   if (ui.atk && e.key === "Escape") { e.preventDefault(); closeAtk(); return; }
+  if (ui.initDraft && !e.ctrlKey && !e.metaKey) {
+    const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" ? ["enter"] : null;
+    if (k) { e.preventDefault(); initKey(...k); }
+    return;
+  }
   if (ui.la && e.key === "Escape") { e.preventDefault(); closeLa(); return; }
   if (ui.sv && e.key === "Escape") { e.preventDefault(); ui.sv = false; paintSv(); return; }
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); ui.qadd = null; ui.aoe = null; ui.atk = null; global.undo(); render(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); ui.qadd = null; ui.aoe = null; ui.atk = null; ui.initDraft = null; global.undo(); render(); return; }
   if (ui.sheet && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
     const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" ? ["apply"] : null;
     if (k) { e.preventDefault(); const res = sheetKey(...k); render(); if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`); }
@@ -897,6 +908,68 @@ export function bindAtk() {
     }
     paintAtk();
     focusAtk();
+  });
+}
+
+/* ---------- initiative van spelers bij Start gevecht ---------- */
+function openInit() {
+  const L = initPcs(app.S.list);
+  ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.atk = null; ui.la = null; ui.sv = false;
+  ui.initDraft = { v: Object.fromEntries(L.map((c) => [c.id, c.init == null ? "" : String(c.init)])), act: L[0].id, fresh: true, rolls: {} };
+  render();
+  $("#isheet .isheet")?.focus();
+}
+function closeInit() { ui.initDraft = null; paintInit(); $("#start")?.focus(); }
+
+/** Volgende speler in het paneel (op de laatste blijft hij staan) */
+function initNext(x) {
+  const L = initPcs(app.S.list), i = L.findIndex((c) => c.id === x.act);
+  if (i >= 0 && i < L.length - 1) { x.act = L[i + 1].id; x.fresh = true; return true; }
+  return false;
+}
+
+function initGo() {
+  const x = ui.initDraft; if (!x) return;
+  const r = setInits(app.S.list, x.v);
+  if (r.missing.length) {
+    const L = initPcs(app.S.list), first = L.find((c) => parseInit(x.v[c.id]) === null);
+    if (first) { x.act = first.id; x.fresh = true; }
+    paintInit();
+    toast(`Nog geen initiative voor: ${r.missing.join(", ")}.`);
+    return;
+  }
+  apply(r);
+  ui.initDraft = null; ui.initSkip = true;
+  paintInit();
+  $("#start")?.click(); // zelfde afhandeling als de knop: gevecht starten, kaart van wie begint, één undo-stap
+}
+
+/** Knop of toets in het paneel. k: d (cijfer), back, clear, sel, roll, next, enter, go, close */
+function initKey(k, v) {
+  const x = ui.initDraft; if (!x) return;
+  if (k === "close") { closeInit(); return; }
+  if (k === "go" || (k === "enter" && !initNext(x))) { initGo(); return; }
+  const cur = x.v[x.act] ?? "";
+  if (k === "d") { x.v[x.act] = x.fresh ? String(v) : cur.length < 2 ? cur + v : cur; x.fresh = false; delete x.rolls[x.act]; }
+  if (k === "back") { x.v[x.act] = x.fresh ? "" : cur.slice(0, -1); x.fresh = false; delete x.rolls[x.act]; }
+  if (k === "clear") { x.v[x.act] = ""; x.fresh = false; delete x.rolls[x.act]; }
+  if (k === "sel") { x.act = v; x.fresh = true; }
+  if (k === "next") initNext(x);
+  if (k === "roll") {
+    const c = app.S.list.find((t) => t.id === v); if (!c) return;
+    const r = d(20), bo = c.initBonus ?? c.dex ?? 0;
+    x.v[c.id] = String(r + bo); x.rolls[c.id] = `d20 [${r}] ${sgn(bo)}`;
+    x.act = c.id; initNext(x);
+  }
+  paintInit();
+  const b = $("#isheet .ir.act .irn"); if (b) b.scrollIntoView({ block: "nearest" });
+  $("#isheet .isheet")?.focus({ preventScroll: true });
+}
+
+export function bindInit() {
+  $("#isheet").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-ia]"); if (!b) return;
+    initKey(b.dataset.ia, b.dataset.v ?? b.dataset.id);
   });
 }
 

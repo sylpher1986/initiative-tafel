@@ -35,7 +35,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 
 ### Prioriteit 2: voorbereiding en tempo
 - [x] Volgende encounter: "Encounter wissen" vraagt "Monsters wissen, spelers houden" of "Alles"; spelers blijven met HP, slots en effecten, één Ongedaan (1.12.1). Encounters vooraf klaarzetten en XP-moeilijkheid: zie Functies
-- [ ] Initiative van spelers bij Start gevecht: één paneel met alle spelers en een cijferpad
+- [x] Initiative van spelers bij Start gevecht: paneel met alle spelers (oude waarden ingevuld), cijferpad, Rol per speler, Volgende/Start; één Ongedaan (1.13.0)
 - [ ] Effect/conditie op meerdere doelen tegelijk (Bless, Hold Person, Hypnotic Pattern, Web), met de doelkeuze uit AoE; Bless op 3 doelen kost nu 9 tikken
 - [ ] Groepsbeurten: zelfde monster met dezelfde groepsworp als één beurt
 - [ ] Monsters zoeken op CR en type (nu alleen naam: "undead" of "cr 5" geeft niets) en statblock-preview vóór toevoegen
