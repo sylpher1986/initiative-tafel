@@ -5,12 +5,13 @@ import { fx, applyPcHp, revertMax, newDs, setUncon, dropConc, merge } from "./co
 
 /**
  * Presets. dur: sleutel uit DURS (turns.js) of "lr" (tot long rest). dex: 13 + Dex-mod (Mage Armor).
+ * after: effect dat volgt als dit effect afloopt (Haste → Lethargy, tot na de volgende beurt van het doelwit).
  * sv: invloed op saves ({ ab, b } vaste bonus, alleen op die ability; { d } = ±1dN op elke save). grp: sluiten elkaar uit (cover).
  */
 export const PRESETS = [
   { n: "Shield", st: "ac", op: "+", v: 5, dur: "tstart", react: true, txt: "reaction; ook geen schade van Magic Missile" },
   { n: "Shield of Faith", st: "ac", op: "+", v: 2, dur: "r100", conc: true },
-  { n: "Haste", st: "ac", op: "+", v: 2, dur: "r10", conc: true, txt: "speed ×2, advantage op Dex saves, extra action", end: "1 beurt geen beweging of acties (lethargy)" },
+  { n: "Haste", st: "ac", op: "+", v: 2, dur: "r10", conc: true, txt: "speed ×2, advantage op Dex saves, extra action", after: { n: "Lethargy", txt: "geen beweging of acties" } },
   { n: "Mage Armor", st: "ac", op: "=", v: 13, dex: true, dur: "lr", txt: "alleen zonder armor" },
   { n: "Barkskin", st: "ac", op: "min", v: 16, dur: "inf", conc: true },
   { n: "Half cover", st: "ac", op: "+", v: 2, dur: "inf", txt: "ook +2 op Dex saves", sv: { ab: "DEX", b: 2 }, grp: "cover" },
@@ -21,6 +22,9 @@ export const PRESETS = [
 ];
 
 const OPS = ["+", "=", "min"];
+/** Vervolgeffecten die de DM moet zien (Lethargy): waarschuwingskleur en vooraan */
+const WARN = new Set(PRESETS.filter((p) => p.after).map((p) => p.after.n.toLowerCase()));
+export const isWarn = (e) => WARN.has(String(e.n).toLowerCase());
 const preset = (n) => PRESETS.find((p) => p.n.toLowerCase() === String(n).toLowerCase());
 const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(+v) || 0));
 
@@ -125,23 +129,36 @@ export const modsText = (M) => M.map((m) => (m.d ? `${m.d > 0 ? "+" : "−"}1d${
  * Nieuwe cast van een concentratie-spell door dezelfde caster (Bless op nieuwe doelen): effecten uit een eerdere cast vervallen.
  * cast = sleutel van deze cast (ronde + beurt); doelen die in dezelfde beurt worden aangetikt horen bij dezelfde cast.
  */
-export function endOtherCasts(list, by, spell, cast) {
+export function endOtherCasts(list, by, spell, cast, active = null) {
   const out = fx();
   for (const c of list) for (const e of [...(c.eff || [])]) {
     if (e.by !== by || e.spell !== spell || e.cast === cast) continue;
-    const r = removeEffect(c, e.id, `${spell} opnieuw gecast`); out.msgs.push(...r.msgs); out.why.push(...r.why);
+    const r = removeEffect(c, e.id, `${spell} opnieuw gecast`, { active }); out.msgs.push(...r.msgs); out.why.push(...r.why);
   }
   return out;
 }
 
-/** Effect weghalen; max HP-verschil terugdraaien. why = reden voor het logboek (null = stil, bv. bij vervangen). */
-export function removeEffect(c, id, why = "handmatig") {
+/**
+ * Effect weghalen; max HP-verschil terugdraaien. why = reden voor het logboek (null = stil, bv. bij vervangen).
+ * opt.active = wie aan de beurt is (Lethargy midden in de eigen beurt duurt t/m het einde van de volgende);
+ * opt.after = false: geen vervolgeffect (gevecht voorbij).
+ */
+export function removeEffect(c, id, why = "handmatig", opt = {}) {
   const out = fx();
   const e = (c.eff || []).find((x) => x.id === id);
   if (!e) return out;
   c.eff = c.eff.filter((x) => x !== e);
   if (e.hpd) revertMax(c, e.hpd);
-  if (why !== null) { out.why.push({ t: why, id: c.id }); out.msgs.push(`${c.name}: ${e.n} is voorbij${why && why !== "handmatig" ? ` (${why})` : ""}.${e.end ? ` ${e.end}.` : ""}`); }
+  if (why === null) return out;
+  const nx = opt.after !== false && (preset(e.n) || {}).after;
+  const alive = !(c.kind === "monster" && c.hp <= 0) && !(c.ds && c.ds.dead);
+  out.why.push({ t: why, id: c.id });
+  out.msgs.push(`${c.name}: ${e.n} is voorbij${why && why !== "handmatig" ? ` (${why})` : ""}.${nx ? (alive ? ` ${nx.n} tot na de volgende beurt.` : "") : e.end ? ` ${e.end}.` : ""}`);
+  if (nx && alive) {
+    // PHB: "can't move or take actions until after its next turn"; midden in de eigen beurt telt die beurt niet
+    addEffect(c, nx, { kind: "tend", who: c.id, at: "end", count: opt.active === c.id ? 2 : 1 });
+    out.why.push({ t: `${nx.n} na ${e.n}`, id: c.id });
+  }
   return out;
 }
 
@@ -158,13 +175,13 @@ export function tickEffects(list, at, id) {
 }
 
 /** Concentratie-effecten opruimen als de caster weg is, niet meer concentreert of op iets anders concentreert */
-export function endConcEffects(list) {
+export function endConcEffects(list, active = null) {
   const out = fx();
   for (const c of list) for (const e of [...(c.eff || [])]) {
     if (!e.by) continue;
     const by = list.find((x) => x.id === e.by);
     const ok = by && by.cond.includes("Concentrating") && !(by.concSpell && e.spell && by.concSpell !== e.spell);
-    if (!ok) { const r = removeEffect(c, e.id, `concentratie${by ? ` van ${by.name}` : ""} voorbij`); out.msgs.push(...r.msgs); out.why.push(...r.why); }
+    if (!ok) { const r = removeEffect(c, e.id, `concentratie${by ? ` van ${by.name}` : ""} voorbij`, { active }); out.msgs.push(...r.msgs); out.why.push(...r.why); }
   }
   return out;
 }
@@ -174,7 +191,7 @@ export function endFightEffects(list) {
   const out = fx();
   for (const c of list) for (const e of [...(c.eff || [])]) {
     if (!e.d || e.d.kind === "inf") continue;
-    const r = removeEffect(c, e.id, "gevecht voorbij"); out.msgs.push(...r.msgs); out.why.push(...r.why);
+    const r = removeEffect(c, e.id, "gevecht voorbij", { after: false }); out.msgs.push(...r.msgs); out.why.push(...r.why);
   }
   return out;
 }

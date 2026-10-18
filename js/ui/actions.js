@@ -75,7 +75,7 @@ function applyEff(c, p, byId, join = null) {
           const prev = S.list.flatMap((x) => (x.eff || []).filter((e) => e.by === by && e.spell === p.n && e.cast !== cast).map((e) => ({ x, e })));
           if (prev.length) {
             old = { cast: prev[0].e.cast || "", names: [...new Set(prev.map((o) => o.x.name))] };
-            out.why.push(...endOtherCasts(S.list, by, p.n, cast).why, { t: `${p.n} opnieuw gecast`, id: by }); // meldingen: één samenvatting hieronder
+            out.why.push(...endOtherCasts(S.list, by, p.n, cast, S.active).why, { t: `${p.n} opnieuw gecast`, id: by }); // meldingen: één samenvatting hieronder
           }
         }
       } else R.merge(out, R.startConc(caster, p.n));
@@ -146,7 +146,7 @@ const row = {
     ui.effForm = {}; ui.effCustom = false;
     return applyEff(c, { ...spec, dur: f.dur || "inf", conc: !!by }, by);
   },
-  effdel(c, b) { apply(removeEffect(c, b.dataset.e)); },
+  effdel(c, b) { apply(removeEffect(c, b.dataset.e, "handmatig", { active: app.S.active })); },
   "sheet-open"(c, b) { ui.sheet = { id: c.id, kind: b.dataset.kind, val: "", mode: 1 }; },
   react(c) { c.reaction = !c.reaction; },
   hide(c) { if (c.hidden) delete c.hidden; else c.hidden = true; },

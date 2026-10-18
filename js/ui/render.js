@@ -4,7 +4,7 @@ import { $, esc, n0 } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
 import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit } from "../rules/turns.js";
-import { PRESETS, effAc, effText, acBreakdown, baseMax, saveMods, modsText } from "../rules/effects.js";
+import { PRESETS, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn } from "../rules/effects.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText } from "../rules/aoe.js";
@@ -84,12 +84,14 @@ function acMeta(c) {
 
 /** Effect-chips: in de open kaart knoppen om weg te halen, dicht alleen tekst (korte duur) */
 function effChips(c, S, interactive) {
-  return (c.eff || []).map((e) => {
+  const E = c.eff || [];
+  return [...E.filter(isWarn), ...E.filter((e) => !isWarn(e))].map((e) => {
+    const w = isWarn(e), cls = w ? "bd r" : "bd ef";
     const by = e.by && e.by !== c.id ? S.list.find((x) => x.id === e.by) : null;
     const dur = e.d ? durLabel(e.d, S.list, !interactive) : e.lr ? "long rest" : "";
-    const t = [`${e.n}${e.st ? " " + effText(e) : ""}`, dur, by ? by.name : ""].filter(Boolean).map(esc).join(" · ");
-    return interactive ? `<button class="bd ef cbtn" data-a="effdel" data-e="${esc(e.id)}" title="Effect weghalen">${t} <span aria-hidden="true">✕</span><span class="vh">weghalen</span></button>`
-      : `<span class="bd ef">${t}</span>`;
+    const t = [`${e.n}${e.st ? " " + effText(e) : ""}`, w ? e.txt : "", dur, by ? by.name : ""].filter(Boolean).map(esc).join(" · ");
+    return interactive ? `<button class="${cls} cbtn" data-a="effdel" data-e="${esc(e.id)}" title="Effect weghalen">${t} <span aria-hidden="true">✕</span><span class="vh">weghalen</span></button>`
+      : `<span class="${cls}">${t}</span>`;
   }).join("");
 }
 

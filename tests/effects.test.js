@@ -148,7 +148,41 @@ test("AC-opbouw als tekst en lethargy bij einde Haste", () => {
   addEffect(c, P("Mage Armor"), null); addEffect(c, P("Shield"), null); addEffect(c, P("Barkskin"), null);
   assert.equal(acBreakdown(c), "15 (Mage Armor) + Shield 5, minimaal 16 (Barkskin)");
   const h = pc(); addEffect(h, P("Haste"), null, { by: "c" });
-  assert.match(removeEffect(h, h.eff[0].id).msgs[0], /lethargy/);
+  assert.match(removeEffect(h, h.eff[0].id).msgs[0], /Haste is voorbij\. Lethargy tot na de volgende beurt\./);
+});
+
+test("Haste voorbij → Lethargy als effect tot na de volgende beurt van het doelwit", () => {
+  const cl = cleric({ cond: ["Concentrating"], concSpell: "Haste" }), f = pc(), g = gob();
+  const S = { list: [cl, f, g], round: 1, active: "c" };
+  addEffect(f, P("Haste"), makeDur(f, { dur: "r10" }, "c"), { by: "c", spell: "Haste" });
+  // concentratie weg (bv. 0 HP) tijdens de beurt van de cleric
+  dropConc(cl, "0 HP");
+  const r = endConcEffects(S.list, S.active);
+  assert.deepEqual(f.eff.map((e) => [e.n, e.txt, e.d.kind, e.d.who, e.d.count]), [["Lethargy", "geen beweging of acties", "tend", "p", 1]]);
+  assert.ok(r.why.some((w) => /Lethargy na Haste/.test(w.t)));
+  assert.equal(effAc(f), 16, "+2 AC van Haste is weg");
+  // fighter (15) na cleric (12)? volgorde: goblin 18, fighter 15, cleric 12 → beurt van de fighter eindigt: Lethargy weg
+  S.active = "p"; step(S, 1);
+  assert.equal(f.eff.length, 0);
+});
+
+test("Lethargy: midden in de eigen beurt telt die beurt niet; geen lethargy bij refresh, gevecht stoppen, neer of dood", () => {
+  const f = pc(); addEffect(f, P("Haste"), null, { by: "c" });
+  removeEffect(f, f.eff[0].id, "handmatig", { active: "p" });
+  assert.equal(f.eff[0].d.count, 2, "t/m einde van de volgende beurt");
+  const r = pc(); addEffect(r, P("Haste"), null); addEffect(r, P("Haste"), null);
+  assert.deepEqual(r.eff.map((e) => e.n), ["Haste"], "opnieuw = vernieuwen, geen lethargy");
+  const s = pc(); addEffect(s, P("Haste"), makeDur(s, { dur: "r10" }, "c"));
+  endFightEffects([s]);
+  assert.equal(s.eff.length, 0);
+  const g = gob({ hp: 0 }); addEffect(g, P("Haste"), null);
+  assert.equal((removeEffect(g, g.eff[0].id).msgs[0].match(/Lethargy/) || []).length, 0); assert.equal(g.eff.length, 0);
+  const d = pc({ hp: 0, ds: { s: 0, f: 3, stable: false, dead: true } }); addEffect(d, P("Haste"), null);
+  removeEffect(d, d.eff[0].id); assert.equal(d.eff.length, 0);
+  // oude data: Haste met end-tekst; dood doelwit krijgt ook die tekst niet meer
+  const o = pc({ hp: 0, ds: { s: 0, f: 3, stable: false, dead: true } }); o.eff = [{ id: "x", n: "Haste", st: "ac", op: "+", v: 2, end: "1 beurt geen beweging of acties (lethargy)" }];
+  assert.equal(removeEffect(o, "x").msgs[0], "Fighter: Haste is voorbij.");
+  const lr = pc(); addEffect(lr, P("Haste"), null); restMember(lr, true); assert.equal(lr.eff.length, 0, "long rest: alles weg");
 });
 
 test("zonder bekende HP: max HP-effect is alleen een herinnering", () => {

@@ -52,7 +52,7 @@ export function resetBaseline() {
  */
 export function commit() {
   // effecten van een caster die geen concentratie meer heeft (0 HP, nieuwe spell, verwijderd) horen bij deze stap
-  pendingWhy.push(...endConcEffects(app.S.list).why);
+  pendingWhy.push(...endConcEffects(app.S.list, app.S.active).why);
   let j = JSON.stringify(app.S);
   if (j === lastJSON) { pendingWhy = []; return false; }
   if (lastJSON !== null) {
