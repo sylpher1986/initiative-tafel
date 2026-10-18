@@ -1,6 +1,6 @@
 # Initiative Tafel
 
-Initiative tracker voor D&D 5e (2014) om gevechten aan tafel te draaien: spelers (ook via D&D Beyond PDF), alle 322 SRD-monsters, condities met duur, spell slots, concentration, death saves, recharge, legendary en lair actions, vaste party, logboek en undo.
+Initiative tracker voor D&D 5e (2014) om gevechten aan tafel te draaien: spelers (ook via een D&D Beyond-link of PDF), alle 322 SRD-monsters, condities met duur, spell slots, concentration, death saves, recharge, legendary en lair actions, vaste party, logboek en undo.
 
 Werkt offline als app op je beginscherm (PWA). Alle data staat lokaal in je browser; via **Opslag → Exporteer** maak je een backup of neem je alles mee naar een ander apparaat.
 
@@ -14,7 +14,9 @@ js/state.js           toestand, undo, logboek vastleggen, party-sync
 js/storage.js         IndexedDB (met localStorage als terugval)
 js/backup.js          export/import (JSON met versienummer)
 js/log.js             logboek: verschil tussen twee stappen
-js/ddb.js             D&D Beyond PDF-sheets inlezen
+js/ddb.js             D&D Beyond: PDF-sheets inlezen, online sheet ophalen
+js/ddbjson.js         D&D Beyond character-JSON → sheet (puur, getest)
+worker/index.js       Cloudflare Worker: /api/ddb (alleen D&D Beyond-sheets)
 js/data/monsters.js   monsterbibliotheek en import (Open5e / 5e-bits)
 js/rules/             spelregels, puur en getest
 js/ui/                tekenen en gebruikersacties
@@ -28,7 +30,8 @@ Geen build-stap: de browser laadt de modules direct.
 ## Lokaal draaien en testen
 
 ```
-python3 -m http.server 8000     # of: npx serve
+python3 -m http.server 8000     # of: npx serve (zonder Worker: link-import werkt dan niet)
+npx wrangler dev                # met Worker, zoals live
 npm test                        # Node 18+, geen installatie nodig
 ```
 
@@ -38,7 +41,7 @@ Cloudflare Workers publiceert automatisch bij elke push naar `main` (instellinge
 
 ## Nieuwe versie uitbrengen
 
-Verhoog `VERSION` in `sw.js`, anders blijven geïnstalleerde apps de oude bestanden uit hun cache gebruiken.
+Verhoog `VERSION` in `sw.js` én `js/version.js`, anders blijven geïnstalleerde apps de oude bestanden uit hun cache gebruiken.
 
 ## Licentie van de monsterdata
 

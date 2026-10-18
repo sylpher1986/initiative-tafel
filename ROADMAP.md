@@ -14,6 +14,7 @@
 - AoE-schade op meerdere doelen: save ½/0, resist/kwetsbaar/immuun (ook uit statblock), monster-saves rollen, legendary resistance; Immuun ook in het gewone schade-paneel
 - Twee modi: **Voorbereiden** (spelers, monsters, party, lair actions, instellingen) en **Gevecht** (alleen lijst + beurtbalk); modus volgt het gevecht, wisselen kan altijd
 - Snel toevoegen in Gevecht (+): monsters die halverwege aansluiten, initiative rollen of invullen
+- Spelers via D&D Beyond-link (publieke sheets, via de Worker): portret, AC/HP berekend met controle-markering, slots en resources; opnieuw ophalen werkt de speler in de party bij
 
 ## UX-verbeterpunten (uit review)
 - [ ] Logboek dichter bij de beurtbalk: eigen tab, of de laatste 2 gebeurtenissen onder de beurtbalk
@@ -22,7 +23,9 @@
 - [ ] Welkomstkaart bovenaan ("Start met voorbeeld" / "Begin leeg") in plaats van de voorbeeld-hint onderaan
 
 ## Functies
-- [ ] Resistances/immunities per speler opslaan (nu handmatig in het AoE-paneel)
+- [ ] Resistances/immunities per speler opslaan (nu handmatig in het AoE-paneel); kan uit de D&D Beyond-data komen
+- [ ] Knop "Bijwerken" per lid in de Party-tab (voor wie een D&D Beyond-link heeft), met hetzelfde bevestigvak
+- [ ] Pact Magic-slots apart bijhouden (komen terug na een short rest); nu opgeteld bij de gewone slots
 - [ ] Deelnemer bewerken: naam, AC, max HP (nu alleen initiative)
 - [ ] Encounters vooraf klaarzetten en per sessie inladen
 - [ ] Moeilijkheid berekenen: XP-budget tegen partylevel (DMG 2014, easy t/m deadly)
@@ -41,3 +44,6 @@
 ## Technische schuld (uit code-review)
 - [ ] pdf.js zelf hosten (nu via CDN, zonder SRI)
 - [ ] Character sheets zitten in elke undo-stap; apart opslaan scheelt geheugen
+- [ ] D&D Beyond: speler die al in de party staat toevoegen zonder Bijwerken zet de opgeslagen HP terug op vol (zelfde als bij de PDF)
+- [ ] D&D Beyond: spells van items tonen ook als het item niet gedragen/geattuned is
+- [ ] D&D Beyond: een PDF die nog gelezen wordt kan een net opgehaalde link-sheet overschrijven (klein risico)

@@ -1,6 +1,7 @@
 // D&D Beyond character sheet: PDF-export met formuliervelden → speler met slots en resources.
 // parseDdbFields is puur (testbaar); readSheetPdf laadt pdf.js pas als het nodig is.
 import { isBlank, cleanImg } from "./ui/avatar.js";
+import { parseDdbJson } from "./ddbjson.js";
 
 export function parseDdbFields(annots){
   const F={}; // genormaliseerde naam -> waarde (eerste niet-lege wint)
@@ -126,4 +127,53 @@ async function portrait(lib, doc, a) {
     out.width = out.height = 0;
     return cleanImg(url);
   } finally { cv.width = cv.height = 0; } // geheugen op de telefoon direct vrijgeven
+}
+
+/* ---------- online sheet via onze Worker (/api/ddb/:id) ---------- */
+const fail = (code) => Object.assign(new Error(code), { code });
+
+/**
+ * Character ophalen → { sheet, id, check, img } (img = jpeg-dataurl ≤ 128 px of null).
+ * Fout → Error met code: offline | private | notfound | format | upstream. Afbreken via signal → AbortError.
+ */
+export async function fetchDdb(id, signal) {
+  let res;
+  try { res = await fetch("api/ddb/" + encodeURIComponent(id), { signal, headers: { accept: "application/json" }, cache: "no-store" }); }
+  catch (e) { if (e.name === "AbortError") throw e; throw fail(navigator.onLine === false ? "offline" : "upstream"); }
+  let body = null;
+  try { body = await res.json(); } catch { body = null; }
+  if (body && body.success === false) throw fail("private");
+  if (!res.ok || !body || !body.data) throw fail(body && ["private", "notfound"].includes(body.error) ? body.error : "upstream");
+  const got = parseDdbJson(body.data);
+  if (!got) throw fail("format");
+  let img = null;
+  if (got.hasAvatar) {
+    try {
+      const r = await fetch("api/ddb/" + encodeURIComponent(id) + "/avatar", { signal, cache: "no-store" });
+      if (r.ok) img = await shrink(await r.blob());
+    } catch (e) { if (e.name === "AbortError") throw e; img = null; } // zonder portret gaat het ook
+  }
+  return { ...got, img };
+}
+
+/** Afbeelding → jpeg van max 128 px (witte achtergrond), door cleanImg; mislukt → null */
+async function shrink(blob) {
+  if (!/^image\//.test(blob.type) || blob.size > 5 * 1024 * 1024) return null;
+  let src, close = () => {};
+  if (typeof createImageBitmap === "function") { src = await createImageBitmap(blob); close = () => src.close && src.close(); }
+  else {
+    const u = URL.createObjectURL(blob);
+    src = await new Promise((ok, err) => { const i = new Image(); i.onload = () => ok(i); i.onerror = err; i.src = u; }).finally(() => URL.revokeObjectURL(u));
+  }
+  const w = src.width, h = src.height;
+  if (!w || !h) { close(); return null; }
+  const k = Math.min(1, 128 / Math.max(w, h));
+  const cv = document.createElement("canvas");
+  cv.width = Math.max(1, Math.round(w * k)); cv.height = Math.max(1, Math.round(h * k));
+  try {
+    const ctx = cv.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(src, 0, 0, cv.width, cv.height);
+    return cleanImg(cv.toDataURL("image/jpeg", 0.8));
+  } finally { close(); cv.width = cv.height = 0; }
 }

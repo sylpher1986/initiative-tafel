@@ -48,18 +48,22 @@
       </div>
 
       <form class="form" id="f-pc" data-panel="pc">
-        <label>Character sheet importeren (PDF van D&amp;D Beyond)<input id="pc-pdf" type="file" accept="application/pdf,.pdf"></label>
+        <label>D&amp;D Beyond-link<span class="ddbrow"><input id="pc-ddb" type="text" inputmode="url" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="dndbeyond.com/characters/…"><button type="button" class="btn tap" id="pc-ddbgo">Ophalen</button></span></label>
+        <p class="hint">Sheet moet op Public staan: Character Settings → Character Privacy → Public.</p>
+        <label class="sub">Of PDF-export van D&amp;D Beyond<input id="pc-pdf" type="file" accept="application/pdf,.pdf"></label>
         <p class="hint" id="pc-sheetinfo" aria-live="polite"></p>
+        <div id="pc-match"></div>
         <div class="f2">
           <label>Naam<input id="pc-name" required placeholder="bijv. Thalia"></label>
           <label>Initiative<span style="display:flex;gap:6px"><input id="pc-init" type="number" inputmode="numeric" required placeholder="worp + mod"><button type="button" class="btn small" id="pc-roll" title="d20 + initiative bonus">Rol</button></span></label>
         </div>
         <div class="f2">
-          <label>AC (optioneel)<input id="pc-ac" type="number" inputmode="numeric"></label>
-          <label>Max HP (optioneel)<input id="pc-hp" type="number" inputmode="numeric"></label>
+          <label>AC<span class="opt"> (optioneel)</span><span class="cw"> · controleer</span><input id="pc-ac" type="number" inputmode="numeric"></label>
+          <label>Max HP<span class="opt"> (optioneel)</span><span class="cw"> · controleer</span><input id="pc-hp" type="number" inputmode="numeric"></label>
           <label>Dex-mod (tiebreak)<input id="pc-dex" type="number" inputmode="numeric" value="0"></label>
           <label>Ras (icoon)<select id="pc-race"><option value="">Anders / onbekend</option></select></label>
         </div>
+        <p class="hint warnline" id="pc-check" hidden></p>
         <details class="cast"><summary class="link">Spellcaster? Spell slots invullen</summary>
           <div class="slotin" style="margin-top:8px"><label>1e<input id="pc-sl1" type="number" min="0" max="9" inputmode="numeric"></label><label>2e<input id="pc-sl2" type="number" min="0" max="9" inputmode="numeric"></label><label>3e<input id="pc-sl3" type="number" min="0" max="9" inputmode="numeric"></label><label>4e<input id="pc-sl4" type="number" min="0" max="9" inputmode="numeric"></label><label>5e<input id="pc-sl5" type="number" min="0" max="9" inputmode="numeric"></label><label>6e<input id="pc-sl6" type="number" min="0" max="9" inputmode="numeric"></label><label>7e<input id="pc-sl7" type="number" min="0" max="9" inputmode="numeric"></label><label>8e<input id="pc-sl8" type="number" min="0" max="9" inputmode="numeric"></label><label>9e<input id="pc-sl9" type="number" min="0" max="9" inputmode="numeric"></label></div>
         </details>

@@ -1,6 +1,6 @@
 // Service worker: maakt de app offline bruikbaar. Verhoog VERSION bij elke release zodat de cache ververst.
 // Gelijk houden aan js/version.js (de test bewaakt dat); dit is ook het nummer dat de app toont.
-const VERSION = "1.3.0";
+const VERSION = "1.4.0";
 const CACHE = "initiative-tafel-" + VERSION;
 const ASSETS = [
   "./",
@@ -23,6 +23,7 @@ const ASSETS = [
   "./js/backup.js",
   "./js/data/monsters.js",
   "./js/ddb.js",
+  "./js/ddbjson.js",
   "./js/log.js",
   "./js/main.js",
   "./js/rules/aoe.js",
@@ -54,7 +55,8 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
-  const own = new URL(req.url).origin === self.location.origin;
+  const url = new URL(req.url), own = url.origin === self.location.origin;
+  if (own && url.pathname.startsWith("/api/")) return; // live data (D&D Beyond): nooit uit de cache
   if (own) {
     e.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req)));
   } else {

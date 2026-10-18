@@ -10,7 +10,8 @@ import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes } from "../rules/aoe.js";
 import { castInfo, legInfo, rcInfo, pickList, CONC_SPELLS, cleanSpell } from "../rules/spells.js";
 import { logText } from "../log.js";
-import { readSheetPdf } from "../ddb.js";
+import { readSheetPdf, fetchDdb } from "../ddb.js";
+import { parseDdbLink, findMember, mergeSheet } from "../ddbjson.js";
 import { RACE_OPTS, raceKey, pickRace, cleanImg, icon, monType } from "./avatar.js";
 import { buildExport, parseImport } from "../backup.js";
 
@@ -249,7 +250,98 @@ export function onToggle(e) {
 }
 
 /* ---------- formulieren: speler, monster, eigen monster ---------- */
-let pendingSheet = null, pendingImg = null, selMon = "Goblin";
+// UI-toestand van het spelersformulier (geen data: hoort niet in undo/opslag)
+let pendingSheet = null, pendingImg = null, pendingDdb = null, pendingNew = false, matchPid = null, ddbBusy = null, selMon = "Goblin";
+
+const DDB_MSG = {
+  bad: "Geen D&D Beyond-link. Plak de link van de sheet of alleen het nummer.",
+  offline: "Geen internet. Ophalen werkt alleen online.",
+  format: "D&D Beyond gaf onverwachte gegevens terug. Gebruik de PDF-upload hieronder.",
+  notfound: "Niet gevonden op D&D Beyond. Controleer de link en of de sheet op Public staat (Character Settings → Character Privacy → Public). Of gebruik de PDF-upload hieronder.",
+  upstream: "D&D Beyond gaf een fout. Waarschijnlijk staat de sheet niet op Public (Character Settings → Character Privacy → Public). Anders: probeer het zo opnieuw of gebruik de PDF-upload hieronder.",
+  private: "Ophalen lukte niet. Waarschijnlijk staat de sheet niet op Public (Character Settings → Character Privacy → Public). Of gebruik de PDF-upload hieronder.",
+};
+
+/** Onzekere AC/HP markeren (verdwijnt zodra de DM het veld aanpast) */
+function setCheck(check) {
+  const why = [];
+  for (const [k, lbl] of [["ac", "AC"], ["hp", "max HP"]]) {
+    const r = check ? check[k] : [];
+    $("#pc-" + k).closest("label").classList.toggle("warn", r.length > 0);
+    if (r.length) why.push(`Controleer ${lbl}: ${r.join(", ")}.`);
+  }
+  $("#pc-check").hidden = !why.length;
+  $("#pc-check").textContent = why.join(" ");
+}
+
+function clearPending() {
+  pendingSheet = pendingImg = pendingDdb = matchPid = null; pendingNew = false;
+  setCheck(null); $("#pc-match").innerHTML = "";
+}
+
+/** Sheet (uit PDF of link) in het formulier zetten */
+function fillSheet(h, img) {
+  if ($("#pc-name").value.trim().toLowerCase() !== h.name.toLowerCase()) $("#pc-init").value = ""; // ander character: oude worp weg
+  pendingSheet = h; pendingImg = cleanImg(img);
+  $("#pc-name").value = h.name; $("#pc-ac").value = h.ac || ""; $("#pc-hp").value = h.max || ""; $("#pc-dex").value = h.dex;
+  $("#pc-race").value = RACE_OPTS.find((r) => raceKey(r) === raceKey(h.race)) || "";
+  const sl = h.casting ? h.casting.slots.map((x) => `${x.lvl}e: ${x.max}`).join(", ") : "geen";
+  $("#pc-sheetinfo").innerHTML = `<b>${esc(h.name)}</b> geladen (${esc([h.race, h.cls].filter(Boolean).join(", "))})${pendingImg ? `, met portret <img class="pv" src="${esc(pendingImg)}" alt="">` : ""}. Spell slots: ${esc(sl)}${h.res.length ? `. Resources: ${esc(h.res.map((r) => r.n + " " + r.max).join(", "))}` : ""}. Vul initiative in of tik op Rol.`;
+}
+
+/** Wat Bijwerken overneemt: formulierwaarden (de DM kan AC/HP gecorrigeerd hebben) + sheet */
+function formUpdate() {
+  const sh = pendingSheet;
+  return {
+    name: $("#pc-name").value.trim() || sh.name, race: pickRace($("#pc-race").value, sh.race),
+    ac: parseInt($("#pc-ac").value) || 0, max: parseInt($("#pc-hp").value) || 0, dex: parseInt($("#pc-dex").value) || 0,
+    initBonus: sh.initBonus, sheet: sh, ddbId: pendingDdb, img: pendingImg, casting: sh.casting || null, res: sh.res || [],
+  };
+}
+
+/** Bestaat deze speler al in de party? Dan een bevestigvak met de wijzigingen */
+function showMatch(check) {
+  const m = findMember(app.party, pendingDdb, pendingSheet.name);
+  matchPid = m ? m.pid : null;
+  if (!m) { $("#pc-match").innerHTML = ""; return; }
+  const ch = mergeSheet(structuredClone(m), structuredClone(formUpdate())) // alleen voorproefje, op een kopie
+    .map((t) => (/^AC /.test(t) && check.ac.length) || (/^max HP /.test(t) && check.hp.length) ? t + " (controleer)" : t);
+  const here = app.S.list.some((c) => c.pid === m.pid);
+  $("#pc-match").innerHTML = `<div class="confirmbox"><p style="margin:0"><b>${esc(m.name)}</b> staat al in de party${here ? " en zit aan tafel" : ""}.</p>
+    <p class="hint">${ch.length ? esc(ch.join(" · ")) : "Geen wijzigingen in klasse, AC, HP of spell slots"}. Schade en verbruik blijven staan.</p>
+    <div class="bar"><button type="button" class="btn primary tap" id="pc-upd">Bijwerken</button><button type="button" class="btn tap" id="pc-new">Als nieuwe speler</button></div></div>`;
+}
+
+async function ddbFetch() {
+  const id = parseDdbLink($("#pc-ddb").value), info = $("#pc-sheetinfo"), btn = $("#pc-ddbgo");
+  if (!id) { info.textContent = DDB_MSG.bad; return; }
+  if (ddbBusy) ddbBusy.abort(); // laatste verzoek wint
+  const ctl = ddbBusy = new AbortController();
+  btn.disabled = true; btn.setAttribute("aria-busy", "true"); info.textContent = "Sheet ophalen…";
+  try {
+    const got = await fetchDdb(id, ctl.signal);
+    if (ctl !== ddbBusy) return;
+    clearPending();
+    pendingDdb = got.id || id;
+    fillSheet(got.sheet, got.img); setCheck(got.check); showMatch(got.check);
+  } catch (e) {
+    if (ctl !== ddbBusy || e.name === "AbortError") return;
+    info.textContent = DDB_MSG[e.code] || DDB_MSG.private;
+  } finally {
+    if (ctl === ddbBusy) { ddbBusy = null; btn.disabled = false; btn.removeAttribute("aria-busy"); }
+  }
+}
+
+/** Lopend ophalen afbreken (PDF gekozen, formulier verstuurd) */
+function stopDdb() {
+  if (!ddbBusy) return;
+  ddbBusy.abort(); ddbBusy = null;
+  $("#pc-ddbgo").disabled = false; $("#pc-ddbgo").removeAttribute("aria-busy");
+}
+
+function resetPcForm() {
+  stopDdb(); clearPending(); $("#f-pc").reset(); $("#pc-dex").value = 0; $("#pc-sheetinfo").textContent = "";
+}
 
 export function bindForms() {
   $("#pc-race").insertAdjacentHTML("beforeend", RACE_OPTS.map((r) => `<option>${esc(r)}</option>`).join(""));
@@ -262,31 +354,50 @@ export function bindForms() {
     })();
     const sh = pendingSheet, nm = $("#pc-name").value.trim();
     let pid = null;
-    if ($("#pc-party").checked) { const ex = app.party.find((m) => m.name.toLowerCase() === nm.toLowerCase()); pid = ex ? ex.pid : uid(); }
+    if ($("#pc-party").checked) {
+      // met D&D Beyond-id dezelfde regel als het bevestigvak (nooit een lid dat aan een ánder character hangt)
+      const ex = pendingNew ? null : pendingDdb ? findMember(app.party, pendingDdb, nm) : app.party.find((m) => m.name.toLowerCase() === nm.toLowerCase());
+      pid = ex ? ex.pid : uid();
+    }
     const dex = parseInt($("#pc-dex").value) || 0;
     const race = pickRace($("#pc-race").value, sh && sh.race);
     app.S.list.push({
       id: uid(), pid, name: nm, kind: "pc", race, img: pendingImg, init: parseInt($("#pc-init").value) || 0, dex, ac: parseInt($("#pc-ac").value) || 0, hp: max, max, cond: [],
       casting: manual || (sh && sh.casting ? structuredClone(sh.casting) : null), res: sh ? structuredClone(sh.res || []) : [], sheet: sh || null, initBonus: sh ? sh.initBonus : dex,
+      ...(pendingDdb && !pendingNew ? { ddbId: pendingDdb } : {}), // "Als nieuwe speler": geen tweede koppeling aan hetzelfde character
     });
-    pendingSheet = null; pendingImg = null; $("#pc-sheetinfo").textContent = ""; app.S.sample = false;
-    e.target.reset(); $("#pc-dex").value = 0; render(); $("#pc-name").focus();
+    app.S.sample = false;
+    resetPcForm(); render(); $("#pc-name").focus();
   });
   $("#pc-roll").addEventListener("click", () => {
     const b = pendingSheet ? pendingSheet.initBonus : parseInt($("#pc-dex").value) || 0, r = d(20);
     $("#pc-init").value = r + b; toastHtml(`Initiative: d20 [${r}] ${sgn(b)} = <b>${r + b}</b>`);
   });
+  $("#pc-ddbgo").addEventListener("click", ddbFetch);
+  $("#pc-ddb").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); ddbFetch(); } }); // niet de submit (initiative is verplicht)
+  for (const k of ["ac", "hp"]) $("#pc-" + k).addEventListener("input", (e) => e.target.closest("label").classList.remove("warn"));
+  $("#pc-match").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b || !pendingSheet) return;
+    if (b.id === "pc-new") { pendingNew = true; matchPid = null; $("#pc-match").innerHTML = ""; toast("Wordt als nieuwe speler toegevoegd. Vul initiative in."); return; }
+    if (b.id !== "pc-upd") return;
+    const m = app.party.find((x) => x.pid === matchPid);
+    if (!m) { $("#pc-match").innerHTML = ""; return; }
+    const f = formUpdate();
+    for (const c of app.S.list) if (c.pid === m.pid) mergeSheet(c, structuredClone(f)); // ook wie aan tafel zit
+    const ch = mergeSheet(m, structuredClone(f));
+    because(`${f.name} bijgewerkt via D&D Beyond`);
+    saveParty(); resetPcForm(); render();
+    toast(`${m.name} bijgewerkt${ch.length ? ": " + ch.join(", ") : ""}.`);
+  });
   $("#pc-pdf").addEventListener("change", async (e) => {
     const f = e.target.files[0]; if (!f) return;
+    stopDdb();
     $("#pc-sheetinfo").textContent = "Sheet wordt gelezen…";
     try {
       const got = await readSheetPdf(f), h = got && got.sheet;
       if (!h) { $("#pc-sheetinfo").textContent = "Geen D&D Beyond-formuliervelden gevonden. Is dit een PDF-export van D&D Beyond?"; return; }
-      pendingSheet = h; pendingImg = cleanImg(got.img);
-      $("#pc-name").value = h.name; $("#pc-ac").value = h.ac || ""; $("#pc-hp").value = h.max || ""; $("#pc-dex").value = h.dex;
-      $("#pc-race").value = RACE_OPTS.find((r) => raceKey(r) === raceKey(h.race)) || "";
-      const sl = h.casting ? h.casting.slots.map((x) => `${x.lvl}e: ${x.max}`).join(", ") : "geen";
-      $("#pc-sheetinfo").innerHTML = `<b>${esc(h.name)}</b> geladen (${esc([h.race, h.cls].filter(Boolean).join(", "))})${pendingImg ? `, met portret <img class="pv" src="${esc(pendingImg)}" alt="">` : ""}. Spell slots: ${esc(sl)}${h.res.length ? `. Resources: ${esc(h.res.map((r) => r.n + " " + r.max).join(", "))}` : ""}. Vul initiative in of tik op Rol.`;
+      clearPending(); fillSheet(h, got.img);
     } catch { $("#pc-sheetinfo").textContent = "De PDF-lezer kon niet laden of het bestand niet openen. Controleer je verbinding en probeer het opnieuw."; }
     e.target.value = "";
   });

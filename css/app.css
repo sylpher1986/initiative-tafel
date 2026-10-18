@@ -411,3 +411,17 @@ body[data-mode="fight"] .panel,body[data-mode="fight"] #resetbar{display:none}
 .at .link{justify-self:start;min-height:36px}
 .afoot{position:sticky;bottom:calc(-16px - env(safe-area-inset-bottom,0px));background:var(--surface);display:grid;gap:6px;padding:8px 0 4px;margin-bottom:-4px;text-align:center;border-top:1px solid var(--line)}
 .ago:disabled{opacity:.45}
+
+/* D&D Beyond-link (spelersformulier) */
+.ddbrow{display:flex;gap:6px;min-width:0}
+.ddbrow input{flex:1;min-width:0}
+.btn.tap{min-height:44px}
+label.sub{font-size:.75rem}
+label .cw{display:none;color:var(--warn);font-weight:700}
+label.warn .cw{display:inline}
+label.warn .opt{display:none}
+.f2>label{align-content:end} /* velden op één lijn, ook als een label over twee regels loopt */
+label.warn input{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
+.warnline{color:var(--warn)}
+
+#pc-match .bar .btn{flex:1 1 130px}
