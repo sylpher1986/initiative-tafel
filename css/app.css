@@ -359,3 +359,33 @@ body[data-mode="fight"] .panel,body[data-mode="fight"] #resetbar{display:none}
 /* Meldingen bovenaan, met ongedaan-knop */
 .toast{top:calc(12px + env(safe-area-inset-top,0px));bottom:auto!important;z-index:50}
 .tundo{margin-left:10px;background:none;border:0;color:#9cc2ff;font-weight:700;text-decoration:underline;cursor:pointer;font:inherit;font-weight:700}
+
+/* AoE: schade op meerdere doelen */
+.dock .row{grid-template-columns:48px 48px 60px minmax(0,1fr)}
+.dock .row.one{grid-template-columns:52px minmax(0,1fr)}
+.dock .aoeb{color:var(--accent);border-color:var(--accent);font-size:.95rem}
+@media (max-width:399px){.dock .nb{display:none}}
+.asheet{gap:12px}
+.arow{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;align-items:end}
+.arow #a-dmg{font-family:var(--display);font-weight:800;font-size:1.5rem;text-align:center;padding:4px}
+.asave{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--active-soft)}
+.asave select,.asave input{min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:0 8px;font-size:1rem}
+.asave input{width:72px;text-align:center}
+.asave .btn{margin-left:auto;min-height:44px}
+.asel{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.asel .link{min-height:44px;padding:0 8px}
+.alist{display:grid;gap:8px}
+.at{border:1px solid var(--line);border-radius:10px;padding:4px 10px 10px;display:grid;gap:8px;background:var(--surface)}
+.at.off{border-style:dashed;background:transparent;padding-bottom:4px}
+.at.off .atn>span:first-child{color:var(--muted)}
+.atop{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--fg);font-size:1rem}
+.atop input{width:22px;height:22px;min-height:0;margin:0;flex:0 0 auto;accent-color:var(--accent)}
+.atn{flex:1 1 auto;min-width:0;font-weight:700;overflow-wrap:anywhere}
+.atn small{display:block;font-weight:400;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.adealt{font-family:var(--display);font-size:1.3rem;color:var(--bad);font-variant-numeric:tabular-nums;white-space:nowrap}
+.adealt.zero{color:var(--muted)}
+.acalc{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.acalc b{color:var(--fg)}.acalc .bad{color:var(--bad)}
+.at .link{justify-self:start;min-height:36px}
+.afoot{position:sticky;bottom:calc(-16px - env(safe-area-inset-bottom,0px));background:var(--surface);display:grid;gap:6px;padding:8px 0 4px;margin-bottom:-4px;text-align:center;border-top:1px solid var(--line)}
+.ago:disabled{opacity:.45}

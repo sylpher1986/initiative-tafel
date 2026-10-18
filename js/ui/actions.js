@@ -1,12 +1,13 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
-import { render, ui, openId, paintLog, paintParty, paintQadd } from "./render.js";
+import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, aoeTargets, aoePick } from "./render.js";
 import { showSB, showSheet, doRoll } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
 import { step, startCombat, makeDur, parseInit } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
+import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes } from "../rules/aoe.js";
 import { castInfo, legInfo, rcInfo, pickList, CONC_SPELLS, cleanSpell } from "../rules/spells.js";
 import { logText } from "../log.js";
 import { readSheetPdf } from "../ddb.js";
@@ -148,6 +149,7 @@ const global = {
   prev() { apply(step(app.S, -1)); },
   stop() { app.S.round = 0; app.S.active = null; ui.mode = null; },
   qadd() { ui.qadd = { q: "", sel: null, n: 1, init: "roll", fix: "" }; },
+  aoe() { ui.sheet = null; ui.qadd = null; ui.aoe = { dmg: "", ...ui.aoeLast, t: {} }; },
   addlair() {
     const lm = app.S.list.find((x) => x.la);
     const key = lm ? "Lair: " + lm.ref : Object.keys(app.lairs)[0] || "Lair";
@@ -200,6 +202,7 @@ export function onClick(e) {
     if (["start", "next", "prev"].includes(b.id)) scrollToCard(app.S.active);
     // focus in de dialog, maar niet op het zoekveld: dat zou op de telefoon meteen het toetsenbord openen
     if (b.id === "qadd") $("#qsheet .qsheet").focus();
+    if (b.id === "aoe") $("#a-dmg").focus();
     return;
   }
   const li = b.closest(".c");
@@ -230,7 +233,8 @@ export function onChange(e) {
 
 export function onKey(e) {
   if (ui.qadd && e.key === "Escape") { e.preventDefault(); closeQadd(); return; }
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); ui.qadd = null; global.undo(); render(); return; }
+  if (ui.aoe && e.key === "Escape") { e.preventDefault(); closeAoe(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); ui.qadd = null; ui.aoe = null; global.undo(); render(); return; }
   if (ui.sheet && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
     const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" ? ["apply"] : null;
     if (k) { e.preventDefault(); const res = sheetKey(...k); render(); if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`); }
@@ -383,6 +387,82 @@ function qGo() {
   ui.qadd = null;
   render();
   $("#qadd").focus();
+}
+
+/* ---------- AoE: één schadeworp op meerdere doelen (knop AoE in de beurtbalk) ---------- */
+function closeAoe() {
+  ui.aoe = null; paintAoe();
+  const b = $("#aoe"); if (b) b.focus();
+}
+
+/** Keuze voor één doelwit bijwerken (UI-toestand, niet in undo) */
+const aoeSet = (a, id, patch) => { a.t[id] = { ...(a.t[id] || newPick()), ...patch }; };
+
+export function bindAoe() {
+  const el = $("#asheet");
+  const field = (e) => {
+    const a = ui.aoe; if (!a) return;
+    const id = e.target.id;
+    if (id === "a-dmg") a.dmg = e.target.value;
+    else if (id === "a-type") a.type = ui.aoeLast.type = e.target.value;
+    else if (id === "a-ab") { a.ab = ui.aoeLast.ab = e.target.value; Object.values(a.t).forEach((t) => { t.roll = null; t.lr = false; }); }
+    else if (id === "a-dc") {
+      a.dc = ui.aoeLast.dc = e.target.value;
+      // al gerolde saves opnieuw tegen de nieuwe DC leggen
+      const dc = parseInt(a.dc);
+      Object.values(a.t).forEach((t) => { if (t.roll) { t.lr = false; t.save = dc > 0 && t.roll.tot >= dc ? "half" : "fail"; } });
+    }
+    else return;
+    paintAoe();
+  };
+  el.addEventListener("input", field);
+  el.addEventListener("change", (e) => {
+    const a = ui.aoe; if (!a) return;
+    if (e.target.dataset.ao === "sel") { aoeSet(a, e.target.dataset.id, { sel: e.target.checked }); paintAoe(); }
+    else if (e.target.tagName === "SELECT") field(e);
+  });
+  el.addEventListener("click", (e) => {
+    const a = ui.aoe; if (!a) return;
+    const b = e.target.closest("button[data-ao], .dim[data-ao]"); if (!b) return;
+    const k = b.dataset.ao, id = b.dataset.id;
+    if (k === "close") { closeAoe(); return; }
+    if (k === "go") { aoeGo(); return; }
+    if (k === "save") aoeSet(a, id, { save: b.dataset.v, lr: false });
+    if (k === "mode") aoeSet(a, id, { mode: +b.dataset.v });
+    if (k === "lr") aoeSet(a, id, { save: "half", lr: true });
+    if (k === "all") aoeTargets().forEach((c) => aoeSet(a, c.id, { sel: !!b.dataset.v && c.kind === b.dataset.v }));
+    if (k === "roll") {
+      const dc = parseInt(a.dc);
+      if (!(dc > 0)) { toast("Vul eerst de DC in."); $("#a-dc").focus(); return; }
+      const mons = aoeTargets().filter((c) => c.kind === "monster" && aoePick(a, c).sel);
+      if (!mons.length) { toast("Kies eerst de monsters die een save doen."); return; }
+      mons.forEach((c) => {
+        const m = findMon(c.ref), x = rollSave(saveBonus(m, a.ab), hasMagicRes(m));
+        aoeSet(a, c.id, { roll: x, save: x.tot >= dc ? "half" : "fail", lr: false });
+      });
+    }
+    paintAoe();
+  });
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target.id === "a-dmg") { e.preventDefault(); e.target.blur(); }
+  });
+}
+
+function aoeGo() {
+  const a = ui.aoe; if (!a) return;
+  const n = clampDmg(a.dmg), dc = parseInt(a.dc);
+  const picks = aoeTargets().map((c) => ({ c, p: aoePick(a, c) })).filter((x) => x.p.sel)
+    .map(({ c, p }) => ({ c, save: p.save, mode: p.mode, lr: p.lr, note: p.roll ? `${a.ab} save ${rollText(p.roll, dc)}` : "", up: c.hp > 0 }));
+  if (!n || !picks.length) return;
+  const L = picks.map((x) => x.c);
+  const label = `${n}${a.type ? " " + a.type : ""}${dc > 0 ? ` (${a.ab} DC ${dc})` : ""}`;
+  const r = applyAoe(picks, n, label);
+  apply(r);
+  const down = picks.filter((x) => x.up && x.c.hp <= 0).length;
+  ui.aoe = null;
+  render();
+  toastHtml(`${esc(`AoE ${label}: ${L.length} doel${L.length === 1 ? "" : "en"}, ${r.hits.reduce((s, h) => s + h.dealt, 0)} schade${down ? `, ${down} neer` : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  const ab = $("#aoe"); if (ab) ab.focus();
 }
 
 /* ---------- party-tab ---------- */

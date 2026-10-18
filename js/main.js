@@ -4,7 +4,7 @@ import { loadSrd } from "./data/monsters.js";
 import { render, ui } from "./ui/render.js";
 import { $, toast } from "./ui/util.js";
 import { VERSION } from "./version.js";
-import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, addMonsters, normalize } from "./ui/actions.js";
+import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, bindAoe, addMonsters, normalize } from "./ui/actions.js";
 
 const sample = () => ({
   list: [
@@ -36,7 +36,7 @@ async function boot() {
   document.addEventListener("change", onChange);
   document.addEventListener("keydown", onKey);
   document.addEventListener("toggle", onToggle, true);
-  bindForms(); bindParty(); bindLog(); bindQadd();
+  bindForms(); bindParty(); bindLog(); bindQadd(); bindAoe();
   bindBackup(start);
 
   if (!app.S) {

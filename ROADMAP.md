@@ -10,6 +10,7 @@
 - Export/import (JSON, versie 1), offline PWA, Cloudflare-hosting
 - Weergave Systeem/Licht/Donker (tab Instellingen, keuze bewaard op het apparaat)
 - UX-ronde 1: compacte kaarten (één open), vaste beurtbalk, schade-paneel, meldingen met Ongedaan
+- AoE-schade op meerdere doelen: save ½/0, resist/kwetsbaar/immuun (ook uit statblock), monster-saves rollen, legendary resistance; Immuun ook in het gewone schade-paneel
 - Twee modi: **Voorbereiden** (spelers, monsters, party, lair actions, instellingen) en **Gevecht** (alleen lijst + beurtbalk); modus volgt het gevecht, wisselen kan altijd
 - Snel toevoegen in Gevecht (+): monsters die halverwege aansluiten, initiative rollen of invullen
 
@@ -20,6 +21,7 @@
 - [ ] Welkomstkaart bovenaan ("Start met voorbeeld" / "Begin leeg") in plaats van de voorbeeld-hint onderaan
 
 ## Functies
+- [ ] Resistances/immunities per speler opslaan (nu handmatig in het AoE-paneel)
 - [ ] Deelnemer bewerken: naam, AC, max HP (nu alleen initiative)
 - [ ] Encounters vooraf klaarzetten en per sessie inladen
 - [ ] Moeilijkheid berekenen: XP-budget tegen partylevel (DMG 2014, easy t/m deadly)

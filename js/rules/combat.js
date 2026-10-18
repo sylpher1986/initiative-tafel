@@ -111,20 +111,23 @@ export function heal(c, raw) {
   return fx();
 }
 
+const MODE_TXT = { 0.5: ["×½", "resistance"], 2: ["×2", "vulnerability"], 0: ["×0", "immuun"] };
+
 /**
- * Schade met resistance (×½, naar beneden afgerond) of vulnerability (×2), eerst van temp HP af.
- * mode: 1, 0.5 of 2
+ * Schade met resistance (×½, naar beneden afgerond), vulnerability (×2) of immunity (×0), eerst van temp HP af.
+ * mode: 1, 0.5, 2 of 0. quiet: geen rekenmelding en geen rekenregel in het logboek (de AoE geeft die zelf).
  */
-export function applyDamage(c, raw, mode = 1) {
+export function applyDamage(c, raw, mode = 1, quiet = false) {
   const out = fx();
   const v = Math.floor(raw * mode);
   const absorb = Math.min(c.temp || 0, v);
   if (absorb) c.temp -= absorb;
   const rest = v - absorb;
-  out.why.push({ t: `${raw} schade${mode === 0.5 ? " ×½ (resistance) = " + v : mode === 2 ? " ×2 (vulnerability) = " + v : ""}${absorb ? `, ${absorb} opgevangen door temp HP` : ""}`, id: c.id });
+  const mt = MODE_TXT[mode];
+  if (!quiet || absorb) out.why.push({ t: `${quiet ? "" : `${raw} schade${mt ? ` ${mt[0]} (${mt[1]}) = ${v}` : ""}`}${absorb ? `${quiet ? "" : ", "}${absorb} opgevangen door temp HP` : ""}`, id: c.id });
   const parts = [];
-  if (mode !== 1) parts.push(`${raw} ${mode === 0.5 ? "×½" : "×2"} = ${v}`);
-  if (absorb) parts.push(`${absorb} door temp HP, ${rest} op HP`);
+  if (mt && !quiet) parts.push(`${raw} ${mt[0]} = ${v}`);
+  if (absorb && !quiet) parts.push(`${absorb} door temp HP, ${rest} op HP`);
   if (parts.length) out.msgs.push(`${c.name}: ${parts.join(", ")}`);
   if (rest > 0) {
     if (c.kind === "pc") merge(out, applyPcHp(c, -rest));

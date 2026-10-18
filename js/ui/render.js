@@ -6,6 +6,7 @@ import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
 import { sortOrder, CONDS, DURS, durText, isOut, parseInit } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList } from "../rules/spells.js";
+import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText } from "../rules/aoe.js";
 import { diceify } from "./statblock.js";
 
 /** UI-toestand die niet in de encounter (en dus niet in undo/opslag) hoort */
@@ -17,6 +18,8 @@ export const ui = {
   logOpen: false, editLog: null, partyInit: {},
   mode: null,          // "prep" | "fight"; null = volg het gevecht (loopt → Gevecht, anders Voorbereiden)
   qadd: null,          // { q, sel, n, init: "roll"|"fixed", fix } = snel-toevoegen-paneel open
+  aoe: null,           // { dmg, type, ab, dc, t: { [id]: { sel, save, mode|null, roll, lr } } } = AoE-paneel open
+  aoeLast: { type: "", ab: "DEX", dc: "" }, // laatst gebruikte type/save/DC (bijv. dezelfde breath weapon)
 };
 export const openId = () => (ui.open === null ? app.S.active : ui.open);
 export const mode = () => ui.mode || (app.S.round ? "fight" : "prep");
@@ -28,6 +31,7 @@ export function render() {
   paintDock();
   paintSheet();
   paintQadd();
+  paintAoe();
   paintParty();
   paintLog();
 }
@@ -232,7 +236,7 @@ function paintDock() {
   let nxt = null;
   for (let k = 1; k <= L.length; k++) { const c = L[(i + k) % L.length]; if (c && !isOut(c) && c.id !== S.active) { nxt = c; break; } }
   $("#dock").innerHTML = `<div class="who"><span><span class="l">Aan de beurt</span><br><b>${act ? esc(act.name) : "–"}</b></span><span class="r">Ronde ${S.round}${nxt ? ` · volgende: ${esc(nxt.name)}` : ""}</span></div>
-    <div class="row">${undoBtn}<button id="prev" aria-label="Vorige beurt">‹</button><button class="nx" id="next">Volgende beurt ›</button></div>`;
+    <div class="row">${undoBtn}<button id="prev" aria-label="Vorige beurt">‹</button><button class="aoeb" id="aoe" aria-label="Area of effect: schade op meerdere doelen" ${aoeTargets().length ? "" : "disabled"}>AoE</button><button class="nx" id="next">Volgende<span class="nb"> beurt</span> ›</button></div>`;
 }
 
 /* ---------- schade-paneel ---------- */
@@ -258,7 +262,7 @@ function paintSheet() {
     preview = `${hp(c)} → <b>${hp(sim)} HP</b>`;
     if (s.kind === "dmg") {
       const dealt = Math.floor(v * s.mode);
-      if (s.mode !== 1) preview += ` · ${dealt} na ${s.mode === 0.5 ? "resist" : "kwetsbaar"}`;
+      if (s.mode !== 1) preview += ` · ${dealt} na ${{ 0.5: "resist", 2: "kwetsbaar", 0: "immuun" }[s.mode]}`;
       if (sim.ds && sim.ds.dead && !(c.ds && c.ds.dead)) preview += ` · <b class="bad">sterft</b>`;
       else if (sim.hp === 0 && c.hp > 0) preview += ` · <b class="bad">${c.kind === "pc" ? "bewusteloos" : "neer"}</b>`;
       else if (c.cond.includes("Concentrating") && sim.hp > 0 && dealt > 0) preview += ` · concentration save <b>DC ${Math.max(10, Math.floor(dealt / 2))}</b>`;
@@ -272,7 +276,7 @@ function paintSheet() {
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3>${esc(c.name)}</h3><button class="link" data-sk="close">Annuleer</button></div>
       <div class="seg2">${kinds.map(([k, l]) => `<button data-sk="kind" data-v="${k}" aria-pressed="${s.kind === k}">${l}</button>`).join("")}</div>
-      ${s.kind === "dmg" ? `<div class="seg2 sm">${[[1, "Normaal"], [0.5, "Resist ½"], [2, "Kwetsbaar ×2"]].map(([m, l]) => `<button data-sk="mode" data-v="${m}" aria-pressed="${s.mode === m}">${l}</button>`).join("")}</div>` : ""}
+      ${s.kind === "dmg" ? `<div class="seg2 sm">${[[1, "Normaal"], [0.5, "Resist ½"], [2, "Kwetsb. ×2"], [0, "Immuun"]].map(([m, l]) => `<button data-sk="mode" data-v="${m}" aria-pressed="${s.mode === m}">${l}</button>`).join("")}</div>` : ""}
       <div class="disp" aria-live="polite">${esc(s.val || "0")}</div>
       <div class="preview">${preview}</div>
       <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-sk="d" data-v="${n}">${n}</button>`).join("")}<button data-sk="back" aria-label="Wissen">⌫</button><button data-sk="d" data-v="0">0</button><button data-sk="clear" aria-label="Alles wissen">C</button>
@@ -314,6 +318,77 @@ export function paintQadd() {
   const go = el.querySelector(".qgo");
   go.disabled = !q.sel || (q.init === "fixed" && parseInit(q.fix) === null);
   go.textContent = q.sel ? `${q.n > 1 ? `${q.n}× ` : ""}${q.sel} toevoegen` : "Kies een monster";
+}
+
+/* ---------- AoE: één schadeworp op meerdere doelen ---------- */
+/** Wie geraakt kan worden: iedereen met HP die nog meedoet (spelers op 0 HP ook: dat kost een death save) */
+export const aoeTargets = () => sortOrder(app.S.list).filter((c) => c.kind !== "lair" && c.max && !isOut(c));
+
+/** Effectieve keuze per doelwit (mode null = volg het statblock voor het gekozen damage type) */
+export function aoePick(a, c) {
+  const m = c.ref ? findMon(c.ref) : null;
+  return pickFor(a.t[c.id], m && m.x, a.type);
+}
+
+const MODES = [[1, "Normaal"], [0.5, "Resist"], [2, "×2"], [0, "Immuun"]];
+const SAVES = [["fail", "Gefaald"], ["half", "Geslaagd ½"], ["none", "0"]];
+
+function aoeRow(a, c, p, o, n) {
+  const id = esc(c.id), nm = esc(c.name), dc = parseInt(a.dc);
+  const end = !n ? "" : o.res ? ` · <b class="bad">${o.res}</b>` : c.hp > 0 ? ` · ${n0(c.hp)} → ${n0(o.hp)} HP` : "";
+  const info = [
+    p.roll ? `${esc(a.ab)} save ${esc(rollText(p.roll, dc))}` : "",
+    p.auto && p.mode !== 1 && a.type ? `${MODE_LBL[p.mode]} (statblock)` : "",
+    p.auto && p.def.cond ? `let op: ${esc(p.def.cond)}` : "",
+  ].filter(Boolean).join(" · ");
+  const lrLeft = c.lr ? n0(c.lr.left) : 0;
+  const lrBtn = p.lr ? `<span class="hint">Legendary resistance: save geslaagd</span>`
+    : p.save === "fail" && lrLeft > 0 ? `<button type="button" class="link" data-ao="lr" data-id="${id}">Legendary resistance gebruiken (${lrLeft} over)</button>` : "";
+  return `<div class="at ${p.sel ? "" : "off"}">
+    <label class="atop"><input type="checkbox" data-ao="sel" data-id="${id}" ${p.sel ? "checked" : ""}>
+      <span class="atn"><span>${nm}</span> <span class="tag ${c.kind === "pc" ? "" : "m"}">${c.kind === "pc" ? "speler" : "monster"}</span><small>${n0(c.hp)}/${n0(c.max)} HP${c.temp ? ` +${n0(c.temp)}` : ""}</small></span>
+      ${p.sel && n ? `<b class="adealt ${o.dealt ? "" : "zero"}">−${o.dealt}</b>` : ""}</label>
+    ${p.sel ? `<div class="seg2 sm" role="group" aria-label="Save ${nm}">${SAVES.map(([v, l]) => `<button type="button" data-ao="save" data-id="${id}" data-v="${v}" aria-pressed="${p.save === v}"${v === "none" ? ` aria-label="Geen schade (bijv. Evasion)" title="Geen schade (bijv. Evasion)"` : ""}>${l}</button>`).join("")}</div>
+      <div class="seg2 sm" role="group" aria-label="Weerstand ${nm}">${MODES.map(([v, l]) => `<button type="button" data-ao="mode" data-id="${id}" data-v="${v}" aria-pressed="${p.mode === v}">${l}</button>`).join("")}</div>
+      <div class="acalc">${n ? o.steps.join(" → ") + end : "Vul de schade in"}${info ? `<br>${info}` : ""}</div>${lrBtn}` : ""}
+  </div>`;
+}
+
+/** Paneel één keer opbouwen; daarna alleen de lijst en de knop, zodat het schadeveld focus houdt */
+export function paintAoe() {
+  const el = $("#asheet"), a = ui.aoe;
+  if (!a) { el.hidden = true; el.innerHTML = ""; return; }
+  if (!el.firstChild) {
+    el.innerHTML = `<div class="dim" data-ao="close"></div>
+    <div class="sheet qsheet asheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="a-title">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="shead"><h3 id="a-title">AoE-schade</h3><button type="button" class="link" data-ao="close">Annuleer</button></div>
+      <div class="arow">
+        <label>Schade<input id="a-dmg" type="number" inputmode="numeric" min="0" max="999" placeholder="28" enterkeyhint="done"></label>
+        <label>Damage type<select id="a-type"><option value="">geen / onbekend</option>${DTYPES.map((t) => `<option value="${t}">${t[0].toUpperCase() + t.slice(1)}</option>`).join("")}</select></label>
+      </div>
+      <div class="asave"><span class="qlbl">Save</span>
+        <select id="a-ab" aria-label="Save-ability">${ABS.map((x) => `<option>${x}</option>`).join("")}</select>
+        <input id="a-dc" type="number" inputmode="numeric" placeholder="DC" aria-label="DC" min="1" max="40">
+        <button type="button" class="btn small" data-ao="roll">Rol monsters</button></div>
+      <div class="asel"><span class="qlbl" id="a-cnt"></span><span><button type="button" class="link" data-ao="all" data-v="monster">Monsters</button><button type="button" class="link" data-ao="all" data-v="pc">Spelers</button><button type="button" class="link" data-ao="all" data-v="">Niemand</button></span></div>
+      <div class="alist" id="a-list"></div>
+      <div class="afoot"><span class="hint" id="a-sum" aria-live="polite"></span><button type="button" class="btn primary qgo ago" data-ao="go"></button></div>
+    </div>`;
+    $("#a-dmg").value = a.dmg; $("#a-type").value = a.type; $("#a-ab").value = a.ab; $("#a-dc").value = a.dc;
+    el.hidden = false;
+  }
+  // per paint één keer per doel: keuze (statblock-opzoeking) en uitkomst (gesimuleerd op een kopie)
+  const L = aoeTargets(), n = clampDmg(a.dmg);
+  const rows = L.map((c) => { const p = aoePick(a, c); return { c, p, o: p.sel && n ? aoeOutcome(c, p, n) : { dealt: 0, steps: [], res: "", hp: c.hp } }; });
+  const sel = rows.filter((x) => x.p.sel);
+  $("#a-list").innerHTML = rows.map((x) => aoeRow(a, x.c, x.p, x.o, n)).join("") || `<p class="hint">Niemand om te raken.</p>`;
+  $("#a-cnt").textContent = `Doelwitten · ${sel.length} gekozen`;
+  const total = sel.reduce((s, x) => s + x.o.dealt, 0), down = sel.filter((x) => x.o.down).length;
+  $("#a-sum").textContent = n && sel.length ? `Totaal ${total} schade${down ? ` · ${down} neer` : ""}` : "";
+  const go = el.querySelector(".ago");
+  go.disabled = !n || !sel.length;
+  go.textContent = !n ? "Vul de schade in" : !sel.length ? "Kies doelwitten" : `${n}${a.type ? " " + a.type : ""} toepassen op ${sel.length} doel${sel.length === 1 ? "" : "en"}`;
 }
 
 /* ---------- party en logboek ---------- */
