@@ -31,6 +31,17 @@ function build() {
 export const allMonsters = () => { if (!list) build(); return list; };
 export const findMon = (n) => { if (!index) build(); return index.get(n); };
 
+/** Keuzelijst: monsters die de zoekterm bevatten en de geldige selectie daarin.
+ *  De selectie moet zichtbaar zijn; anders zou "Toevoegen" iets onzichtbaars toevoegen.
+ *  Eén treffer wordt automatisch gekozen, anders blijft er niets geselecteerd. */
+export function filterMonsters(list, q, sel) {
+  const t = q.trim().toLowerCase();
+  const L = t ? list.filter((m) => m.n.toLowerCase().includes(t)) : list;
+  const exact = t && L.find((m) => m.n.toLowerCase() === t);
+  const pick = L.some((m) => m.n === sel) ? sel : exact ? exact.n : L.length === 1 ? L[0].n : null;
+  return { L, sel: pick };
+}
+
 /* ---------- import: Open5e, 5e-bits (dnd5eapi) en het eigen formaat ---------- */
 const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const ft = (v) => (typeof v === "number" ? v + " ft." : v);

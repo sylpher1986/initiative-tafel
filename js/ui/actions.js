@@ -3,7 +3,7 @@ import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
 import { render, ui, openId, paintLog, paintParty } from "./render.js";
 import { showSB, showSheet, doRoll } from "./statblock.js";
-import { findMon, allMonsters, parseMonsterFile } from "../data/monsters.js";
+import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
 import { step, startCombat, makeDur } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
@@ -268,8 +268,11 @@ export function bindForms() {
   });
 
   const renderMonList = () => {
-    const q = $("#mon-q").value.toLowerCase();
-    const L = allMonsters().filter((m) => m.n.toLowerCase().includes(q));
+    const f = filterMonsters(allMonsters(), $("#mon-q").value, selMon), L = f.L;
+    selMon = f.sel; // UI-toestand, geen data: de selectie volgt wat zichtbaar is
+    const btn = $("#mon-add");
+    btn.disabled = !selMon;
+    btn.textContent = selMon ? `${selMon} toevoegen` : "Kies een monster";
     $("#mon-list").innerHTML = L.map((m) => `<button type="button" data-pick="${esc(m.n)}" aria-pressed="${m.n === selMon}"><span>${esc(m.n)}${m.custom ? " · eigen" : ""}</span><span class="cr">CR ${esc(m.cr || "?")} · AC ${parseInt(m.ac) || "?"} · ${n0(m.hp) || "?"} HP</span></button>`).join("")
       || `<p class="hint" style="padding:10px">Niets gevonden. Voeg het toe onder "Eigen monster".</p>`;
   };
@@ -278,6 +281,8 @@ export function bindForms() {
   $("#mon-list").addEventListener("click", (e) => { const b = e.target.closest("[data-pick]"); if (!b) return; selMon = b.dataset.pick; renderMonList(); });
   $("#f-mon").addEventListener("submit", (e) => {
     e.preventDefault();
+    if (!selMon) { toast("Tik eerst een monster in de lijst aan."); return; }
+    $("#mon-q").blur();
     addMonsters(selMon, Math.min(20, Math.max(1, parseInt($("#mon-n").value) || 1)), $("#mon-hpmode").value, $("#mon-initmode").value);
     render();
   });
@@ -294,7 +299,7 @@ export function bindForms() {
     const m = { n: $("#cu-name").value.trim(), cr: $("#cu-cr").value.trim(), ac: $("#cu-ac").value, hp, hd, dexScore: parseInt($("#cu-dex").value) || 10, text: $("#cu-text").value };
     if (!m.n) return;
     app.custom = [m, ...app.custom.filter((x) => x.n !== m.n)]; saveLibrary();
-    e.target.reset(); selMon = m.n; renderMonList();
+    e.target.reset(); selMon = m.n; $("#mon-q").value = ""; renderMonList();
     document.querySelector('[data-tab="mon"]').click(); toast(`${m.n} opgeslagen. Kies aantal en voeg toe.`);
   });
 
