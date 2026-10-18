@@ -13,7 +13,7 @@ const DC_RE = new RegExp(String.raw`DC\s*(\d+)\s+` + SAVE + String.raw`(?:\s+or\
 export const cleanExpr = (e) => String(e).replace(/−/g, "-").replace(/\s/g, "");
 
 /** Naam zonder "(Recharge 5–6)" of "(1/Day)": dat staat al op de recharge-chip */
-const shortName = (n) => String(n).replace(/\s*\((?:recharge[^)]*|\d+\/day[^)]*)\)/gi, "").trim() || String(n);
+const shortName = (n) => String(n).replace(/\s*\((?:recharge[^)]*|\d+\/day[^)]*|costs? \d+ actions?)\)/gi, "").trim() || String(n);
 
 /**
  * Damage-delen: bij een aanval alleen de eerste worp na "Hit:" plus wat er met "plus" aan vastzit
@@ -71,7 +71,10 @@ const cache = new WeakMap();
 export function monsterActions(m) {
   if (!m) return null;
   if (cache.has(m)) return cache.get(m);
-  const list = (arr, tag) => (Array.isArray(arr) ? arr : []).filter(Array.isArray).map(([k, v]) => ({ ...parseAction(k, v), tag }));
+  const list = (arr, tag) => (Array.isArray(arr) ? arr : []).filter(Array.isArray).map(([k, v]) => {
+    const c = tag === "Legendary" && String(k).match(/\(costs? (\d+) actions?\)/i);
+    return { ...parseAction(k, v), tag: c ? `${tag} · ${c[1]} LA` : tag };
+  });
   const acts = [...list(m.a, ""), ...list(m.ba, "Bonus")];
   const res = {
     multi: acts.find((a) => a.multi) || null,

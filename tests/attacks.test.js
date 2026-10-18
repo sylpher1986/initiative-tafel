@@ -50,7 +50,7 @@ test("monsterActions: Multiattack apart, acties met worp in main, reactions/lege
   const r = monsterActions(mon("Adult Black Dragon"));
   assert.match(r.multi.text, /three attacks/);
   assert.deepEqual(r.main.map((a) => a.n), ["Bite", "Claw", "Tail", "Frightful Presence", "Acid Breath"]);
-  assert.deepEqual(r.other.map((a) => a.tag), ["Legendary", "Legendary", "Legendary"]);
+  assert.deepEqual(r.other.map((a) => a.tag), ["Legendary", "Legendary", "Legendary · 2 LA"]);
   assert.equal(monsterActions(mon("Adult Black Dragon")), r, "per monster onthouden");
   assert.equal(monsterActions(null), null);
   assert.equal(monsterActions({ n: "Eigen", text: "vrije tekst" }), null);

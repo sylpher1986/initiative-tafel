@@ -19,7 +19,8 @@ const str = (v, max = 2000) => (v == null ? "" : String(v).slice(0, max));
 const num = (v, def = 0) => (Number.isFinite(+v) ? +v : def);
 const obj = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : null);
 const arr = (v) => (Array.isArray(v) ? v : []);
-const counter = (o) => (obj(o) ? { max: Math.max(0, num(o.max)), left: Math.max(0, num(o.left)) } : null);
+/** Teller (legendary actions/resistance): hele getallen, max 0–20, left 0–max (een import kan rare waarden bevatten) */
+const counter = (o) => { if (!obj(o)) return null; const max = Math.min(20, Math.max(0, Math.trunc(num(o.max)))); return { max, left: Math.min(max, Math.max(0, Math.trunc(num(o.left)))) }; };
 
 function cleanCasting(k) {
   if (!obj(k)) return null;

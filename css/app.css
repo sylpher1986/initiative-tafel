@@ -525,3 +525,28 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .atk .atkfold{border:0;padding:0;border-radius:0}
 .atk .atkfold.sub{border-top:1px solid var(--line);font-size:.85rem;color:var(--muted)}
 .atkfold:focus-visible{outline:2px solid var(--active);outline-offset:2px}
+
+/* Legendary actions: vaste regel in de beurtbalk + paneel */
+.dock .larow{display:flex;gap:8px;margin-bottom:8px}
+.dock .lachip{flex:1 1 0;min-width:0;min-height:44px;display:flex;align-items:center;gap:6px;padding:0 10px;font-size:.88rem;border-color:var(--warn);color:var(--fg);text-align:left}
+.lachip .ln{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lachip .ld{flex:0 0 auto;color:var(--warn);letter-spacing:.06em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dock .lachip.off,.dock .lachip:disabled{opacity:.5;border-color:var(--line);flex:0 1 auto;max-width:48%}
+.lachip.off .ld{color:var(--muted);font-weight:400;letter-spacing:0}
+.lachip.pulse{animation:lapulse 1.2s ease-out 1}
+@keyframes lapulse{0%{box-shadow:0 0 0 0 var(--warn)}100%{box-shadow:0 0 0 10px transparent}}
+@media (prefers-reduced-motion:reduce){.lachip.pulse{animation:none}}
+.lsheet{gap:10px}
+.lsheet .hint{margin:0}
+.lamon{display:grid;gap:8px}
+.lamh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.lamh b{font-family:var(--display);font-size:1.05rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lamh .ld{color:var(--warn);white-space:nowrap}
+.lamh small{color:var(--muted)}
+.lao{border:1px solid var(--line);border-radius:10px;padding:4px 10px;background:var(--bg)}
+.lah{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;min-height:48px}
+.lah .an{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.lah .an small{display:block;font-weight:400;font-size:.76rem;color:var(--muted)}
+.lah .btn{min-height:44px;min-width:88px}
+.lao .ar{border-bottom:0;border-top:1px solid var(--line)}
+.latxt{margin:0 0 6px;font-size:.82rem;color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}

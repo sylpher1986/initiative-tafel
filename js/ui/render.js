@@ -11,6 +11,7 @@ import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText } from "
 import { diceify, syncSB } from "./statblock.js";
 import { monsterActions, dmgKey, useful } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
+import { laList, laStatus, laOptions } from "../rules/legendary.js";
 import { avatar } from "./avatar.js";
 
 /** UI-toestand die niet in de encounter (en dus niet in undo/opslag) hoort */
@@ -30,6 +31,8 @@ export const ui = {
   effCustom: false, effForm: {}, // eigen effect: formulier open + concept
   atkOpen: null,       // id: aanvallen uitgeklapt (ander monster) of alle regels (monster aan de beurt)
   atkRx: null,         // id: reactions/legendary uitgeklapt bij het monster aan de beurt
+  la: null,            // id of "*" = legendary-paneel open (één monster of alle)
+  laPulse: false,      // net Volgende getikt: legendary-knoppen lichten één keer op
 };
 export const openId = () => (ui.open === null ? app.S.active : ui.open);
 export const mode = () => ui.mode || (app.S.round ? "fight" : "prep");
@@ -46,6 +49,7 @@ export function render() {
   paintSheet();
   paintQadd();
   paintAoe();
+  paintLa();
   paintParty();
   paintLog();
   syncSB(app.S, openId(), sbChips);
@@ -273,10 +277,11 @@ const MAIN_MAX = 4; // regels bij het monster aan de beurt (Multiattack telt mee
 function atkRow(a) {
   // zonder worp of DC (Detect, Parry): korte tekst eronder, de rest staat in het statblock
   const sub = [a.tag, a.reach, a.hit !== null && a.dc ? `DC ${a.dc.n} ${a.dc.ab}` : "", useful(a) ? "" : a.text].filter(Boolean).join(" · ");
+  const lab = a.label || a.n; // label in de rolmelding (legendary: naam van de optie)
   const key = dmgKey(a.dmg), flat = a.dmg.filter((x) => !x.e);
-  const hit = a.hit !== null ? `<button class="d hit" data-roll="1d20${sgn(a.hit)}" data-hit="1" data-label="${esc(a.n)}" aria-label="${esc(a.n)}: aanval ${sgn(a.hit)} to hit">${sgn(a.hit)}</button>`
+  const hit = a.hit !== null ? `<button class="d hit" data-roll="1d20${sgn(a.hit)}" data-hit="1" data-label="${esc(lab)}" aria-label="${esc(lab)}: aanval ${sgn(a.hit)} to hit">${sgn(a.hit)}</button>`
     : a.dc ? `<span class="dc">DC ${a.dc.n} ${a.dc.ab}</span>` : "<span></span>";
-  const dmg = key ? `<button class="d dm" data-dmg="${esc(key)}" data-label="${esc(a.n)}" aria-label="${esc(a.n)}: damage rollen">${esc(a.dmg.map((x) => x.e || x.flat).join(" + "))}<small>${esc(a.dmg.map((x) => SHORT[x.type] || x.type).join(" + "))}</small></button>`
+  const dmg = key ? `<button class="d dm" data-dmg="${esc(key)}" data-label="${esc(lab)}" aria-label="${esc(lab)}: damage rollen">${esc(a.dmg.map((x) => x.e || x.flat).join(" + "))}<small>${esc(a.dmg.map((x) => SHORT[x.type] || x.type).join(" + "))}</small></button>`
     : flat.length ? `<span class="dflat">${esc(flat.map((x) => `${x.flat} ${x.type}`).join(" + "))}</span>` : "<span></span>";
   return `<div class="ar"><span class="an">${esc(a.n)}${sub ? `<small>${esc(sub)}</small>` : ""}</span>${hit}${dmg}</div>`;
 }
@@ -379,7 +384,71 @@ function paintDock() {
   let nxt = null;
   for (let k = 1; k <= L.length; k++) { const c = L[(i + k) % L.length]; if (c && !isOut(c) && c.id !== S.active) { nxt = c; break; } }
   $("#dock").innerHTML = `<div class="who"><span><span class="l">Aan de beurt</span><br><b>${act ? esc(act.name) : "–"}</b></span><span class="r">Ronde ${S.round}${nxt ? ` · volgende: ${esc(nxt.name)}` : ""}</span></div>
-    <div class="row">${undoBtn}<button id="prev" aria-label="Vorige beurt">‹</button><button class="aoeb" id="aoe" aria-label="Area of effect: schade op meerdere doelen" ${aoeTargets().length ? "" : "disabled"}>AoE</button><button class="nx" id="next">Volgende<span class="nb"> beurt</span> ›</button></div>`;
+    ${laBar(S, L)}<div class="row">${undoBtn}<button id="prev" aria-label="Vorige beurt">‹</button><button class="aoeb" id="aoe" aria-label="Area of effect: schade op meerdere doelen" ${aoeTargets().length ? "" : "disabled"}>AoE</button><button class="nx" id="next">Volgende<span class="nb"> beurt</span> ›</button></div>`;
+}
+
+/* ---------- legendary actions: vaste regel in de beurtbalk + paneel ---------- */
+const LA_WHY = { own: "herstelt nu", empty: "0 over", inc: "incapacitated" };
+const LA_TITLE = { own: "Aan de beurt: legendary actions herstellen", empty: "Op: herstelt bij de eigen beurt", inc: "Incapacitated: geen legendary actions" };
+const dots = (o) => { const m = Math.max(0, n0(o.max)), l = Math.min(m, Math.max(0, n0(o.left))); return "●".repeat(l) + "○".repeat(m - l); };
+
+/** Zolang een levend monster met legendary actions meedoet staat de regel er (dus geen verspringende beurtbalk); uit = gedimd */
+function laBar(S, L) {
+  const M = laList(S, L);
+  if (!M.length) return "";
+  const pulse = (ok) => (ok && ui.laPulse ? " pulse" : "");
+  if (M.length > 2) {
+    const ok = M.some((c) => laStatus(c, S) === "ok");
+    return `<div class="larow"><button class="lachip${ok ? "" : " off"}${pulse(ok)}" data-la="*" aria-label="Legendary actions van ${M.length} monsters">
+      <span class="ln">Legendary · ${M.length} monsters</span><span aria-hidden="true">▸</span></button></div>`;
+  }
+  return `<div class="larow">${M.map((c) => {
+    const st = laStatus(c, S), ok = st === "ok";
+    return `<button class="lachip${ok ? "" : " off"}${pulse(ok)}" data-la="${esc(c.id)}" ${ok ? "" : "disabled"} title="${ok ? "Legendary actions" : LA_TITLE[st]}"
+      aria-label="Legendary actions ${esc(c.name)}: ${n0(c.la.left)} van ${n0(c.la.max)} over${ok ? "" : ", " + LA_TITLE[st]}">
+      <span class="ln">${esc(c.name)}</span><span class="ld">${ok ? dots(c.la) : LA_WHY[st]}</span><span aria-hidden="true">▸</span></button>`;
+  }).join("")}</div>`;
+}
+
+/** Opties per monster; zonder statblock-opties één algemene optie (1 LA) */
+export const laOpts = (c) => {
+  const o = c.ref ? laOptions(findMon(c.ref)) : [];
+  return o.length ? o : [{ n: "Legendary action", cost: 1, text: "", act: null, refs: [] }];
+};
+
+function laMon(c, S) {
+  const st = laStatus(c, S), ok = st === "ok";
+  const opts = laOpts(c).map((o, i) => {
+    // eigen worp (Wing Attack) zonder de naam te herhalen; verwijzing (Tail Attack → Tail) met de naam van de aanval
+    const rows = o.act ? [{ ...o.act, n: "Worp", label: o.n }] : o.refs;
+    const can = ok && o.cost <= n0(c.la.left);
+    return `<div class="lao">
+      <div class="lah"><span class="an">${esc(o.n)}<small>${o.cost} LA</small></span>
+        <button type="button" class="btn small${can ? " primary" : ""}" data-lause="${esc(c.id)}" data-i="${i}" ${can ? "" : "disabled"}
+          aria-label="${esc(o.n)} gebruiken (${o.cost} LA)">Gebruik</button></div>
+      ${rows.map((a) => atkRow({ ...a, tag: "" })).join("")}
+      ${!rows.length && o.text ? `<p class="latxt">${esc(o.text)}</p>` : ""}</div>`;
+  }).join("");
+  return `<section class="lamon"><div class="lamh"><b>${esc(c.name)}</b><span class="ld">${dots(c.la)} <small>${n0(c.la.left)}/${n0(c.la.max)} over</small></span></div>
+    ${ok ? "" : `<p class="hint">${esc(LA_TITLE[st])}.</p>`}${opts}</section>`;
+}
+
+/** Paneel opnieuw opbouwen (geen invoervelden), scrollpositie bewaren */
+export function paintLa() {
+  const el = $("#lsheet");
+  const S = app.S;
+  const M = ui.la ? laList(S, sortOrder(S.list)).filter((c) => ui.la === "*" || c.id === ui.la) : [];
+  if (!M.length) { ui.la = null; el.hidden = true; el.innerHTML = ""; return; }
+  const old = el.querySelector(".lsheet"), top = old ? old.scrollTop : 0;
+  el.innerHTML = `<div class="dim" data-lsh="close"></div>
+    <div class="sheet qsheet lsheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="l-title">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="shead"><h3 id="l-title">Legendary actions</h3><button type="button" class="link" data-lsh="close">Sluit</button></div>
+      <p class="hint">Aan het einde van de beurt van een ander wezen, één tegelijk. Herstelt bij de eigen beurt.</p>
+      ${M.map((c) => laMon(c, S)).join("")}
+    </div>`;
+  el.hidden = false;
+  el.querySelector(".lsheet").scrollTop = top;
 }
 
 /* ---------- schade-paneel ---------- */

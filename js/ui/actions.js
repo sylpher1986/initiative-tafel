@@ -1,7 +1,8 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
-import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, aoeTargets, aoePick, editPreview } from "./render.js";
+import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, laOpts, aoeTargets, aoePick, editPreview } from "./render.js";
+import { useLA } from "../rules/legendary.js";
 import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods } from "../rules/effects.js";
 import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
@@ -236,7 +237,7 @@ const global = {
   undo() { if (undo()) { ui.confirmReset = false; toast(`Ongedaan gemaakt${historySize() ? ` (nog ${historySize()} stappen terug)` : ""}.`); } },
   // na starten of stoppen volgt de modus weer het gevecht (ui.mode = null)
   start() { apply(startCombat(app.S)); ui.mode = null; },
-  next() { apply(step(app.S, 1)); },
+  next() { apply(step(app.S, 1)); ui.laPulse = true; },
   prev() { apply(step(app.S, -1)); },
   stop() { apply(endFightEffects(app.S.list)); app.S.round = 0; app.S.active = null; ui.mode = null; },
   qadd() { ui.qadd = { q: "", sel: null, n: 1, init: "roll", fix: "" }; },
@@ -276,6 +277,7 @@ export function onClick(e) {
     if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
     return;
   }
+  if (e.target.closest('.dim[data-lsh="close"]')) { closeLa(); return; } // achtergrond van het legendary-paneel
   const b = e.target.closest("button");
   if (!b) return;
   if (b.dataset.roll) {
@@ -294,6 +296,9 @@ export function onClick(e) {
     document.querySelectorAll("[data-panel]").forEach((p) => (p.hidden = p.dataset.panel !== b.dataset.tab));
     return;
   }
+  if (b.dataset.la) { openLa(b.dataset.la); return; }
+  if (b.dataset.lsh === "close") { closeLa(); return; }
+  if (b.dataset.lause) { laUse(b.dataset.lause, +b.dataset.i); return; }
   if (b.id && global[b.id]) {
     if (global[b.id]() === false) return;
     if (["start", "next", "prev"].includes(b.id)) {
@@ -302,6 +307,7 @@ export function onClick(e) {
       ui.castPick = null; ui.effWho = null; ui.atkOpen = null; ui.atkRx = null;
     }
     render();
+    ui.laPulse = false; // alleen de render direct na Volgende laat de legendary-knoppen oplichten
     if (["start", "next", "prev"].includes(b.id)) scrollToCard(app.S.active);
     // focus in de dialog, maar niet op het zoekveld: dat zou op de telefoon meteen het toetsenbord openen
     if (b.id === "qadd") $("#qsheet .qsheet").focus();
@@ -343,6 +349,7 @@ export function onChange(e) {
 export function onKey(e) {
   if (ui.qadd && e.key === "Escape") { e.preventDefault(); closeQadd(); return; }
   if (ui.aoe && e.key === "Escape") { e.preventDefault(); closeAoe(); return; }
+  if (ui.la && e.key === "Escape") { e.preventDefault(); closeLa(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); ui.qadd = null; ui.aoe = null; global.undo(); render(); return; }
   if (ui.sheet && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
     const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" ? ["apply"] : null;
@@ -614,6 +621,32 @@ function qGo() {
   ui.qadd = null;
   render();
   $("#qadd").focus();
+}
+
+/* ---------- legendary actions (regel in de beurtbalk) ---------- */
+let laFrom = null; // knop die het paneel opende, voor de focus bij sluiten
+function openLa(id) {
+  ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = id;
+  laFrom = id;
+  render();
+  const sh = $("#lsheet .lsheet"); if (sh) sh.focus();
+}
+function closeLa() {
+  ui.la = null; paintLa();
+  const b = laFrom && document.querySelector(`[data-la="${CSS.escape(laFrom)}"]`); if (b && !b.disabled) b.focus();
+}
+/** Optie gebruiken: LA aftrekken (logboek met oorzaak, Ongedaan); paneel blijft open om te rollen */
+function laUse(id, i) {
+  const c = app.S.list.find((x) => x.id === id), o = c && laOpts(c)[i];
+  if (!o) return;
+  const r = useLA(c, o, app.S);
+  if (!r.why.length) { show(r); return; }
+  addWhy(r.why);
+  render();
+  // paneel is opnieuw opgebouwd: focus terug op dezelfde knop (of het paneel als die nu uit staat)
+  const nb = document.querySelector(`#lsheet [data-lause="${CSS.escape(id)}"][data-i="${i}"]`);
+  (nb && !nb.disabled ? nb : $("#lsheet .lsheet"))?.focus();
+  toastHtml(`${esc(`${c.name}: ${o.n} (−${o.cost} LA) · ${c.la.left} over`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
 }
 
 /* ---------- AoE: één schadeworp op meerdere doelen (knop AoE in de beurtbalk) ---------- */

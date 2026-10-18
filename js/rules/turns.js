@@ -130,6 +130,7 @@ export function step(state, dir, rng = Math.random) {
 
 /** Gevecht starten: ronde 1, eerste deelnemer die niet neer is, met start-van-beurt-effecten */
 export function startCombat(state, rng = Math.random) {
+  for (const c of state.list) if (c.la) c.la.left = c.la.max; // nieuw gevecht: legendary actions vol, ook vóór de eigen beurt
   state.round = 1;
   state.active = null;
   return step(state, 1, rng);
