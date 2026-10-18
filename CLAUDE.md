@@ -50,6 +50,7 @@ Meld bij oplevering in één of twee regels wat beide reviewers vonden en beslot
 - Avatars (`js/ui/avatar.js`): portret uit de D&D Beyond-link (via de Worker) of -PDF (vak "CHARACTER IMAGE"), max 128 px jpeg, > icoon op ras (`race`, anders `sheet.race`) > algemeen spelersicoon. Monsters: icoon op creature type uit `meta`. Iconen uit game-icons.net (CC BY 3.0, vermelding in README) in de sprite `icons/creatures.svg`. Echte monsterafbeeldingen: geen vrij bruikbare bron, dus (nog) niet.
 - Lettertypes: Alegreya SC (koppen) en Alegreya Sans (tekst), zelf meegeleverd in `fonts/` als latin-subset woff2 (OFL). Geen externe font-diensten; een nieuw gewicht = bestand toevoegen + `@font-face` + `sw.js`.
 - Hosting: Cloudflare Workers (statische assets via `wrangler.jsonc`, uitsluitingen in `.assetsignore`; alleen `/api/*` gaat langs `worker/index.js` via `run_worker_first`). Gekozen omdat later serverfuncties nodig zijn voor AI (API-sleutel mag nooit in de browser).
+- Spelersscherm (`speler.html`): krijgt alleen de snapshot uit `toPlayerView` (`js/playerview.js`), nooit de volledige toestand; zichtbaarheid centraal in `VIS` (monster-HP als status, spelers exact, geen initiativegetallen). Transport `js/share.js`: nu BroadcastChannel (zelfde browser), later een WebSocket-kamer met dezelfde interface. Ontvangen data altijd door `cleanView`. Verborgen monsters (`c.hidden`, via ⋯) bestaan niet voor spelers, ook hun beurt niet.
 - Fase 1 is local-first zonder accounts. Sync/login (bijv. Supabase) pas in fase 2.
 
 Zie `ROADMAP.md` voor wat er nog openstaat.
