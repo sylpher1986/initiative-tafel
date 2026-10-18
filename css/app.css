@@ -567,3 +567,21 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .dock .svall{width:100%;min-height:44px;font-size:.95rem;border-color:var(--warn);color:var(--warn)}
 .ssheet{gap:10px}
 .ssheet .hint{margin:0}
+
+/* Aanval op één doel (to-hit-knop op de monsterkaart) */
+.xsheet{gap:10px}
+.xlist{display:grid;gap:6px}
+.xsub{margin:6px 0 0}
+.xt{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;min-height:52px;padding:4px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);text-align:left;font:inherit}
+.xt:active{background:var(--sunk)}
+.xt .xn{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xt .xi{font-size:.82rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.xback{justify-self:start;min-height:40px}
+.xhit{margin:0;font-size:.95rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.xhit b{font-size:1.15rem;margin-right:6px}
+.xhit .ok{color:var(--good)}.xhit .bad{color:var(--bad)}
+.xdmg{font-size:.88rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.xmode{display:grid;gap:4px}
+.xrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.xrow .btn[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.xsheet .afoot{grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px}

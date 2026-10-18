@@ -30,7 +30,8 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [x] Legendary actions-herinnering: vaste regel in de beurtbalk per LA-monster (●●○), licht op na Volgende; paneel met opties, kosten (2/3 LA), worp of verwezen aanval en Gebruik (1.9.0)
 - [x] Saves afhandelen: open saves als regels in de beurtbalk (condition-save al bij het begin van de beurt, "einde beurt"; concentration save na schade, ook uit AoE). Monster: "Rol +N" (statblock + Bless/Bane/cover), Legendary Resistance en "Spell? Advantage" in de melding; speler: ✓/✗; 3+: paneel met "Rol alle monsters"; niet afgehandeld vervalt na één extra beurtwissel (1.10.0)
 - [x] Recharge-aanval ↔ AoE: "DC 18 DEX · AoE" op de aanvalsregel van elke save-actie met schade opent AoE met gerolde schade, type, save en DC; spelers aangevinkt; recharge pas bij toepassen op "op" (één Ongedaan); klare recharge-actie staat direct onder Multiattack (1.11.0)
-- [ ] Worp direct toepassen: damage-worp uit het statblock met één tik op een doel; "+4 to hit" vergelijken met de AC van het doel; crit = dubbele dice
+- [x] Worp direct toepassen: to-hit-knop op de monsterkaart → doel kiezen → raak/mis tegen de AC (met effecten), damage met crit, resist per type, Shield +5, toepassen met Ongedaan (1.12.0)
+- [ ] Aanval op een doel ook vanuit het statblock en het legendary-paneel (zelfde paneel); advantage/disadvantage automatisch uit condities
 
 ### Prioriteit 2: voorbereiding en tempo
 - [ ] Volgende encounter: "Monsters wissen, spelers houden" (nu wist "Encounter wissen" ook de party). Samen met encounters vooraf klaarzetten en XP-moeilijkheid (zie Functies)

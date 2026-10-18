@@ -9,7 +9,7 @@ import * as R from "../rules/combat.js";
 import { ORD, pickList } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus } from "../rules/aoe.js";
 import { diceify, syncSB } from "./statblock.js";
-import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex } from "../rules/attacks.js";
+import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, atkText, partText, atkDamage } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
 import { laList, laStatus, laOptions } from "../rules/legendary.js";
 import { openSaves } from "../rules/saves.js";
@@ -25,7 +25,10 @@ export const ui = {
   mode: null,          // "prep" | "fight"; null = volg het gevecht (loopt → Gevecht, anders Voorbereiden)
   qadd: null,          // { q, sel, n, init: "roll"|"fixed", fix } = snel-toevoegen-paneel open
   aoe: null,           // { dmg, type, ab, dc, t: { [id]: { sel, save, mode|null, roll, lr } } } = AoE-paneel open
-  aoeLast: { type: "", ab: "DEX", dc: "" }, // laatst gebruikte type/save/DC (bijv. dezelfde breath weapon)
+  aoeLast: { type: "", ab: "DEX", dc: "" },
+  atk: null,           // { by, n, label, bo, key, adv, tid, r, parts, modes, force } = aanvalspaneel open (to-hit-knop)
+  atkAdv: null,        // { by, v }: advantage/disadvantage blijft staan voor de volgende aanval van dezelfde aanvaller
+  atkPrev: null,       // { by, id }: vorige doel van deze aanvaller (bovenaan in de lijst) // laatst gebruikte type/save/DC (bijv. dezelfde breath weapon)
   edit: null,          // { id, name, ac, max, init } = concept in het bewerkpaneel (⋯)
   effWho: null,        // { id, i } = preset met concentratie wacht op "Wie cast?"
   effJoin: null,       // { id, p, by, cast } = laatste "nieuwe cast" (Bless), voor "Hoort erbij" in de melding
@@ -52,6 +55,7 @@ export function render() {
   paintSheet();
   paintQadd();
   paintAoe();
+  paintAtk();
   paintLa();
   paintSv();
   paintParty();
@@ -283,7 +287,8 @@ function atkRow(a, cid) {
   const sub = [a.tag, a.reach, a.hit !== null && a.dc ? `DC ${a.dc.n} ${a.dc.ab}` : "", useful(a) ? "" : a.text].filter(Boolean).join(" · ");
   const lab = a.label || a.n; // label in de rolmelding (legendary: naam van de optie)
   const key = dmgKey(a.dmg), flat = a.dmg.filter((x) => !x.e);
-  const hit = a.hit !== null ? `<button class="d hit" data-roll="1d20${sgn(a.hit)}" data-hit="1" data-label="${esc(lab)}" aria-label="${esc(lab)}: aanval ${sgn(a.hit)} to hit">${sgn(a.hit)}</button>`
+  const hit = a.hit !== null && cid ? `<button class="d hit" data-atk="${esc(a.n)}" data-cid="${esc(cid)}" data-label="${esc(lab)}" aria-label="${esc(lab)}: aanval ${sgn(a.hit)} to hit, doel kiezen">${sgn(a.hit)}</button>`
+    : a.hit !== null ? `<button class="d hit" data-roll="1d20${sgn(a.hit)}" data-hit="1" data-label="${esc(lab)}" aria-label="${esc(lab)}: aanval ${sgn(a.hit)} to hit">${sgn(a.hit)}</button>`
     : isSaveAoe(a) && cid ? `<button class="d dcb" data-aoe="${esc(a.n)}" data-cid="${esc(cid)}" aria-label="${esc(lab)}: DC ${a.dc.n} ${a.dc.ab}, AoE-paneel openen">DC ${a.dc.n} ${a.dc.ab}<small>AoE ▸</small></button>`
     : a.dc ? `<span class="dc">DC ${a.dc.n} ${a.dc.ab}</span>` : "<span></span>";
   const dmg = key ? `<button class="d dm" data-dmg="${esc(key)}" data-label="${esc(lab)}" aria-label="${esc(lab)}: damage rollen">${esc(a.dmg.map((x) => x.e || x.flat).join(" + "))}<small>${esc(a.dmg.map((x) => SHORT[x.type] || x.type).join(" + "))}</small></button>`
@@ -656,6 +661,80 @@ export function paintAoe() {
   const go = el.querySelector(".ago");
   go.disabled = !n || !sel.length;
   go.textContent = !n ? "Vul de schade in" : !sel.length ? "Kies doelwitten" : `${n}${a.type ? " " + a.type : ""} toepassen op ${sel.length} doel${sel.length === 1 ? "" : "en"}`;
+}
+
+/* ---------- aanval op één doel (to-hit-knop op de monsterkaart) ---------- */
+const ADVS = [[0, "Normaal"], [1, "Advantage"], [-1, "Disadvantage"]];
+const XMODES = [[1, "Normaal"], [0.5, "Resist ½"], [2, "Kwetsb. ×2"], [0, "Immuun"]];
+// condities van het doel die advantage of disadvantage geven (alleen als hint; de DM kiest)
+const ATK_CONDS = ["Blinded", "Invisible", "Paralyzed", "Petrified", "Prone", "Restrained", "Stunned", "Unconscious"];
+const AUTO_CRIT = ["Paralyzed", "Unconscious"];
+
+/** Wie een aanval kan krijgen: niet de aanvaller, geen lair, geen dode speler of monster op 0 HP (spelers op 0 HP wel) */
+export const atkTargets = (by) => sortOrder(app.S.list).filter((c) => c.kind !== "lair" && c.id !== by && !isOut(c));
+
+/** Shield (reaction, +5) aanbieden: speler, geraakt maar niet met een natuurlijke 20, en +5 AC zou missen */
+export const shieldOk = (c, x, res) => c.kind === "pc" && res.hit && !x.force.hit && x.r.nat !== 20 && !c.reaction
+  && !(c.eff || []).some((e) => e.n === "Shield") && x.r.tot < effAc(c) + 5;
+
+function atkTgtRow(c, prev) {
+  const ac = effAc(c);
+  return `<button type="button" class="xt" data-xa="tgt" data-id="${esc(c.id)}">${avatar(c, c.ref ? findMon(c.ref)?.meta : "")}
+    <span class="xn">${esc(c.name)}${prev ? ` <span class="tag">vorige</span>` : ""}</span>
+    <span class="xi">${ac ? `AC ${n0(ac)}` : "AC ?"}${c.max ? ` · ${n0(c.hp)}/${n0(c.max)} HP` : ""}</span></button>`;
+}
+
+function atkPick(x, by) {
+  const L = atkTargets(by.id), prev = ui.atkPrev && ui.atkPrev.by === by.id ? L.find((c) => c.id === ui.atkPrev.id) : null;
+  const rest = L.filter((c) => c !== prev), pcs = rest.filter((c) => c.kind === "pc"), mons = rest.filter((c) => c.kind !== "pc");
+  return `<div class="seg2 sm xadv" role="group" aria-label="Advantage">${ADVS.map(([v, l]) => `<button type="button" data-xa="adv" data-v="${v}" aria-pressed="${x.adv === v}">${l}</button>`).join("")}</div>
+    <div class="xlist">${prev ? atkTgtRow(prev, true) : ""}${pcs.map((c) => atkTgtRow(c)).join("")}
+    ${mons.length ? `<p class="qlbl xsub">Monsters</p>${mons.map((c) => atkTgtRow(c)).join("")}` : ""}
+    ${L.length ? "" : `<p class="hint">Niemand om aan te vallen.</p>`}</div>
+    <div class="afoot"><button type="button" class="link" data-xa="free">Zonder doel rollen</button><span></span></div>`;
+}
+
+function atkRes(x, c) {
+  const ac = effAc(c) || 0, res = atkResult(x.r, ac, x.parts, x.modes, x.force);
+  const word = res.crit ? "Kritiek!" : res.hit ? (res.natHit ? "Raak" : "Toch raak") : x.r.nat === 1 ? "Mis (nat 1)" : "Mis";
+  const conds = c.cond.filter((k) => ATK_CONDS.includes(k));
+  const auto = conds.some((k) => AUTO_CRIT.includes(k));
+  const hints = [
+    !ac ? "AC onbekend: vergelijk zelf" : "",
+    conds.length ? `${esc(c.name)}: ${esc(conds.join(", "))}${auto ? " · binnen 5 ft is een treffer kritiek" : ""}` : "",
+  ].filter(Boolean);
+  let body = "", foot = "";
+  if (res.hit) {
+    const sim = structuredClone(c), was = c.hp;
+    if (c.max) atkDamage(sim, res);
+    const end = !c.max ? "" : sim.ds && sim.ds.dead && !(c.ds && c.ds.dead) ? ` · <b class="bad">sterft</b>`
+      : was > 0 && sim.hp <= 0 ? ` · <b class="bad">${c.kind === "pc" ? "bewusteloos" : "neer"}</b>`
+      : c.kind === "pc" && was <= 0 && res.dealt ? ` · <b class="bad">${res.crit ? "twee failures" : "death save failure"}</b>` : "";
+    body = `${x.parts.length ? `<div class="xdmg">${x.parts.map((p) => esc(partText(p, res.crit))).join("<br>")}</div>` : `<p class="hint">Geen schade-worp in deze aanval.</p>`}
+      ${res.types.map((t) => `<div class="xmode"><span class="qlbl">${esc(t.type || "schade")}</span><div class="seg2 sm" role="group" aria-label="Weerstand ${esc(t.type)}">${XMODES.map(([v, l]) => `<button type="button" data-xa="mode" data-t="${esc(t.type)}" data-v="${v}" aria-pressed="${t.mode === v}">${l}</button>`).join("")}</div></div>`).join("")}
+      <div class="xrow"><button type="button" class="btn small" data-xa="crit" aria-pressed="${res.crit}">Kritiek</button>
+      <span class="acalc">${c.max ? `${n0(c.hp)} → ${n0(sim.hp)} HP${end}` : "HP onbekend"}</span></div>`;
+    foot = `${shieldOk(c, x, res) ? `<button type="button" class="btn" data-xa="shield">Shield +5</button>` : "<span></span>"}
+      <button type="button" class="btn primary qgo" data-xa="go" ${c.max && res.dealt ? "" : "disabled"}>${!c.max ? "HP onbekend" : res.dealt ? `${res.dealt} schade toepassen` : "Geen schade"}</button>`;
+  } else foot = `<button type="button" class="link" data-xa="force">Toch raak</button><button type="button" class="btn primary qgo" data-xa="close">Sluit</button>`;
+  return `<button type="button" class="link xback" data-xa="back">‹ Ander doel</button>
+    <p class="xhit"><b class="${res.hit ? "ok" : "bad"}">${word}</b> ${esc(atkText(x.r, ac || null))}</p>
+    ${hints.length ? `<p class="hint">${hints.join("<br>")}</p>` : ""}
+    ${body}<div class="afoot">${foot}</div>`;
+}
+
+export function paintAtk() {
+  const el = $("#xsheet"), x = ui.atk;
+  const by = x && app.S.list.find((c) => c.id === x.by);
+  const c = x && x.tid && app.S.list.find((t) => t.id === x.tid);
+  if (!x || !by) { el.hidden = true; el.innerHTML = ""; return; }
+  el.innerHTML = `<div class="dim" data-xa="close"></div>
+    <div class="sheet qsheet xsheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="x-title">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="shead"><h3 id="x-title">${esc(x.label)} → ${c ? esc(c.name) : "doel?"}</h3><button type="button" class="link" data-xa="close">Annuleer</button></div>
+      ${c ? atkRes(x, c) : atkPick(x, by)}
+    </div>`;
+  el.hidden = false;
 }
 
 /* ---------- party en logboek ---------- */

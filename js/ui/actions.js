@@ -1,17 +1,17 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
-import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, paintSv, laOpts, svBonus, aoeTargets, aoePick, okSave, editPreview } from "./render.js";
+import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, paintSv, paintAtk, laOpts, svBonus, aoeTargets, aoePick, okSave, editPreview } from "./render.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
-import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods } from "../rules/effects.js";
+import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc } from "../rules/effects.js";
 import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
 import { step, startCombat, makeDur, parseInit } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
-import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES } from "../rules/aoe.js";
-import { monsterActions, actionAoe, rcIndex } from "../rules/attacks.js";
+import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, defMode } from "../rules/aoe.js";
+import { monsterActions, actionAoe, rcIndex, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
 import { castInfo, legInfo, rcInfo, pickList, CONC_SPELLS, cleanSpell } from "../rules/spells.js";
 import { logText } from "../log.js";
 import { readSheetPdf, fetchDdb } from "../ddb.js";
@@ -292,6 +292,7 @@ export function onClick(e) {
   }
   if (b.dataset.dmg) return doDmgRoll(b.dataset.dmg, b.dataset.label);
   if (b.dataset.aoe) return openActAoe(b.dataset.cid, b.dataset.aoe);
+  if (b.dataset.atk) return openAtk(b.dataset.cid, b.dataset.atk, b.dataset.label);
   if (b.dataset.setmode) {
     ui.mode = b.dataset.setmode; ui.confirmReset = false;
     render();
@@ -315,7 +316,7 @@ export function onClick(e) {
     if (["start", "next", "prev"].includes(b.id)) {
       // een niet-opgeslagen bewerking blijft open staan; anders volgt de open kaart de beurt
       if (ui.edit && ui.edit.dirty) ui.open = ui.edit.id; else { ui.open = null; ui.panel = null; ui.edit = null; }
-      ui.castPick = null; ui.effWho = null; ui.atkOpen = null; ui.atkRx = null;
+      ui.castPick = null; ui.effWho = null; ui.atkOpen = null; ui.atkRx = null; ui.atkAdv = null; ui.atk = null;
     }
     render();
     ui.laPulse = false; // alleen de render direct na Volgende laat de legendary-knoppen oplichten
@@ -360,9 +361,10 @@ export function onChange(e) {
 export function onKey(e) {
   if (ui.qadd && e.key === "Escape") { e.preventDefault(); closeQadd(); return; }
   if (ui.aoe && e.key === "Escape") { e.preventDefault(); closeAoe(); return; }
+  if (ui.atk && e.key === "Escape") { e.preventDefault(); closeAtk(); return; }
   if (ui.la && e.key === "Escape") { e.preventDefault(); closeLa(); return; }
   if (ui.sv && e.key === "Escape") { e.preventDefault(); ui.sv = false; paintSv(); return; }
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); ui.qadd = null; ui.aoe = null; global.undo(); render(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); ui.qadd = null; ui.aoe = null; ui.atk = null; global.undo(); render(); return; }
   if (ui.sheet && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
     const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" ? ["apply"] : null;
     if (k) { e.preventDefault(); const res = sheetKey(...k); render(); if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`); }
@@ -812,6 +814,81 @@ function aoeGo() {
   render();
   toastHtml(`${esc(`${a.act || `AoE ${label}`}: ${L.length} doel${L.length === 1 ? "" : "en"}, ${r.hits.reduce((s, h) => s + h.dealt, 0)} schade${down ? `, ${down} neer` : ""}${rcUsed ? " · recharge op" : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
   const ab = $("#aoe"); if (ab) ab.focus();
+}
+
+/* ---------- aanval op één doel (to-hit-knop op de monsterkaart) ---------- */
+/** Aanval opzoeken in het statblock van de aanvaller (op naam) */
+function findAtk(by, name) {
+  const A = by && by.ref ? monsterActions(findMon(by.ref)) : null;
+  return A && [...A.main, ...A.other].find((a) => a.n === name && a.hit !== null);
+}
+
+function openAtk(cid, name, label) {
+  const by = app.S.list.find((c) => c.id === cid), a = findAtk(by, name);
+  if (!a) return;
+  ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = null; ui.sv = false;
+  const adv = ui.atkAdv && ui.atkAdv.by === by.id ? ui.atkAdv.v : 0;
+  ui.atk = { by: by.id, n: a.n, label: label || a.n, bo: a.hit, key: a.dmg.map((p) => `${p.e || p.flat}:${p.type}`).join("|"), adv, tid: null, r: null, parts: null, modes: {}, force: {} };
+  render();
+  focusAtk();
+}
+
+const focusAtk = () => { const s = $("#xsheet"); (s.querySelector(".qgo:not([disabled])") || s.querySelector(".xt") || s.querySelector(".xsheet"))?.focus(); };
+function closeAtk() { const by = ui.atk && ui.atk.by; ui.atk = null; paintAtk(); if (by) $(`.c[data-id="${CSS.escape(by)}"] .d.hit`)?.focus(); }
+
+/** Doel gekozen: to hit en damage in één keer rollen (een ander doel kiezen houdt dezelfde worp) */
+function atkTarget(x, id) {
+  const c = app.S.list.find((t) => t.id === id);
+  if (!c) return;
+  x.tid = id;
+  if (!x.r) { x.r = rollAttack(x.bo, x.adv); x.parts = x.key ? rollDmgCrit(x.key, (e) => rollExpr(e)) || [] : []; }
+  x.force = {};
+  // resistance/immuniteit van een monster uit het statblock (onvoorwaardelijk); spelers normaal
+  const m = c.ref ? findMon(c.ref) : null;
+  x.modes = {};
+  for (const p of x.parts) if (!(p.type in x.modes)) x.modes[p.type] = m ? defMode(m.x, p.type).mode : 1;
+}
+
+function atkGo() {
+  const x = ui.atk, by = x && app.S.list.find((c) => c.id === x.by), c = x && app.S.list.find((t) => t.id === x.tid);
+  if (!by || !c || !c.max) return;
+  const ac = effAc(c) || 0, res = atkResult(x.r, ac, x.parts, x.modes, x.force);
+  if (!res.hit || !res.dealt) return;
+  const before = c.hp;
+  because(atkWhy(`${x.label} (${by.name})`, x.r, ac || null, x.parts, res), c.id);
+  apply(atkDamage(c, res));
+  ui.atkPrev = { by: by.id, id: c.id };
+  ui.atk = null;
+  render();
+  toastHtml(`${esc(`${c.name}: −${res.dealt} HP${res.crit ? " (kritiek)" : ""} → ${n0(c.hp)}/${n0(c.max)}${before > 0 && c.hp <= 0 ? (c.kind === "pc" ? ", bewusteloos" : ", neer") : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  $(`.c[data-id="${CSS.escape(by.id)}"] .d.hit`)?.focus();
+}
+
+export function bindAtk() {
+  $("#xsheet").addEventListener("click", (e) => {
+    const x = ui.atk; if (!x) return;
+    const b = e.target.closest("[data-xa]"); if (!b) return;
+    const k = b.dataset.xa;
+    if (k === "close") { closeAtk(); return; }
+    if (k === "go") { atkGo(); return; }
+    if (k === "free") { // oude gedrag: alleen de worp als melding
+      const lab = x.label; closeAtk();
+      doRoll(`1d20${sgn(x.bo)}`, lab, true);
+      return;
+    }
+    if (k === "adv") { x.adv = +b.dataset.v; ui.atkAdv = { by: x.by, v: x.adv }; x.r = null; }
+    if (k === "tgt") atkTarget(x, b.dataset.id);
+    if (k === "back") x.tid = null;
+    if (k === "mode") x.modes[b.dataset.t] = +b.dataset.v;
+    if (k === "crit") { const c = app.S.list.find((t) => t.id === x.tid); const res = c && atkResult(x.r, effAc(c) || 0, x.parts, x.modes, x.force); x.force.crit = !(res && res.crit); }
+    if (k === "force") x.force.hit = true;
+    if (k === "shield") {
+      const c = app.S.list.find((t) => t.id === x.tid), p = PRESETS.find((q) => q.n === "Shield");
+      if (c && p) { const r = applyEff(c, p, null); render(); if (r.undoToast) toastHtml(`${esc(r.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`); focusAtk(); return; }
+    }
+    paintAtk();
+    focusAtk();
+  });
 }
 
 /* ---------- party-tab ---------- */
