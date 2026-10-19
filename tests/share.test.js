@@ -146,6 +146,7 @@ test("splitImgs: nieuw, gewijzigd en weg", () => {
 test("createRoom: offline, serverfout, rare antwoorden", async () => {
   await assert.rejects(createRoom(async () => { throw new TypeError("net"); }), /offline/);
   await assert.rejects(createRoom(async () => new Response("x", { status: 503 })), /server/);
+  await assert.rejects(createRoom(async () => new Response('{"error":"rate"}', { status: 429 })), /rate/);
   await assert.rejects(createRoom(async () => new Response('{"code":"<b>","token":"t"}')), /server/);
   await assert.rejects(createRoom(async () => new Response("geen json")), /server/);
   assert.deepEqual(await createRoom(async () => new Response('{"code":"k7m3qx","token":"t"}', { status: 201 })), { code: "K7M3QX", token: "t" });

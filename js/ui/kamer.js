@@ -62,7 +62,9 @@ async function start() {
     connect();
   } catch (e) {
     st = "uit";
-    err = e.message === "offline" ? "Geen internet. Het spelersscherm op dit apparaat werkt wel (hieronder)." : "Delen lukt nu niet. Probeer het later opnieuw.";
+    err = e.message === "offline" ? "Geen internet. Het spelersscherm op dit apparaat werkt wel (hieronder)."
+      : e.message === "rate" ? "Te veel nieuwe kamers achter elkaar. Probeer het over een minuut opnieuw."
+      : "Delen lukt nu niet. Probeer het later opnieuw.";
   }
   paint();
 }

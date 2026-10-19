@@ -1,6 +1,7 @@
 // Spelersscherm op andere apparaten: één Durable Object per kamer (SQLite-backend, WebSocket Hibernation API).
 //
 // POST /api/room              → { code, token }: nieuwe kamer. De code is voor spelers, het token is van de DM.
+//                               429 (retry-after: 60) bij te veel nieuwe kamers vanaf één IP (roomAllowed).
 // GET  /api/room/:code/ws     → WebSocket. ?t=<token> geldig = DM (schrijft), anders speler (alleen lezen).
 //
 // Berichten (JSON, zie ook js/share.js):
@@ -167,15 +168,30 @@ export class Room {
   }
 }
 
-const json = (body, status = 200) => new Response(JSON.stringify(body), {
-  status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" },
+const json = (body, status = 200, extra = {}) => new Response(JSON.stringify(body), {
+  status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", ...extra },
 });
+
+/**
+ * Rate-limit op kamers aanmaken (binding ROOM_LIMIT in wrangler.jsonc: ROOM_LIMIT_N per 60 s per IP, per Cloudflare-locatie).
+ * IP als sleutel: er zijn geen accounts, en alleen de DM maakt een kamer (één per sessie, bewaard in localStorage),
+ * dus een gedeeld IP (wifi aan tafel) raakt in de praktijk niemand. Fase 2: sleutel = ingelogde eigenaar.
+ * Fail-open: zonder binding (lokaal, tests) of bij een storing in de limiter gaat het gewoon door.
+ */
+export const ROOM_LIMIT_N = 10;
+export async function roomAllowed(req, env) {
+  if (!env.ROOM_LIMIT) return true;
+  const ip = req.headers.get("cf-connecting-ip") || "onbekend";
+  try { return (await env.ROOM_LIMIT.limit({ key: "room:" + ip })).success !== false; }
+  catch { return true; }
+}
 
 /** /api/room… → antwoord, of null als het pad er niet bij hoort */
 export async function roomRoute(req, env, url) {
   if (url.pathname === "/api/room" || url.pathname === "/api/room/") {
     if (req.method !== "POST") return json({ error: "method" }, 405);
     if (!env.ROOMS) return json({ error: "noroom" }, 503);
+    if (!(await roomAllowed(req, env))) return json({ error: "rate" }, 429, { "retry-after": "60" });
     const token = newToken(), hash = await sha(token);
     for (let i = 0; i < 5; i++) { // botsing (al bestaande kamer) is zeldzaam: nieuwe code
       const code = newCode();

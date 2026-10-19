@@ -198,10 +198,11 @@ export function roomChannel(code, token, opts = {}) {
   };
 }
 
-/** Kamer aanmaken → { code, token }. Gooit Error("offline" | "server"). */
+/** Kamer aanmaken → { code, token }. Gooit Error("offline" | "rate" | "server"). */
 export async function createRoom(fetchFn = fetch) {
   let r;
   try { r = await fetchFn("/api/room", { method: "POST" }); } catch { throw new Error("offline"); }
+  if (r.status === 429) throw new Error("rate");
   if (!r.ok) throw new Error("server");
   const j = await r.json().catch(() => null);
   const code = j && normCode(j.code);

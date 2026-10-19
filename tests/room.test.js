@@ -1,7 +1,8 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import worker from "../worker/index.js";
-import { Room, rt, newCode, CODE_RE, CODE_ABC, MAX_MSG, MAX_IMG, MAX_IMGS, IDLE_MS } from "../worker/room.js";
+import { Room, rt, newCode, CODE_RE, CODE_ABC, MAX_MSG, MAX_IMG, MAX_IMGS, IDLE_MS, ROOM_LIMIT_N } from "../worker/room.js";
+import { readFileSync } from "node:fs";
 
 /* ---------- nagebootste Durable Object-runtime ---------- */
 class FakeWS {
@@ -87,6 +88,54 @@ test("POST /api/room maakt een kamer met code en token; andere methodes niet", a
   assert.notEqual(st.m.get("owner").hash, token, "token niet zelf bewaard, alleen de hash");
   assert.ok(st.alarm > Date.now());
   assert.equal((await call("/api/room")).status, 405);
+});
+
+/** Nagebootste rate limiter: telt per sleutel (geen tijdvenster nodig voor de test) */
+function limiter(max, fail = false) {
+  const n = new Map(), keys = [];
+  return { keys, limit: async ({ key }) => {
+    if (fail) throw new Error("storing");
+    keys.push(key); n.set(key, (n.get(key) || 0) + 1);
+    return { success: n.get(key) <= max };
+  } };
+}
+const post = (lim, ip) => worker.fetch(new Request("https://app.test/api/room", { method: "POST", headers: ip ? { "cf-connecting-ip": ip } : {} }), { ...env, ROOM_LIMIT: lim });
+
+test("rate-limit: te veel kamers vanaf één IP → 429 met retry-after, ander IP gaat door, geen kamer aangemaakt", async () => {
+  const lim = limiter(2);
+  assert.equal((await post(lim, "1.2.3.4")).status, 201);
+  assert.equal((await post(lim, "1.2.3.4")).status, 201);
+  const r = await post(lim, "1.2.3.4");
+  assert.equal(r.status, 429);
+  assert.equal(r.headers.get("retry-after"), "60");
+  assert.equal(r.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await r.json(), { error: "rate" });
+  assert.equal(Object.keys(rooms).length, 2, "geweigerd = geen Durable Object");
+  assert.equal((await post(lim, "5.6.7.8")).status, 201);
+  assert.deepEqual(lim.keys, ["room:1.2.3.4", "room:1.2.3.4", "room:1.2.3.4", "room:5.6.7.8"]);
+});
+
+test("rate-limit: alleen POST telt (ws en GET niet); zonder IP-header één gedeelde sleutel", async () => {
+  const lim = limiter(0);
+  const e = { ...env, ROOM_LIMIT: lim };
+  assert.equal((await worker.fetch(new Request("https://app.test/api/room"), e)).status, 405);
+  assert.equal((await worker.fetch(new Request("https://app.test/api/room/K7M3QX/ws"), e)).status, 426);
+  assert.deepEqual(lim.keys, []);
+  assert.equal((await post(lim)).status, 429);
+  assert.deepEqual(lim.keys, ["room:onbekend"]);
+});
+
+test("rate-limit: fail-open bij een storing in de limiter of zonder binding", async () => {
+  assert.equal((await post(limiter(0, true), "1.2.3.4")).status, 201);
+  assert.equal((await post(undefined, "1.2.3.4")).status, 201);
+});
+
+test("rate-limit: binding in wrangler.jsonc gelijk aan ROOM_LIMIT_N, period 10 of 60", () => {
+  const cfg = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
+  const m = cfg.match(/"name":\s*"ROOM_LIMIT"[^}]*"limit":\s*(\d+),\s*"period":\s*(\d+)/);
+  assert.ok(m, "ROOM_LIMIT-binding ontbreekt");
+  assert.equal(+m[1], ROOM_LIMIT_N);
+  assert.ok(["10", "60"].includes(m[2]));
 });
 
 test("botsing met een bestaande kamer: nieuwe code", async () => {
