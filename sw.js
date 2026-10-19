@@ -1,6 +1,6 @@
 // Service worker: maakt de app offline bruikbaar. Verhoog VERSION bij elke release zodat de cache ververst.
 // Gelijk houden aan js/version.js (de test bewaakt dat); dit is ook het nummer dat de app toont.
-const VERSION = "1.23.0";
+const VERSION = "1.24.0";
 const CACHE = "initiative-tafel-" + VERSION;
 const ASSETS = [
   "./",
@@ -49,6 +49,7 @@ const ASSETS = [
   "./js/ui/actions.js",
   "./js/ui/avatar.js",
   "./js/ui/render.js",
+  "./js/ui/sharing.js",
   "./js/ui/spellinfo.js",
   "./js/ui/spellrules.js",
   "./js/ui/statblock.js",
@@ -82,7 +83,9 @@ self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url), own = url.origin === self.location.origin;
-  if (own && url.pathname.startsWith("/api/")) return; // live data (D&D Beyond): nooit uit de cache
+  // live data: D&D Beyond en de spelersscherm-kamers (/api/room, ook de WebSocket) nooit uit de cache.
+  // POST /api/room komt hier al niet (alleen GET); WebSockets gaan niet langs de service worker.
+  if (own && url.pathname.startsWith("/api/")) return;
   if (own) {
     e.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => (hit ? unredirect(hit) : fetch(req))));
   } else {

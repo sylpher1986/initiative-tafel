@@ -4,6 +4,7 @@ import { loadSrd, findMon } from "./data/monsters.js";
 import { render, ui, setAfterRender } from "./ui/render.js";
 import { toPlayerView } from "./playerview.js";
 import { localChannel, dmLink } from "./share.js";
+import { bindSharing } from "./ui/sharing.js";
 import { $, toast } from "./ui/util.js";
 import { VERSION } from "./version.js";
 import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, bindAoe, bindAtk, bindInit, normalize, scrollToCard } from "./ui/actions.js";
@@ -38,12 +39,15 @@ async function boot() {
   if ("ResizeObserver" in window) new ResizeObserver(([e]) => document.documentElement.style.setProperty("--dock-h", Math.ceil(e.target.getBoundingClientRect().height) + "px")).observe($("#dock"));
 
   if (!app.S) app.S = { list: [], round: 0, active: null, sample: false }; // eerste keer: welkomstkaart met "Start met voorbeeld"
-  // spelersscherm (ander venster op dit apparaat): krijgt alleen de gefilterde snapshot
+  // spelersscherm: krijgt alleen de gefilterde snapshot. Twee wegen: een ander venster op dit apparaat (lokaal)
+  // en andere apparaten via een kamer (Instellingen → Delen met spelers). Eén snapshot per render, ook met beide.
+  const links = new Set();
+  let view = null;
+  const getView = () => (view ||= toPlayerView(app.S, (c) => (c.ref ? findMon(c.ref)?.meta : "")));
+  setAfterRender(() => { view = null; links.forEach((l) => l.update()); });
   const ch = localChannel();
-  if (ch) {
-    const link = dmLink(ch, () => toPlayerView(app.S, (c) => (c.ref ? findMon(c.ref)?.meta : "")));
-    setAfterRender(link.update);
-  }
+  if (ch) links.add(dmLink(ch, getView));
+  bindSharing(getView, (l, on) => (on ? links.add(l) : links.delete(l)));
   start();
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {

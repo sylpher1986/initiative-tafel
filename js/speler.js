@@ -1,6 +1,6 @@
 // Spelersscherm: toont alleen de snapshot die het DM-scherm stuurt (js/playerview.js), nooit eigen data.
 import { cleanView } from "./playerview.js";
-import { localChannel } from "./share.js";
+import { localChannel, roomChannel, normCode, fmtCode } from "./share.js";
 import { esc } from "./ui/util.js";
 import { icon } from "./ui/avatar.js";
 
@@ -69,13 +69,70 @@ function boot() {
   });
   keepAwake();
 
+  // lokaal (ander venster op dit apparaat) luistert altijd mee; een kamercode (?k= of invoeren) verbindt via internet
   const ch = localChannel();
-  if (!ch) { $("#pv-wait").textContent = "Deze browser kan geen tweede venster koppelen. Gebruik een recente versie van Chrome, Edge, Firefox of Safari."; return; }
-  ch.on((m) => {
-    if (m.t === "dm") ch.send({ t: "hallo" }); // DM-scherm (opnieuw) gestart
-    else if (m.t === "stand") { const V = cleanView(m.d); if (V) paint(V); }
-  });
-  ch.send({ t: "hallo" });
+  if (ch) {
+    ch.on(handler(ch));
+    ch.send({ t: "hallo" });
+  }
+  $("#pv-join").addEventListener("submit", (e) => { e.preventDefault(); tryJoin(true); });
+  $("#pv-code").addEventListener("input", () => tryJoin(false));
+  const k = normCode(new URLSearchParams(location.search).get("k"));
+  if (k) join(k);
+  else showJoin(ch ? "" : "Deze browser kan geen tweede venster koppelen; vul de code van de DM in.");
+}
+
+/* ---------- kamer (andere apparaten) ---------- */
+let room = null, code = "";
+
+function handler(c) {
+  return (m) => {
+    if (m.t === "dm") c.send({ t: "hallo" }); // DM-scherm (opnieuw) gestart, of kamer (opnieuw) verbonden
+    else if (m.t === "stand") { const V = cleanView(m.d); if (V) { $("#pv-join").hidden = true; paint(V); } }
+    else if (c === room && m.t === "einde") leave("De DM deelt niet meer.");
+    else if (c === room && m.t === "net") {
+      $("#pv-net").hidden = m.s !== "kwijt";
+      $("#pv-net").textContent = "Verbinding kwijt, opnieuw verbinden…";
+      if (m.s === "weg") leave(`Kamer ${fmtCode(code)} bestaat niet (meer). Vraag de DM om een nieuwe code.`);
+    }
+  };
+}
+
+function join(k) {
+  if (room) room.close();
+  code = k;
+  room = roomChannel(k);
+  room.on(handler(room));
+  $("#pv-join").hidden = true;
+  $("#pv-wait").hidden = false;
+  $("#pv-wait").textContent = `Verbinden met kamer ${fmtCode(k)}…`;
+  try { history.replaceState(null, "", `?k=${k}`); } catch { /* geen probleem */ }
+}
+
+function leave(msg) {
+  if (room) room.close();
+  room = null;
+  $("#pv-net").hidden = true;
+  $("#pv-now").innerHTML = ""; $("#pv-list").innerHTML = "";
+  try { history.replaceState(null, "", location.pathname); } catch { /* geen probleem */ }
+  showJoin(msg);
+}
+
+function showJoin(msg) {
+  $("#pv-wait").hidden = !msg;
+  $("#pv-wait").textContent = msg || "";
+  $("#pv-join").hidden = false;
+  $("#pv-joinmsg").classList.remove("err");
+  $("#pv-joinmsg").textContent = "Of open Initiative Tafel in een ander venster van deze browser.";
+}
+
+/** submit: ook een foutmelding; tijdens het typen: alleen verbinden zodra er 6 geldige tekens staan */
+function tryJoin(submit) {
+  const k = normCode($("#pv-code").value);
+  if (k) { $("#pv-code").blur(); join(k); return; }
+  if (!submit) return;
+  $("#pv-joinmsg").classList.add("err");
+  $("#pv-joinmsg").textContent = "Een code heeft 6 tekens, bijvoorbeeld K7M 3QX.";
 }
 
 boot();

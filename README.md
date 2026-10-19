@@ -16,7 +16,8 @@ js/backup.js          export/import (JSON met versienummer)
 js/log.js             logboek: verschil tussen twee stappen
 js/ddb.js             D&D Beyond: PDF-sheets inlezen, online sheet ophalen
 js/ddbjson.js         D&D Beyond character-JSON → sheet (puur, getest)
-worker/index.js       Cloudflare Worker: /api/ddb (alleen D&D Beyond-sheets)
+worker/index.js       Cloudflare Worker: /api/ddb (alleen D&D Beyond-sheets) en /api/room
+worker/room.js        Durable Object: spelersscherm-kamer (kamercode, WebSocket)
 js/data/monsters.js   monsterbibliotheek en import (Open5e / 5e-bits)
 js/data/spells.js     spellbibliotheek voor de spell-uitleg (laden bij de eerste tik, naam-aliassen)
 js/rules/             spelregels, puur en getest
@@ -34,7 +35,7 @@ Geen build-stap: de browser laadt de modules direct.
 
 ```
 python3 -m http.server 8000     # of: npx serve (zonder Worker: link-import werkt dan niet)
-npx wrangler dev                # met Worker, zoals live
+npx wrangler dev                # met Worker en kamers, zoals live
 npm test                        # Node 18+, geen installatie nodig
 ```
 
