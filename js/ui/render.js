@@ -3,7 +3,7 @@
 import { $, esc, n0, spellLink } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
-import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf } from "../rules/turns.js";
+import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf, isSurprised, canToggleSurprise, nextUp } from "../rules/turns.js";
 import { PRESETS as PRESETS_14, presetsFor, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn } from "../rules/effects.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList, splitSpells, edFor, sheetEd } from "../rules/spells.js";
@@ -48,6 +48,8 @@ export const ui = {
   prep: null,          // "pc" | "mon" | "custom" | "party" | "data" = paneel in Voorbereiden open (knoppen in de beurtbalk)
   prepLast: null,      // id van de laatst toegevoegde deelnemer terwijl dat paneel open was (bij Sluit in beeld)
   welcome: true,       // welkomstkaart bij een lege start; "Begin leeg" zet hem uit voor deze sessie
+  downOpen: false,     // blok "Neer (N)" onderaan de lijst (Gevecht) opengeklapt
+  fromDown: null,      // id van een dood monster dat vanuit dat blok geopend is (blijft dan in het blok)
 };
 export const openId = () => (ui.open === null ? app.S.active : ui.open);
 export const mode = () => ui.mode || (app.S.round ? "fight" : "prep");
@@ -141,9 +143,10 @@ function effChips(c, S, interactive) {
 const sbChips = (c) => condChips(c, app.S, false) + effChips(c, app.S, false);
 
 const hidBadge = (c) => (c.hidden ? `<span class="bd hid" title="Spelers zien deze deelnemer niet">verborgen</span>` : "");
+const surBadge = (c, S) => (isSurprised(c, S) ? `<span class="bd cc sur" title="Verrast: eerste beurt wordt overgeslagen, geen reaction tot die beurt voorbij is">Verrast</span>` : "");
 
 function badges(c, S) {
-  const out = [hidBadge(c), condChips(c, S, false), effChips(c, S, false)];
+  const out = [surBadge(c, S), hidBadge(c), condChips(c, S, false), effChips(c, S, false)];
   if (c.kind === "pc" && c.max && c.hp <= 0) {
     const d = c.ds || R.newDs();
     out.push(d.dead ? `<span class="bd r">Dood</span>` : d.stable ? `<span class="bd g">Stabiel</span>` : `<span class="bd r">Death saves ✓${d.s} ✗${d.f}</span>`);
@@ -154,7 +157,7 @@ function badges(c, S) {
   (c.rc || []).forEach((r) => out.push(`<span class="bd ${r.ready ? "g" : ""}">${esc(r.n)} ${r.ready ? "klaar" : "op"}</span>`));
   if (c.la) out.push(`<span class="bd r">LA ${n0(c.la.left)}</span>`);
   if (c.lr) out.push(`<span class="bd r">LR ${n0(c.lr.left)}/dag</span>`);
-  if (c.reaction) out.push(`<span class="bd">Reaction gebruikt</span>`);
+  if (c.reaction && !isSurprised(c, S)) out.push(`<span class="bd">Reaction gebruikt</span>`);
   const html = out.join("");
   return html ? `<div class="badges">${html}</div>` : "";
 }
@@ -260,6 +263,7 @@ function morePanel(c) {
       <div class="bar"><button class="btn tap" data-a="ed-cancel">Annuleer</button><button class="btn primary tap" data-a="ed-save">Opslaan</button></div>
     </div>
     <div class="bar">${c.kind === "pc" && !c.pid ? `<button class="btn small" data-a="topty">Naar vaste party</button>` : ""}
+    ${canToggleSurprise(c, app.S) ? `<button class="btn small" data-a="sur" aria-pressed="${c.sur === true}">${c.sur === true ? "Verrast ✓" : "Verrast"}</button>` : ""}
     ${c.kind === "monster" ? `<button class="btn small" data-a="hide" aria-pressed="${!!c.hidden}">${c.hidden ? "Tonen aan spelers" : "Verbergen voor spelers"}</button>` : ""}
     <button class="btn small danger" data-a="del">${del ? "Zeker? Tik nogmaals" : "Verwijder uit gevecht"}</button></div></div>`;
 }
@@ -301,7 +305,7 @@ function actionsBlock(c) {
   const gone = (c.ds && c.ds.dead) || (c.kind === "monster" && isOut(c));
   return `<div class="acts">
     ${c.max ? `<button class="dmg2 wide" data-a="sheet-open" data-kind="dmg">− Schade</button><button class="heal2" data-a="sheet-open" data-kind="heal">+ Heal</button>` : ""}
-    <button data-a="react" aria-pressed="${!!c.reaction}">${c.reaction ? "Reaction ✓" : "Reaction"}</button>
+    ${isSurprised(c, app.S) ? `<button disabled title="Verrast: geen reaction tot de eigen beurt voorbij is">Verrast</button>` : `<button data-a="react" aria-pressed="${!!c.reaction}">${c.reaction ? "Reaction ✓" : "Reaction"}</button>`}
     <button data-a="panel" data-p="conds" aria-pressed="${ui.panel === "conds"}">Conditie</button>
     <button data-a="panel" data-p="eff" aria-pressed="${ui.panel === "eff"}" ${gone ? "disabled" : ""}>Effect</button>
     ${sideBtn}
@@ -375,19 +379,19 @@ function lairRow(c, S) {
     <div class="row3"><span class="hint">Initiative 20, verliest gelijke stand.</span><button class="link" data-a="del">Lair verwijderen</button></div></div></li>`;
 }
 
-function row(c, S) {
+function row(c, S, down = false) {
   if (c.kind === "lair") return lairRow(c, S);
   const open = openId() === c.id;
   const turn = c.id === S.active;
-  return `<li class="c k ${c.kind === "pc" ? "pc" : "mon"} ${open ? "open" : ""} ${turn ? "turn" : ""} ${isOut(c) ? "out" : ""}" data-id="${esc(c.id)}">
+  return `<li class="c k ${c.kind === "pc" ? "pc" : "mon"} ${open ? "open" : ""} ${turn ? "turn" : ""} ${isOut(c) ? "out" : ""}${down ? " down" : ""}" data-id="${esc(c.id)}"${down ? ` data-down="1"` : ""}>
     <button class="khead" data-a="open" aria-expanded="${open}" aria-label="${esc(c.name)}${open ? ", sluiten" : ", openen"}">
       <span class="i">${n0(c.init)}${turn ? `<span class="tri" aria-hidden="true">▶</span>` : ""}</span>
       <span class="n">${avatar(c, c.ref ? findMon(c.ref)?.meta : "")}<span class="nm">${esc(c.name)}</span></span>
       <span class="meta">${isOut(c) && c.kind === "monster" ? "neer" : acMeta(c)}</span>
-      ${c.max ? hpBar(c) : ""}
+      ${c.max && !down ? hpBar(c) : ""}
     </button>
     ${open ? `<div class="kbody">
-      ${c.hidden || c.cond.length || (c.eff || []).length ? `<div class="badges">${hidBadge(c)}${condChips(c, S, true)}${effChips(c, S, true)}</div>` : ""}
+      ${c.hidden || c.cond.length || (c.eff || []).length || isSurprised(c, S) ? `<div class="badges">${surBadge(c, S)}${hidBadge(c)}${condChips(c, S, true)}${effChips(c, S, true)}</div>` : ""}
       ${acBreakdown(c) ? `<p class="hint acb">AC ${n0(effAc(c))} = ${esc(acBreakdown(c))}</p>` : ""}
       ${defLine(c)}
       ${dsBlock(c)}
@@ -410,13 +414,32 @@ function paintEncounter() {
     : "";
   const prep = mode() === "prep";
   $("#order").innerHTML = L.length
-    ? (S.sample && prep ? `<li class="sbanner"><span>Voorbeeld-encounter</span><button type="button" class="btn small" id="sample-clear">Begin leeg</button></li>` : "") + L.map((c) => row(c, S)).join("")
+    ? (S.sample && prep ? `<li class="sbanner"><span>Voorbeeld-encounter</span><button type="button" class="btn small" id="sample-clear">Begin leeg</button></li>` : "") + listHtml(S, L, prep)
     : emptyState(S, prep);
   $("#resetbar").innerHTML = ui.confirmReset
     ? S.list.some((c) => c.kind !== "pc")
       ? `<div class="confirm">Wat wissen?<button class="btn small primary" id="reset-mons">Monsters wissen, spelers houden</button><button class="btn small ghost" id="reset-yes">Alles</button><button class="btn small" id="reset-no">Annuleer</button></div>`
       : `<div class="confirm">Alles wissen?<button class="btn small primary" id="reset-yes">Ja, wis encounter</button><button class="btn small" id="reset-no">Annuleer</button></div>`
     : `${S.list.length ? `<button class="btn small ghost" id="reset">Encounter wissen</button>` : ""}${S.round ? `<button class="btn small ghost" id="stop">Gevecht stoppen</button>` : ""}`;
+}
+
+/**
+ * Gevecht: dode monsters (0 HP) staan onderaan in een ingeklapt blok "Neer (N)"; heal of Ongedaan zet ze vanzelf terug.
+ * Wie net neerging en open staat, blijft op zijn plek tot de kaart dicht gaat of de beurt wisselt (te veel schade? direct Heal).
+ * Voorbereiden: alles op zijn plek. Dode spelers blijven altijd staan.
+ */
+export const downSplit = (L, prep, openCid, fromDown) => {
+  if (prep) return { up: L, down: [] };
+  const isDown = (c) => c.kind === "monster" && isOut(c) && (c.id !== openCid || fromDown === c.id);
+  return { up: L.filter((c) => !isDown(c)), down: L.filter(isDown) };
+};
+
+function listHtml(S, L, prep) {
+  const { up, down } = downSplit(L, prep, openId(), ui.fromDown);
+  if (!down.length) return up.map((c) => row(c, S)).join("");
+  return up.map((c) => row(c, S)).join("")
+    + `<li class="downblk"><button type="button" class="downbtn" id="down-tog" aria-expanded="${ui.downOpen}">Neer (${down.length}) <span aria-hidden="true">${ui.downOpen ? "▾" : "▸"}</span></button></li>`
+    + (ui.downOpen ? down.map((c) => row(c, S, true)).join("") : "");
 }
 
 /** Lege lijst: welkomstkaart (echt de eerste keer), knop voor de party, of een korte hint */
@@ -445,9 +468,8 @@ function paintDock() {
   }
   const i = L.findIndex((c) => c.id === S.active);
   const act = L[i];
-  let nxt = null;
-  for (let k = 1; k <= L.length; k++) { const c = L[(i + k) % L.length]; if (c && !isOut(c) && c.id !== S.active) { nxt = c; break; } }
-  const g = act ? groupOf(L, act.id) : null; // groepsbeurt: "Bugbear 2 · 2/3"
+  const nxt = nextUp(S, L, S.active); // slaat neer en (ronde 1) verrast over
+  const g = act ? groupOf(L, act.id, S.round) : null; // groepsbeurt: "Bugbear 2 · 2/3"
   $("#dock").innerHTML = `${prepRow}<div class="who"><span><span class="l">Aan de beurt</span><br><b>${act ? esc(act.name) : "–"}</b>${g ? ` <span class="gk" title="Groepsbeurt: lid ${g.k} van ${g.live.length}">· ${g.k}/${g.live.length}</span>` : ""}</span><span class="r">Ronde ${S.round}${nxt ? ` · volgende: ${esc(nxt.name)}` : ""}</span></div>
     ${svBar(S)}${laBar(S, L)}<div class="row">${undoBtn}<button id="prev" aria-label="Vorige beurt">‹</button><button class="aoeb" id="aoe" aria-label="Area of effect: schade of een spell op meerdere doelen" ${spellTargets(app.S.list).length ? "" : "disabled"}>AoE</button><button class="nx" id="next">Volgende<span class="nb"> beurt</span> ›</button></div>`;
 }
@@ -491,8 +513,8 @@ export function paintSv() {
 }
 
 /* ---------- legendary actions: vaste regel in de beurtbalk + paneel ---------- */
-const LA_WHY = { own: "herstelt nu", empty: "0 over", inc: "incapacitated" };
-const LA_TITLE = { own: "Aan de beurt: legendary actions herstellen", empty: "Op: herstelt bij de eigen beurt", inc: "Incapacitated: geen legendary actions" };
+const LA_WHY = { own: "herstelt nu", empty: "0 over", inc: "incapacitated", sur: "verrast" };
+const LA_TITLE = { own: "Aan de beurt: legendary actions herstellen", empty: "Op: herstelt bij de eigen beurt", inc: "Incapacitated: geen legendary actions", sur: "Verrast: geen legendary actions tot de eigen beurt voorbij is" };
 const dots = (o) => { const m = Math.max(0, n0(o.max)), l = Math.min(m, Math.max(0, n0(o.left))); return "●".repeat(l) + "○".repeat(m - l); };
 
 /** Zolang een levend monster met legendary actions meedoet staat de regel er (dus geen verspringende beurtbalk); uit = gedimd */
@@ -956,6 +978,7 @@ export function paintInit() {
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3 id="i-title">Initiative spelers</h3><button type="button" class="link" data-ia="close">Annuleer</button></div>
       ${mons ? `<p class="hint">Monsters: initiative al gerold (${mons}).</p>` : ""}
+      <div class="isur"><span id="i-sur">Verrast</span><div class="seg2" role="group" aria-labelledby="i-sur">${[["none", "Niemand"], ["mon", "Monsters"], ["pc", "Spelers"]].map(([k, l]) => `<button type="button" data-ia="sur" data-v="${k}" aria-pressed="${(x.sur || "none") === k}" ${k === "mon" && !mons ? "disabled" : ""}>${l}</button>`).join("")}</div></div>
       <div class="ilist">${L.map((c) => `<div class="ir ${c.id === x.act ? "act" : ""}">
         <button type="button" class="irn" data-ia="sel" data-id="${esc(c.id)}" aria-pressed="${c.id === x.act}" aria-label="${esc(c.name)}: initiative ${esc(x.v[c.id] || "leeg")}"><span>${esc(c.name)}</span>${x.rolls[c.id] ? `<small>${esc(x.rolls[c.id])}</small>` : ""}</button>
         <b class="iv" aria-hidden="true">${x.v[c.id] !== "" && x.v[c.id] != null ? esc(x.v[c.id]) : "—"}</b>

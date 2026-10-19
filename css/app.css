@@ -673,3 +673,14 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .rsw{max-width:180px}
 .rcmp{margin:0;font-size:.85rem;border-left:3px solid var(--warn);padding:4px 0 4px 10px}
 .effgrid .tag{white-space:nowrap;display:inline-block}
+
+/* surprise: keuze in het initiative-paneel, badge op de kaart */
+.isur{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px}
+.isur>span{font-weight:700;font-size:.9rem}
+.seg2 button:disabled{opacity:.4}
+/* Gevecht: dode monsters onderaan in een ingeklapt blok */
+.downblk{list-style:none}
+.downbtn{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;width:100%;min-height:44px;padding:0 12px;border:1px dashed var(--line);border-radius:var(--r);color:var(--muted);font-weight:700;font-size:.9rem;cursor:pointer}
+.downbtn:focus-visible{outline:2px solid var(--active);outline-offset:2px}
+.pvdown{list-style:none;color:var(--muted);padding:.4em .7em;border:1px dashed var(--line);border-radius:var(--r)}
+.pvdown .l{font-size:.75em;text-transform:uppercase;letter-spacing:.08em;margin-right:.4em}

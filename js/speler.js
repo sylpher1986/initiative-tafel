@@ -42,7 +42,10 @@ function paint(V) {
   $("#pv-now").innerHTML = V.round
     ? `<div><span class="l">Ronde ${V.round} · aan de beurt</span><b>${V.gname ? esc(V.gname) : act ? esc(act.name) : "…"}</b></div>${nxt ? `<div class="r"><span class="l">Daarna</span>${esc(nxt.name)}</div>` : ""}`
     : `<div><span class="l">Nog geen gevecht</span><b>Rol initiative</b></div>`;
-  $("#pv-list").innerHTML = V.list.map((c) => row(c, V)).join("");
+  // dode monsters niet in de volgorde maar als één regel onderaan (zoals het blok "Neer" bij de DM)
+  const down = V.list.filter((c) => c.kind === "monster" && c.out);
+  $("#pv-list").innerHTML = V.list.filter((c) => !down.includes(c)).map((c) => row(c, V)).join("")
+    + (down.length ? `<li class="pvdown"><span class="l">Neer</span> ${down.map((c) => esc(c.name)).join(", ")}</li>` : "");
   const el = document.querySelector(".pvc.turn");
   if (el) {
     const r = el.getBoundingClientRect();

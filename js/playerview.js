@@ -1,7 +1,7 @@
 // Spelersscherm: wat spelers mogen zien. Puur (geen DOM), getest.
 // Alleen deze snapshot verlaat het DM-scherm, nooit de volledige toestand. Zo kan dezelfde snapshot
 // later ook via een server naar andere apparaten zonder dat er DM-info meegaat.
-import { sortOrder, isOut, groupOf } from "./rules/turns.js";
+import { sortOrder, isOut, groupOf, nextUp, isSurprised } from "./rules/turns.js";
 import { iconId, cleanImg } from "./ui/avatar.js";
 
 /** Wat spelers zien. Eén plek om later aan te passen (of per tafel instelbaar te maken). */
@@ -31,8 +31,9 @@ function hpFor(c, how) {
   return { st: hpStatus(c) };
 }
 
-function tagsFor(c) {
-  const t = (c.cond || []).map((x) => (x === "Concentrating" && c.kind === "pc" && c.concSpell ? `Concentrating · ${c.concSpell}` : x));
+function tagsFor(c, S) {
+  const t = isSurprised(c, S) ? ["Verrast"] : [];
+  t.push(...(c.cond || []).map((x) => (x === "Concentrating" && c.kind === "pc" && c.concSpell ? `Concentrating · ${c.concSpell}` : x)));
   for (const e of c.eff || []) if (!t.includes(e.n)) t.push(e.n);
   return t;
 }
@@ -48,23 +49,17 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS) {
   const shown = all.filter(seen);
   const active = shown.some((c) => c.id === S.active) ? S.active : null;
   // groepsbeurt: spelers zien de zichtbare levende leden samen aan de beurt, "volgende" ligt voorbij de groep
-  const g = S.round && active ? groupOf(all, active) : null;
+  const g = S.round && active ? groupOf(all, active, S.round) : null;
   const inTurn = new Set(g ? g.live.filter(seen).map((c) => c.id) : []);
-  let next = null;
-  if (S.round && S.active) {
-    const i = all.findIndex((c) => c.id === S.active);
-    for (let k = 1; k <= all.length; k++) {
-      const c = all[(i + k) % all.length];
-      if (c.id !== S.active && !inTurn.has(c.id) && seen(c) && !isOut(c)) { next = c.id; break; }
-    }
-  }
+  const nx = S.round && S.active ? nextUp(S, all, S.active, (c) => inTurn.has(c.id) || !seen(c)) : null; // ook verrast in ronde 1 overslaan
+  const next = nx ? nx.id : null;
   const list = shown.map((c) => {
     if (c.kind === "lair") return { id: c.id, kind: "lair", name: "Lair", init: vis.init ? c.init : null };
     const pc = c.kind === "pc";
     const r = {
       id: c.id, kind: pc ? "pc" : "monster", name: c.name, init: vis.init ? c.init : null,
       icon: iconId(c, pc ? "" : metaOf(c)), img: pc ? cleanImg(c.img) : null,
-      out: isOut(c), hp: hpFor(c, pc ? vis.pcHp : vis.monHp), tags: vis.tags ? tagsFor(c) : [],
+      out: isOut(c), hp: hpFor(c, pc ? vis.pcHp : vis.monHp), tags: vis.tags ? tagsFor(c, S) : [],
     };
     const d = c.ds || {}; // zonder ds-object nog geen worpen (zoals de DM-kaart met newDs())
     if (pc && c.max && c.hp <= 0 && !d.dead && !d.stable) r.ds = { s: d.s || 0, f: d.f || 0 };

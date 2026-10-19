@@ -54,8 +54,8 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [x] Monster-tab: knoptekst met aantal (1.6.4); was ("Bugbear toevoegen" bij aantal 3; snel toevoegen zegt wel "3× …")
 - [ ] Spelersscherm op tv: 11 deelnemers passen niet op 720p; compacter of twee kolommen
 - Tablet: statblock rechts volgt de beurt niet → opgenomen in "Desktop en tablet" bij prioriteit 2
-- [ ] Dode monsters inklappen of onderaan zetten
-- [ ] Surprise (2014): vinkje "verrast" bij start, eerste beurt overslaan
+- [x] Dode monsters: in Gevecht onderaan in een ingeklapt blok "Neer (N)"; net neergegaan en open blijft op zijn plek tot de kaart dicht gaat of de beurt wisselt; dode spelers blijven staan; spelersscherm: één regel "Neer: …" (1.23.0)
+- [x] Surprise (2014): "Verrast: Niemand | Monsters | Spelers" in het initiative-paneel, per deelnemer via ⋯ in ronde 1; eerste beurt overgeslagen (beurtgrenzen tellen af), geen reaction en geen legendary actions tot die beurt voorbij is (1.23.0). Later: keuze ook zonder spelers aan tafel (paneel opent dan niet)
 - [ ] Slots en effecten: Bless via Effect verbruikt geen slot. Voorstel: niet koppelen maar spelers-slots optioneel maken (spelers houden die vaak zelf bij)
 
 ## UX-verbeterpunten (uit review)

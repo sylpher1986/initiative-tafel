@@ -9,7 +9,7 @@ import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax,
 import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
-import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder } from "../rules/turns.js";
+import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, defMode } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
@@ -110,9 +110,11 @@ const row = {
     if (c.kind !== "lair" && ui.confirmDel !== c.id) { ui.confirmDel = c.id; return; }
     const S = app.S; S.list = S.list.filter((x) => x !== c); if (S.active === c.id) S.active = null; ui.confirmDel = null; ui.panel = null;
   },
-  open(c) {
+  open(c, b, li) {
     const isOpen = openId() === c.id;
-    ui.open = isOpen ? "" : c.id; ui.panel = null; ui.confirmDel = null; ui.castPick = null; ui.edit = null; ui.effWho = null; ui.effCustom = false; ui.effForm = {};
+    ui.open = isOpen ? "" : c.id;
+    ui.fromDown = !isOpen && li && li.dataset.down ? c.id : null; // uit het blok "Neer" geopend: blijft daar staan
+    ui.panel = null; ui.confirmDel = null; ui.castPick = null; ui.edit = null; ui.effWho = null; ui.effCustom = false; ui.effForm = {};
     return "scroll";
   },
   panel(c, b) {
@@ -167,6 +169,7 @@ const row = {
   "sheet-open"(c, b) { ui.sheet = { id: c.id, kind: b.dataset.kind, val: "", mode: 1 }; },
   react(c) { c.reaction = !c.reaction; },
   hide(c) { if (c.hidden) delete c.hidden; else c.hidden = true; },
+  sur(c) { const r = toggleSurprise(c, app.S); if (!r) return false; apply(r); },
   dropconc(c) { apply(R.dropConc(c, "beëindigd")); },
   topty(c) { const ex = app.party.find((m) => m.name.toLowerCase() === c.name.toLowerCase()); c.pid = ex ? ex.pid : uid(); toast(`${c.name} staat nu in de vaste party.`); },
   "ds-roll": (c) => apply(R.rollDs(c)),
@@ -258,6 +261,7 @@ const global = {
     apply(startCombat(app.S)); ui.mode = null;
   },
   next() { apply(step(app.S, 1)); ui.laPulse = true; },
+  "down-tog"() { ui.downOpen = !ui.downOpen; },
   prev() { apply(step(app.S, -1)); },
   stop() { apply(stopCombat(app.S)); ui.mode = null; },
   /** Volgende encounter: monsters en lair weg, spelers blijven met HP, slots en effecten (één undo-stap) */
@@ -388,6 +392,7 @@ export function onClick(e) {
     if (["start", "next", "prev"].includes(b.id)) {
       // een niet-opgeslagen bewerking blijft open staan; anders volgt de open kaart de beurt
       if (ui.edit && ui.edit.dirty) ui.open = ui.edit.id; else { ui.open = null; ui.panel = null; ui.edit = null; }
+      ui.fromDown = null;
       ui.castPick = null; ui.effWho = null; ui.atkOpen = null; ui.atkRx = null; ui.atkAdv = null; ui.atk = null;
     }
     render();
@@ -1117,6 +1122,7 @@ function initGo() {
     return;
   }
   apply(r);
+  apply(setSurprise(app.S.list, x.sur || "none")); // zelfde undo-stap als de start
   ui.initDraft = null; ui.initSkip = true;
   paintInit();
   $("#start")?.click(); // zelfde afhandeling als de knop: gevecht starten, kaart van wie begint, één undo-stap
@@ -1134,6 +1140,7 @@ function initKey(k, v) {
   if (k === "back") { x.v[x.act] = x.fresh ? "" : cur.slice(0, -1); x.fresh = false; delete x.rolls[x.act]; }
   if (k === "clear") { x.v[x.act] = ""; x.fresh = false; delete x.rolls[x.act]; }
   if (k === "sel") { x.act = v; x.fresh = true; }
+  if (k === "sur") x.sur = v;
   if (k === "next") initNext(x);
   if (k === "roll") {
     const c = app.S.list.find((t) => t.id === v); if (!c) return;

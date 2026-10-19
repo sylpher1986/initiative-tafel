@@ -3,7 +3,7 @@
 // herstel bij de start van de eigen beurt (turns.js), niet als incapacitated. Wanneer precies bepaalt de DM.
 import { fx } from "./combat.js";
 import { parseAction, useful } from "./attacks.js";
-import { isOut } from "./turns.js";
+import { isOut, isSurprised } from "./turns.js";
 
 /** Condities waarbij een wezen geen acties (dus ook geen legendary actions) kan nemen */
 export const NO_ACT = ["Incapacitated", "Paralyzed", "Petrified", "Stunned", "Unconscious"];
@@ -39,11 +39,12 @@ export function laOptions(m) {
 
 /**
  * Kan dit monster nu een legendary action nemen? (alleen bij een lopend gevecht)
- * "ok" | "own" (zelf aan de beurt) | "empty" (0 over) | "inc" (incapacitated); null = hoort niet in de lijst (geen LA, neer, geen gevecht).
+ * "ok" | "own" (zelf aan de beurt) | "empty" (0 over) | "inc" (incapacitated) | "sur" (verrast, ronde 1); null = hoort niet in de lijst (geen LA, neer, geen gevecht).
  */
 export function laStatus(c, S) {
   if (!c || !c.la || !(c.la.max > 0) || !S.round || !S.active || isOut(c)) return null;
   if ((c.cond || []).some((x) => NO_ACT.includes(x))) return "inc";
+  if (isSurprised(c, S)) return "sur";
   if (c.id === S.active) return "own";
   if (!(c.la.left > 0)) return "empty";
   return "ok";

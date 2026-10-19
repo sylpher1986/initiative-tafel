@@ -33,19 +33,72 @@ export function parseInit(v) {
 export const isOut = (c) => (c.kind === "monster" && c.hp <= 0) || !!(c.ds && c.ds.dead);
 
 /**
+ * Surprise (PHB 2014): wie verrast is (`sur`) doet in ronde 1 niets; zijn beurt wordt overgeslagen
+ * (beurtgrenzen tellen wel af) en hij heeft geen reaction tot die beurt voorbij is.
+ * sur: true = nog verrast, 2 = beurt is overgeslagen (blijft in ronde 1 overgeslagen, ook bij ‹ Vorige).
+ * Vanaf ronde 2 en bij Gevecht stoppen verdwijnt `sur`.
+ */
+export const skipsTurn = (c, round) => isOut(c) || (round === 1 && !!c.sur);
+/** Nog verrast: geen reaction, geen legendary actions */
+export const isSurprised = (c, S) => c.sur === true && S.round === 1 && !isOut(c);
+const clearSur = (list) => { for (const c of list) delete c.sur; };
+
+/**
+ * Bij Start gevecht (initiative-paneel): wie is verrast. who: "none" | "mon" | "pc".
+ * Wie al neer of dood is, telt niet. startCombat zet daarna reaction en het overslaan.
+ */
+export function setSurprise(list, who) {
+  const out = fx();
+  for (const c of list) {
+    delete c.sur;
+    if (c.kind !== "lair" && !isOut(c) && ((who === "mon" && c.kind === "monster") || (who === "pc" && c.kind === "pc"))) c.sur = true;
+  }
+  return out;
+}
+
+/**
+ * Verrast aan/uit voor één deelnemer in ronde 1 (⋯): alleen zolang zijn beurt nog moet komen.
+ * Uit: reaction weer beschikbaar. Geeft null als het nu niet kan.
+ */
+export function canToggleSurprise(c, S) {
+  if (S.round !== 1 || c.kind === "lair" || isOut(c) || c.id === S.active) return false;
+  if (c.sur === true) return true;
+  if (c.sur) return false; // beurt al overgeslagen
+  const L = sortOrder(S.list);
+  return L.findIndex((x) => x.id === c.id) > L.findIndex((x) => x.id === S.active);
+}
+export function toggleSurprise(c, S) {
+  if (!canToggleSurprise(c, S)) return null;
+  const out = fx();
+  if (c.sur === true) { delete c.sur; c.reaction = false; out.why.push({ t: "toch niet verrast", id: c.id }); }
+  else { c.sur = true; c.reaction = true; out.why.push({ t: "verrast", id: c.id }); }
+  return out;
+}
+
+/** Wie is na `id` aan de beurt (overslaan van wie neer is en, in ronde 1, wie verrast is). skip(c) = extra overslaan. */
+export function nextUp(S, L, id, skip = () => false) {
+  const i = L.findIndex((c) => c.id === id);
+  for (let k = 1; k <= L.length; k++) {
+    const j = i + k, c = L[j % L.length], r = S.round + (j >= L.length ? 1 : 0);
+    if (c && c.id !== id && !skipsTurn(c, r) && !skip(c)) return c;
+  }
+  return null;
+}
+
+/**
  * Groepsbeurt: monsters die samen met één groepsworp (of ingevulde initiative) zijn toegevoegd (`grp`).
  * Elk lid houdt zijn eigen beurt (beurtgrenzen, recharge, saves per lid); dit is alleen voor de weergave.
  * Groep = aaneengesloten reeks in sortOrder met dezelfde grp én initiative (ander initiative = uit de groep).
- * Geeft { live, k } (levende leden en positie 1..n van id daarin) of null als id zelf neer is of er geen groep van 2+ levende leden is.
+ * round: ronde (in ronde 1 tellen verraste leden niet mee). Geeft { live, k } (levende leden en positie 1..n van id daarin) of null als id zelf neer is of er geen groep van 2+ levende leden is.
  */
-export function groupOf(L, id) {
+export function groupOf(L, id, round = 0) {
   const i = L.findIndex((c) => c.id === id), c = L[i];
-  if (!c || !c.grp || isOut(c)) return null; // wie zelf neer is (bijv. in de eigen beurt gedood) staat los: geen "0/2"
+  if (!c || !c.grp || skipsTurn(c, round)) return null; // wie zelf neer is (bijv. in de eigen beurt gedood) staat los: geen "0/2"
   const same = (x) => x && x.grp === c.grp && x.init === c.init;
   let a = i, b = i;
   while (same(L[a - 1])) a--;
   while (same(L[b + 1])) b++;
-  const live = L.slice(a, b + 1).filter((x) => !isOut(x));
+  const live = L.slice(a, b + 1).filter((x) => !skipsTurn(x, round)); // ronde 1: verraste leden doen niet mee
   return live.length > 1 ? { live, k: live.indexOf(c) + 1 } : null;
 }
 
@@ -112,14 +165,24 @@ export function step(state, dir, rng = Math.random) {
   const L = sortOrder(state.list);
   if (!L.length) return out;
   let i = L.findIndex((c) => c.id === state.active);
-  const passed = [];
+  const passed = [], sur = [];
   if (dir > 0 && state.active && i >= 0) passed.push(["end", state.active]);
-  for (let n = 0; n < L.length; n++) {
+  // met verraste deelnemers kan ronde 1 helemaal overgeslagen worden: dan nog één rondgang in ronde 2
+  const lim = L.length * (L.some((c) => c.sur) ? 2 : 1);
+  for (let n = 0; n < lim; n++) {
     i += dir;
-    if (dir > 0 && n > 0) { const skipped = L[(i - 1 + L.length) % L.length]; passed.push(["start", skipped.id], ["end", skipped.id]); }
-    if (i >= L.length) { i = 0; state.round++; }
+    if (dir > 0 && n > 0) {
+      const skipped = L[(i - 1 + L.length) % L.length];
+      passed.push(["start", skipped.id], ["end", skipped.id]);
+      if (skipped.sur === true) { skipped.sur = 2; skipped.reaction = false; if (!isOut(skipped)) sur.push(skipped); } // verrassing voorbij (ook als hij nu neer is en later geheald wordt): reaction weer beschikbaar
+    }
+    if (i >= L.length) { i = 0; state.round++; if (state.round > 1) clearSur(state.list); }
     else if (i < 0) { i = L.length - 1; state.round = Math.max(1, state.round - 1); }
-    if (!isOut(L[i])) break;
+    if (!skipsTurn(L[i], state.round)) break;
+  }
+  if (sur.length) {
+    out.msgs.push(`Verrast, beurt overgeslagen: ${sur.map((c) => c.name).join(", ")}.`);
+    for (const c of sur) out.why.push({ t: "verrast: eerste beurt overgeslagen", id: c.id });
   }
   const cur = L[i];
   state.active = cur.id;
@@ -149,7 +212,10 @@ export function step(state, dir, rng = Math.random) {
 
 /** Gevecht starten: ronde 1, eerste deelnemer die niet neer is, met start-van-beurt-effecten */
 export function startCombat(state, rng = Math.random) {
-  for (const c of state.list) if (c.la) c.la.left = c.la.max; // nieuw gevecht: legendary actions vol, ook vóór de eigen beurt
+  for (const c of state.list) {
+    if (c.la) c.la.left = c.la.max; // nieuw gevecht: legendary actions vol, ook vóór de eigen beurt
+    if (c.sur && !isOut(c)) { c.sur = true; c.reaction = true; } else delete c.sur; // verrast: geen reaction tot de eigen beurt voorbij is
+  }
   state.round = 1;
   state.active = null;
   return step(state, 1, rng);
@@ -159,6 +225,7 @@ export function startCombat(state, rng = Math.random) {
 export function stopCombat(state) {
   const out = endFightEffects(state.list);
   state.round = 0; state.active = null; state.saves = [];
+  clearSur(state.list);
   return out;
 }
 

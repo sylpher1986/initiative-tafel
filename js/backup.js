@@ -70,6 +70,7 @@ export function cleanCombatant(c) {
   Object.assign(out, {
     hidden: kind === "monster" && c.hidden ? true : undefined,
     grp: kind === "monster" && typeof c.grp === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(c.grp) ? c.grp : undefined,
+    sur: c.sur === true || c.sur === 2 ? c.sur : undefined, // surprise in ronde 1 (export midden in een gevecht)
     ac: num(c.ac), hp: num(c.hp), max: num(c.max), temp: num(c.temp), reaction: !!c.reaction,
     pid: c.pid ? str(c.pid, 40) : null, ddbId: /^[1-9]\d{0,11}$/.test(String(c.ddbId)) ? String(c.ddbId) : undefined, race: typeof c.race === "string" ? str(c.race, 120) : undefined, img: (kind === "pc" && cleanImg(c.img)) || undefined, ref: c.ref ? str(c.ref, 120) : undefined, roll: c.roll != null ? num(c.roll) : undefined,
     initBonus: c.initBonus != null ? num(c.initBonus) : undefined, concSpell: c.concSpell ? str(c.concSpell, 120) : null,

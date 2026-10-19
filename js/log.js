@@ -30,7 +30,9 @@ export function diffLog(prev, cur) {
     oc.filter((x) => !cc.includes(x)).forEach((x) => m.push(x === "Concentrating" ? `concentratie${o.concSpell ? ` op ${o.concSpell}` : ""} voorbij` : `${x} voorbij`));
     if (oc.includes("Concentrating") && cc.includes("Concentrating") && o.concSpell !== c.concSpell && c.concSpell)
       m.push(`concentreert nu op ${c.concSpell}${o.concSpell ? ` (was ${o.concSpell})` : ""}`);
-    if (!o.reaction && c.reaction) m.push("reaction gebruikt");
+    if (o.sur !== true && c.sur === true) m.push("verrast (geen beurt in ronde 1)");
+    else if (o.sur === true && !c.sur) m.push("niet meer verrast");
+    else if (!o.reaction && c.reaction) m.push("reaction gebruikt");
     if (!!o.hidden !== !!c.hidden) m.push(c.hidden ? "verborgen voor spelers" : "zichtbaar voor spelers");
     if (o.casting && c.casting) {
       c.casting.slots.forEach((x, i) => {
