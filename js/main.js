@@ -47,7 +47,9 @@ async function boot() {
   setAfterRender(() => { view = null; links.forEach((l) => l.update()); });
   const ch = localChannel();
   if (ch) links.add(dmLink(ch, getView));
-  bindSharing(getView, (l, on) => (on ? links.add(l) : links.delete(l)));
+  // los van de rest: een fout bij het delen mag de app niet tegenhouden, en is zichtbaar in Instellingen
+  try { bindSharing(getView, (l, on) => (on ? links.add(l) : links.delete(l))); }
+  catch (e) { const b = $("#share-box"); if (b) b.textContent = `Delen met spelers kon niet starten: ${e && e.message || e}`; }
   start();
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {
@@ -55,4 +57,5 @@ async function boot() {
   }
 }
 
-boot();
+// onverwachte fout bij het opstarten: zichtbaar maken in plaats van stil een half werkende app
+boot().catch((e) => toast(`Fout bij opstarten: ${e && e.message || e}`));
