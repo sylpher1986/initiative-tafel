@@ -1,16 +1,11 @@
 // Avatar per deelnemer: portret uit de character sheet, anders een icoon op ras (speler) of creature type (monster).
 // Icoontjes: game-icons.net (CC BY 3.0), als sprite in icons/creatures.svg. Puur, behalve de HTML-uitvoer.
 import { esc } from "./util.js";
+import { metaInfo } from "../data/monsters.js";
 
 const SPRITE = "icons/creatures.svg";
-const TYPES = "aberration|beast|celestial|construct|dragon|elemental|fey|fiend|giant|humanoid|monstrosity|ooze|plant|undead";
-const TYPE_RE = new RegExp(`\\b(${TYPES})s?\\b`);
-
 /** "Large aberration, lawful evil" → "aberration"; onbekend → "monstrosity" */
-export function monType(meta) {
-  const m = String(meta || "").split(",")[0].toLowerCase().match(TYPE_RE);
-  return m ? m[1] : "monstrosity";
-}
+export const monType = (meta) => metaInfo(meta).type || "monstrosity";
 
 // Volgorde telt: half-elf vóór elf, half-orc vóór orc
 const RACES = [

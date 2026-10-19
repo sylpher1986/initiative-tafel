@@ -31,15 +31,97 @@ function build() {
 export const allMonsters = () => { if (!list) build(); return list; };
 export const findMon = (n) => { if (!index) build(); return index.get(n); };
 
-/** Keuzelijst: monsters die de zoekterm bevatten en de geldige selectie daarin.
+/* ---------- zoeken op naam, type en CR ---------- */
+export const TYPES = ["aberration", "beast", "celestial", "construct", "dragon", "elemental", "fey", "fiend", "giant", "humanoid", "monstrosity", "ooze", "plant", "undead"];
+const TYPE_RE = new RegExp(`\\b(${TYPES.join("|")})s?\\b`);
+const metaCache = new Map();
+/** "Medium humanoid (goblinoid), neutral evil" → { type: "humanoid", sub: "goblinoid" }; "Medium swarm of Tiny beasts" → beast */
+export function metaInfo(meta) {
+  const s = String(meta || "");
+  let r = metaCache.get(s);
+  if (!r) {
+    const t = s.split(",")[0].toLowerCase().match(TYPE_RE), sub = s.match(/\(([^)]*)\)/);
+    r = { type: t ? t[1] : "", sub: sub ? sub[1].toLowerCase() : "" };
+    metaCache.set(s, r);
+  }
+  return r;
+}
+/** Type als zoekwoord: "undead", "dragons" → type; anders "" */
+const typeWord = (w) => (TYPES.includes(w) ? w : w.length > 3 && w.endsWith("s") && TYPES.includes(w.slice(0, -1)) ? w.slice(0, -1) : "");
+
+const CRV = { "1/8": 0.125, "1/4": 0.25, "1/2": 0.5 };
+/** CR-tekst → getal: "1/4" → 0.25, "5" → 5; onbekend → NaN */
+export const crNum = (cr) => { const s = String(cr ?? "").trim(); return s in CRV ? CRV[s] : /^\d+$/.test(s) ? +s : NaN; };
+const crLbl = (v) => (v === 0.125 ? "1/8" : v === 0.25 ? "1/4" : v === 0.5 ? "1/2" : String(v));
+/** "5" | "1/2-3" | "2–4" | "10+" → { min, max } (max Infinity bij "+"); undefined = nog niet af ("2-", "1/"); null = onleesbaar */
+function crRange(v) {
+  const s = v.replace(/[–—]/g, "-");
+  if (!s || /[-/]$/.test(s)) return undefined;
+  const m = s.match(/^([\d/]+)(?:-([\d/]+)|(\+))?$/);
+  if (!m) return null;
+  const a = crNum(m[1]), b = m[2] ? crNum(m[2]) : m[3] ? Infinity : a;
+  if (Number.isNaN(a) || Number.isNaN(b)) return null;
+  return { min: Math.min(a, b), max: Math.max(a, b) };
+}
+
+/**
+ * Zoektekst → { words, cr, type, bad }. "cr 5", "cr5", "cr 1/4", "cr 2-4", "cr 10+" (ook "cr:5") worden een CR-filter;
+ * een onaf CR-woord ("cr", "cr 2-") telt nog niet mee, een onleesbaar ("cr x") geeft bad. Overige woorden: naam/type/subtype.
+ */
+export function parseQuery(q) {
+  const T = String(q || "").toLowerCase().replace(/[–—]/g, "-").split(/[\s,]+/).filter(Boolean);
+  const out = { words: [], cr: null, type: "", bad: false };
+  for (let i = 0; i < T.length; i++) {
+    const m = T[i].match(/^cr:?(?=$|\d)(.*)$/); // "cr", "cr5", "cr:1/2"; niet "crab"
+    if (!m) { out.words.push(T[i]); out.type ||= typeWord(T[i]); continue; }
+    let v = m[1];
+    if (!v && i + 1 < T.length && !/^[a-z]{3,}$/.test(T[i + 1])) v = T[++i]; // "cr 5", "cr x" (fout); "cr wolf" = onaf CR + naamwoord
+    const r = crRange(v);
+    if (r) out.cr = r; else if (r === null) out.bad = true;
+  }
+  return out;
+}
+/** Kop boven de lijst bij een filter: "Undead · CR 2–4"; zonder filter "" */
+export function queryLabel(p) {
+  const cr = p.cr && (p.cr.max === Infinity ? `CR ${crLbl(p.cr.min)}+` : p.cr.min === p.cr.max ? `CR ${crLbl(p.cr.min)}` : `CR ${crLbl(p.cr.min)}–${crLbl(p.cr.max)}`);
+  const type = p.words.length === 1 && p.type; // "giant spider" is een naam, geen filter
+  return [type && type[0].toUpperCase() + type.slice(1), cr].filter(Boolean).join(" · ");
+}
+
+/** Past één zoekwoord bij een monster: 2 = naam begint ermee, 1 = naam bevat het, 0 = type/subtype, -1 = niet */
+function wordScore(m, w) {
+  const n = m.n.toLowerCase();
+  if (n.startsWith(w)) return 2;
+  if (n.includes(w)) return 1;
+  const x = metaInfo(m.meta);
+  return (x.type && x.type === typeWord(w)) || (x.sub && x.sub.includes(w)) ? 0 : -1;
+}
+
+/** Keuzelijst: monsters die bij de zoektekst passen en de geldige selectie daarin.
  *  De selectie moet zichtbaar zijn; anders zou "Toevoegen" iets onzichtbaars toevoegen.
- *  Eén treffer wordt automatisch gekozen, anders blijft er niets geselecteerd. */
+ *  Eén treffer of een exacte naam wordt automatisch gekozen, anders blijft er niets geselecteerd.
+ *  Met een type- of CR-filter: CR oplopend, dan naam. Alleen naam: wie met het eerste woord begint eerst, dan wie het
+ *  in de naam heeft, dan treffers op type/subtype (Bugbear bij "goblin"). Een exacte naam staat altijd bovenaan. */
 export function filterMonsters(list, q, sel) {
-  const t = q.trim().toLowerCase();
-  const L = t ? list.filter((m) => m.n.toLowerCase().includes(t)) : list;
+  const t = String(q || "").trim().toLowerCase();
+  const p = parseQuery(t);
+  let L = list;
+  if (p.words.length || p.cr) {
+    const sc = new Map();
+    L = list.filter((m) => {
+      if (p.cr) { const v = crNum(m.cr); if (!(v >= p.cr.min && v <= p.cr.max)) return false; }
+      const s = p.words.map((w) => wordScore(m, w));
+      if (s.some((x) => x < 0)) return false;
+      sc.set(m, s.length ? s[0] : 0); // rangorde op het eerste woord
+      return true;
+    });
+    if (p.cr || p.type) L = L.slice().sort((a, b) => (crNum(a.cr) || 0) - (crNum(b.cr) || 0) || a.n.localeCompare(b.n));
+    else L = L.slice().sort((a, b) => sc.get(b) - sc.get(a)); // stabiel: verder de bestaande (alfabetische) volgorde
+  }
   const exact = t && L.find((m) => m.n.toLowerCase() === t);
+  if (exact && L[0] !== exact) L = [exact, ...L.filter((m) => m !== exact)]; // exacte naam bovenaan ("giant spider")
   const pick = L.some((m) => m.n === sel) ? sel : exact ? exact.n : L.length === 1 ? L[0].n : null;
-  return { L, sel: pick };
+  return { L, sel: pick, label: queryLabel(p), bad: p.bad };
 }
 
 /* ---------- import: Open5e, 5e-bits (dnd5eapi) en het eigen formaat ---------- */

@@ -78,8 +78,11 @@
     </form>
 
     <form class="form" id="f-mon" data-panel="mon" hidden>
-      <label>Zoek monster<input id="mon-q" placeholder="goblin, troll, cultist…" autocomplete="off"></label>
+      <label>Zoek monster<input id="mon-q" placeholder="naam, type of CR: undead cr 2-4" autocomplete="off" enterkeyhint="search" aria-describedby="mon-qh"></label>
+      <p class="hint" id="mon-qh">Zoek op naam, type (undead, fiend…) of CR (cr 5, cr 1/2, cr 2-4, cr 10+).</p>
+      <p class="mlbl" id="mon-lbl" aria-live="polite" hidden></p>
       <div class="mlist" id="mon-list"></div>
+      <div id="mon-prev"></div>
       <div class="f2">
         <label>Aantal<input id="mon-n" type="number" min="1" max="20" value="1" inputmode="numeric"></label>
         <label>HP<select id="mon-hpmode"><option value="avg">Gemiddeld</option><option value="roll">Rollen (hit dice)</option></select></label>

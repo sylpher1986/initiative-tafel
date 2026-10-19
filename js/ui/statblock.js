@@ -2,8 +2,8 @@
 import { $, esc, n0, toastHtml } from "./util.js";
 import { findMon } from "../data/monsters.js";
 import { rollExpr, mod, sgn } from "../rules/dice.js";
-import { ORD } from "../rules/spells.js";
-import { rollDmg, parseAction } from "../rules/attacks.js";
+import { ORD, legInfo, castInfo } from "../rules/spells.js";
+import { rollDmg, parseAction, monsterActions } from "../rules/attacks.js";
 import { sortOrder } from "../rules/turns.js";
 import { effAc, acBreakdown } from "../rules/effects.js";
 import { newDs } from "../rules/combat.js";
@@ -62,12 +62,16 @@ const sb = {
   last: undefined, // laatst geziene actieve id
   open: undefined, // laatst geziene open kaart
   want: null,      // id die bij de volgende sync getoond moet worden (net toegevoegd monster)
+  prev: null,      // desktop: naam van het monster in preview (nog niet toegevoegd), zolang het Monster-paneel open is
+  drop: false,     // preview beëindigen bij de volgende sync (keuze valt buiten het filter)
+  back: null,      // id die vóór de preview getoond werd (terug na sluiten van het paneel)
   args: null,      // laatste syncSB-argumenten (om bij draaien/venster breder direct te vullen)
 };
 const PHONE = matchMedia("(max-width:899px)");
 const phone = () => PHONE.matches;
 // wisselen tussen telefoon en tablet/desktop (draaien, venster smaller): telefoon begint weer dicht, zonder volgen
 PHONE.addEventListener?.("change", () => {
+  sb.prev = null; sb.back = null; // preview bestaat alleen op tablet/desktop
   if (phone()) { sb.follow = false; setOpen(false); return; }
   sb.cid = null; sb.last = undefined;
   if (sb.args) syncSB(...sb.args);
@@ -105,6 +109,18 @@ export function followTurn() {
 }
 /** Laat een deelnemer bij de volgende sync zien (net toegevoegd monster) */
 export const wantSB = (id) => { sb.want = id; };
+/** Tablet/desktop: gekozen monster in het Monster-paneel als preview in de zijkolom (niet op de telefoon, niet vastgezet) */
+export function previewSB(m) {
+  if (!m) { if (sb.prev && sb.args) { sb.drop = true; syncSB(...sb.args); } return; } // geen keuze meer: terug naar wat er stond
+  if (phone() || sb.pin || sb.prev === m.n) return;
+  if (!sb.prev) sb.back = sb.cid;
+  sb.prev = m.n; sb.cid = null; sb.ref = null; sb.pc = false; sb.live = "";
+  $("#sb").innerHTML = `<div class="sbhead"><div><h2>${esc(m.n)}</h2><div class="meta">${esc(m.meta || (m.custom ? "Eigen monster" : ""))}</div></div></div>
+    <p class="sbprev">Voorbeeld · nog niet toegevoegd</p><hr>${sbBody(m)}`;
+  $("#sb").scrollTop = 0;
+  paintTurn(null);
+}
+export const isPhone = () => phone();
 /** Bovenkant van het open paneel op de telefoon (voor scrollen: wat eronder valt is niet zichtbaar) */
 export const sbTop = () => (phone() && isOpen() ? $("#sbwrap").getBoundingClientRect().top : Infinity);
 
@@ -139,12 +155,20 @@ export function syncSB(S, openCard, chips) {
     else if (isOpen() && sb.cid && !find(sb.cid)) closeSB(); // getoond monster is weg (verwijderd, volgende encounter)
     return;
   }
-  let t = null;
+  let t = null, back = null;
+  if (sb.prev) { // preview vóór toevoegen: blijft staan zolang het paneel open is en er niets anders gebeurt
+    const prepOpen = !$("#psheet")?.hidden && !$("#f-mon")?.hidden; // Monster-paneel nog open (niet Speler of Party)
+    if (prepOpen && !(turned && a) && !want && !opened && !sb.drop) return;
+    sb.drop = false;
+    back = find(sb.back);
+    sb.prev = null; sb.back = null; sb.cid = null; sb.ref = null;
+  }
   if (!sb.pin) {
     if (a) { if (turned) t = find(a); }
     else t = want || (opened ? find(openCard) : null); // net toegevoegd alleen buiten een gevecht: in een gevecht wint de beurt
     if (!showable(t)) t = null;
   }
+  if (!t && showable(back)) t = back; // na de preview terug naar wat er stond (ook als de beurt naar een lair ging)
   if (!t && !still(find(sb.cid))) { // getoonde deelnemer weg (of nog niets): eerste monster, anders de eerste speler
     const L = sortOrder(S.list);
     t = L.find(hasSB) || L.find(showable) || null;
@@ -160,7 +184,7 @@ export function syncSB(S, openCard, chips) {
 
 function emptySB() {
   if (sb.cid === null && sb.ref === null && !sb.pc && $("#sb .sbempty")) return;
-  sb.cid = null; sb.ref = null; sb.pc = false; sb.live = "";
+  sb.cid = null; sb.ref = null; sb.pc = false; sb.live = ""; sb.prev = null;
   $("#sb").innerHTML = `<div class="sbempty">Voeg een monster of speler toe: het statblock of de sheet verschijnt hier.</div>`;
 }
 /** Naam van het getoonde monster bijwerken (na bewerken of Goblin 1 → 2) */
@@ -177,23 +201,13 @@ function paintTurn(c) {
 
 const atkRef = (cid, k, v) => { const a = parseAction(k, v); return { cid, n: a.n, hit: a.hit }; };
 
-export function showSB(c, follow = false) {
-  const m = findMon(c.ref);
-  if (!m) return;
-  const cname = c.name;
-  const same = follow && sb.ref === m.n && $("#sbcname");
-  sb.cid = c.id; sb.pc = false; sb.live = "";
-  if (same) { // zelfde monster bij een beurtwissel (Goblin 1 → 2): alleen de naam en de aanvaller, scroll blijft
-    nameSB(c);
-    for (const b of $("#sb").querySelectorAll("[data-atk]")) b.dataset.cid = c.id;
-    return open();
-  }
-  sb.ref = m.n;
-  // aanvallen (acties, bonus, reactions, legendary) openen het doelpaneel; traits en vrije tekst rollen los
-  const ent = (arr, atk) => arr.map(([k, v]) => `<p class="entry"><b><i>${esc(k)}.</i></b> ${diceify(v, atk && atkRef(c.id, k, v))}</p>`).join("");
-  $("#sb").innerHTML = `<div class="sbhead"><div><h2>${esc(m.n)}</h2><div class="meta">${esc(m.meta || (m.custom ? "Eigen monster" : ""))}<span id="sbcname">${cname && cname !== m.n ? ` · ${esc(cname)}` : ""}</span></div></div>
-    ${headBtns()}</div><hr>
-    <p><span class="k">Armor Class</span> ${esc(m.ac)}</p>
+/**
+ * Statblock zonder kop. cid = deelnemer: aanvallen (acties, bonus, reactions, legendary) openen het doelpaneel;
+ * zonder cid (preview vóór toevoegen) zijn alle worpen losse worpen. Traits en vrije tekst rollen altijd los.
+ */
+export function sbBody(m, cid = null) {
+  const ent = (arr, atk) => arr.map(([k, v]) => `<p class="entry"><b><i>${esc(k)}.</i></b> ${diceify(v, atk && cid && atkRef(cid, k, v))}</p>`).join("");
+  return `<p><span class="k">Armor Class</span> ${esc(m.ac)}</p>
     <p><span class="k">Hit Points</span> ${n0(m.hp)}${m.hd ? ` (<button class="dice" data-roll="${esc(m.hd)}">${esc(m.hd.replace(/([+-])/, " $1 "))}</button>)` : ""}</p>
     ${m.spd ? `<p><span class="k">Speed</span> ${esc(m.spd)}</p>` : ""}
     ${m.ab ? `<hr>${abilRow(m.ab)}` : ""}
@@ -206,6 +220,22 @@ export function showSB(c, follow = false) {
     ${m.l && m.l.length ? `<h3>Legendary Actions</h3>${m.ld ? `<p>${diceify(m.ld)}</p>` : ""}${ent(m.l, true)}` : ""}
     ${m.text ? `<hr><div class="pre">${diceify(m.text)}</div>` : ""}
     ${m.custom ? "" : `<p class="credit">Bron: System Reference Document 5.1 (2014), Wizards of the Coast, CC-BY-4.0, via Open5e.</p>`}`;
+}
+
+export function showSB(c, follow = false) {
+  const m = findMon(c.ref);
+  if (!m) return;
+  const cname = c.name;
+  const same = follow && sb.ref === m.n && $("#sbcname");
+  sb.cid = c.id; sb.pc = false; sb.live = ""; sb.prev = null;
+  if (same) { // zelfde monster bij een beurtwissel (Goblin 1 → 2): alleen de naam en de aanvaller, scroll blijft
+    nameSB(c);
+    for (const b of $("#sb").querySelectorAll("[data-atk]")) b.dataset.cid = c.id;
+    return open();
+  }
+  sb.ref = m.n;
+  $("#sb").innerHTML = `<div class="sbhead"><div><h2>${esc(m.n)}</h2><div class="meta">${esc(m.meta || (m.custom ? "Eigen monster" : ""))}<span id="sbcname">${cname && cname !== m.n ? ` · ${esc(cname)}` : ""}</span></div></div>
+    ${headBtns()}</div><hr>${sbBody(m, c.id)}`;
   $("#sb").scrollTop = 0;
   open();
 }
@@ -243,7 +273,7 @@ function paintLive(c, chips) {
 /** Speler: live-blok bovenaan, daaronder de statische sheet (D&D Beyond-link of PDF) als die er is */
 export function showSheet(c, chips = sb.args && sb.args[2]) {
   const h = c.sheet;
-  sb.cid = c.id; sb.ref = null; sb.pc = true;
+  sb.cid = c.id; sb.ref = null; sb.pc = true; sb.prev = null;
   sb.live = liveHtml(c, chips);
   const dice = (s) => esc(s).replace(/(\d+d\d+(?:[+-]\d+)?)/g, '<button class="dice" data-roll="$1">$1</button>');
   const hitBtn = (b, l) => (/^[+-]\d+$/.test(b) ? `<button class="dice" data-roll="1d20${b}" data-hit="1" data-label="${esc(l)}">${b}</button>` : esc(b || ""));
@@ -267,4 +297,38 @@ export function showSheet(c, chips = sb.args && sb.args[2]) {
     : `<p class="hint sbnosheet">Geen sheet: voeg de speler toe via een D&amp;D Beyond-link of -PDF voor abilities, saves en spells.</p>`}`;
   $("#sb").scrollTop = 0;
   open();
+}
+
+/* ---------- preview vóór toevoegen (Monster-paneel en snel toevoegen) ---------- */
+const DEF = [["Damage Immunities", "Immuun"], ["Damage Resistances", "Resist"], ["Damage Vulnerabilities", "Kwetsb."]];
+const PREV_MAX = 3;
+/** Eén aanvalsregel als tekst: "Scimitar +4 · 1d6+2 slashing", "Fire Breath DC 15 DEX · 8d6 fire" */
+const atkText = (a) => [a.n, a.hit !== null ? sgn(a.hit) : a.dc ? `DC ${a.dc.n} ${a.dc.ab}` : "",
+  a.dmg.length ? "· " + a.dmg.map((x) => `${x.e || x.flat} ${x.type}`).join(" + ") : ""].filter(Boolean).join(" ");
+
+/**
+ * Compacte kaart om te kiezen: meta, AC/HP/speed/CR, verdediging, eerste aanvallen, traits op naam, tags.
+ * Alleen-lezen. full: het volledige statblock eronder (telefoon, via de knop data-mpfull); toggle = toon die knop.
+ */
+export function monCard(m, full = false, toggle = true) {
+  if (!m) return "";
+  const A = monsterActions(m), lg = legInfo(m);
+  const def = DEF.map(([k, l]) => { const x = (m.x || []).find(([n]) => n === k); return x ? `${l}: ${x[1]}` : ""; }).filter(Boolean);
+  const main = A ? A.main : [], more = main.length - PREV_MAX;
+  const traits = (m.t || []).map(([k]) => k).filter((k) => !/^spellcasting/i.test(k));
+  const tags = [lg.la ? `Legendary (${lg.la.max})` : "", castInfo(m) || (m.t || []).some(([k]) => /spellcasting/i.test(k)) ? "Spellcasting" : ""].filter(Boolean);
+  const stats = [`AC ${parseInt(m.ac) || "?"}`, `HP ${n0(m.hp) || "?"}${m.hd ? ` (${m.hd})` : ""}`, m.spd, m.cr ? `CR ${m.cr}${m.xp ? ` (${n0(m.xp).toLocaleString("nl-NL")} XP)` : ""}` : ""].filter(Boolean);
+  return `<div class="mprev" aria-live="polite">
+    <div class="mphead"><b>${esc(m.n)}</b><span>${esc(m.meta || (m.custom ? "Eigen monster" : ""))}</span></div>
+    <p class="mpstat">${esc(stats.join(" · "))}</p>
+    ${def.length ? `<p class="mpdef">${esc(def.join(" · "))}</p>` : ""}
+    ${A && A.multi ? `<p class="mpmulti">${esc(A.multi.text)}</p>` : ""}
+    ${main.slice(0, PREV_MAX).map((a) => `<p class="mpatk">${esc(atkText(a))}</p>`).join("")}
+    ${more > 0 ? `<p class="mpmore">+${more} meer</p>` : ""}
+    ${!A && m.text ? `<p class="mptext">${esc(m.text)}</p>` : ""}
+    ${traits.length ? `<p class="mptraits">${esc(traits.join(" · "))}</p>` : ""}
+    ${tags.length ? `<p class="mptags">${tags.map((t) => `<span class="tag m">${esc(t)}</span>`).join("")}</p>` : ""}
+    ${toggle ? `<button type="button" class="link mpfull" data-mpfull aria-expanded="${full}">${full ? "Minder ▴" : "Volledig statblock ▾"}</button>` : ""}
+    ${toggle && full ? `<div class="sbx">${sbBody(m)}</div>` : ""}
+  </div>`;
 }

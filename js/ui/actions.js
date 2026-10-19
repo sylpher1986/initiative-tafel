@@ -1,12 +1,12 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
-import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview, curSpell, spellPick } from "./render.js";
+import { render, ui, openId, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview, curSpell, spellPick } from "./render.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
 import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc } from "../rules/effects.js";
-import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop } from "./statblock.js";
+import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
 import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder } from "../rules/turns.js";
@@ -17,7 +17,7 @@ import { castInfo, legInfo, rcInfo, pickList, CONC_SPELLS, cleanSpell } from "..
 import { logText } from "../log.js";
 import { readSheetPdf, fetchDdb } from "../ddb.js";
 import { parseDdbLink, findMember, mergeSheet } from "../ddbjson.js";
-import { RACE_OPTS, raceKey, pickRace, cleanImg, icon, monType } from "./avatar.js";
+import { RACE_OPTS, raceKey, pickRace, cleanImg } from "./avatar.js";
 import { buildExport, parseImport } from "../backup.js";
 
 /** Fx uit de regels: meldingen tonen en oorzaken doorgeven aan het logboek */
@@ -608,16 +608,21 @@ export function bindForms() {
     btn.textContent = selMon ? `${n > 1 ? `${n}× ` : ""}${selMon} toevoegen` : "Kies een monster";
   };
   const renderMonList = () => {
-    const f = filterMonsters(allMonsters(), $("#mon-q").value, selMon), L = f.L;
+    const f = filterMonsters(allMonsters(), $("#mon-q").value, selMon);
+    if (f.sel !== selMon) ui.monFull = false; // andere keuze: preview weer kort
     selMon = f.sel; // UI-toestand, geen data: de selectie volgt wat zichtbaar is
     monBtn();
-    $("#mon-list").innerHTML = L.map((m) => `<button type="button" data-pick="${esc(m.n)}" aria-pressed="${m.n === selMon}"><span>${icon("m-" + monType(m.meta), "mi")}${esc(m.n)}${m.custom ? " · eigen" : ""}</span><span class="cr">CR ${esc(m.cr || "?")} · AC ${parseInt(m.ac) || "?"} · ${n0(m.hp) || "?"} HP</span></button>`).join("")
-      || `<p class="hint" style="padding:10px">Niets gevonden. Voeg het toe onder "Eigen monster".</p>`;
+    const lbl = monLabel(f), m = selMon && findMon(selMon);
+    $("#mon-lbl").hidden = !lbl; $("#mon-lbl").textContent = lbl;
+    $("#mon-list").innerHTML = monListHtml(f, selMon, "data-pick", `Niets gevonden. Voeg het toe onder "Eigen monster".`);
+    $("#mon-prev").innerHTML = monPrev(m, ui.monFull, true);
+    if (ui.prep === "mon") previewSB(m || null); // tablet/desktop: volledig statblock in de zijkolom (geen keuze: terug)
   };
   bindForms.renderMonList = renderMonList;
   $("#mon-q").addEventListener("input", renderMonList);
   $("#mon-n").addEventListener("input", monBtn);
-  $("#mon-list").addEventListener("click", (e) => { const b = e.target.closest("[data-pick]"); if (!b) return; selMon = b.dataset.pick; renderMonList(); });
+  $("#mon-list").addEventListener("click", (e) => { const b = e.target.closest("[data-pick]"); if (!b) return; if (selMon !== b.dataset.pick) ui.monFull = false; selMon = b.dataset.pick; renderMonList(); });
+  $("#mon-prev").addEventListener("click", (e) => { if (!e.target.closest("[data-mpfull]")) return; ui.monFull = !ui.monFull; renderMonList(); });
   $("#f-mon").addEventListener("submit", (e) => {
     e.preventDefault();
     if (!selMon) { toast("Tik eerst een monster in de lijst aan."); return; }
@@ -639,8 +644,8 @@ export function bindForms() {
     const m = { n: $("#cu-name").value.trim(), cr: $("#cu-cr").value.trim(), ac: $("#cu-ac").value, hp, hd, dexScore: parseInt($("#cu-dex").value) || 10, text: $("#cu-text").value };
     if (!m.n) return;
     app.custom = [m, ...app.custom.filter((x) => x.n !== m.n)]; saveLibrary();
-    e.target.reset(); selMon = m.n; $("#mon-q").value = ""; renderMonList();
-    ui.prep = "mon"; render(); $("#mon-add").focus(); toast(`${m.n} opgeslagen. Kies aantal en voeg toe.`);
+    e.target.reset(); selMon = m.n; $("#mon-q").value = "";
+    ui.prep = "mon"; renderMonList(); render(); $("#mon-add").focus(); toast(`${m.n} opgeslagen. Kies aantal en voeg toe.`);
   });
 
   const impStatus = () => {
@@ -682,7 +687,8 @@ export function bindQadd() {
   el.addEventListener("click", (e) => {
     const q = ui.qadd; if (!q) return;
     const p = e.target.closest("[data-qpick]");
-    if (p) { q.sel = p.dataset.qpick; paintQadd(); return; }
+    if (p) { if (q.sel !== p.dataset.qpick) q.full = false; q.sel = p.dataset.qpick; paintQadd(); return; }
+    if (e.target.closest("[data-mpfull]")) { q.full = !q.full; paintQadd(); return; }
     const b = e.target.closest("[data-q]"); if (!b) return;
     const k = b.dataset.q;
     if (k === "close") { closeQadd(); return; }

@@ -8,12 +8,12 @@ import { PRESETS, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWa
 import * as R from "../rules/combat.js";
 import { ORD, pickList } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus } from "../rules/aoe.js";
-import { diceify, syncSB } from "./statblock.js";
+import { diceify, syncSB, monCard, isPhone } from "./statblock.js";
 import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
 import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
 import { openSaves } from "../rules/saves.js";
-import { avatar } from "./avatar.js";
+import { avatar, icon, monType } from "./avatar.js";
 import { SPELLS, SPELL_CONDS, customSpell, spellTargets, spellDefault, condImmune } from "../rules/spellcast.js";
 
 /** UI-toestand die niet in de encounter (en dus niet in undo/opslag) hoort */
@@ -24,7 +24,8 @@ export const ui = {
   condOpt: {}, openCast: new Set(), castPick: null, confirmReset: false, confirmDel: null,
   logOpen: false, editLog: null, partyInit: {},
   mode: null,          // "prep" | "fight"; null = volg het gevecht (loopt → Gevecht, anders Voorbereiden)
-  qadd: null,          // { q, sel, n, init: "roll"|"fixed", fix } = snel-toevoegen-paneel open
+  qadd: null,          // { q, sel, n, init: "roll"|"fixed", fix, full } = snel-toevoegen-paneel open (full = statblock in de preview)
+  monFull: false,      // Monster-paneel: volledig statblock in de preview (telefoon); terug naar kort bij een andere keuze
   aoe: null,           // { tab, dmg, type, ab, dc, t: { [id]: { sel, save, mode|null, roll, lr } } } = AoE-paneel open
                        // tab "spell": { sp: index in SPELLS of "own", by, sdc, cf: eigen spell, s: { [id]: { sel, ok, roll, lr } } }
   aoeLast: { type: "", ab: "DEX", dc: "", tab: "dmg" }, // laatst gebruikte type/save/DC/tab (bijv. dezelfde breath weapon)
@@ -589,6 +590,19 @@ function paintSheet() {
     </div>`;
 }
 
+/* ---------- monsterlijst (Monster-paneel en snel toevoegen) ---------- */
+/** Lijst + kopregel + lege/foutmelding. attr = data-attribuut van de rijknoppen; none = tekst als er zonder filter niets is */
+export function monListHtml(f, sel, attr, none) {
+  const rows = f.L.map((m) => `<button type="button" ${attr}="${esc(m.n)}" aria-pressed="${m.n === sel}"><span>${icon("m-" + monType(m.meta), "mi")}${esc(m.n)}${m.custom ? " · eigen" : ""}</span><span class="cr">CR ${esc(m.cr || "?")} · AC ${parseInt(m.ac) || "?"} · ${n0(m.hp) || "?"} HP</span></button>`).join("");
+  const empty = f.label ? `Niets gevonden voor ${esc(f.label)}. Probeer een ruimer bereik (bijv. cr 1-6) of een ander type.` : none;
+  return rows || `<p class="hint" style="padding:10px">${empty}</p>`;
+}
+/** Kopregel boven de lijst: "Undead · CR 2–4 · 6 monsters", of uitleg bij een onleesbaar CR-woord; "" = verbergen */
+export const monLabel = (f) => (f.bad ? "CR niet herkend. Gebruik bijv. cr 5, cr 1/2 of cr 2-4."
+  : f.label ? `${f.label} · ${f.L.length} ${f.L.length === 1 ? "monster" : "monsters"}` : "");
+/** Preview van de keuze: telefoon met knop naar het volledige statblock, tablet/desktop zonder (zijkolom toont het) */
+export const monPrev = (m, full, side) => (m ? monCard(m, full, !side || isPhone()) : "");
+
 /* ---------- snel toevoegen tijdens het gevecht ---------- */
 /** Bouwt het paneel één keer per opening en werkt daarna alleen de delen bij, zodat het zoekveld focus houdt */
 export function paintQadd() {
@@ -599,8 +613,10 @@ export function paintQadd() {
     <div class="sheet qsheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="q-title">
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3 id="q-title">Mee in het gevecht</h3><button type="button" class="link" data-q="close">Annuleer</button></div>
-      <label>Zoek monster<input id="q-q" placeholder="goblin, wolf, cultist…" autocomplete="off" enterkeyhint="search"></label>
+      <label>Zoek monster<input id="q-q" placeholder="naam, type of CR: undead cr 2-4" autocomplete="off" enterkeyhint="search"></label>
+      <p class="mlbl" id="q-lbl" aria-live="polite" hidden></p>
       <div class="mlist qlist" id="q-list"></div>
+      <div id="q-prev"></div>
       <div class="qrow">
         <div class="qcol"><span class="qlbl" id="q-nl">Aantal</span>
           <div class="stepper" role="group" aria-labelledby="q-nl"><button type="button" data-q="n" data-v="-1" aria-label="Minder">−</button><output id="q-n" aria-live="polite"></output><button type="button" data-q="n" data-v="1" aria-label="Meer">+</button></div></div>
@@ -614,9 +630,12 @@ export function paintQadd() {
     el.hidden = false;
   }
   const f = filterMonsters(allMonsters(), q.q, q.sel);
+  if (f.sel !== q.sel) q.full = false; // andere keuze: preview weer kort
   q.sel = f.sel; // UI-toestand: de selectie volgt wat zichtbaar is (zoals in de Monster-tab)
-  $("#q-list").innerHTML = f.L.map((m) => `<button type="button" data-qpick="${esc(m.n)}" aria-pressed="${m.n === q.sel}"><span>${esc(m.n)}${m.custom ? " · eigen" : ""}</span><span class="cr">CR ${esc(m.cr || "?")} · ${n0(m.hp) || "?"} HP</span></button>`).join("")
-    || `<p class="hint" style="padding:10px">Niets gevonden. Eigen monsters maak je onder Voorbereiden.</p>`;
+  const lbl = monLabel(f);
+  $("#q-lbl").hidden = !lbl; $("#q-lbl").textContent = lbl;
+  $("#q-list").innerHTML = monListHtml(f, q.sel, "data-qpick", "Niets gevonden. Eigen monsters maak je onder Voorbereiden.");
+  $("#q-prev").innerHTML = monPrev(q.sel && findMon(q.sel), q.full, false); // snel toevoegen: geen zijkolom (die volgt de beurt)
   $("#q-n").textContent = q.n;
   el.querySelectorAll('[data-q="init"]').forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === q.init));
   $("#q-fixw").hidden = q.init !== "fixed";
