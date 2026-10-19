@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toPlayerView, cleanView, hpStatus, VIS, cleanVis } from "../js/playerview.js";
-import { cleanCombatant } from "../js/backup.js";
+import { toPlayerView, cleanView, hpStatus, VIS, cleanVis, nextAnon, anonName, groupName, dedupeAnon } from "../js/playerview.js";
+import { cleanCombatant, parseImport } from "../js/backup.js";
 import { diffLog } from "../js/log.js";
 
 const pc = (o) => ({ kind: "pc", cond: [], dex: 0, ac: 15, hp: 20, max: 20, ...o });
@@ -151,4 +151,43 @@ test("verborgen: blijft bij import (alleen monsters) en komt in het logboek", ()
   const b = { list: [mon({ id: "m", name: "M", init: 1, hidden: true })], round: 0 };
   assert.match(diffLog(a, b)[0].msg, /verborgen voor spelers/);
   assert.match(diffLog(b, a)[0].msg, /zichtbaar voor spelers/);
+});
+
+test("naam onbekend: geen echte naam of type-icoon in de snapshot, vast nummer", () => {
+  const b = mon({ id: "b", name: "Beholder", init: 15, anon: 1 });
+  const V = toPlayerView(S([b, pc({ id: "a", name: "A", init: 10 })]), () => "Large aberration, lawful evil");
+  assert.equal(V.list[0].name, "Onbekend wezen");
+  assert.equal(V.list[0].icon, "m-unknown");
+  assert.ok(!JSON.stringify(V).includes("Beholder") && !JSON.stringify(V).includes("aberration"));
+  assert.equal(cleanView(V).list[0].icon, "m-unknown", "icoon komt door cleanView");
+  // meerdere: genummerd, ook als groep; onthullen laat de andere nummers staan
+  const L = [mon({ id: "g1", name: "Goblin 1", init: 12, anon: 1, grp: "x" }), mon({ id: "g2", name: "Goblin 2", init: 12, anon: 2, grp: "x" }), mon({ id: "g3", name: "Goblin 3", init: 12, anon: 3, grp: "x" })];
+  const W = toPlayerView(S(L));
+  assert.deepEqual(W.list.map((c) => c.name), ["Onbekend wezen 1", "Onbekend wezen 2", "Onbekend wezen 3"]);
+  assert.equal(W.gname, "Onbekend wezen ×3");
+  assert.equal(groupName(W.list), "Onbekend wezen ×3");
+  delete L[0].anon;
+  assert.deepEqual(toPlayerView(S(L)).list.map((c) => c.name), ["Goblin 1", "Onbekend wezen 2", "Onbekend wezen 3"]);
+  assert.equal(nextAnon(L), 1, "laagste vrije nummer");
+  assert.equal(nextAnon([]), 1);
+  assert.equal(anonName({ anon: 2 }, [{ kind: "monster", anon: 2 }]), "Onbekend wezen", "één over: zonder nummer");
+  L[0].anon = 1; L[2].hidden = true; delete L[1].anon;
+  assert.equal(toPlayerView(S(L)).list[0].name, "Onbekend wezen", "verborgen onbekende telt niet mee (verraadt niets)");
+});
+
+test("naam onbekend: alleen monsters, export houdt een geldig nummer", () => {
+  assert.equal(toPlayerView(S([pc({ id: "a", name: "A", anon: 1 })])).list[0].name, "A");
+  assert.equal(cleanCombatant(mon({ id: "m", name: "M", anon: 3 })).anon, 3);
+  assert.equal(cleanCombatant(mon({ id: "m", name: "M", anon: "x" })).anon, undefined);
+  assert.equal(cleanCombatant(mon({ id: "m", name: "M", anon: -1 })).anon, undefined);
+  assert.equal(cleanCombatant(pc({ id: "p", name: "P", anon: 1 })).anon, undefined);
+});
+
+test("naam onbekend: dubbele nummers na import worden hernummerd, wisselen komt in het logboek", () => {
+  assert.deepEqual(dedupeAnon([{ anon: 2 }, { anon: 2 }, { anon: 1 }, {}]).map((c) => c.anon), [2, 3, 1, undefined]);
+  const I = parseImport({ format: "initiative-tafel", version: 1, state: { list: [mon({ id: "x", name: "X", anon: 1 }), mon({ id: "y", name: "Y", anon: 1 })] } });
+  assert.deepEqual(I.S.list.map((c) => c.anon), [1, 2]);
+  const a = { list: [mon({ id: "m", name: "M" })] }, b = { list: [mon({ id: "m", name: "M", anon: 1 })] };
+  assert.match(diffLog(a, b)[0].msg, /naam onbekend voor spelers/);
+  assert.match(diffLog(b, a)[0].msg, /naam bekend voor spelers/);
 });

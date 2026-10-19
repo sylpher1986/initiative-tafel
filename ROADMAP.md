@@ -77,7 +77,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [ ] Spelersscherm-kamer: QR-code bij de code (alleen als een kleine zelf-gehoste lib past)
 - [ ] Spelersscherm-kamer: vaste code per campagne zodra er accounts zijn (fase 2, `isOwner` in `worker/room.js`)
 - [x] Spelersscherm: zichtbaarheid instelbaar (HP monsters, initiativegetallen, condities: tonen/alleen spelers/verbergen), lair verbergen op zijn kaart, "Verborgen voor spelers" bij snel toevoegen en in de Monster-tab (1.25.0)
-- [ ] Spelersscherm: generieke monsternaam per monster via ⋯ (bijv. "Monster" of het type, ook in groepsnaam en "Neer: …")
+- [x] Spelersscherm: naam onbekend per monster (⋯ of bij toevoegen): spelers zien "Onbekend wezen (N)" met een algemeen icoon, ook in groepsnaam en "Neer: …" (1.26.0)
 - [x] Spellregels 2014 | 2024 (Instellingen, alleen spells): Barkskin 17 zonder concentratie, Lethargy = Incapacitated, concentratie per editie, Sleep 2024 (Incapacitated → Unconscious); concentratielijst uit de SRD-data (Enthrall/Forcecage eruit, o.a. Hideous Laughter, Spike Growth, Vampiric Touch erbij); Web duurt zolang de concentratie (1.21.0)
 - [x] Spells per speler volgens de versie op zijn D&D Beyond-sheet (bronnen per spell), tag "2024 · sheet" waar het afwijkt van de instelling (1.22.0)
 - [ ] 2024-regels buiten spells (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen

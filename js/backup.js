@@ -3,6 +3,7 @@
 import { sanitizeOwn } from "./data/monsters.js";
 import { CONDS } from "./rules/turns.js";
 import { cleanImg } from "./ui/avatar.js";
+import { dedupeAnon } from "./playerview.js";
 
 export const FORMAT = "initiative-tafel";
 export const VERSION = 1;
@@ -69,6 +70,7 @@ export function cleanCombatant(c) {
   if (kind === "lair") return { ...out, key: str(c.key || c.name, 120), last: c.last ? str(c.last, 120) : null, ...(c.hidden ? { hidden: true } : {}) };
   Object.assign(out, {
     hidden: kind === "monster" && c.hidden ? true : undefined,
+    anon: kind === "monster" && Number.isInteger(c.anon) && c.anon > 0 && c.anon < 1000 ? c.anon : undefined, // naam onbekend voor spelers
     grp: kind === "monster" && typeof c.grp === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(c.grp) ? c.grp : undefined,
     sur: c.sur === true || c.sur === 2 ? c.sur : undefined, // surprise in ronde 1 (export midden in een gevecht)
     ac: num(c.ac), hp: num(c.hp), max: num(c.max), temp: num(c.temp), reaction: !!c.reaction,
@@ -96,7 +98,7 @@ export function parseImport(json) {
   for (const [k, v] of Object.entries(obj(json.lairs) || {})) lairs[str(k, 120)] = arr(v).map((a) => ({ n: str(a.n, 120), t: str(a.t, 4000) }));
   return {
     S: {
-      list: arr(S.list).map(cleanCombatant), round: Math.max(0, num(S.round)), active: S.active ? str(S.active, 40) : null, sample: false,
+      list: dedupeAnon(arr(S.list).map(cleanCombatant)), round: Math.max(0, num(S.round)), active: S.active ? str(S.active, 40) : null, sample: false,
       log: arr(S.log).slice(-600).map((e) => ({ id: str(e.id, 40), r: num(e.r), turn: str(e.turn, 120), type: ["round", "turn"].includes(e.type) ? e.type : "", msg: str(e.msg, 1000), why: str(e.why, 1000), note: str(e.note, 1000) })),
     },
     party: arr(json.party).map((m) => ({ ...cleanCombatant({ ...m, kind: "pc", id: m.pid }), pid: str(m.pid, 40) })).map(({ id, kind, init, cond, reaction, ...m }) => m),

@@ -23,6 +23,31 @@ export function cleanVis(v) {
   return out;
 }
 
+/* ---------- naam onbekend voor spelers (per monster, c.anon = vast nummer) ---------- */
+export const ANON = "Onbekend wezen";
+/** Laagste vrije nummer onder de monsters met een onbekende naam; vast in de data, zodat onthullen niets laat verspringen */
+export function nextAnon(list) {
+  const used = new Set((list || []).filter((c) => c.kind === "monster" && c.anon).map((c) => c.anon));
+  let n = 1;
+  while (used.has(n)) n++;
+  return n;
+}
+/** Spelersnaam: "Onbekend wezen" als spelers er maar één zien, anders "Onbekend wezen 2". Verborgen monsters tellen
+ *  niet mee: anders verraadt "Onbekend wezen 1" dat er nog een tweede klaarstaat. */
+export const anonSeen = (list) => (list || []).filter((x) => x.kind === "monster" && x.anon && !x.hidden).length;
+const anonLabel = (c, many) => (many ? `${ANON} ${c.anon}` : ANON);
+export const anonName = (c, list) => anonLabel(c, anonSeen(list) > 1);
+/** Dubbele nummers (handgemaakte import) → laagste vrije nummer, zodat spelers nooit twee keer "Onbekend wezen 2" zien */
+export function dedupeAnon(list) {
+  const used = new Set();
+  for (const c of list) {
+    if (!c.anon) continue;
+    if (used.has(c.anon)) { let n = 1; while (used.has(n) || list.some((x) => x.anon === n)) n++; c.anon = n; }
+    used.add(c.anon);
+  }
+  return list;
+}
+
 /** HP als status voor spelers, zonder getallen */
 export function hpStatus(c) {
   if (!c.max) return "";
@@ -63,12 +88,13 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS) {
   const inTurn = new Set(g ? g.live.filter(seen).map((c) => c.id) : []);
   const nx = S.round && S.active ? nextUp(S, all, S.active, (c) => inTurn.has(c.id) || !seen(c)) : null; // ook verrast in ronde 1 overslaan
   const next = nx ? nx.id : null;
+  const anonMany = anonSeen(all) > 1; // één keer per snapshot, niet per rij
   const list = shown.map((c) => {
     if (c.kind === "lair") return { id: c.id, kind: "lair", name: "Lair", init: vis.init ? c.init : null };
-    const pc = c.kind === "pc";
+    const pc = c.kind === "pc", anon = !pc && c.anon > 0; // naam en icoon (type) verraden het monster
     const r = {
-      id: c.id, kind: pc ? "pc" : "monster", name: c.name, init: vis.init ? c.init : null,
-      icon: iconId(c, pc ? "" : metaOf(c)), img: pc ? cleanImg(c.img) : null,
+      id: c.id, kind: pc ? "pc" : "monster", name: anon ? anonLabel(c, anonMany) : c.name, init: vis.init ? c.init : null,
+      icon: anon ? "m-unknown" : iconId(c, pc ? "" : metaOf(c)), img: pc ? cleanImg(c.img) : null,
       out: isOut(c), hp: hpFor(c, pc ? "exact" : vis.monHp), tags: vis.tags === "all" || (pc && vis.tags === "pc") ? tagsFor(c, S) : [],
     };
     const d = c.ds || {}; // zonder ds-object nog geen worpen (zoals de DM-kaart met newDs())

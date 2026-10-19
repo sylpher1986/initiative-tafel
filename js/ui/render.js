@@ -17,6 +17,7 @@ import { openSaves } from "../rules/saves.js";
 import { avatar, icon, monType } from "./avatar.js";
 import { SPELLS, SPELL_CONDS, customSpell, spellTargets, spellDefault, condImmune, spellFor, rulesDiffer } from "../rules/spellcast.js";
 import { rulesEd } from "./spellrules.js";
+import { ANON, anonName } from "../playerview.js";
 
 /** UI-toestand die niet in de encounter (en dus niet in undo/opslag) hoort */
 export const ui = {
@@ -142,7 +143,8 @@ function effChips(c, S, interactive) {
 /** Conditie- en effect-chips (alleen tekst) voor de speler-sheet in het zijpaneel */
 const sbChips = (c) => condChips(c, app.S, false) + effChips(c, app.S, false);
 
-const hidBadge = (c) => (c.hidden ? `<span class="bd hid" title="Spelers zien deze deelnemer niet">verborgen</span>` : "");
+const hidBadge = (c) => (c.hidden ? `<span class="bd hid" title="Spelers zien deze deelnemer niet">verborgen</span>` : "")
+  + (c.kind === "monster" && c.anon ? `<span class="bd hid" title="Spelers zien: ${esc(anonName(c, app.S.list))}">onbekend</span>` : "");
 const surBadge = (c, S) => (isSurprised(c, S) ? `<span class="bd cc sur" title="Verrast: eerste beurt wordt overgeslagen, geen reaction tot die beurt voorbij is">Verrast</span>` : "");
 
 function badges(c, S) {
@@ -264,7 +266,8 @@ function morePanel(c) {
     </div>
     <div class="bar">${c.kind === "pc" && !c.pid ? `<button class="btn small" data-a="topty">Naar vaste party</button>` : ""}
     ${canToggleSurprise(c, app.S) ? `<button class="btn small" data-a="sur" aria-pressed="${c.sur === true}">${c.sur === true ? "Verrast ✓" : "Verrast"}</button>` : ""}
-    ${c.kind === "monster" ? `<button class="btn small" data-a="hide" aria-pressed="${!!c.hidden}">${c.hidden ? "Tonen aan spelers" : "Verbergen voor spelers"}</button>` : ""}
+    ${c.kind === "monster" ? `<button class="btn small" data-a="hide" aria-pressed="${!!c.hidden}">${c.hidden ? "Tonen aan spelers" : "Verbergen voor spelers"}</button>
+      <button class="btn small" data-a="anon" aria-pressed="${!!c.anon}">${c.anon ? "Naam tonen aan spelers" : "Naam verbergen voor spelers"}</button>` : ""}
     <button class="btn small danger" data-a="del">${del ? "Zeker? Tik nogmaals" : "Verwijder uit gevecht"}</button></div></div>`;
 }
 
@@ -393,7 +396,7 @@ function row(c, S, down = false) {
       ${c.max && !down ? hpBar(c) : ""}
     </button>
     ${open ? `<div class="kbody">
-      ${c.hidden || c.cond.length || (c.eff || []).length || isSurprised(c, S) ? `<div class="badges">${surBadge(c, S)}${hidBadge(c)}${condChips(c, S, true)}${effChips(c, S, true)}</div>` : ""}
+      ${c.hidden || c.anon || c.cond.length || (c.eff || []).length || isSurprised(c, S) ? `<div class="badges">${surBadge(c, S)}${hidBadge(c)}${condChips(c, S, true)}${effChips(c, S, true)}</div>` : ""}
       ${acBreakdown(c) ? `<p class="hint acb">AC ${n0(effAc(c))} = ${esc(acBreakdown(c))}</p>` : ""}
       ${defLine(c)}
       ${dsBlock(c)}
@@ -637,8 +640,9 @@ export const monLabel = (f) => (f.bad ? "CR niet herkend. Gebruik bijv. cr 5, cr
 export const monPrev = (m, full, side) => (m ? monCard(m, full, !side || isPhone()) : "");
 
 /** Knoptekst bij monsters toevoegen: "2× Goblin verborgen toevoegen" (verborgen staat in de knop, zodat je het niet mist) */
-export const addLabel = (n, name, hid) => `${n > 1 ? `${n}× ` : ""}${name}${hid ? " verborgen" : ""} toevoegen`;
+export const addLabel = (n, name, hid, anon) => `${n > 1 ? `${n}× ` : ""}${name}${[hid && " verborgen", anon && " onbekend"].filter(Boolean).join(",")} toevoegen`;
 export const HID_HINT = "Spelers zien ze niet, ook hun beurt niet. Later tonen via ⋯ → Tonen aan spelers.";
+export const ANON_HINT = `Spelers zien "${ANON}" met een algemeen icoon. Later tonen via ⋯ → Naam tonen aan spelers.`;
 
 /* ---------- snel toevoegen tijdens het gevecht ---------- */
 /** Bouwt het paneel één keer per opening en werkt daarna alleen de delen bij, zodat het zoekveld focus houdt */
@@ -664,6 +668,8 @@ export function paintQadd() {
       <p class="hint">Ze komen op hun initiative in de volgorde. Zit dat vóór wie nu aan de beurt is, dan doen ze pas volgende ronde mee.</p>
       <label class="chk tall"><input type="checkbox" data-q="hid" id="q-hid"> Verborgen voor spelers</label>
       <p class="hint" id="q-hidh" hidden>${HID_HINT}</p>
+      <label class="chk tall"><input type="checkbox" data-q="anon" id="q-anon"> Naam onbekend voor spelers</label>
+      <p class="hint" id="q-anonh" hidden>${ANON_HINT}</p>
       <button type="button" class="btn primary qgo" data-q="go"></button>
     </div>`;
     el.hidden = false;
@@ -680,7 +686,8 @@ export function paintQadd() {
   $("#q-fixw").hidden = q.init !== "fixed";
   const go = el.querySelector(".qgo");
   go.disabled = !q.sel || (q.init === "fixed" && parseInit(q.fix) === null);
-  go.textContent = q.sel ? addLabel(q.n, q.sel, q.hid) : "Kies een monster";
+  go.textContent = q.sel ? addLabel(q.n, q.sel, q.hid, q.anon) : "Kies een monster";
+  $("#q-anon").checked = q.anon; $("#q-anonh").hidden = !q.anon;
   $("#q-hid").checked = q.hid; $("#q-hidh").hidden = !q.hid;
 }
 

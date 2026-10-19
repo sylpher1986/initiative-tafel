@@ -14,7 +14,7 @@ export function diffLog(prev, cur) {
 
   for (const [id, c] of C) {
     const o = P.get(id);
-    if (!o) { out.push({ who: id, msg: `${nm(c)} doet mee${c.kind === "lair" ? "" : ` (initiative ${c.init})`}${c.hidden ? " · verborgen voor spelers" : ""}` }); continue; }
+    if (!o) { out.push({ who: id, msg: `${nm(c)} doet mee${c.kind === "lair" ? "" : ` (initiative ${c.init})`}${c.hidden ? " · verborgen voor spelers" : ""}${c.anon ? " · naam onbekend voor spelers" : ""}` }); continue; }
     const m = [];
     if (o.name !== c.name) m.push(`heette ${o.name}`);
     if ((o.ac || 0) !== (c.ac || 0)) m.push(`AC ${o.ac || 0} → ${c.ac || 0}`);
@@ -34,6 +34,7 @@ export function diffLog(prev, cur) {
     else if (o.sur === true && !c.sur) m.push("niet meer verrast");
     else if (!o.reaction && c.reaction) m.push("reaction gebruikt");
     if (!!o.hidden !== !!c.hidden) m.push(c.hidden ? "verborgen voor spelers" : "zichtbaar voor spelers");
+    if (!!o.anon !== !!c.anon) m.push(c.anon ? "naam onbekend voor spelers" : "naam bekend voor spelers");
     if (o.casting && c.casting) {
       c.casting.slots.forEach((x, i) => {
         const y = o.casting.slots[i];
