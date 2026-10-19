@@ -4,6 +4,7 @@ import { diffLog } from "./log.js";
 import { uid } from "./rules/dice.js";
 import { setLibrary } from "./data/monsters.js";
 import { endConcEffects } from "./rules/effects.js";
+import { endConcConds } from "./rules/spellcast.js";
 
 /** Alle data van de app. S = de lopende encounter. */
 export const app = { S: null, party: [], lairs: {}, custom: [], imported: [] };
@@ -51,8 +52,8 @@ export function resetBaseline() {
  * Doet niets als er niets veranderde. Geeft true terug bij een wijziging.
  */
 export function commit() {
-  // effecten van een caster die geen concentratie meer heeft (0 HP, nieuwe spell, verwijderd) horen bij deze stap
-  pendingWhy.push(...endConcEffects(app.S.list, app.S.active).why);
+  // effecten en condities (Hold Person) van een caster die geen concentratie meer heeft (0 HP, nieuwe spell, verwijderd) horen bij deze stap
+  pendingWhy.push(...endConcEffects(app.S.list, app.S.active).why, ...endConcConds(app.S.list).why);
   let j = JSON.stringify(app.S);
   if (j === lastJSON) { pendingWhy = []; return false; }
   if (lastJSON !== null) {

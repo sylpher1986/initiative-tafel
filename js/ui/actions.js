@@ -1,14 +1,15 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
-import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview } from "./render.js";
+import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview, curSpell, spellPick } from "./render.js";
+import { castSpell, casterDC, spellTargets } from "../rules/spellcast.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
 import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc } from "../rules/effects.js";
 import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
-import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut } from "../rules/turns.js";
+import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, defMode } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
@@ -261,7 +262,11 @@ const global = {
     return false;
   },
   qadd() { ui.qadd = { q: "", sel: null, n: 1, init: "roll", fix: "" }; },
-  aoe() { ui.sheet = null; ui.qadd = null; ui.atk = null; ui.aoe = { dmg: "", ...ui.aoeLast, t: {} }; },
+  aoe() {
+    ui.sheet = null; ui.qadd = null; ui.atk = null;
+    const act = app.S.list.find((x) => x.id === app.S.active && x.kind !== "lair");
+    ui.aoe = { dmg: "", ...ui.aoeLast, t: {}, sp: null, by: act ? act.id : "", sdc: "", cf: {}, s: {} };
+  },
   addlair() {
     const lm = app.S.list.find((x) => x.la);
     const key = lm ? "Lair: " + lm.ref : Object.keys(app.lairs)[0] || "Lair";
@@ -338,7 +343,7 @@ export function onClick(e) {
     if (["start", "next", "prev"].includes(b.id)) scrollToCard(app.S.active);
     // focus in de dialog, maar niet op het zoekveld: dat zou op de telefoon meteen het toetsenbord openen
     if (b.id === "qadd") $("#qsheet .qsheet").focus();
-    if (b.id === "aoe") $("#a-dmg").focus();
+    if (b.id === "aoe") (ui.aoe && ui.aoe.tab === "spell" ? $("#asheet .asheet") : $("#a-dmg"))?.focus();
     return;
   }
   const li = b.closest(".c");
@@ -742,10 +747,76 @@ function closeAoe() {
 /** Keuze voor één doelwit bijwerken (UI-toestand, niet in undo) */
 const aoeSet = (a, id, patch) => { a.t[id] = { ...(a.t[id] || newPick()), ...patch }; };
 
+/** Spell-tab opnieuw opbouwen (andere tab, spell of caster); focus op de gekozen knop of het paneel */
+function rebuildAoe(focus) {
+  $("#asheet").innerHTML = ""; paintAoe();
+  ($(focus || "") || $("#asheet .asheet"))?.focus();
+}
+
+/** Spell-velden (caster, DC, eigen spell). true = afgehandeld */
+function spellField(a, t) {
+  const id = t.id;
+  if (id === "s-by") { a.by = t.value; a.s = {}; a.sdc = spellDC(a); rebuildAoe("#s-by"); return true; }
+  if (id === "s-dc") {
+    a.sdc = t.value;
+    const dc = parseInt(a.sdc); // al gerolde saves opnieuw tegen de nieuwe DC leggen
+    Object.values(a.s).forEach((x) => { if (x.roll) { x.lr = false; x.ok = dc > 0 && x.roll.tot >= dc; } });
+    paintAoe(); return true;
+  }
+  const k = { "s-n": "n", "s-cond": "cond", "s-ab": "ab", "s-dur": "dur", "s-rep": "rep", "s-conc": "conc" }[id];
+  if (!k) return false;
+  a.cf[k] = t.type === "checkbox" ? t.checked : t.value;
+  if (k === "ab" || k === "cond") { a.s = {}; rebuildAoe("#" + id); } else paintAoe(); // save erbij of weg, andere immuniteit
+  return true;
+}
+/** DC van de caster (sheet of statblock), alleen voor spells met een save */
+const spellDC = (a) => { const c = app.S.list.find((x) => x.id === a.by); return c ? casterDC(c, c.ref ? findMon(c.ref) : null) : ""; };
+
+/** Spell-tab: klikken. true = afgehandeld */
+function spellClick(a, k, b) {
+  const sp = curSpell(a), id = b.dataset.id, caster = app.S.list.find((x) => x.id === a.by);
+  const set = (patch) => { a.s[id] = { ...(a.s[id] || {}), ...patch }; };
+  if (k === "sp") { const v = b.dataset.v === "own" ? "own" : +b.dataset.v; if (a.sp !== v) { a.sp = v; a.s = {}; if (!a.sdc) a.sdc = spellDC(a); } rebuildAoe(`[data-ao="sp"][data-v="${b.dataset.v}"]`); return true; }
+  if (k === "sgo") { spellGo(); return true; }
+  if (!sp) return k.startsWith("s");
+  if (k === "ssave") set({ ok: b.dataset.v === "1", lr: false });
+  else if (k === "slr") set({ ok: false, lr: true });
+  else if (k === "sall") spellTargets(app.S.list).forEach((c) => { a.s[c.id] = { ...(a.s[c.id] || {}), sel: !!b.dataset.v && c.kind === b.dataset.v }; });
+  else if (k === "sroll") {
+    const dc = parseInt(a.sdc);
+    if (!(dc > 0)) { toast("Vul eerst de DC in."); $("#s-dc")?.focus(); return true; }
+    const mons = spellTargets(app.S.list).map((c) => ({ c, p: spellPick(a, sp, caster, c) })).filter((x) => x.c.kind === "monster" && x.p.sel && !x.p.immune);
+    if (!mons.length) { toast("Kies eerst de monsters die een save doen."); return true; }
+    // altijd een spell: Magic Resistance geeft advantage; Bless/Bane en cover tellen mee
+    mons.forEach(({ c, p }) => { const x = rollSave(saveBonus(p.m, sp.ab), hasMagicRes(p.m), Math.random, saveMods(c, sp.ab)); a.s[c.id] = { ...(a.s[c.id] || {}), roll: x, ok: x.tot >= dc, lr: false }; });
+  } else return false;
+  paintAoe();
+  return true;
+}
+
+/** Spell toepassen: concentratie, effect of condities per doel en het logboek in één stap (één Ongedaan) */
+function spellGo() {
+  const a = ui.aoe, S = app.S, sp = curSpell(a), caster = S.list.find((x) => x.id === a.by && x.kind !== "lair");
+  if (!sp || !caster) return;
+  const dc = parseInt(a.sdc);
+  if (sp.rep && !(dc > 0)) { toast("Vul de DC in: die is nodig voor de herhaalsave."); $("#s-dc")?.focus(); return; }
+  const picks = sortOrder(spellTargets(S.list)).map((c) => ({ c, p: spellPick(a, sp, caster, c) })).filter((x) => x.p.sel)
+    .map(({ c, p }) => ({ c, m: p.m, ok: !!sp.ab && p.ok, lr: !!sp.ab && p.lr, note: p.roll ? `${sp.ab} save ${rollText(p.roll, dc)}` : "" }));
+  if (!picks.length) return;
+  const r = castSpell(S.list, sp, caster, picks, { round: S.round, active: S.active, dc: a.sdc });
+  addWhy(r.why);
+  ui.aoe = null;
+  render();
+  const parts = [r.hit.length ? `${r.hit.join(", ")}${sp.conds ? ` ${sp.conds.join(" + ")}` : ""}` : sp.ab ? "niemand geraakt" : "", r.ok.length ? `${r.ok.length} geslaagd` : "", r.immune.length ? `${r.immune.length} immuun` : ""].filter(Boolean);
+  toastHtml(`${esc(`${sp.n} (${caster.name}): ${parts.join(" · ")}${sp.conc ? " · conc" : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  $("#aoe")?.focus();
+}
+
 export function bindAoe() {
   const el = $("#asheet");
   const field = (e) => {
     const a = ui.aoe; if (!a) return;
+    if (a.tab === "spell") { spellField(a, e.target); return; }
     const id = e.target.id;
     if (id === "a-dmg") a.dmg = e.target.value;
     else if (id === "a-type") a.type = ui.aoeLast.type = e.target.value;
@@ -759,17 +830,20 @@ export function bindAoe() {
     else return;
     paintAoe();
   };
-  el.addEventListener("input", field);
+  el.addEventListener("input", (e) => { if (e.target.tagName === "INPUT" && e.target.type !== "checkbox") field(e); });
   el.addEventListener("change", (e) => {
     const a = ui.aoe; if (!a) return;
     if (e.target.dataset.ao === "sel") { aoeSet(a, e.target.dataset.id, { sel: e.target.checked }); paintAoe(); }
-    else if (e.target.tagName === "SELECT") field(e);
+    else if (e.target.dataset.ao === "ssel") { a.s[e.target.dataset.id] = { ...(a.s[e.target.dataset.id] || {}), sel: e.target.checked }; paintAoe(); }
+    else if (e.target.tagName === "SELECT" || e.target.type === "checkbox") field(e);
   });
   el.addEventListener("click", (e) => {
     const a = ui.aoe; if (!a) return;
     const b = e.target.closest("button[data-ao], .dim[data-ao]"); if (!b) return;
     const k = b.dataset.ao, id = b.dataset.id;
     if (k === "close") { closeAoe(); return; }
+    if (k === "tab") { const v = b.dataset.v === "spell" ? "spell" : "dmg"; if ((a.tab || "dmg") !== v) { a.tab = ui.aoeLast.tab = v; rebuildAoe(`[data-ao="tab"][data-v="${v}"]`); } return; }
+    if (a.tab === "spell" && spellClick(a, k, b)) return;
     if (k === "go") { aoeGo(); return; }
     if (k === "save") aoeSet(a, id, { save: b.dataset.v, lr: false });
     if (k === "mode") aoeSet(a, id, { mode: +b.dataset.v });

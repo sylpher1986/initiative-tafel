@@ -14,6 +14,7 @@ import { sgn } from "../rules/dice.js";
 import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
 import { openSaves } from "../rules/saves.js";
 import { avatar } from "./avatar.js";
+import { SPELLS, SPELL_CONDS, customSpell, spellTargets, spellDefault, condImmune } from "../rules/spellcast.js";
 
 /** UI-toestand die niet in de encounter (en dus niet in undo/opslag) hoort */
 export const ui = {
@@ -24,8 +25,9 @@ export const ui = {
   logOpen: false, editLog: null, partyInit: {},
   mode: null,          // "prep" | "fight"; null = volg het gevecht (loopt → Gevecht, anders Voorbereiden)
   qadd: null,          // { q, sel, n, init: "roll"|"fixed", fix } = snel-toevoegen-paneel open
-  aoe: null,           // { dmg, type, ab, dc, t: { [id]: { sel, save, mode|null, roll, lr } } } = AoE-paneel open
-  aoeLast: { type: "", ab: "DEX", dc: "" }, // laatst gebruikte type/save/DC (bijv. dezelfde breath weapon)
+  aoe: null,           // { tab, dmg, type, ab, dc, t: { [id]: { sel, save, mode|null, roll, lr } } } = AoE-paneel open
+                       // tab "spell": { sp: index in SPELLS of "own", by, sdc, cf: eigen spell, s: { [id]: { sel, ok, roll, lr } } }
+  aoeLast: { type: "", ab: "DEX", dc: "", tab: "dmg" }, // laatst gebruikte type/save/DC/tab (bijv. dezelfde breath weapon)
   atk: null,           // { by, n, label, bo, key, adv, tid, r, parts, modes, force } = aanvalspaneel open (to-hit-knop)
   atkAdv: null,        // { by, v }: advantage/disadvantage blijft staan voor de volgende aanval van dezelfde aanvaller
   initDraft: null,     // { v: { id: tekst }, act: id, fresh, rolls: { id: tekst } } = initiative-paneel bij Start gevecht
@@ -402,7 +404,7 @@ function paintDock() {
   let nxt = null;
   for (let k = 1; k <= L.length; k++) { const c = L[(i + k) % L.length]; if (c && !isOut(c) && c.id !== S.active) { nxt = c; break; } }
   $("#dock").innerHTML = `<div class="who"><span><span class="l">Aan de beurt</span><br><b>${act ? esc(act.name) : "–"}</b></span><span class="r">Ronde ${S.round}${nxt ? ` · volgende: ${esc(nxt.name)}` : ""}</span></div>
-    ${svBar(S)}${laBar(S, L)}<div class="row">${undoBtn}<button id="prev" aria-label="Vorige beurt">‹</button><button class="aoeb" id="aoe" aria-label="Area of effect: schade op meerdere doelen" ${aoeTargets().length ? "" : "disabled"}>AoE</button><button class="nx" id="next">Volgende<span class="nb"> beurt</span> ›</button></div>`;
+    ${svBar(S)}${laBar(S, L)}<div class="row">${undoBtn}<button id="prev" aria-label="Vorige beurt">‹</button><button class="aoeb" id="aoe" aria-label="Area of effect: schade of een spell op meerdere doelen" ${spellTargets(app.S.list).length ? "" : "disabled"}>AoE</button><button class="nx" id="next">Volgende<span class="nb"> beurt</span> ›</button></div>`;
 }
 
 /* ---------- open saves: regels in de beurtbalk (max 2) of één knop met paneel ---------- */
@@ -630,11 +632,13 @@ function aoeRow(a, c, p, o, n) {
 export function paintAoe() {
   const el = $("#asheet"), a = ui.aoe;
   if (!a) { el.hidden = true; el.innerHTML = ""; return; }
+  if (a.tab === "spell") { paintSpell(el, a); return; }
   if (!el.firstChild) {
     el.innerHTML = `<div class="dim" data-ao="close"></div>
     <div class="sheet qsheet asheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="a-title">
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3 id="a-title">${a.title ? esc(a.title) : "AoE-schade"}</h3><button type="button" class="link" data-ao="close">Annuleer</button></div>
+      ${aoeTabs(a)}
       <div class="arow">
         <label>Schade<input id="a-dmg" type="number" inputmode="numeric" min="0" max="999" placeholder="28" enterkeyhint="done"></label>
         <label>Damage type<select id="a-type"><option value="">geen / onbekend</option>${DTYPES.map((t) => `<option value="${t}">${t[0].toUpperCase() + t.slice(1)}</option>`).join("")}</select></label>
@@ -665,6 +669,93 @@ export function paintAoe() {
   const go = el.querySelector(".ago");
   go.disabled = !n || !sel.length;
   go.textContent = !n ? "Vul de schade in" : !sel.length ? "Kies doelwitten" : `${n}${a.type ? " " + a.type : ""} toepassen op ${sel.length} doel${sel.length === 1 ? "" : "en"}`;
+}
+
+/* ---------- Spell op doelen (tab in het AoE-paneel): Bless, Hold Person e.d. op meerdere doelen ---------- */
+/** Tabs Schade | Spell; niet bij een save-actie van een monster (die is altijd schade) */
+const aoeTabs = (a) => (a.src ? "" : `<div class="seg2 atabs" role="group" aria-label="Soort">${[["dmg", "Schade"], ["spell", "Spell"]].map(([v, l]) => `<button type="button" data-ao="tab" data-v="${v}" aria-pressed="${(a.tab || "dmg") === v}">${l}</button>`).join("")}</div>`);
+
+/** Gekozen spell (preset of eigen) */
+export const curSpell = (a) => (a.sp === "own" ? customSpell(a.cf || {}) : SPELLS[a.sp] || null);
+const durName = (v) => ((DURS.find((x) => x[0] === v) || [])[1] || "").replace(/ \(10 rondes\)| \(100 rondes\)/, "").toLowerCase();
+
+/** Keuze per doel: wat de DM tikte, anders de standaard (kant van de caster, immuniteit, humanoid) */
+export function spellPick(a, sp, caster, c) {
+  const m = c.ref ? findMon(c.ref) : null, def = spellDefault(sp, caster, c, m), t = a.s[c.id] || {};
+  return { ...def, m, sel: t.sel ?? def.sel, ok: !!t.ok, roll: t.roll || null, lr: !!t.lr };
+}
+
+function spellRow(a, sp, caster, c, p) {
+  const id = esc(c.id), nm = esc(c.name), dc = parseInt(a.sdc);
+  const res = !p.sel ? "" : p.immune ? `<b class="sres zero">immuun</b>` : p.ok || p.lr ? `<b class="sres zero">geen effect</b>`
+    : `<b class="sres">${esc(sp.eff || sp.conds.join(" + "))}</b>`;
+  const mods = p.roll ? [] : sp.ab ? saveMods(c, sp.ab) : [];
+  const info = p.roll ? `${esc(sp.ab)} save ${esc(rollText(p.roll, dc))}` : mods.length ? `Bij de save: ${esc(modsText(mods))}` : "";
+  const lrLeft = c.lr ? n0(c.lr.left) : 0;
+  const lrBtn = p.lr ? `<span class="hint">Legendary resistance: save geslaagd</span>`
+    : sp.ab && !p.ok && !p.immune && lrLeft > 0 ? `<button type="button" class="link" data-ao="slr" data-id="${id}">Legendary resistance gebruiken (${lrLeft} over)</button>` : "";
+  return `<div class="at ${p.sel ? "" : "off"}">
+    <label class="atop"><input type="checkbox" data-ao="ssel" data-id="${id}" ${p.sel ? "checked" : ""}>
+      <span class="atn"><span>${nm}</span> <span class="tag ${c.kind === "pc" ? "" : "m"}">${c.kind === "pc" ? "speler" : "monster"}</span>${p.tags.map((t) => ` <span class="tag">${esc(t)}</span>`).join("")}<small>${c.max ? `${n0(c.hp)}/${n0(c.max)} HP` : "HP onbekend"}</small></span>
+      ${res}</label>
+    ${p.sel && sp.ab && !p.immune ? `<div class="seg2 sm" role="group" aria-label="Save ${nm}">${[["0", "Gefaald"], ["1", "Geslaagd"]].map(([v, l]) => `<button type="button" data-ao="ssave" data-id="${id}" data-v="${v}" aria-pressed="${(p.ok || p.lr) === (v === "1")}">${l}</button>`).join("")}</div>
+      ${info ? `<div class="acalc">${info}</div>` : ""}${lrBtn}` : ""}
+  </div>`;
+}
+
+/** Spell-tab: opbouw één keer per tab/spell/caster (velden houden focus), daarna alleen lijst, waarschuwing en knop */
+function paintSpell(el, a) {
+  const S = app.S, sp = curSpell(a), caster = S.list.find((x) => x.id === a.by && x.kind !== "lair") || null;
+  if (!el.firstChild) {
+    const cs = spellTargets(S.list);
+    const cf = a.cf || {};
+    const own = a.sp === "own" ? `<div class="sform">
+        <label>Naam<input id="s-n" value="${esc(cf.n || "")}" placeholder="bijv. Fear" maxlength="60" autocomplete="off"></label>
+        <div class="ed3">
+          <label>Conditie<select id="s-cond">${SPELL_CONDS.map((k) => `<option ${(cf.cond || "Frightened") === k ? "selected" : ""}>${k}</option>`).join("")}</select></label>
+          <label>Save<select id="s-ab"><option value="">geen</option>${ABS.map((x) => `<option ${cf.ab === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+          <label>Duur<select id="s-dur">${DURS.map(([v, l]) => `<option value="${v}" ${(cf.dur || "r10") === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></label>
+        </div>
+        <div class="schk"><label><input type="checkbox" id="s-rep" ${cf.rep ? "checked" : ""}> Save aan einde beurt</label><label><input type="checkbox" id="s-conc" ${cf.conc === false ? "" : "checked"}> Concentratie</label></div>
+      </div>` : "";
+    el.innerHTML = `<div class="dim" data-ao="close"></div>
+    <div class="sheet qsheet asheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="a-title">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="shead"><h3 id="a-title">Spell op doelen</h3><button type="button" class="link" data-ao="close">Annuleer</button></div>
+      ${aoeTabs(a)}
+      <div class="effgrid spgrid">${SPELLS.map((x, i) => `<button type="button" class="btn tap" data-ao="sp" data-v="${i}" aria-pressed="${a.sp === i}">${esc(x.n)}<small>${esc(x.sub)}</small></button>`).join("")}<button type="button" class="btn tap" data-ao="sp" data-v="own" aria-pressed="${a.sp === "own"}">+ Eigen<small>conditie + save</small></button></div>
+      <label class="scast">Caster<select id="s-by"><option value="">kies wie cast</option>${cs.map((x) => `<option value="${esc(x.id)}" ${x.id === a.by ? "selected" : ""}>${esc(x.name)}${x.id === S.active ? " (aan de beurt)" : ""}</option>`).join("")}</select></label>
+      ${own}
+      ${sp && sp.ab ? `<div class="asave"><span class="qlbl">Save</span><b>${esc(sp.ab)}</b>
+        <input id="s-dc" type="number" inputmode="numeric" placeholder="DC" aria-label="DC" min="1" max="40" value="${esc(a.sdc || "")}">
+        <button type="button" class="btn small" data-ao="sroll">Rol monsters</button></div>` : ""}
+      <p class="hint" id="s-info" aria-live="polite"></p>
+      <div class="asel"><span class="qlbl" id="a-cnt"></span><span><button type="button" class="link" data-ao="sall" data-v="monster">Monsters</button><button type="button" class="link" data-ao="sall" data-v="pc">Spelers</button><button type="button" class="link" data-ao="sall" data-v="">Niemand</button></span></div>
+      <div class="alist" id="a-list"></div>
+      <div class="afoot"><span class="hint" id="a-sum" aria-live="polite"></span><button type="button" class="btn primary qgo ago" data-ao="sgo"></button></div>
+    </div>`;
+    el.hidden = false;
+  }
+  const L = sortOrder(spellTargets(S.list));
+  const go = el.querySelector(".ago");
+  if (!sp) {
+    $("#s-info").textContent = "Kies een spell.";
+    $("#a-list").innerHTML = ""; $("#a-cnt").textContent = ""; $("#a-sum").textContent = "";
+    go.disabled = true; go.textContent = "Kies een spell";
+    return;
+  }
+  const rows = L.map((c) => ({ c, p: spellPick(a, sp, caster, c) })), sel = rows.filter((x) => x.p.sel);
+  // uitleg: wat een gefaalde save doet, duur, concentratie, herhaalsave, en of de caster een andere concentratie verliest
+  const what = sp.eff ? effText(PRESETS.find((p) => p.n === sp.eff)) || "" : sp.conds.join(" + ");
+  const bits = [what, durName(sp.eff ? "r10" : sp.dur), sp.conc ? "conc" : "", sp.rep ? `herhaalsave ${sp.ab} einde beurt` : "", sp.note || ""].filter(Boolean);
+  const lose = caster && sp.conc && caster.cond.includes("Concentrating") && caster.concSpell && caster.concSpell !== sp.n ? caster.concSpell : "";
+  $("#s-info").innerHTML = `${esc(bits.join(" · "))}${lose ? `<br><b class="bad">${esc(caster.name)} concentreert nu op ${esc(lose)}: die vervalt.</b>` : ""}`;
+  $("#a-list").innerHTML = rows.map((x) => spellRow(a, sp, caster, x.c, x.p)).join("") || `<p class="hint">Niemand om te kiezen.</p>`;
+  $("#a-cnt").textContent = `Doelen · ${sel.length} gekozen`;
+  const hit = sel.filter((x) => !x.p.immune && !x.p.ok && !x.p.lr).length, ok = sel.length - hit;
+  $("#a-sum").textContent = sp.ab && sel.length ? `${hit} ${sp.eff ? "geraakt" : sp.conds[0]}${ok ? ` · ${ok} geen effect` : ""}` : "";
+  go.disabled = !caster || !sel.length;
+  go.textContent = !caster ? "Kies wie cast" : !sel.length ? "Kies doelen" : `${sp.n} op ${sel.length} doel${sel.length === 1 ? "" : "en"}`;
 }
 
 /* ---------- aanval op één doel (to-hit-knop op de monsterkaart) ---------- */

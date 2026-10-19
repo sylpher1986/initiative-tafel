@@ -47,7 +47,8 @@ const cleanDs = (ds) => (obj(ds) ? { s: num(ds.s), f: num(ds.f), stable: !!ds.st
 
 /** Duur van een conditie of effect */
 const cleanDur = (e) => ({ kind: str(e.kind, 10), who: str(e.who, 40), at: e.at === "end" ? "end" : "start", count: num(e.count),
-  ...(obj(e.save) ? { save: { ab: str(e.save.ab, 3), dc: num(e.save.dc) } } : {}) });
+  ...(obj(e.save) ? { save: { ab: str(e.save.ab, 3), dc: num(e.save.dc) } } : {}),
+  ...(e.by ? { by: str(e.by, 40), spell: str(e.spell, 120), cast: str(e.cast, 60) } : {}) }); // conditie van een concentratie-spell (spellcast.js)
 const lim = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(num(v))));
 /** Tijdelijk effect (js/rules/effects.js) */
 const cleanEff = (e) => {

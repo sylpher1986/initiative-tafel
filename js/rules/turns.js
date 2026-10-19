@@ -157,7 +157,8 @@ export function clearMonsters(state) {
   state.list = state.list.filter((c) => !gone.has(c.id));
   // conditieduur die aan de beurt van een gewist monster hing telt nooit meer af: conditie blijft, zonder duur
   for (const c of state.list) for (const [k, e] of Object.entries(c.cd || {})) if (e && gone.has(e.who)) {
-    if (e.save) c.cd[k] = { kind: "inf", save: e.save }; else delete c.cd[k];
+    const { kind, who, at, count, ...keep } = e; // save en concentratie-koppeling (by/spell/cast) blijven
+    if (Object.keys(keep).length) c.cd[k] = { kind: "inf", ...keep }; else delete c.cd[k];
   }
   out.why.push({ t: "volgende encounter: monsters gewist", id: null });
   return Object.assign(out, { n, lairs: gone.size - n });
