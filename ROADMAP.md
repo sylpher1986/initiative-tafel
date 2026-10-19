@@ -74,6 +74,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [ ] Herinnering om af en toe een export te maken
 - [x] Spelersscherm op andere apparaten: kamer (Durable Object) met kamercode en link, "Delen met spelers" in Instellingen met aantal verbonden schermen, code invoeren op het spelersscherm, herverbinden na slapen/netwerkwissel, portretten apart en één keer per id (1.24.0)
 - [x] Spelersscherm-kamer: rate-limit op `POST /api/room`: max 10 nieuwe kamers per minuut per IP (Cloudflare rate limiting binding), daarboven 429 en een melding bij Delen met spelers (1.24.4)
+- [x] Spelersscherm-kamer: delen pauzeert na 30 min zonder gewijzigde stand (timer in de kamer); spelers zien "De DM deelt op dit moment niet", de DM "Opnieuw delen" met dezelfde code (1.27.0)
 - [ ] Spelersscherm-kamer: QR-code bij de code (alleen als een kleine zelf-gehoste lib past)
 - [ ] Spelersscherm-kamer: vaste code per campagne zodra er accounts zijn (fase 2, `isOwner` in `worker/room.js`)
 - [x] Spelersscherm: zichtbaarheid instelbaar (HP monsters, initiativegetallen, condities: tonen/alleen spelers/verbergen), lair verbergen op zijn kaart, "Verborgen voor spelers" bij snel toevoegen en in de Monster-tab (1.25.0)

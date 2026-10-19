@@ -78,6 +78,10 @@ const PING = 25000, DEAD = 60000, PROBE = 5000;
  * Zelfde send/on/close als localChannel. Daarnaast komen via on():
  *   { t: "net", s }  s = "verbinden" | "open" | "kwijt" | "weg" (kamer bestaat niet/verlopen/geen toegang) | "elders" (DM in ander tabblad)
  *   { t: "n", n }    (DM) aantal verbonden spelersschermen
+ *   { t: "pauze" }   (DM) kamer pauzeerde het delen (30 min zonder wijziging); tot hervat() gaat er geen stand meer heen
+ *   { t: "hervat" }  (DM) kamer bevestigt hervat(); daarna volgt "hallo" (dmLink pusht)
+ *   { t: "gemist" }  (DM) een gewijzigde stand tijdens de pauze: spelers zien hem niet
+ *   { t: "stop" }    (speler) de DM deelt op dit moment niet; de verbinding blijft open, een nieuwe stand komt vanzelf
  * Bij elke (nieuwe) verbinding: DM-kant meldt { t: "hallo" } (dmLink pusht opnieuw), spelerskant { t: "dm" } (speler zegt hallo).
  * Spelerskant: portretten die apart binnenkomen worden weer in de stand gezet (cleanView controleert ze daarna).
  * opts: { base, WS, timers } voor tests.
@@ -88,7 +92,7 @@ export function roomChannel(code, token, opts = {}) {
   const base = opts.base || (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
   const url = `${base}/api/room/${code}/ws${token ? "?t=" + encodeURIComponent(token) : ""}`;
   const subs = new Set(), sent = new Map(), imgs = new Map();
-  let ws = null, tries = 0, retry = 0, ping = 0, lastIn = 0, done = false, state = "";
+  let ws = null, tries = 0, retry = 0, ping = 0, lastIn = 0, done = false, state = "", paused = false, want = false, check = false;
   const emit = (m) => subs.forEach((f) => f(m));
   const net = (s) => { if (s !== state) { state = s; emit({ t: "net", s }); } };
   const raw = (s) => { if (ws && ws.readyState === 1) { try { ws.send(s); return true; } catch { /* dicht */ } } return false; };
@@ -107,7 +111,13 @@ export function roomChannel(code, token, opts = {}) {
       net("open");
       T.clearInterval(ping);
       ping = T.setInterval(() => (Date.now() - lastIn > DEAD ? dead(s) : raw("ping")), PING);
-      emit(token ? { t: "hallo" } : { t: "dm" });
+      if (!token) return emit({ t: "dm" });
+      // hervat() nog niet bevestigd (ook als hij onderweg verloren ging): opnieuw sturen; "hallo" volgt na de bevestiging
+      if (want) return void raw(JSON.stringify({ t: "hervat" }));
+      // gepauzeerd: geen herpush (de kamer negeert hem). De kamer stuurt "pauze" vóór "n"; komt "n" zonder "pauze",
+      // dan is de pauze intussen opgeheven (bijv. in een ander tabblad) en gaat het hier ook weer verder.
+      check = paused;
+      if (!paused) emit({ t: "hallo" });
     };
     s.onmessage = (e) => {
       if (ws !== s) return;
@@ -116,6 +126,9 @@ export function roomChannel(code, token, opts = {}) {
       let m; try { m = JSON.parse(e.data); } catch { return; }
       if (!m || typeof m.t !== "string") return;
       if (!token && m.t === "img") { if (typeof m.id === "string") m.d ? imgs.set(m.id, m.d) : imgs.delete(m.id); return; }
+      if (token && m.t === "pauze") { check = false; if (want) return; paused = true; } // tijdens hervat(): verouderd (van vóór de bevestiging)
+      if (token && m.t === "hervat") { want = check = false; paused = false; emit(m); return emit({ t: "hallo" }); } // bevestiging: nu pas pushen
+      if (token && m.t === "n" && check) { check = false; paused = false; emit(m); emit({ t: "hervat" }); return emit({ t: "hallo" }); }
       if (!token && m.t === "stand" && m.d && Array.isArray(m.d.list)) m.d.list.forEach((c) => { if (c && imgs.has(c.id)) c.img = imgs.get(c.id); });
       emit(m);
     };
@@ -163,6 +176,7 @@ export function roomChannel(code, token, opts = {}) {
     send(m) {
       if (!token) return void raw(JSON.stringify(m)); // speler: alleen "hallo" doet iets in de kamer
       if (m.t === "stand") {
+        if (paused) return emit({ t: "gemist" }); // dmLink stuurt alleen gewijzigde standen (of na "hallo", en die komt niet tijdens een pauze)
         if (!ws || ws.readyState !== 1) return; // bij herverbinden pusht dmLink opnieuw
         const { d, imgs: ps } = splitImgs(m.d, sent);
         for (const p of ps) if (!raw(JSON.stringify({ t: "img", id: p.id, d: p.d }))) { sent.clear(); return; }
@@ -192,6 +206,12 @@ export function roomChannel(code, token, opts = {}) {
         const off = () => subs.delete(f);
         wake();
       });
+    },
+    /** Na een pauze weer delen: zelfde code en token. "hervat" naar de kamer (of zodra er verbinding is), dan "hallo" zodat dmLink pusht */
+    hervat() {
+      if (done) return;
+      paused = false; want = true; // want blijft tot de bevestiging: na herverbinden opnieuw sturen
+      if (!raw(JSON.stringify({ t: "hervat" }))) wake();
     },
     /** DM in een ander tabblad verder → hier weer overnemen */
     resume() { if (!done && state === "elders") { tries = 0; connect(); } },

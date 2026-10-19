@@ -96,6 +96,7 @@ function handler(c) {
     if (m.t === "dm") c.send({ t: "hallo" }); // DM-scherm (opnieuw) gestart, of kamer (opnieuw) verbonden
     else if (m.t === "stand") { const V = cleanView(m.d); if (V) { $("#pv-join").hidden = true; paint(V); } }
     else if (c === room && m.t === "einde") leave("De DM deelt niet meer.");
+    else if (c === room && m.t === "stop") pause();
     else if (c === room && m.t === "net") {
       $("#pv-net").hidden = m.s !== "kwijt";
       $("#pv-net").textContent = "Verbinding kwijt, opnieuw verbinden…";
@@ -115,12 +116,28 @@ function join(k) {
   try { history.replaceState(null, "", `?k=${k}`); } catch { /* geen probleem */ }
 }
 
-function leave(msg) {
-  if (room) room.close();
-  room = null;
+/** Stand weg (verouderd of gestopt) */
+function clear() {
   $("#pv-net").hidden = true;
   $("#pv-now").innerHTML = ""; $("#pv-list").innerHTML = "";
   $("#pv-down").hidden = true; $("#pv-down").innerHTML = ""; document.body.classList.remove("two");
+}
+
+/**
+ * DM pauzeerde het delen (30 min zonder wijziging): verbinding blijft open, geen invoerveld, ?k= blijft.
+ * De oude stand gaat weg: op een tv leest een gedimde lijst nog als live. De volgende stand verschijnt vanzelf (paint).
+ */
+function pause() {
+  clear();
+  $("#pv-join").hidden = true;
+  $("#pv-wait").hidden = false;
+  $("#pv-wait").innerHTML = `<b class="pvpause">De DM deelt op dit moment niet.</b><br>Zodra de DM weer deelt, verschijnt het gevecht hier vanzelf. · Kamer ${esc(fmtCode(code))}`;
+}
+
+function leave(msg) {
+  if (room) room.close();
+  room = null;
+  clear();
   try { history.replaceState(null, "", location.pathname); } catch { /* geen probleem */ }
   showJoin(msg);
 }

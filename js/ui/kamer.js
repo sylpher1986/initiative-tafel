@@ -2,7 +2,7 @@
 // Staat in Instellingen → Spelersscherm. Kamer (code + DM-token) in localStorage: na herladen loopt het delen door.
 // Alleen UI- en verbindingstoestand: niets hiervan zit in undo, opslag of export.
 import { roomChannel, dmLink, createRoom, normCode, fmtCode } from "../share.js";
-import { $, esc, toast } from "./util.js";
+import { $, esc, toast, toastHtml } from "./util.js";
 
 const KEY = "it-room";
 const LOST_MS = 10000; // pas na 10 s kwijt: rode stip op ⚙ en één melding
@@ -10,6 +10,8 @@ const LOST_MS = 10000; // pas na 10 s kwijt: rode stip op ⚙ en één melding
 let getView = null, addLink = null;
 let room = null, ch = null, link = null, off = null;
 let st = "uit", n = 0, err = "", lostT = 0, warned = false;
+// pauze: de kamer stopte het delen na 30 min zonder gewijzigde stand. missed = melding "Spelers zien dit niet" al getoond (één per pauze)
+let paused = false, resuming = false, missed = false;
 
 function loadRoom() {
   try {
@@ -30,11 +32,25 @@ function lost(on) {
   }, LOST_MS);
 }
 
+/** Rode stip op ⚙ tijdens een pauze (zoals bij "verbinding kwijt"): blijft tot de DM hervat of stopt */
+function setPaused(on) {
+  paused = on; resuming = false; missed = false;
+  document.documentElement.classList.toggle("kamer-pauze", on);
+}
+
+function resume() {
+  if (!ch || !paused || resuming) return;
+  resuming = true;
+  document.querySelector("#toast-kamer")?.remove();
+  ch.hervat();
+  paint();
+}
+
 function disconnect() {
   if (off) off(); off = null;
   if (link) addLink(link, false); link = null;
   if (ch) ch.close(); ch = null;
-  lost(false); n = 0;
+  lost(false); n = 0; setPaused(false);
 }
 
 function connect() {
@@ -42,6 +58,12 @@ function connect() {
   ch = roomChannel(room.code, room.token);
   off = ch.on((m) => {
     if (m.t === "n") { n = Math.max(0, m.n | 0); paint(); }
+    else if (m.t === "pauze") { if (!paused) { setPaused(true); paint(); } }
+    else if (m.t === "hervat") { const was = paused; setPaused(false); paint(); if (was) toast("Spelers zien het gevecht weer."); }
+    else if (m.t === "gemist") {
+      // eenmalig per pauze; samen met een melding met Ongedaan (zelfde render, < 300 ms) wordt het één melding met beide knoppen
+      if (!missed && !resuming) { missed = true; toastHtml(`Spelers zien dit niet: delen is gepauzeerd. <button class="tundo" id="toast-kamer">Opnieuw delen</button>`); }
+    }
     else if (m.t === "net") {
       st = m.s;
       lost(m.s === "kwijt");
@@ -74,7 +96,7 @@ async function stop() {
   ch = null;
   if (off) off(); off = null;
   if (link) addLink(link, false); link = null;
-  lost(false); n = 0;
+  lost(false); n = 0; setPaused(false);
   room = null; saveRoom(null); st = "uit"; err = "";
   paint();
   if (c && !(await c.stop())) toast("Geen verbinding met de kamer: spelers zien de laatste stand tot de kamer verloopt (12 uur).");
@@ -92,6 +114,14 @@ function paint() {
     box.innerHTML = `<p class="hint">Spelers volgen op hun telefoon of de tv via een code. Vraagt internet.</p>
       ${err ? `<p class="hint kamererr" role="alert">${esc(err)}</p>` : ""}
       <div class="bar"><button type="button" class="btn primary tap" data-kamer="start" ${st === "maken" ? "disabled" : ""}>${st === "maken" ? "Kamer maken…" : err.startsWith("Kamer verlopen") ? "Opnieuw delen" : "Delen met spelers"}</button></div>`;
+    return;
+  }
+  if (paused && st !== "elders") {
+    box.innerHTML = `<p class="kamer-code" aria-label="Code ${esc(room.code.split("").join(" "))}">${esc(fmtCode(room.code))}</p>
+    <p class="kamer-url">${esc(shareUrl())}</p>
+    <p class="kamer-st" aria-live="polite">Delen gestopt na 30 minuten zonder wijzigingen.</p>
+    <div class="bar"><button type="button" class="btn primary tap" data-kamer="hervat" ${resuming ? "disabled" : ""}>${resuming ? "Opnieuw delen…" : "Opnieuw delen"}</button>
+      <button type="button" class="btn tap" data-kamer="stop">Stop met delen</button></div>`;
     return;
   }
   const status = st === "open" ? (n ? `${n} scherm${n === 1 ? "" : "en"} verbonden` : "Nog niemand verbonden")
@@ -121,8 +151,10 @@ export function bindSharing(view, links) {
     else if (k === "stop") stop();
     else if (k === "copy") copy();
     else if (k === "resume") ch && ch.resume();
+    else if (k === "hervat") resume();
     else if (k === "deel") navigator.share({ title: "Initiative Tafel · spelersscherm", text: `Volg het gevecht: code ${fmtCode(room.code)}`, url: shareUrl() }).catch(() => {});
   });
+  $("#toast")?.addEventListener("click", (e) => { if (e.target.closest("#toast-kamer")) resume(); });
   room = loadRoom();
   if (room) connect();
   paint();

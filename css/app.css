@@ -543,6 +543,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .pvc .badges{grid-column:2/4;padding:0}
 .pvc .bd{font-size:.62em}
 .pvwait{text-align:center;padding:2em 1em}
+.pvpause{display:block;margin-bottom:.4em;font-size:1.4em;color:var(--fg)}
 /* smal (telefoon): HP op een eigen regel, zodat de naam ruimte houdt */
 @media (max-width:560px){.pvnow .r{text-align:left}.pvhp{grid-column:2/4;flex-direction:row;align-items:center;justify-content:flex-start}.pvhp:empty{display:none}.pvhp .hpw{width:auto;flex:1}}
 
@@ -717,8 +718,8 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .kamer-st{margin:0;font-size:.92rem;color:var(--muted)}
 .kamer-st.on{color:var(--good)}
 .kamer-st.on::before{content:"● "}
-html.kamer-lost .dock .prow [data-prep="data"]{position:relative}
-html.kamer-lost .dock .prow [data-prep="data"]::after{content:"";position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:var(--bad)}
+html.kamer-lost .dock .prow [data-prep="data"],html.kamer-pauze .dock .prow [data-prep="data"]{position:relative}
+html.kamer-lost .dock .prow [data-prep="data"]::after,html.kamer-pauze .dock .prow [data-prep="data"]::after{content:"";position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:var(--bad)}
 
 /* Spelersscherm: code invoeren en verbindingsstatus */
 .pvjoin{display:grid;grid-template-columns:minmax(0,1fr);gap:.4em;width:min(20em,100%);margin:1em auto 0}

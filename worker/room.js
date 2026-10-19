@@ -8,9 +8,15 @@
 //   DM → kamer   { t: "stand", d }        snapshot uit toPlayerView, portretten eruit (die gaan apart)
 //                { t: "img", id, d }      portret van één speler (data-url), of d: null om het te wissen
 //                { t: "stop" }            stoppen met delen: spelers krijgen "einde", de kamer wordt gewist
+//                { t: "hervat" }          na een pauze weer delen (zelfde code en token); de DM pusht daarna de stand
 //   speler →     { t: "hallo" }           kamer stuurt de bewaarde portretten en de laatste stand
 //   kamer → DM   { t: "n", n }            aantal verbonden spelersschermen
-//   kamer → speler: de doorgestuurde "img"/"stand" en { t: "einde" }
+//                { t: "hervat" }          bevestiging van "hervat"
+//                { t: "pauze" }           delen gepauzeerd (PAUSE_MS zonder gewijzigde stand); ook bij verbinden tijdens een pauze
+//   kamer → speler: de doorgestuurde "img"/"stand", { t: "stop" } (pauze: socket blijft open) en { t: "einde" } (kamer weg)
+// Pauze: alleen een stand die inhoudelijk verschilt van de bewaarde telt als DM-activiteit (`act`); een identieke herpush
+// (na herverbinden), "img" en spelersberichten niet. Na PAUSE_MS: `paused`, spelers krijgen "stop", standen worden genegeerd
+// tot "hervat". Eén alarm voor pauze én opruimen (IDLE_MS na `at`): steeds het eerstvolgende moment.
 // De kamer parset de snapshot niet (CPU-limiet); spelersschermen schonen alles op met cleanView/cleanImg.
 // Sluitcodes: 4001 = DM verder in een ander tabblad, 4003 = token klopt niet, 4004 = kamer bestaat niet (meer).
 
@@ -21,6 +27,7 @@ export const MAX_IMG = 64 * 1024;     // één portret (cleanImg staat 60 000 te
 export const MAX_IMGS = 40;
 export const MAX_PLAYER_MSG = 256;    // spelers sturen alleen "hallo"
 export const IDLE_MS = 12 * 3600e3;   // kamer weg na 12 uur zonder iets van de DM
+export const PAUSE_MS = 30 * 60e3;    // delen pauzeert na 30 min zonder gewijzigde stand (vast, niet instelbaar)
 export const MAX_SOCKETS = 60;
 export const HALLO_MS = 2000;
 
@@ -59,6 +66,7 @@ export async function isOwner(owner, req) {
 
 const sendTo = (ws, s) => { try { ws.send(s); } catch { /* al dicht */ } };
 const closeWs = (ws, code, why) => { try { ws.close(code, why); } catch { /* al dicht */ } };
+const STOP = JSON.stringify({ t: "stop" }), PAUZE = JSON.stringify({ t: "pauze" });
 const msgOf = (raw) => { try { const m = JSON.parse(raw); return m && typeof m === "object" ? m : null; } catch { return null; } };
 
 export class Room {
@@ -73,8 +81,9 @@ export class Room {
     if (url.pathname === "/init") { // alleen vanuit de Worker (POST /api/room)
       if (await st.get("owner")) return new Response("bestaat", { status: 409 });
       const { hash } = await req.json();
-      await st.put({ owner: { kind: "token", hash }, at: Date.now() });
-      await st.setAlarm(Date.now() + IDLE_MS);
+      const now = Date.now();
+      await st.put({ owner: { kind: "token", hash }, at: now, act: now });
+      await st.setAlarm(now + PAUSE_MS);
       return new Response("ok", { status: 201 });
     }
     const [client, server] = rt.pair();
@@ -86,11 +95,17 @@ export class Room {
     if (dm) {
       // dubbele DM-tabs: de nieuwste wint, de oude stopt (en verbindt niet vanzelf opnieuw)
       for (const old of this.ctx.getWebSockets("dm")) closeWs(old, 4001, "ander tabblad");
-      await st.put("at", Date.now());
+      // kamers van vóór de pauze-timer: geen act (anders schuift act ?? at mee met elke identieke herpush) en alleen het 12-uursalarm
+      const now = Date.now();
+      await st.put((await st.get("act")) == null ? { at: now, act: now } : { at: now });
+      await this.plan();
     }
     this.ctx.acceptWebSocket(server, [dm ? "dm" : "p"]);
-    if (dm) sendTo(server, JSON.stringify({ t: "n", n: this.players().length }));
-    else this.count();
+    if (dm) {
+      // "pauze" vóór "n": de DM-kant weet bij "n" dat de kamer niet gepauzeerd is (oude pauze in een ander tabblad opgeheven)
+      if (await st.get("paused")) sendTo(server, PAUZE);
+      sendTo(server, JSON.stringify({ t: "n", n: this.players().length }));
+    } else this.count();
     return rt.upgraded(client);
   }
 
@@ -115,6 +130,7 @@ export class Room {
       if (ws.serializeAttachment) ws.serializeAttachment({ h: Date.now() });
       const imgs = await st.list({ prefix: "img:" });
       for (const [k, d] of imgs) sendTo(ws, JSON.stringify({ t: "img", id: k.slice(4), d }));
+      if (await st.get("paused")) return sendTo(ws, STOP);
       const s = await st.get("stand");
       if (s) sendTo(ws, s);
       return;
@@ -124,8 +140,10 @@ export class Room {
     if (!m) return;
     if (m.t === "stand") {
       if (!m.d || typeof m.d !== "object") return;
-      const s = JSON.stringify({ t: "stand", d: m.d });
-      await st.put({ stand: s, at: Date.now() });
+      if (await st.get("paused")) return; // pas weer na "hervat"
+      const s = JSON.stringify({ t: "stand", d: m.d }), now = Date.now();
+      // alleen een inhoudelijk andere stand is activiteit; het alarm staat al op of vóór act + PAUSE_MS en schuift zelf op
+      await st.put(s === (await st.get("stand")) ? { at: now } : { stand: s, at: now, act: now });
       for (const w of this.players()) sendTo(w, s);
     } else if (m.t === "img") {
       const id = typeof m.id === "string" && m.id.length && m.id.length <= 40 ? m.id : null;
@@ -140,7 +158,31 @@ export class Room {
       for (const w of this.players()) sendTo(w, s);
     } else if (m.t === "stop") {
       await this.wipe(ws);
+    } else if (m.t === "hervat") {
+      const now = Date.now();
+      await st.put({ paused: false, at: now, act: now });
+      await this.plan();
+      sendTo(ws, JSON.stringify({ t: "hervat" })); // de DM pusht hierna de stand; die gaat naar alle spelers, ook als hij gelijk is
     }
+  }
+
+  /** Eerstvolgende alarm: pauze (act + PAUSE_MS, niet tijdens een pauze) of opruimen (at + IDLE_MS) */
+  async due() {
+    const st = this.ctx.storage, at = await st.get("at");
+    if (await st.get("paused")) return at + IDLE_MS;
+    return Math.min(((await st.get("act")) ?? at) + PAUSE_MS, at + IDLE_MS);
+  }
+  /** Alarm vervroegen als dat nodig is (een te vroeg alarm plant zichzelf opnieuw) */
+  async plan() {
+    const st = this.ctx.storage, due = await this.due(), a = await st.getAlarm();
+    if (a == null || a > due) await st.setAlarm(due);
+  }
+
+  /** Pauze: spelers krijgen "stop" (verbinding blijft open), DM krijgt "pauze"; code, stand en portretten blijven */
+  async pause() {
+    await this.ctx.storage.put("paused", true);
+    for (const w of this.players()) sendTo(w, STOP);
+    for (const w of this.ctx.getWebSockets("dm")) sendTo(w, PAUZE);
   }
 
   /** Kamer opheffen: spelers krijgen "einde" en 4004, alles weg */
@@ -162,9 +204,10 @@ export class Room {
   async alarm() {
     const st = this.ctx.storage, at = await st.get("at");
     if (!at) return;
-    const due = at + IDLE_MS;
-    if (Date.now() < due) await st.setAlarm(due);
-    else await this.wipe();
+    const now = Date.now();
+    if (now >= at + IDLE_MS) return this.wipe();
+    if (!(await st.get("paused")) && now >= ((await st.get("act")) ?? at) + PAUSE_MS) await this.pause();
+    await st.setAlarm(await this.due());
   }
 }
 

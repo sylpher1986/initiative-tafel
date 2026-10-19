@@ -194,3 +194,89 @@ test("review: stop wacht kort op de verbinding; zonder verbinding false", async 
   c.T.q.filter((x) => x.f && x.ms === 10).forEach((x) => { const f = x.f; x.f = null; f(); });
   assert.equal(await pr2, false);
 });
+
+test("DM: pauze → geen standen meer, gewijzigde stand = 'gemist'; herverbinden pusht niet; hervat wacht op bevestiging", async () => {
+  const { ch, got, T } = await chan("tok");
+  let n = 0;
+  const link = dmLink(ch, () => ({ v: 1, n, list: [] }));
+  socks[0].open();
+  assert.equal(socks[0].msgs().length, 1);
+  socks[0].recv({ t: "pauze" });
+  assert.deepEqual(got.at(-1), { t: "pauze" });
+  n++; link.update();
+  assert.equal(socks[0].msgs().length, 1, "niets naar de kamer");
+  assert.deepEqual(got.at(-1), { t: "gemist" });
+  link.update(); // niets veranderd: geen nieuwe 'gemist'
+  assert.equal(got.filter((m) => m.t === "gemist").length, 1);
+  // herverbinden tijdens de pauze: geen 'hallo', dus geen herpush
+  socks[0].drop(); T.run(); socks[1].open();
+  assert.equal(got.at(-1).s, "open");
+  assert.equal(socks[1].msgs().length, 0);
+  ch.hervat();
+  assert.deepEqual(socks[1].msgs(), [{ t: "hervat" }]);
+  assert.equal(got.at(-1).t, "net", "pas pushen na bevestiging");
+  socks[1].recv({ t: "hervat" });
+  assert.deepEqual(got.slice(-2), [{ t: "hervat" }, { t: "hallo" }]);
+  assert.deepEqual(socks[1].msgs().map((m) => m.t), ["hervat", "stand"]);
+});
+
+test("DM: hervat zonder verbinding gaat mee zodra er weer verbinding is (vóór de herpush)", async () => {
+  const { ch, got } = await chan("tok");
+  dmLink(ch, () => ({ v: 1, list: [] }));
+  socks[0].open();
+  socks[0].recv({ t: "pauze" });
+  socks[0].drop();
+  ch.hervat(); // verbindt direct, niet op de backoff wachten
+  assert.equal(socks.length, 2);
+  socks[1].open();
+  assert.deepEqual(socks[1].msgs().map((m) => m.t), ["hervat"], "herpush pas na de bevestiging");
+  // kamer stuurde bij verbinden nog "pauze" (vóór het verwerken van hervat): genegeerd, de bevestiging erna wint
+  socks[1].recv({ t: "pauze" });
+  assert.equal(got.filter((m) => m.t === "pauze").length, 1, "verouderde pauze niet doorgegeven");
+  socks[1].recv({ t: "hervat" });
+  assert.equal(got.at(-1).t, "hallo");
+  assert.deepEqual(socks[1].msgs().map((m) => m.t), ["hervat", "stand"]);
+});
+
+test("review: hervat onderweg verloren (verbinding weg vóór de bevestiging) → na herverbinden opnieuw, niet vast op 'Opnieuw delen…'", async () => {
+  const { ch, got, T } = await chan("tok");
+  dmLink(ch, () => ({ v: 1, list: [] }));
+  socks[0].open();
+  socks[0].recv({ t: "pauze" });
+  ch.hervat();
+  assert.deepEqual(socks[0].msgs().map((m) => m.t), ["stand", "hervat"]);
+  socks[0].drop(); T.run(); socks[1].open();
+  assert.deepEqual(socks[1].msgs().map((m) => m.t), ["hervat"]);
+  socks[1].recv({ t: "pauze" }); // kamer had hem niet gekregen: nog gepauzeerd bij verbinden
+  socks[1].recv({ t: "n", n: 0 });
+  socks[1].recv({ t: "hervat" });
+  assert.deepEqual(got.slice(-2), [{ t: "hervat" }, { t: "hallo" }]);
+  assert.deepEqual(socks[1].msgs().map((m) => m.t), ["hervat", "stand"]);
+});
+
+test("review: pauze in dit tabblad, intussen elders hervat → bij verbinden 'n' zonder 'pauze' = weer delen", async () => {
+  const { ch, got, T } = await chan("tok");
+  dmLink(ch, () => ({ v: 1, list: [] }));
+  socks[0].open();
+  socks[0].recv({ t: "pauze" });
+  socks[0].drop(); T.run(); socks[1].open();
+  assert.equal(socks[1].msgs().length, 0);
+  socks[1].recv({ t: "n", n: 2 });
+  assert.deepEqual(got.slice(-3), [{ t: "n", n: 2 }, { t: "hervat" }, { t: "hallo" }]);
+  assert.deepEqual(socks[1].msgs().map((m) => m.t), ["stand"]);
+  // nog steeds gepauzeerd: "pauze" vóór "n" houdt de pauze vast
+  socks[1].recv({ t: "pauze" });
+  socks[1].drop(); T.run(); socks[2].open();
+  socks[2].recv({ t: "pauze" }); socks[2].recv({ t: "n", n: 2 });
+  assert.equal(got.at(-1).t, "n");
+  assert.equal(socks[2].msgs().length, 0);
+});
+
+test("speler: 'stop' (pauze) komt door, verbinding blijft open en verbindt niet opnieuw", async () => {
+  const { got, T } = await chan();
+  socks[0].open();
+  socks[0].recv({ t: "stop" });
+  assert.deepEqual(got.at(-1), { t: "stop" });
+  assert.equal(socks.length, 1);
+  assert.equal(T.q.filter((x) => x.f).length, 0);
+});

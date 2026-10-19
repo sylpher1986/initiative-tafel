@@ -1,7 +1,7 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import worker from "../worker/index.js";
-import { Room, rt, newCode, CODE_RE, CODE_ABC, MAX_MSG, MAX_IMG, MAX_IMGS, IDLE_MS, ROOM_LIMIT_N } from "../worker/room.js";
+import { Room, rt, newCode, CODE_RE, CODE_ABC, MAX_MSG, MAX_IMG, MAX_IMGS, IDLE_MS, PAUSE_MS, ROOM_LIMIT_N } from "../worker/room.js";
 import { readFileSync } from "node:fs";
 
 /* ---------- nagebootste Durable Object-runtime ---------- */
@@ -24,7 +24,7 @@ function fakeStorage() {
     delete: async (k) => m.delete(k),
     list: async ({ prefix }) => new Map([...m].filter(([k]) => k.startsWith(prefix))),
     deleteAll: async () => m.clear(),
-    setAlarm: async (t) => { alarm = t; }, deleteAlarm: async () => { alarm = null; },
+    setAlarm: async (t) => { alarm = t; }, getAlarm: async () => alarm, deleteAlarm: async () => { alarm = null; },
   };
 }
 let rooms;
@@ -247,6 +247,7 @@ test("alarm: na 12 uur zonder DM weg, anders opnieuw gepland", async () => {
   const room = rooms[code], st = room.storage;
   const p = await open(code);
   st.m.set("at", Date.now() - 1000);
+  st.m.set("paused", true); // gepauzeerd: alleen het opruimmoment telt
   await room.alarm();
   assert.ok(st.alarm >= Date.now() + IDLE_MS - 2000, "nog actief: later opnieuw");
   assert.ok(st.m.get("owner"));
@@ -270,4 +271,108 @@ test("review: hallo hooguit één keer per 2 s per scherm", async () => {
   att.h -= 3000;
   await p.say({ t: "hallo" });
   assert.equal(p.ws.sent.length, n0 + 2);
+});
+
+/* ---------- pauze na 30 min zonder gewijzigde stand ---------- */
+const V1 = { v: 1, list: [{ id: "a" }] }, V2 = { v: 1, list: [{ id: "a" }, { id: "b" }] };
+
+test("pauze: alleen een inhoudelijk gewijzigde stand is activiteit (identieke herpush en img niet)", async () => {
+  const { code, token } = await make();
+  const st = rooms[code].storage;
+  assert.ok(st.alarm <= Date.now() + PAUSE_MS, "eerste alarm = pauzemoment");
+  const dm = await open(code, token);
+  await dm.say({ t: "stand", d: V1 });
+  st.m.set("act", 1000); st.m.set("at", Date.now() - 5000);
+  await dm.say({ t: "stand", d: V1 }); // herpush na herverbinden
+  assert.equal(st.m.get("act"), 1000, "identiek: timer loopt door");
+  assert.ok(st.m.get("at") > Date.now() - 1000, "opruimklok (12 u) loopt wel bij");
+  await dm.say({ t: "img", id: "a", d: "data:A" });
+  assert.equal(st.m.get("act"), 1000, "portret telt niet");
+  const p = await open(code);
+  let att = null; p.ws.serializeAttachment = (v) => { att = v; }; p.ws.deserializeAttachment = () => att;
+  await p.say({ t: "hallo" });
+  assert.equal(st.m.get("act"), 1000, "spelersbericht telt niet");
+  const dm2 = await open(code, token); // DM herverbindt
+  assert.equal(st.m.get("act"), 1000, "verbinden telt niet");
+  await dm2.say({ t: "stand", d: V2 });
+  assert.ok(st.m.get("act") > Date.now() - 1000, "gewijzigd: timer op nul");
+});
+
+test("pauze: na 30 min stop naar spelers, pauze naar DM; code, stand en portretten blijven; standen genegeerd", async () => {
+  const { code, token } = await make();
+  const room = rooms[code], st = room.storage;
+  const dm = await open(code, token), p = await open(code);
+  await dm.say({ t: "img", id: "a", d: "data:A" });
+  await dm.say({ t: "stand", d: V1 });
+  // alarm te vroeg (act schoof op): niets, opnieuw gepland op act + 30 min
+  await room.alarm();
+  assert.ok(!st.m.get("paused"));
+  assert.ok(Math.abs(st.alarm - (st.m.get("act") + PAUSE_MS)) < 5);
+  st.m.set("act", Date.now() - PAUSE_MS - 1);
+  await room.alarm();
+  assert.equal(st.m.get("paused"), true);
+  assert.deepEqual(p.ws.msgs().at(-1), { t: "stop" });
+  assert.equal(p.ws.closed, null, "speler blijft verbonden (geen herverbindlus)");
+  assert.deepEqual(dm.ws.msgs().at(-1), { t: "pauze" });
+  assert.ok(st.m.get("owner") && st.m.get("stand") && st.m.get("img:a"));
+  assert.ok(Math.abs(st.alarm - (st.m.get("at") + IDLE_MS)) < 5, "gepauzeerd: volgende alarm = opruimen");
+  // tijdens de pauze: stand genegeerd, portret wel bewaard (de DM-kant denkt dat hij verstuurd is)
+  const n0 = p.ws.sent.length;
+  await dm.say({ t: "stand", d: V2 });
+  assert.equal(p.ws.sent.length, n0);
+  assert.equal(JSON.parse(st.m.get("stand")).d.list.length, 1);
+  // nieuw scherm of herverbonden speler: portretten en stop, geen oude stand
+  const p2 = await open(code);
+  await p2.say({ t: "hallo" });
+  assert.deepEqual(p2.ws.msgs(), [{ t: "img", id: "a", d: "data:A" }, { t: "stop" }]);
+  // DM herlaadt de pagina: krijgt meteen pauze
+  const dm2 = await open(code, token);
+  assert.deepEqual(dm2.ws.msgs(), [{ t: "pauze" }, { t: "n", n: 2 }]);
+  // alarm tijdens de pauze pauzeert niet nog eens
+  const n1 = p.ws.sent.length;
+  await room.alarm();
+  assert.equal(p.ws.sent.length, n1);
+  // na 12 uur toch weg
+  st.m.set("at", Date.now() - IDLE_MS - 1);
+  await room.alarm();
+  assert.equal(st.m.size, 0);
+  assert.deepEqual(p.ws.msgs().at(-1), { t: "einde" });
+});
+
+test("pauze: hervatten met dezelfde code en hetzelfde token; timer op nul, stand weer naar spelers", async () => {
+  const { code, token } = await make();
+  const room = rooms[code], st = room.storage;
+  const dm = await open(code, token), p = await open(code);
+  await dm.say({ t: "stand", d: V1 });
+  st.m.set("act", Date.now() - PAUSE_MS - 1);
+  await room.alarm();
+  await dm.say({ t: "hervat" });
+  assert.equal(st.m.get("paused"), false);
+  assert.ok(st.m.get("act") > Date.now() - 1000);
+  assert.deepEqual(dm.ws.msgs().at(-1), { t: "hervat" });
+  assert.ok(st.alarm <= Date.now() + PAUSE_MS && st.alarm > Date.now(), "alarm weer op het pauzemoment");
+  await dm.say({ t: "stand", d: V1 }); // identiek, maar spelers zagen "stop": wel doorsturen
+  assert.deepEqual(p.ws.msgs().at(-1), { t: "stand", d: V1 });
+  // speler kan niet hervatten
+  st.m.set("act", Date.now() - PAUSE_MS - 1);
+  await room.alarm();
+  await p.say({ t: "hervat" });
+  assert.equal(st.m.get("paused"), true);
+});
+
+test("pauze: kamer van vóór de timer (geen act, alarm over 12 u) krijgt bij DM-verbinding het pauzealarm", async () => {
+  const { code, token } = await make();
+  const st = rooms[code].storage;
+  st.m.delete("act");
+  await st.setAlarm(Date.now() + IDLE_MS);
+  const dm = await open(code, token);
+  assert.ok(st.alarm <= Date.now() + PAUSE_MS + 5);
+  // act wordt bij verbinden gezet, zodat een identieke herpush hem daarna niet meer opschuift
+  const act = st.m.get("act");
+  assert.ok(act > 0);
+  await dm.say({ t: "stand", d: { v: 1, list: [] } });
+  const act2 = st.m.get("act");
+  await new Promise((r) => setTimeout(r, 3));
+  await dm.say({ t: "stand", d: { v: 1, list: [] } });
+  assert.equal(st.m.get("act"), act2, "identieke herpush telt niet");
 });
