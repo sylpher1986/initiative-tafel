@@ -5,7 +5,7 @@ import { render, ui, openId, paintLog, paintParty, paintQadd, monListHtml, monLa
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
-import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc } from "../rules/effects.js";
+import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc } from "../rules/effects.js";
 import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
@@ -13,7 +13,8 @@ import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDu
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, defMode } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
-import { castInfo, legInfo, rcInfo, pickList, CONC_SPELLS, cleanSpell } from "../rules/spells.js";
+import { castInfo, legInfo, rcInfo, pickList, isConc } from "../rules/spells.js";
+import { rulesEd, setRulesEd } from "./spellrules.js";
 import { spellClick as spellInfoClick, spellOpen, closeSpell, getSpellEd, setSpellEd } from "./spellinfo.js";
 import { logText } from "../log.js";
 import { readSheetPdf, fetchDdb } from "../ddb.js";
@@ -137,12 +138,12 @@ const row = {
   },
   /* ---- effecten ---- */
   effp(c, b) {
-    const i = +b.dataset.i, p = PRESETS[i];
+    const i = +b.dataset.i, p = presetsFor(rulesEd())[i];
     if (!p) return false;
     if (p.conc && !app.S.active) { ui.effWho = { id: c.id, i }; return; } // geen beurt: vraag wie cast
     return applyEff(c, p, p.conc ? app.S.active : null);
   },
-  effby(c, b) { const w = ui.effWho; if (!w || w.id !== c.id) return false; return applyEff(c, PRESETS[w.i], b.dataset.by); },
+  effby(c, b) { const w = ui.effWho; if (!w || w.id !== c.id) return false; return applyEff(c, presetsFor(rulesEd())[w.i], b.dataset.by); },
   "effwho-no"() { ui.effWho = null; },
   effcustom() { ui.effCustom = !ui.effCustom; },
   "eff-add"(c) {
@@ -213,8 +214,8 @@ function rowData(c, b) {
     const spend = +ds.i < o.left;
     toggle(o, +ds.i);
     ui.castPick = null;
-    if (spend && ds.slot !== undefined && pickList(c, o.lvl).some((x) => x.conc)) ui.castPick = { id: c.id, lvl: o.lvl };
-    if (spend && ds.daily !== undefined && CONC_SPELLS.has(cleanSpell(o.n))) apply(R.startConc(c, o.n.replace(/\(.*?\)/g, "").trim()));
+    if (spend && ds.slot !== undefined && pickList(c, o.lvl, rulesEd()).some((x) => x.conc)) ui.castPick = { id: c.id, lvl: o.lvl };
+    if (spend && ds.daily !== undefined && isConc(o.n, rulesEd())) apply(R.startConc(c, o.n.replace(/\(.*?\)/g, "").trim()));
     return true;
   }
   if (ds.pickspell !== undefined) { if (ds.conc) apply(R.startConc(c, ds.pickspell)); ui.castPick = null; return true; }
@@ -859,7 +860,7 @@ function spellGo() {
   const picks = sortOrder(spellTargets(S.list)).map((c) => ({ c, p: spellPick(a, sp, caster, c) })).filter((x) => x.p.sel)
     .map(({ c, p }) => ({ c, m: p.m, ok: !!sp.ab && p.ok, lr: !!sp.ab && p.lr, note: p.roll ? `${sp.ab} save ${rollText(p.roll, dc)}` : "" }));
   if (!picks.length) return;
-  const r = castSpell(S.list, sp, caster, picks, { round: S.round, active: S.active, dc: a.sdc });
+  const r = castSpell(S.list, sp, caster, picks, { round: S.round, active: S.active, dc: a.sdc, ed: rulesEd() });
   addWhy(r.why);
   ui.aoe = null;
   render();
@@ -1223,6 +1224,11 @@ export function bindBackup(afterImport) {
     const b = e.target.closest("[data-theme-set]");
     if (b && window.itTheme) showTheme(window.itTheme.set(b.dataset.themeSet));
   });
+  // spellregels: hoe de app spells afhandelt (alleen spells; render volgt meteen: presets en concentratie)
+  const rseg = $("#rules-seg");
+  const showRules = (ed) => rseg.querySelectorAll("[data-rules]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.rules === ed));
+  showRules(rulesEd());
+  rseg.addEventListener("click", (e) => { const b = e.target.closest("[data-rules]"); if (b) { showRules(setRulesEd(b.dataset.rules)); render(); } });
   // spell-uitleg: welke editie het paneel eerst toont (bewaard op dit apparaat)
   const eseg = $("#spelled-seg");
   const showEd = (ed) => eseg.querySelectorAll("[data-spelled]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.spelled === ed));

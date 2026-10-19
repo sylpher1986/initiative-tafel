@@ -1,7 +1,7 @@
 // Acties uit een statblock compact maken voor de monsterkaart: to hit, damage (met type) en save-DC.
 // Puur: geen DOM. Statblocktekst kan uit een import komen; de UI escapet alles wat hieruit komt.
 import { d } from "./dice.js";
-import { applyDamage, critAtZero, merge } from "./combat.js";
+import { applyDamage, critAtZero, merge, wakeByDamage } from "./combat.js";
 
 const ABIL = { strength: "STR", dexterity: "DEX", constitution: "CON", intelligence: "INT", wisdom: "WIS", charisma: "CHA" };
 const DICE = String.raw`(\d+d\d+(?:\s*[+−-]\s*\d+)?)`;
@@ -249,5 +249,5 @@ export function atkDamage(c, res) {
   if (!(c.kind === "pc" && c.hp <= 0 && res.crit && !(c.ds && c.ds.dead))) return applyDamage(c, res.dealt, 1, true);
   const temp = Math.min(c.temp || 0, res.dealt), rest = res.dealt - temp; // temp HP vangt eerst op, ook op 0 HP
   if (rest <= 0 || rest >= c.max) return applyDamage(c, res.dealt, 1, true);
-  return merge(temp ? applyDamage(c, temp, 1, true) : { msgs: [], why: [] }, critAtZero(c));
+  return merge(merge(wakeByDamage(c), temp ? applyDamage(c, temp, 1, true) : { msgs: [], why: [] }), critAtZero(c)); // schade = Sleep/Hypnotic Pattern weg
 }

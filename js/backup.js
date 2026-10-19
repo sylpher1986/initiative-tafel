@@ -48,14 +48,16 @@ const cleanDs = (ds) => (obj(ds) ? { s: num(ds.s), f: num(ds.f), stable: !!ds.st
 /** Duur van een conditie of effect */
 const cleanDur = (e) => ({ kind: str(e.kind, 10), who: str(e.who, 40), at: e.at === "end" ? "end" : "start", count: num(e.count),
   ...(obj(e.save) ? { save: { ab: str(e.save.ab, 3), dc: num(e.save.dc) } } : {}),
-  ...(e.by ? { by: str(e.by, 40), spell: str(e.spell, 120), cast: str(e.cast, 60) } : {}) }); // conditie van een concentratie-spell (spellcast.js)
+  ...(e.by ? { by: str(e.by, 40), spell: str(e.spell, 120), cast: str(e.cast, 60) } : {}), // conditie van een concentratie-spell (spellcast.js)
+  ...(e.brk ? { brk: 1 } : {}), ...(CONDS.includes(e.then) && e.then !== "Concentrating" ? { then: e.then } : {}) }); // vervalt bij schade; vervolgconditie (Sleep 2024)
 const lim = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(num(v))));
 /** Tijdelijk effect (js/rules/effects.js) */
 const cleanEff = (e) => {
   const st = ["ac", "max"].includes(e.st) ? e.st : "";
   return { id: str(e.id, 40) || Math.random().toString(36).slice(2, 9), n: str(e.n, 60) || "Effect", st,
     op: st === "ac" && ["+", "=", "min"].includes(e.op) ? e.op : "+", v: st === "ac" ? lim(e.v, -20, 40) : st ? lim(e.v, -999, 999) : 0, txt: str(e.txt, 120), end: str(e.end, 120),
-    d: obj(e.d) ? cleanDur(e.d) : null, lr: !!e.lr, by: e.by ? str(e.by, 40) : null, spell: e.spell ? str(e.spell, 120) : null, ...(e.by && e.cast ? { cast: str(e.cast, 60) } : {}), hpd: st === "max" ? lim(e.hpd, -9999, 9999) : 0 };
+    d: obj(e.d) ? cleanDur(e.d) : null, lr: !!e.lr, by: e.by ? str(e.by, 40) : null, spell: e.spell ? str(e.spell, 120) : null, ...(e.by && e.cast ? { cast: str(e.cast, 60) } : {}), hpd: st === "max" ? lim(e.hpd, -9999, 9999) : 0,
+    ...(obj(e.af) && e.af.n ? { af: { n: str(e.af.n, 60), txt: str(e.af.txt, 120), ...(CONDS.includes(e.af.cond) && e.af.cond !== "Concentrating" ? { cond: e.af.cond } : {}) } } : {}) }; // vervolg (Lethargy)
 };
 
 export function cleanCombatant(c) {

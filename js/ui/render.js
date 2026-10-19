@@ -4,7 +4,7 @@ import { $, esc, n0, spellLink } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
 import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf } from "../rules/turns.js";
-import { PRESETS, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn } from "../rules/effects.js";
+import { presetsFor, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn } from "../rules/effects.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList, splitSpells } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus } from "../rules/aoe.js";
@@ -15,7 +15,8 @@ import { sgn } from "../rules/dice.js";
 import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
 import { openSaves } from "../rules/saves.js";
 import { avatar, icon, monType } from "./avatar.js";
-import { SPELLS, SPELL_CONDS, customSpell, spellTargets, spellDefault, condImmune } from "../rules/spellcast.js";
+import { SPELLS, SPELL_CONDS, customSpell, spellTargets, spellDefault, condImmune, spellFor } from "../rules/spellcast.js";
+import { rulesEd } from "./spellrules.js";
 
 /** UI-toestand die niet in de encounter (en dus niet in undo/opslag) hoort */
 export const ui = {
@@ -196,7 +197,7 @@ function castBlock(c) {
   const pp = (o, attr) => Array.from({ length: n0(o.max) }, (_, i) => `<button class="pip" ${attr} data-i="${i}" aria-pressed="${i >= o.left}" aria-label="slot ${i + 1}"></button>`).join("");
   const sum = k.slots.length ? k.slots.map((x) => `${x.lvl}:${n0(x.left)}`).join(" · ") : k.daily.map((g) => esc(g.label)).join(", ");
   const pick = (x) => ui.castPick && ui.castPick.id === c.id && ui.castPick.lvl === x.lvl
-    ? `<div class="pick"><span class="hint">Welke spell?</span>${pickList(c, x.lvl).map((sp) =>
+    ? `<div class="pick"><span class="hint">Welke spell?</span>${pickList(c, x.lvl, rulesEd()).map((sp) =>
       `<button class="btn small ${sp.conc ? "conc" : ""}" data-pickspell="${esc(sp.n)}" data-conc="${sp.conc ? 1 : ""}">${esc(sp.n)}${sp.lv < x.lvl ? ` (${sp.lv}e, upcast)` : ""}${sp.conc ? " · conc." : ""}</button>`).join("")}<button class="link" data-pickspell="">Andere / overslaan</button></div>` : "";
   return `<details class="cast" data-cast ${ui.openCast.has(c.id) || ui.castPick?.id === c.id ? "open" : ""}><summary class="link strong">Spells <span style="font-weight:400">(${sum})</span></summary>
     <div class="castbox">
@@ -267,7 +268,7 @@ function morePanel(c) {
 function effPanel(c) {
   const S = app.S;
   if (ui.effWho && ui.effWho.id === c.id) {
-    const p = PRESETS[ui.effWho.i];
+    const p = presetsFor(rulesEd())[ui.effWho.i];
     return `<div class="kpanel"><p class="hint">Wie cast <b>${esc(p.n)}</b>? (concentratie)</p>
       <div class="effgrid">${S.list.filter((x) => x.kind !== "lair").map((x) => `<button class="btn tap" data-a="effby" data-by="${esc(x.id)}">${esc(x.name)}</button>`).join("")}</div>
       <button class="link" data-a="effwho-no">Annuleer</button></div>`;
@@ -285,9 +286,9 @@ function effPanel(c) {
       <label>Concentratie van<select data-f="ef-by"><option value="">geen</option>${S.list.filter((x) => x.kind !== "lair").map((x) => `<option value="${esc(x.id)}" ${f.by === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label>
       <button class="btn primary tap" data-a="eff-add">Toevoegen</button></div>` : "";
   return `<div class="kpanel">
-    <div class="effgrid">${PRESETS.map((p, i) => {
+    <div class="effgrid">${presetsFor(rulesEd()).map((p, i) => {
       const off = p.st === "ac" && p.op === "+" && !c.ac;
-      return `<button class="btn tap" data-a="effp" data-i="${i}" ${off ? `disabled title="Vul eerst AC in (⋯)"` : ""}>${esc(p.n)}<small>${esc(p.dex ? "AC 13 + Dex" : p.st ? effText(p) : p.txt.split(" op ")[0])}${p.conc ? " · conc" : ""}</small></button>`;
+      return `<button class="btn tap" data-a="effp" data-i="${i}" ${off ? `disabled title="Vul eerst AC in (⋯)"` : ""}><span>${esc(p.n)}${p.ed ? ` <span class="tag">${p.ed}</span>` : ""}</span><small>${esc(p.dex ? "AC 13 + Dex" : p.st ? effText(p) : p.txt.split(" op ")[0])}${p.conc ? " · conc" : ""}</small></button>`;
     }).join("")}<button class="btn tap" data-a="effcustom" aria-pressed="${ui.effCustom}">+ Eigen effect</button></div>
     ${!c.ac ? `<p class="hint">Geen AC bekend: AC + is uit. Vul AC in via ⋯.</p>` : ""}
     <p class="hint">Concentratie-spells: caster is ${act ? `<b>${esc(act.name)}</b> (aan de beurt)` : "je kiest zelf"}. Zelfde effect opnieuw = vernieuwen.</p>
@@ -737,7 +738,7 @@ export function paintAoe() {
 const aoeTabs = (a) => (a.src ? "" : `<div class="seg2 atabs" role="group" aria-label="Soort">${[["dmg", "Schade"], ["spell", "Spell"]].map(([v, l]) => `<button type="button" data-ao="tab" data-v="${v}" aria-pressed="${(a.tab || "dmg") === v}">${l}</button>`).join("")}</div>`);
 
 /** Gekozen spell (preset of eigen) */
-export const curSpell = (a) => (a.sp === "own" ? customSpell(a.cf || {}) : SPELLS[a.sp] || null);
+export const curSpell = (a) => (a.sp === "own" ? customSpell(a.cf || {}) : SPELLS[a.sp] && spellFor(SPELLS[a.sp], rulesEd()) ? SPELLS[a.sp] : null);
 const durName = (v) => ((DURS.find((x) => x[0] === v) || [])[1] || "").replace(/ \(10 rondes\)| \(100 rondes\)/, "").toLowerCase();
 
 /** Keuze per doel: wat de DM tikte, anders de standaard (kant van de caster, immuniteit, humanoid) */
@@ -784,7 +785,7 @@ function paintSpell(el, a) {
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3 id="a-title">Spell op doelen</h3><button type="button" class="link" data-ao="close">Annuleer</button></div>
       ${aoeTabs(a)}
-      <div class="effgrid spgrid">${SPELLS.map((x, i) => `<button type="button" class="btn tap" data-ao="sp" data-v="${i}" aria-pressed="${a.sp === i}">${esc(x.n)}<small>${esc(x.sub)}</small></button>`).join("")}<button type="button" class="btn tap" data-ao="sp" data-v="own" aria-pressed="${a.sp === "own"}">+ Eigen<small>conditie + save</small></button></div>
+      <div class="effgrid spgrid">${SPELLS.map((x, i) => (spellFor(x, rulesEd()) ? `<button type="button" class="btn tap" data-ao="sp" data-v="${i}" aria-pressed="${a.sp === i}"><span>${esc(x.n)}${x.ed ? ` <span class="tag">${x.ed}</span>` : ""}</span><small>${esc(x.sub)}</small></button>` : "")).join("")}<button type="button" class="btn tap" data-ao="sp" data-v="own" aria-pressed="${a.sp === "own"}">+ Eigen<small>conditie + save</small></button></div>
       <label class="scast">Caster<select id="s-by"><option value="">kies wie cast</option>${cs.map((x) => `<option value="${esc(x.id)}" ${x.id === a.by ? "selected" : ""}>${esc(x.name)}${x.id === S.active ? " (aan de beurt)" : ""}</option>`).join("")}</select></label>
       ${own}
       ${sp && sp.ab ? `<div class="asave"><span class="qlbl">Save</span><b>${esc(sp.ab)}</b>
@@ -807,8 +808,8 @@ function paintSpell(el, a) {
   }
   const rows = L.map((c) => ({ c, p: spellPick(a, sp, caster, c) })), sel = rows.filter((x) => x.p.sel);
   // uitleg: wat een gefaalde save doet, duur, concentratie, herhaalsave, en of de caster een andere concentratie verliest
-  const what = sp.eff ? effText(PRESETS.find((p) => p.n === sp.eff)) || "" : sp.conds.join(" + ");
-  const bits = [what, durName(sp.eff ? "r10" : sp.dur), sp.conc ? "conc" : "", sp.rep ? `herhaalsave ${sp.ab} einde beurt` : "", sp.note || ""].filter(Boolean);
+  const what = sp.eff ? effText(presetsFor(rulesEd()).find((p) => p.n === sp.eff)) || "" : sp.conds.join(" + ");
+  const bits = [what, sp.dur === "inf" && sp.conc ? "zolang de concentratie duurt" : durName(sp.eff ? "r10" : sp.dur), sp.conc ? "conc" : "", sp.rep ? `herhaalsave ${sp.ab} einde beurt` : "", sp.note || ""].filter(Boolean);
   const lose = caster && sp.conc && caster.cond.includes("Concentrating") && caster.concSpell && caster.concSpell !== sp.n ? caster.concSpell : "";
   $("#s-info").innerHTML = `${esc(bits.join(" · "))}${lose ? `<br><b class="bad">${esc(caster.name)} concentreert nu op ${esc(lose)}: die vervalt.</b>` : ""}`;
   $("#a-list").innerHTML = rows.map((x) => spellRow(a, sp, caster, x.c, x.p)).join("") || `<p class="hint">Niemand om te kiezen.</p>`;

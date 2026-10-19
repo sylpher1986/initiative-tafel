@@ -1,11 +1,37 @@
-// Afgeleide info uit statblocks: spellcasting, legendary, recharge. Puur: alleen data erin, data eruit.
+// Afgeleide info uit statblocks: spellcasting, legendary, recharge; spellnamen en concentratie. Puur: alleen data erin, data eruit.
+import { CONC } from "./conclist.js";
 
 export const ORD = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
 
-/** Concentration-spells (5e 2014) voor monsterstatblocks; D&D Beyond-sheets geven het zelf aan. */
-export const CONC_SPELLS = new Set(["alter self", "animate objects", "antilife shell", "antimagic field", "arcane eye", "arcane hand", "aura of life", "aura of purity", "aura of vitality", "bane", "banishment", "barkskin", "beacon of hope", "bestow curse", "bigby's hand", "black tentacles", "blade barrier", "bless", "blur", "call lightning", "calm emotions", "clairvoyance", "cloudkill", "compulsion", "confusion", "conjure animals", "conjure celestial", "conjure elemental", "conjure fey", "conjure minor elementals", "conjure woodland beings", "control water", "control weather", "crown of madness", "dancing lights", "darkness", "detect evil and good", "detect magic", "detect poison and disease", "detect thoughts", "dispel evil and good", "divine favor", "dominate beast", "dominate monster", "dominate person", "enhance ability", "enlarge/reduce", "entangle", "enthrall", "evard's black tentacles", "eyebite", "faerie fire", "fear", "flame blade", "flaming sphere", "flesh to stone", "fly", "fog cloud", "forcecage", "gaseous form", "giant insect", "globe of invulnerability", "grasping vine", "greater invisibility", "guidance", "gust of wind", "haste", "heat metal", "heroism", "hex", "hold monster", "hold person", "holy aura", "hunter's mark", "hypnotic pattern", "incendiary cloud", "insect plague", "invisibility", "irresistible dance", "levitate", "locate creature", "locate object", "magic weapon", "major image", "maze", "moonbeam", "otiluke's resilient sphere", "otto's irresistible dance", "phantasmal force", "phantasmal killer", "polymorph", "protection from energy", "protection from evil and good", "ray of enfeeblement", "resilient sphere", "resistance", "reverse gravity", "scrying", "shield of faith", "silence", "silent image", "sleet storm", "slow", "spider climb", "spirit guardians", "stinking cloud", "stoneskin", "storm of vengeance", "suggestion", "sunbeam", "telekinesis", "true polymorph", "wall of fire", "wall of force", "wall of ice", "wall of stone", "wall of thorns", "web", "wind wall", "witch bolt"]);
+/** Niet-SRD-namen (PHB, D&D Beyond) → SRD-naam. Bezitsvormen ("Tasha's Hideous Laughter") gaan generiek, zie `keys`. */
+const ALIAS = {
+  "bigby's hand": "arcane hand",
+  "mordenkainen's sword": "arcane sword",
+  "nystul's magic aura": "arcanist's magic aura",
+  "melf's acid arrow": "acid arrow",
+  "eye bite": "eyebite", // tikfout in de SRD-hags (coven)
+  "feeblemind": "befuddlement", // 2024 hernoemd; beide kanten op, zodat de andere editie ook gevonden wordt
+  "befuddlement": "feeblemind",
+};
 
-export const cleanSpell = (n) => n.replace(/\*|\(.*?\)/g, "").trim().toLowerCase();
+/** "Cure Wounds*", "fireball (3rd level)", "Shield ’" → "cure wounds" / "fireball" / "shield" */
+export const normSpell = (n) => String(n || "").replace(/[‘’`]/g, "'").replace(/\*|\(.*?\)|\[.*?\]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+
+/** Opzoeksleutels in volgorde: exact, alias, zonder bezitsvorm vooraan ("tasha's hideous laughter" → "hideous laughter") */
+export function keys(n) {
+  const k = normSpell(n), out = [k];
+  if (ALIAS[k]) out.push(ALIAS[k]);
+  const x = k.match(/^[a-z]+'s (.+)$/);
+  if (x) out.push(x[1]);
+  return out;
+}
+
+/** Concentratie per editie: SRD uit de spelldata (conclist.js, gegenereerd) plus PHB-spells die niet in de SRD staan */
+const CONC_SET = { 2014: new Set(CONC[2014]), 2024: new Set(CONC[2024]) };
+const CONC_EXTRA = new Set(["aura of life", "aura of purity", "aura of vitality", "crown of madness", "grasping vine", "hex", "phantasmal force", "witch bolt"]);
+/** Is dit een concentratie-spell volgens deze spellregels? Onbekende spells: nee. */
+export const isConc = (n, ed = "2014") => keys(n).some((k) => (CONC_SET[ed] || CONC_SET[2014]).has(k)) || CONC_EXTRA.has(normSpell(n));
+
 
 /** Splitst op komma's, maar niet binnen haakjes: "create food and water (can create wine), tongues" */
 export function splitSpells(t) {
@@ -68,20 +94,20 @@ export function rcInfo(m) {
   return out;
 }
 
-/** Spells op een slot-level, met concentration-markering */
-export function spellsAtLevel(c, lvl) {
+/** Spells op een slot-level, met concentration-markering (ed = spellregels; D&D Beyond-sheets geven het zelf aan) */
+export function spellsAtLevel(c, lvl, ed = "2014") {
   const sh = c.sheet && c.sheet.levels && c.sheet.levels.find((l) => l.lvl === lvl);
   if (sh) return sh.spells.map((sp) => ({ n: sp.n, conc: /concentration/i.test(sp.dur || "") }))
     .filter((v, i, a) => a.findIndex((x) => x.n === v.n) === i);
   const sl = c.casting && c.casting.slots.find((x) => x.lvl === lvl);
-  return sl && sl.spells ? splitSpells(sl.spells).map((n) => ({ n: n.replace(/\*/g, "").trim(), conc: CONC_SPELLS.has(cleanSpell(n)) })) : [];
+  return sl && sl.spells ? splitSpells(sl.spells).map((n) => ({ n: n.replace(/\*/g, "").trim(), conc: isConc(n, ed) })) : [];
 }
 
 /** Keuzelijst bij een slot: alle spells van dit level + concentration-spells van lagere levels (upcasting) */
-export function pickList(c, lvl) {
-  const out = spellsAtLevel(c, lvl).map((sp) => ({ ...sp, lv: lvl }));
+export function pickList(c, lvl, ed = "2014") {
+  const out = spellsAtLevel(c, lvl, ed).map((sp) => ({ ...sp, lv: lvl }));
   for (let l = lvl - 1; l >= 1; l--) {
-    spellsAtLevel(c, l).filter((sp) => sp.conc && !out.some((o) => o.n === sp.n)).forEach((sp) => out.push({ ...sp, lv: l }));
+    spellsAtLevel(c, l, ed).filter((sp) => sp.conc && !out.some((o) => o.n === sp.n)).forEach((sp) => out.push({ ...sp, lv: l }));
   }
   return out;
 }

@@ -9,6 +9,9 @@ export const merge = (a, b) => { a.msgs.push(...b.msgs); a.why.push(...b.why); i
 
 export const newDs = () => ({ s: 0, f: 0, stable: false, dead: false });
 
+/** Speler op 0 HP (levend of dood): Unconscious hoort bij de 0 HP, niet bij een spell; die mag hem dus niet weghalen */
+export const downPc = (c) => c.kind === "pc" && c.max > 0 && c.hp <= 0;
+
 export function setUncon(c, on) {
   c.cond = c.cond.filter((x) => x !== "Unconscious");
   if (on) c.cond.push("Unconscious");
@@ -112,6 +115,23 @@ export function heal(c, raw) {
   return fx();
 }
 
+/**
+ * Condities die bij schade vervallen (cd[k].brk: Hypnotic Pattern, Sleep): per doel weg zodra het schade krijgt.
+ * Ook schade die temp HP opvangt telt (het doel "neemt schade").
+ */
+export function wakeByDamage(c) {
+  const out = fx(), all = Object.keys(c.cd || {}).filter((k) => c.cd[k] && c.cd[k].brk && c.cond.includes(k));
+  if (!all.length) return out;
+  const sp = [...new Set(all.map((k) => c.cd[k].spell).filter(Boolean))].join(", ");
+  for (const k of all) delete c.cd[k]; // koppeling weg; Unconscious van een speler op 0 HP blijft (hoort bij de 0 HP)
+  const K = all.filter((k) => !(k === "Unconscious" && downPc(c)));
+  c.cond = c.cond.filter((x) => !K.includes(x));
+  if (!K.length) return out;
+  out.why.push({ t: `${K.join(" + ")} weg door schade${sp ? ` (${sp})` : ""}`, id: c.id });
+  out.msgs.push(`${c.name}: ${K.join(" + ")} weg door schade${sp ? ` (${sp})` : ""}.`);
+  return out;
+}
+
 const MODE_TXT = { 0.5: ["×½", "resistance"], 2: ["×2", "vulnerability"], 0: ["×0", "immuun"] };
 
 /**
@@ -121,6 +141,7 @@ const MODE_TXT = { 0.5: ["×½", "resistance"], 2: ["×2", "vulnerability"], 0: 
 export function applyDamage(c, raw, mode = 1, quiet = false) {
   const out = fx();
   const v = Math.floor(raw * mode);
+  if (v > 0) merge(out, wakeByDamage(c)); // vóór de HP: wie op 0 valt is daarna gewoon bewusteloos
   const absorb = Math.min(c.temp || 0, v);
   if (absorb) c.temp -= absorb;
   const rest = v - absorb;

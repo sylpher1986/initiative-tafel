@@ -38,7 +38,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 ### Prioriteit 2: voorbereiding en tempo
 - [x] Volgende encounter: "Encounter wissen" vraagt "Monsters wissen, spelers houden" of "Alles"; spelers blijven met HP, slots en effecten, één Ongedaan (1.12.1). Encounters vooraf klaarzetten en XP-moeilijkheid: zie Functies
 - [x] Initiative van spelers bij Start gevecht: paneel met alle spelers (oude waarden ingevuld), cijferpad, Rol per speler, Volgende/Start; één Ongedaan (1.13.0)
-- [x] Effect/conditie op meerdere doelen tegelijk: tab Spell in het AoE-paneel (Bless, Bane, Hold Person, Hypnotic Pattern, Web, eigen conditie) met caster, DC, saves per doel en Rol monsters; condities hangen aan de concentratie van de caster; Bless op 3 doelen 4–5 tikken i.p.v. 9 (1.15.0). Later: Hypnotic Pattern weg bij schade, slots verbruiken, maximaal aantal doelen
+- [x] Effect/conditie op meerdere doelen tegelijk: tab Spell in het AoE-paneel (Bless, Bane, Hold Person, Hypnotic Pattern, Web, eigen conditie) met caster, DC, saves per doel en Rol monsters; condities hangen aan de concentratie van de caster; Bless op 3 doelen 4–5 tikken i.p.v. 9 (1.15.0); Hypnotic Pattern en Sleep vervallen bij schade (1.21.0). Later: slots verbruiken, maximaal aantal doelen
 - [x] Groepsbeurten: leden van een groepsworp tonen als groepsbeurt ("Bugbear 2 · 2/3" in de beurtbalk, hele groep aan de beurt op het spelersscherm); beurten blijven per lid zodat recharge, saves en condities per lid kloppen; namen sorteren numeriek (1.16.0)
 - [x] Monsters zoeken op naam, type, subtype en CR ("undead cr 2-4", "cr 1/4", "cr 10+", "demon") met kopregel en telling; compacte preview van de keuze (AC/HP/CR, verdediging, eerste aanvallen) met "Volledig statblock", op tablet/desktop in de zijkolom; ook bij snel toevoegen (1.18.0)
 - [x] Desktop en tablet: zijkolom altijd gevuld en volgt de beurt (monster: statblock, speler: sheet met live HP/AC/condities/effecten/slots, plus de D&D Beyond-sheet als die er is); Vastzetten met "Beurt: X →"; zonder gevecht het laatst geopende of toegevoegde (1.8.0)
@@ -74,6 +74,8 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [ ] Herinnering om af en toe een export te maken
 - [ ] Spelersscherm op andere apparaten: WebSocket-kamer (Durable Object) met kamercode, zelfde send/on als `js/share.js`; portretten apart en één keer per id sturen
 - [ ] Spelersscherm: zichtbaarheid (`VIS`) instelbaar maken; verbergen ook bij snel toevoegen
+- [x] Spellregels 2014 | 2024 (Instellingen, alleen spells): Barkskin 17 zonder concentratie, Lethargy = Incapacitated, concentratie per editie, Sleep 2024 (Incapacitated → Unconscious); concentratielijst uit de SRD-data (Enthrall/Forcecage eruit, o.a. Hideous Laughter, Spike Growth, Vampiric Touch erbij); Web duurt zolang de concentratie (1.21.0)
+- [ ] 2024-regels buiten spells (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Spellregels aanpassen
 
 
 ## Fase 2: sync

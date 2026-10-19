@@ -1,30 +1,9 @@
 // Spellbibliotheek voor de spell-uitleg, per editie één bestand ({ ed, src, spells }), pas geladen bij de eerste tik:
 // SRD 5.1 (2014) in data/spells.json, SRD 5.2 (2024) in data/spells-2024.json. `findSpell` zoekt per editie.
 // Naam-normalisatie en het splitsen van spell-lijsten zijn puur (testbaar zonder DOM).
-import { splitSpells } from "../rules/spells.js";
+import { splitSpells, normSpell, keys } from "../rules/spells.js";
 
-/** Niet-SRD-namen (PHB, D&D Beyond) → SRD-naam. Bezitsvormen ("Tasha's Hideous Laughter") gaan generiek, zie `keys`. */
-const ALIAS = {
-  "bigby's hand": "arcane hand",
-  "mordenkainen's sword": "arcane sword",
-  "nystul's magic aura": "arcanist's magic aura",
-  "melf's acid arrow": "acid arrow",
-  "eye bite": "eyebite", // tikfout in de SRD-hags (coven)
-  "feeblemind": "befuddlement", // 2024 hernoemd; beide kanten op, zodat de andere editie ook gevonden wordt
-  "befuddlement": "feeblemind",
-};
-
-/** "Cure Wounds*", "fireball (3rd level)", "Shield ’" → "cure wounds" / "fireball" / "shield" */
-export const normSpell = (n) => String(n || "").replace(/[‘’`]/g, "'").replace(/\*|\(.*?\)|\[.*?\]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
-
-/** Opzoeksleutels in volgorde: exact, alias, zonder bezitsvorm vooraan ("tasha's hideous laughter" → "hideous laughter") */
-export function keys(n) {
-  const k = normSpell(n), out = [k];
-  if (ALIAS[k]) out.push(ALIAS[k]);
-  const x = k.match(/^[a-z]+'s (.+)$/);
-  if (x) out.push(x[1]);
-  return out;
-}
+export { normSpell, keys }; // naamlogica staat in rules/spells.js (ook nodig voor concentratie zonder geladen data)
 
 /* ---------- bibliotheek (per editie) ---------- */
 export const EDS = ["2014", "2024"];

@@ -5,15 +5,17 @@ import { fx, applyPcHp, revertMax, newDs, setUncon, dropConc, merge } from "./co
 
 /**
  * Presets. dur: sleutel uit DURS (turns.js) of "lr" (tot long rest). dex: 13 + Dex-mod (Mage Armor).
- * after: effect dat volgt als dit effect afloopt (Haste → Lethargy, tot na de volgende beurt van het doelwit).
+ * after: effect dat volgt als dit effect afloopt (Haste → Lethargy, tot na de volgende beurt van het doelwit); after.cond = ook die conditie.
+ * r24: afwijkingen volgens de spellregels van 2024 (instelling "Spellregels"), zie presetsFor.
  * sv: invloed op saves ({ ab, b } vaste bonus, alleen op die ability; { d } = ±1dN op elke save). grp: sluiten elkaar uit (cover).
  */
 export const PRESETS = [
   { n: "Shield", st: "ac", op: "+", v: 5, dur: "tstart", react: true, txt: "reaction; ook geen schade van Magic Missile" },
   { n: "Shield of Faith", st: "ac", op: "+", v: 2, dur: "r100", conc: true },
-  { n: "Haste", st: "ac", op: "+", v: 2, dur: "r10", conc: true, txt: "speed ×2, advantage op Dex saves, extra action", after: { n: "Lethargy", txt: "geen beweging of acties" } },
+  { n: "Haste", st: "ac", op: "+", v: 2, dur: "r10", conc: true, txt: "speed ×2, advantage op Dex saves, extra action", after: { n: "Lethargy", txt: "geen beweging of acties" },
+    r24: { after: { n: "Lethargy", txt: "speed 0", cond: "Incapacitated" } } },
   { n: "Mage Armor", st: "ac", op: "=", v: 13, dex: true, dur: "lr", txt: "alleen zonder armor" },
-  { n: "Barkskin", st: "ac", op: "min", v: 16, dur: "inf", conc: true },
+  { n: "Barkskin", st: "ac", op: "min", v: 16, dur: "inf", conc: true, r24: { v: 17, conc: false, txt: "1 uur, geen concentratie" } },
   { n: "Half cover", st: "ac", op: "+", v: 2, dur: "inf", txt: "ook +2 op Dex saves", sv: { ab: "DEX", b: 2 }, grp: "cover" },
   { n: "Three-quarters cover", st: "ac", op: "+", v: 5, dur: "inf", txt: "ook +5 op Dex saves", sv: { ab: "DEX", b: 5 }, grp: "cover" },
   { n: "Aid", st: "max", op: "+", v: 5, dur: "lr", txt: "+5 per slot-level boven de 2e" },
@@ -26,6 +28,9 @@ const OPS = ["+", "=", "min"];
 const WARN = new Set(PRESETS.filter((p) => p.after).map((p) => p.after.n.toLowerCase()));
 export const isWarn = (e) => WARN.has(String(e.n).toLowerCase());
 const preset = (n) => PRESETS.find((p) => p.n.toLowerCase() === String(n).toLowerCase());
+/** Presets volgens de spellregels (zelfde volgorde en index als PRESETS); bij 2024 met de afwijkingen erin en `ed: "2024"` */
+const P24 = PRESETS.map((p) => (p.r24 ? { ...p, ...p.r24, ed: "2024" } : p)); // één keer, niet per render
+export const presetsFor = (ed = "2014") => (ed === "2024" ? P24 : PRESETS);
 const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(+v) || 0));
 
 /** Max HP zonder tijdelijke effecten (Aid e.d.): wat je bewerkt en wat een sheet geeft */
@@ -79,6 +84,8 @@ export function addEffect(c, spec, d, opt = {}) {
   const e = { id: opt.id || Math.random().toString(36).slice(2, 9), n, st, op, v, txt: String(spec.txt || "").slice(0, 120),
     end: String(spec.end || "").slice(0, 120), d: d || null, lr: !!opt.lr, by: opt.by || null, spell: opt.by ? String(opt.spell || n).slice(0, 120) : null, hpd: 0 };
   if (opt.by && opt.cast) e.cast = String(opt.cast).slice(0, 60);
+  // vervolg (Lethargy) vastleggen bij het effect: een latere wissel van de spellregels verandert een lopende spell niet
+  if (spec.after && spec.after.n) e.af = { n: String(spec.after.n).slice(0, 60), txt: String(spec.after.txt || "").slice(0, 120), ...(spec.after.cond ? { cond: String(spec.after.cond).slice(0, 20) } : {}) };
   c.eff = [...(c.eff || []), e];
   if (st === "max" && v && c.max > 0) { // zonder bekende HP alleen een herinnering
     if (v > 0) {
@@ -150,14 +157,22 @@ export function removeEffect(c, id, why = "handmatig", opt = {}) {
   c.eff = c.eff.filter((x) => x !== e);
   if (e.hpd) revertMax(c, e.hpd);
   if (why === null) return out;
-  const nx = opt.after !== false && (preset(e.n) || {}).after;
+  const nx = opt.after !== false && (e.af || (preset(e.n) || {}).after); // oude opslag zonder af: de 2014-preset
   const alive = !(c.kind === "monster" && c.hp <= 0) && !(c.ds && c.ds.dead);
   out.why.push({ t: why, id: c.id });
-  out.msgs.push(`${c.name}: ${e.n} is voorbij${why && why !== "handmatig" ? ` (${why})` : ""}.${nx ? (alive ? ` ${nx.n} tot na de volgende beurt.` : "") : e.end ? ` ${e.end}.` : ""}`);
+  const what = nx && (nx.cond ? `${nx.cond} + ${nx.txt || nx.n} tot einde volgende beurt.` : `${nx.n} tot na de volgende beurt.`);
+  out.msgs.push(`${c.name}: ${e.n} is voorbij${why && why !== "handmatig" ? ` (${why})` : ""}.${nx ? (alive ? ` ${what}` : "") : e.end ? ` ${e.end}.` : ""}`);
   if (nx && alive) {
-    // PHB: "can't move or take actions until after its next turn"; midden in de eigen beurt telt die beurt niet
-    addEffect(c, nx, { kind: "tend", who: c.id, at: "end", count: opt.active === c.id ? 2 : 1 });
+    // PHB 2014: "can't move or take actions until after its next turn"; 2024: Incapacitated en speed 0 tot einde volgende beurt.
+    // Midden in de eigen beurt telt die beurt niet.
+    const dur = () => ({ kind: "tend", who: c.id, at: "end", count: opt.active === c.id ? 2 : 1 });
+    addEffect(c, { n: nx.n, txt: nx.txt }, dur());
     out.why.push({ t: `${nx.n} na ${e.n}`, id: c.id });
+    if (nx.cond && !c.cond.includes(nx.cond)) { // al Incapacitated (met eigen duur): niet overschrijven
+      c.cond = [...c.cond, nx.cond];
+      c.cd = { ...(c.cd || {}), [nx.cond]: dur() };
+      merge(out, dropConc(c, `${nx.cond} door ${nx.n}`)); // Incapacitated beëindigt concentratie
+    }
   }
   return out;
 }
@@ -177,11 +192,15 @@ export function tickEffects(list, at, id) {
 /** Concentratie-effecten opruimen als de caster weg is, niet meer concentreert of op iets anders concentreert */
 export function endConcEffects(list, active = null) {
   const out = fx();
-  for (const c of list) for (const e of [...(c.eff || [])]) {
-    if (!e.by) continue;
-    const by = list.find((x) => x.id === e.by);
-    const ok = by && by.cond.includes("Concentrating") && !(by.concSpell && e.spell && by.concSpell !== e.spell);
-    if (!ok) { const r = removeEffect(c, e.id, `concentratie${by ? ` van ${by.name}` : ""} voorbij`, { active }); out.msgs.push(...r.msgs); out.why.push(...r.why); }
+  // herhalen: een vervolg (Haste 2024 → Incapacitated) kan de concentratie van het doelwit breken, en daarmee diens effecten
+  for (let more = true, n = 0; more && n < 10; n++) {
+    more = false;
+    for (const c of list) for (const e of [...(c.eff || [])]) {
+      if (!e.by) continue;
+      const by = list.find((x) => x.id === e.by);
+      const ok = by && by.cond.includes("Concentrating") && !(by.concSpell && e.spell && by.concSpell !== e.spell);
+      if (!ok) { const r = removeEffect(c, e.id, `concentratie${by ? ` van ${by.name}` : ""} voorbij`, { active }); out.msgs.push(...r.msgs); out.why.push(...r.why); more = true; }
+    }
   }
   return out;
 }

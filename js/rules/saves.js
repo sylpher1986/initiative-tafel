@@ -46,6 +46,22 @@ export const openSaves = (S) => (S.saves || []).filter((s) => isValid(S, s));
 export const label = (s) => `${s.ab}-save DC ${s.dc} ${s.kind === "conc" ? "(concentratie)" : `tegen ${s.n}`}`;
 
 /**
+ * Gefaalde herhaalsave met een vervolg (Sleep 2024: Incapacitated → Unconscious voor de duur van de spell): de eerste conditie
+ * maakt plaats voor de volgende, zonder herhaalsave en zonder eigen duur (concentratie van de caster beëindigt hem), wel
+ * dezelfde koppeling aan de caster en "vervalt bij schade".
+ */
+function nextPhase(c, n) {
+  const out = fx(), e = c.cd[n], k = e.then;
+  c.cond = c.cond.filter((x) => x !== n);
+  delete c.cd[n];
+  if (!c.cond.includes(k)) c.cond = [...c.cond, k];
+  c.cd[k] = { kind: "inf", who: c.id, at: "start", count: 0, ...(e.brk ? { brk: 1 } : {}), ...(e.by ? { by: e.by, spell: e.spell, cast: e.cast } : {}) };
+  out.why.push({ t: `${n} → ${k}${e.spell ? ` (${e.spell})` : ""}`, id: c.id });
+  out.msgs.push(`${c.name}: ${k}${e.spell ? ` door ${e.spell}` : ""}.`);
+  return out;
+}
+
+/**
  * Uitslag verwerken. ok = geslaagd; note = bijv. de gerolde worp. Conditie-save geslaagd → conditie weg;
  * concentration save gefaald → concentratie weg (effecten volgen via commit). Geeft Fx terug.
  */
@@ -63,6 +79,7 @@ export function resolveSave(S, sid, ok, note = "") {
     if (s.n === "Concentrating") c.concSpell = null;
     out.msgs.push(`${c.name}: ${s.n} is voorbij.`);
   }
+  if (s.kind === "cond" && !ok && c.cd && c.cd[s.n] && c.cd[s.n].then) merge(out, nextPhase(c, s.n));
   if (s.kind === "conc" && !ok) merge(out, dropConc(c, "concentration save gefaald"));
   return out;
 }
