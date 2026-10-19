@@ -17,7 +17,8 @@
     { "tag": "v1", "new_sqlite_classes": ["Room"] }
   ],
   // ROOM_LIMIT: max nieuwe kamers per IP per minuut (POST /api/room, zie roomAllowed in worker/room.js).
-  // Houd limit gelijk aan ROOM_LIMIT_N; period kan alleen 10 of 60. namespace_id is uniek binnen het account.
+  // Houd limit gelijk aan ROOM_LIMIT_N en period op 60 (retry-after en melding rekenen daarmee; test bewaakt beide).
+  // namespace_id: geheel getal als string, uniek binnen het Cloudflare-account. Vereist Wrangler >= 4.36 bij deploy.
   "ratelimits": [
     { "name": "ROOM_LIMIT", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } }
   ]

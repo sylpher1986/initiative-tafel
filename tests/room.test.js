@@ -130,12 +130,12 @@ test("rate-limit: fail-open bij een storing in de limiter of zonder binding", as
   assert.equal((await post(undefined, "1.2.3.4")).status, 201);
 });
 
-test("rate-limit: binding in wrangler.jsonc gelijk aan ROOM_LIMIT_N, period 10 of 60", () => {
+test("rate-limit: binding in wrangler.jsonc gelijk aan ROOM_LIMIT_N, period 60 (= retry-after en melding \"over een minuut\")", () => {
   const cfg = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
   const m = cfg.match(/"name":\s*"ROOM_LIMIT"[^}]*"limit":\s*(\d+),\s*"period":\s*(\d+)/);
   assert.ok(m, "ROOM_LIMIT-binding ontbreekt");
   assert.equal(+m[1], ROOM_LIMIT_N);
-  assert.ok(["10", "60"].includes(m[2]));
+  assert.equal(m[2], "60");
 });
 
 test("botsing met een bestaande kamer: nieuwe code", async () => {
