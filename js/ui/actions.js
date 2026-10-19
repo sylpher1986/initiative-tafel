@@ -1,7 +1,7 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, closeToast, show } from "./util.js";
-import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
-import { render, ui, openId, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview, curSpell, spellPick } from "./render.js";
+import { app, because, addWhy, commit, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
+import { render, ui, openId, mode, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview, editKeys, curSpell, spellPick } from "./render.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
@@ -131,7 +131,8 @@ const row = {
   },
   panel(c, b) {
     ui.panel = ui.panel === b.dataset.p ? null : b.dataset.p; ui.confirmDel = null; ui.effWho = null;
-    ui.edit = ui.panel === "more" ? { id: c.id, name: c.name, ac: c.ac || "", max: baseMax(c) || "", init: c.init, dirty: false } : null;
+    // keys: alleen wat het paneel toont, zodat Opslaan niets terugzet wat intussen direct op de kaart is aangepast
+    ui.edit = ui.panel === "more" ? { id: c.id, name: c.name, ac: c.ac || "", max: baseMax(c) || "", init: c.init, dirty: false, keys: editKeys(c, mode() === "prep") } : null;
   },
   /* ---- bewerken (⋯) ---- */
   "ed-cancel"() { ui.edit = null; ui.panel = null; },
@@ -141,12 +142,13 @@ const row = {
     const name = String(ed.name).trim().slice(0, 120);
     if (!name) { toast("Naam mag niet leeg zijn."); return false; }
     c.name = name;
+    const has = (k) => !ed.keys || ed.keys.includes(k);
     const ac = parseInt(ed.ac);
-    c.ac = Number.isFinite(ac) ? Math.max(0, Math.min(40, ac)) : 0;
+    if (has("ac")) c.ac = Number.isFinite(ac) ? Math.max(0, Math.min(40, ac)) : 0;
     const mx = parseInt(ed.max), extra = (c.max || 0) - baseMax(c);
-    if (Number.isFinite(mx) && mx > 0 && mx !== baseMax(c)) R.setMax(c, mx + extra); // effecten (Aid) blijven bovenop
+    if (has("max") && Number.isFinite(mx) && mx > 0 && mx !== baseMax(c)) R.setMax(c, mx + extra); // effecten (Aid) blijven bovenop
     const ini = parseInit(ed.init);
-    if (ini !== null) c.init = ini;
+    if (has("init") && ini !== null) c.init = ini;
     because("bewerkt");
     ui.edit = null; ui.panel = null;
   },
@@ -388,7 +390,7 @@ export function onClick(e) {
   if (b.dataset.setmode) {
     ui.mode = b.dataset.setmode; ui.confirmReset = false;
     render();
-    window.scrollTo({ top: 0 });
+    if (mode() === "fight") scrollToCard(app.S.active); else window.scrollTo({ top: 0 }); // terug naar het gevecht: naar wie aan de beurt is
     return;
   }
   if (b.dataset.prep) { if (b.dataset.prep === "close") closePrep(); else openPrep(b.dataset.prep); return; }
@@ -445,9 +447,50 @@ export function onChange(e) {
     const pv = li.querySelector(".edprev"); if (pv) pv.innerHTML = editPreview(c);
   }
   if (f && f.startsWith("ef-")) ui.effForm[f.slice(3)] = t.value;
+  if (t.dataset.pf) prepField(c, t);
+}
+
+/**
+ * Kaart in Voorbereiden (IN2): een veld slaat op zodra het de focus verliest. Direct vastleggen (commit: undo-stap,
+ * logboek, opslag) maar niet renderen: dan zou de tik op het volgende veld of een knop verloren gaan. main.js
+ * rendert na het verlaten van de velden (focusout). Ongeldig: oude waarde terug en een melding.
+ */
+function prepField(c, t) {
+  const k = t.dataset.pf, raw = t.value.trim();
+  const back = (msg) => { toast(msg); t.value = { init: c.init, max: baseMax(c) || "", hp: c.hp, ac: c.ac || "" }[k] ?? t.value; };
+  if (k === "lvl") {
+    const v = cleanLvl(raw);
+    if (raw !== "" && !v) { const m0 = c.pid && app.party.find((x) => x.pid === c.pid); toast("Level is 1 t/m 20."); t.value = (m0 ? m0.lvl : c.lvl) ?? ""; return; }
+    const m = c.pid && app.party.find((x) => x.pid === c.pid);
+    if (m) { m.lvl = v; saveParty(); return; } // level hoort bij de party (geen undo-stap), zoals in het Party-paneel
+    c.lvl = v ?? undefined; because("level", c.id); commit(); return;
+  }
+  const n = parseInt(raw);
+  if (k === "init") {
+    const v = parseInit(raw);
+    if (v === null) return back("Initiative moet een getal zijn.");
+    if (v === c.init) return;
+    c.init = v; because("in Voorbereiden aangepast", c.id);
+  } else if (k === "max") {
+    if (!(n > 0)) return back("Max HP moet minstens 1 zijn.");
+    if (n === baseMax(c)) return;
+    R.setMax(c, n + ((c.max || 0) - baseMax(c))); because("in Voorbereiden aangepast", c.id); // effecten (Aid) blijven bovenop
+  } else if (k === "hp") {
+    if (!Number.isFinite(n) || n < 0) return back("HP moet 0 of meer zijn.");
+    if (n === c.hp) return;
+    const fx = R.setHp(c, n); because("HP bijgewerkt in Voorbereiden", c.id); apply(fx);
+    if (c.hp !== n) t.value = c.hp; // begrensd op max, of dood
+  } else if (k === "ac") {
+    if (raw !== "" && !(n >= 0 && n <= 40)) return back("AC is 0 t/m 40.");
+    const v = raw === "" ? 0 : n;
+    if (v === (c.ac || 0)) return;
+    c.ac = v; because("in Voorbereiden aangepast", c.id);
+  } else return;
+  commit();
 }
 
 export function onKey(e) {
+  if (e.key === "Enter" && e.target.dataset && e.target.dataset.pf) { e.preventDefault(); e.target.blur(); return; } // veld op de kaart: klaar = opslaan
   if (spellOpen()) { if (e.key === "Escape") { e.preventDefault(); closeSpell(); } return; } // ligt boven alle andere panelen: toetsen niet naar het cijferpad eronder
   if (ui.prep && e.key === "Escape") { e.preventDefault(); closePrep(); return; }
   if (ui.qadd && e.key === "Escape") { e.preventDefault(); closeQadd(); return; }
@@ -710,7 +753,7 @@ export function bindForms() {
 /* ---------- snel toevoegen tijdens het gevecht (+ in Gevecht-modus) ---------- */
 function closeQadd() {
   ui.qadd = null; paintQadd();
-  $("#qadd").focus();
+  $("#qadd")?.focus();
 }
 
 export function bindQadd() {
@@ -753,7 +796,7 @@ function qGo() {
   addMonsters(q.sel, q.n, "avg", q.init === "fixed" ? "fixed" : "each", false, fix, q.hid, q.anon);
   ui.qadd = null;
   render();
-  $("#qadd").focus();
+  $("#qadd")?.focus();
 }
 
 /* ---------- open saves (regels in de beurtbalk) ---------- */

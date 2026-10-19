@@ -408,13 +408,54 @@ ol.order{gap:6px}
 .pad .go.go-thp{background:var(--active);border-color:var(--active);color:var(--bg)}
 .pad .go:disabled{opacity:.45}
 
-/* ===== Modi: Voorbereiden (alles) en Gevecht (alleen lijst + beurtbalk) ===== */
-.modes{display:flex;gap:8px;align-items:stretch}
-.modeseg{flex:1 1 auto;min-width:0}
-.modeseg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);box-shadow:none}
-.qplus{flex:0 0 48px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);display:flex;align-items:center;justify-content:center;padding:0}
-.qplus:hover{border-color:var(--muted)}
+/* ===== Modi (1.29.0): modus volgt het gevecht. Voorbereiden = fase-aanduiding; Gevecht = eigen kop; tussendoor = amberkleurige balk =====
+   Kleuren als tokens (gemeten, WCAG): kop licht = tekstkleur als vlak (13,8:1 tegen de pagina), donker = neutraal en lichter dan de
+   kaarten (1,5:1 tegen de pagina, tekst 9,8:1). Bewust geen rood (al bezet: monster, schade, hoofdactie) en geen zijstreep
+   (betekent monster of speler). Knoprand ≥ 3:1. Geen color-mix (oudere iPads). */
+:root{--fight-bg:#1d2330;--fight-fg:#ffffff;--fight-muted:#c9cfdb;--fight-btn:#2a3140;--fight-btn-line:#7a8397;--warn-soft:#fbf3e4}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--fight-bg:#303747;--fight-fg:#e7e9ee;--fight-muted:#b4bbc9;--fight-btn:#3d4556;--fight-btn-line:#8a93a6;--warn-soft:#2e2614}}
+:root[data-theme="dark"]{--fight-bg:#303747;--fight-fg:#e7e9ee;--fight-muted:#b4bbc9;--fight-btn:#3d4556;--fight-btn-line:#8a93a6;--warn-soft:#2e2614}
+.modes{min-width:0}
+.modes:empty{display:none}
+body[data-mode="fight"] header.top,body[data-run][data-mode="prep"] header.top{display:none}
 body[data-mode="fight"] #resetbar{display:none}
+.phase{display:flex;align-items:center;gap:8px;margin:0;font-size:.9rem;color:var(--muted)}
+.phase .st{display:inline-flex;align-items:center;gap:6px}
+.phase .dot{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;font-variant-numeric:tabular-nums}
+.phase .on{color:var(--fg);font-weight:700}
+.phase .on .dot{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.phase .ln{flex:0 0 28px;height:1.5px;background:var(--line)}
+.fhead{background:var(--fight-bg);color:var(--fight-fg);border-radius:14px;padding:12px 12px 12px 16px;display:flex;align-items:center;gap:10px}
+.fhead .ft{flex:1 1 auto;min-width:0;display:grid}
+.fhead .l{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--fight-muted)}
+.fhead .rn{font-family:var(--display);font-size:2rem;line-height:1.05;font-weight:800;white-space:nowrap}
+.fhead .fsum{font-size:.85rem;color:var(--fight-muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.fhead .fsum b{color:var(--fight-fg)}
+.fhead .fb{flex:0 0 auto;min-width:48px;min-height:48px;border-radius:12px;border:1px solid var(--fight-btn-line);background:var(--fight-btn);color:var(--fight-fg);font-weight:700;font-size:.95rem;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px}
+.fhead .fb.ic{padding:0}
+.fhead .fi{display:inline-flex}
+.fhead .fb:focus-visible{outline-color:var(--fight-fg)}
+@media (max-width:379px){.fhead .fl{display:none}.fhead .fb{padding:0}}
+.runbar{margin:0;border:1px solid var(--warn);background:var(--warn-soft);color:var(--fg);border-radius:12px;padding:10px 14px;font-size:.95rem;font-weight:700}
+.dock .why{margin:6px 0 0;text-align:center;font-size:.85rem;color:var(--muted)}
+
+/* Kaart in Voorbereiden (IN2): velden direct invullen, inrichtknoppen */
+.pfs{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);gap:6px}
+.pfs.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.pf{display:grid;gap:3px;align-content:start;min-width:0}
+.pf .pl{font-size:.75rem;font-weight:700;letter-spacing:.04em;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf .pl small{font-weight:400;letter-spacing:0}
+.pbox{display:flex;align-items:center;min-height:48px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}
+.pbox.nv{border-style:dashed}
+.pbox:focus-within{border-color:var(--active);box-shadow:0 0 0 1px var(--active)}
+.pbox input{flex:1 1 auto;min-width:0;width:100%;min-height:46px;border:0;background:transparent;color:var(--fg);font-weight:700;font-size:1.15rem;text-align:center;font-variant-numeric:tabular-nums;-moz-appearance:textfield;appearance:textfield}
+.pbox input::-webkit-inner-spin-button,.pbox input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.pbox input:focus{outline:none}
+.pbox .of{flex:0 0 auto;padding-right:10px;color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums}
+.pnow{margin:-2px 0 0}
+.acts.pacts.n3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.acts.pacts.n5{grid-template-columns:repeat(3,minmax(0,1fr))}
+.acts.pacts.n5>:nth-child(4){grid-column:span 2}
 
 /* Snel toevoegen tijdens het gevecht */
 .qsheet{max-height:calc(100dvh - 24px);overflow:auto}

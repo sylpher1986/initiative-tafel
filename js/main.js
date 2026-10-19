@@ -40,6 +40,20 @@ async function boot() {
   document.addEventListener("change", onChange);
   document.addEventListener("keydown", onKey);
   document.addEventListener("toggle", onToggle, true);
+  // velden op de kaart in Voorbereiden slaan op bij change (zonder render); na het verlaten één render voor de rest van
+  // het scherm. Tijdens een tik pas na pointerup, anders vervangt de render de knop vóór zijn click. Naar een ander
+  // invoerveld: niet renderen, anders verdwijnt de focus (de volgende tik of het volgende veld rendert vanzelf).
+  let down = false, sync = false;
+  const resync = () => { if (sync) { sync = false; setTimeout(render, 0); } };
+  addEventListener("pointerdown", () => { down = true; }, true);
+  addEventListener("pointerup", () => { down = false; resync(); }, true);
+  addEventListener("pointercancel", () => { down = false; resync(); }, true);
+  document.addEventListener("focusout", (e) => {
+    if (!e.target.dataset || !e.target.dataset.pf) return;
+    if (e.relatedTarget && e.relatedTarget.matches("input, select, textarea")) return;
+    sync = true;
+    if (!down) resync();
+  });
   bindForms(); bindParty(); bindLog(); bindQadd(); bindAoe(); bindAtk(); bindInit(); bindEnc();
   bindBackup(start);
   // echte hoogte van de beurtbalk: het statblock op de telefoon staat er precies boven

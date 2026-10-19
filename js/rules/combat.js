@@ -170,6 +170,25 @@ export function setMax(c, nMax) {
   c.max = nMax;
 }
 
+/**
+ * Huidige HP direct instellen (Voorbereiden: genezen of schade tussen gevechten), 0 t/m max.
+ * Geen temp HP, geen concentration save en geen instant death: dit is bijwerken, geen treffer.
+ * Speler van/naar 0 HP via applyPcHp (bewusteloos, death saves, concentratie weg; dood blijft dood).
+ */
+export function setHp(c, v) {
+  const out = fx();
+  if (!c.max) return out;
+  v = Math.max(0, Math.min(c.max, Math.round(+v) || 0));
+  if (v === c.hp) return out;
+  if (c.kind === "pc") {
+    if (v < c.hp && v > 0) { c.hp = v; return out; } // geen 0: geen gevolgen
+    return merge(out, applyPcHp(c, v - Math.max(0, c.hp)));
+  }
+  c.hp = v;
+  if (v === 0) { out.msgs.push(`${c.name} is neer.`); merge(out, dropConc(c, "0 HP")); }
+  return out;
+}
+
 /** Max HP-effect terugdraaien (Aid voorbij: max −5, huidige HP alleen omlaag als die erboven zit) */
 export function revertMax(c, hpd) {
   c.max = Math.max(1, (c.max || 0) - hpd);

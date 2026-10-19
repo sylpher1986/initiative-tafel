@@ -6,11 +6,9 @@ Geordend op soort wijziging. Elk open punt heeft een code (bijv. **IN1**); de **
 Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zie "DM-review 2" onderaan). Leidraad: eerst wat elke sessie verwarring of tikken kost, dan voorbereiding, dan uitbreidingen.
 
 **P1: nu (indeling, elke sessie)**
-1. **IN1** Voorbereiden en Gevecht duidelijk laten verschillen (UX-agent: mockup vóór het bouwen)
-2. **IN2** Kaartacties per modus: Voorbereiden = inrichten, Gevecht = vechten
-3. **IN3** Lege Gevecht-modus en Gevecht vóór Start opruimen
-4. **IN4** Eén manier van monsters toevoegen (Monster-paneel = snel toevoegen)
-5. **VB1** "level onbekend" tikbaar maken + levels in het voorbeeld
+1. ~~IN1–IN3~~ klaar in 1.29.0 (zie Klaar)
+2. **IN4** Eén manier van monsters toevoegen (Monster-paneel = snel toevoegen)
+3. **VB1** "level onbekend" tikbaar maken + levels in het voorbeeld
 
 **P2: volgende (tempo en voorbereiding)**
 6. **GV1** Tik op HP-balk = schadepaneel
@@ -38,14 +36,8 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 ---
 
 ## Indeling en navigatie
-- [ ] **IN1 Voorbereiden en Gevecht duidelijk laten verschillen.** Nu zijn beide schermen bijna gelijk: dezelfde lijst, dezelfde open kaart met Schade/Heal/Reaction, Gevecht vóór Start toont alleen "Encounter · 5 deelnemers" en dezelfde Start-knop. Opties voor de UX-agent:
-  - (a) modus = toestand: vóór Start altijd Voorbereiden, Start schakelt naar Gevecht, tijdens een gevecht is Voorbereiden een secundaire knop (✎) in plaats van een gelijkwaardige tab;
-  - (b) seg-knop houden, maar Gevecht een eigen gezicht geven: geen titel "Initiative Tafel", kop met grote "Ronde N" (nu staat de ronde twee keer klein: kop en beurtbalk), donkere kopbalk.
-  Doel: een beginner ziet in één oogopslag in welke fase hij zit.
-- [ ] **IN2 Kaartacties per modus.** Voorbereiden: Bewerken (naam/AC/HP/init), Statblock, Effect (pre-buffs zoals Mage Armor), Verbergen/Naam onbekend, Verwijderen; geen Schade/Heal/Reaction/Conditie. Gevecht: zoals nu.
-- [ ] **IN3 Lege Gevecht-modus.** Nu "0 deelnemers" en een uitgeschakelde Start gevecht. Toon een knop "Naar Voorbereiden" (of de welkomstkaart). Hangt samen met IN1.
 - [ ] **IN4 Eén manier van monsters toevoegen.** Monster-paneel (invoerveld Aantal, selects HP en Initiative) en snel toevoegen (stepper −/+, seg Rollen/Invullen) verschillen. Het snel-toevoegen-patroon is beter op de telefoon: gebruik het in beide; HP-modus als seg.
-- [ ] **IN5 Voorbereiden tijdens een gevecht:** prep-rij boven de beurtbalk maakt de dock twee rijen hoog; op 360 × 740 blijven ~3 kaarten zichtbaar. Opties: prep-rij in plaats van de beurtbalk, of prep-knoppen achter één knop.
+- [ ] **IN5 Voorbereiden tijdens een gevecht:** grotendeels opgelost in 1.29.0 (geen beurtbalk meer in die stand, één knop "Terug naar gevecht"). Nog controleren op 360 × 740 aan tafel; daarna sluiten.
 - [ ] **IN6 Statblock dubbel op de monsterkaart:** knop "Statblock" én link "Volledig statblock" onder de aanvallen. Eén van beide weg.
 - [ ] **IN7 Logboek dichter bij de beurtbalk:** eigen tab, of de laatste 2 gebeurtenissen onder de beurtbalk.
 
@@ -57,7 +49,7 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - [ ] **GV5 Initiative van monsters opnieuw rollen bij Start** (keuze in het initiative-paneel): nu wordt bij toevoegen gerold, ook als dat uren vóór de sessie was.
 
 ## Voorbereiding en encounters
-- [ ] **VB1 "level onbekend" tikbaar:** de chip opent direct de levels van de party om in te vullen; voorbeeldspelers krijgen een level (nu toont het voorbeeld meteen "level onbekend").
+- [ ] **VB1 "level onbekend" tikbaar:** de chip opent direct de levels van de party om in te vullen; voorbeeldspelers krijgen een level (nu toont het voorbeeld meteen "level onbekend"). Sinds 1.29.0 staat het levelveld ook op de spelerskaart in Voorbereiden als de sheet geen level geeft.
 - [ ] **VB2 Encounters vindbaar:** paneeltitel wordt "Encounters" op die tab (nu "Monster toevoegen"); na inladen staat de naam van de encounter boven de lijst en de notitie ingeklapt in Gevecht.
 - [ ] **VB3 Encounters:** level ook via ⋯ Bewerken voor spelers buiten de party; DMG-regel "monsters met veel lagere CR niet meetellen" (nu telt alles mee).
 
@@ -172,6 +164,11 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [x] Statblock-paneel op telefoon (vervangen door half/Groot boven de beurtbalk, 1.7.0)
 - [x] Lettertypes zelf meeleveren in plaats van Google Fonts (offline en privacy)
 - [x] Welkomstkaart bij een lege start ("Start met voorbeeld" / "Begin leeg"), voorbeeld-banner boven de lijst (1.17.0)
+
+### Modi (1.29.0, uit DM-review 2)
+- **IN1** Modus volgt de toestand: vóór Start altijd Voorbereiden (fase-aanduiding 1 → 2), Gevecht met eigen kop (grote ronde, ✎ Voorbereiden, +), tussendoor Voorbereiden met een amberkleurige balk en "Terug naar gevecht". Seg-knop weg. UX-agent koos dit boven tabs met een donkere kop (optie B).
+- **IN2** Kaart in Voorbereiden = inrichten: monster Init en Max HP direct (AC onder ⋯), Verbergen, Conditie, Effect, Statblock; speler huidige HP, AC en Level (als de sheet het mist), Conditie, Effect, Sheet. Geen Schade/Heal/Reaction. Velden slaan op bij verlaten.
+- **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.
 
 ### Functies
 - [x] Encounters vooraf klaarzetten en per sessie inladen: tab Encounters in het Monster-paneel (opslaan uit de lijst, inladen met Vervangen/Toevoegen in één Ongedaan, bewerken, dupliceren, verwijderen met Ongedaan), delen/importeren per encounter als bestand met eigen statblocks; snelkoppeling "Encounter inladen" bij een lege lijst (1.28.0)

@@ -7,7 +7,7 @@
 <meta name="description" content="Initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.">
 <meta name="theme-color" content="#8a1f14" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#13161d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="1.28.0">
+<meta name="it-version" content="1.29.0">
 <script src="js/theme.js"></script>
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
 <script>
@@ -39,13 +39,7 @@
       <div class="sum" id="sum"></div>
     </header>
 
-    <div class="modes">
-      <div class="seg modeseg" role="group" aria-label="Modus">
-        <button type="button" data-setmode="prep" aria-pressed="true">Voorbereiden</button>
-        <button type="button" data-setmode="fight" aria-pressed="false">Gevecht</button>
-      </div>
-      <button type="button" class="qplus" id="qadd" aria-label="Monster toevoegen aan het gevecht" title="Monster toevoegen aan het gevecht" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-    </div>
+    <div class="modes" id="modes"><!-- js/ui/render.js paintMode: fase, gevechtskop of "Gevecht loopt" --></div>
 
     <ol class="order" id="order"></ol>
 
