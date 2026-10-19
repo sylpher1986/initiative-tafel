@@ -110,6 +110,7 @@ function paint() {
  */
 export function bindSharing(view, links) {
   getView = view; addLink = links;
+  if (!$("#share-box") && window.__itErr) window.__itErr("Delen: #share-box ontbreekt in de pagina (oude index.html?)");
   $("#share-box")?.addEventListener("click", (e) => {
     const b = e.target.closest("[data-share]");
     if (!b) return;

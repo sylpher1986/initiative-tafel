@@ -22,7 +22,9 @@ function start() {
 
 async function boot() {
   setWarn(toast);
-  $("#app-version").textContent = `Initiative Tafel ${VERSION}`;
+  // pagina (index.html) en scripts moeten van dezelfde versie zijn; anders zichtbaar maken
+  const pv = document.querySelector('meta[name="it-version"]')?.content;
+  $("#app-version").textContent = `Initiative Tafel ${VERSION}${pv === VERSION ? "" : ` · pagina ${pv || "ouder"}`}`;
   try {
     await Promise.all([load(), loadSrd()]);
   } catch (e) {
@@ -58,4 +60,4 @@ async function boot() {
 }
 
 // onverwachte fout bij het opstarten: zichtbaar maken in plaats van stil een half werkende app
-boot().catch((e) => toast(`Fout bij opstarten: ${e && e.message || e}`));
+boot().catch((e) => { toast(`Fout bij opstarten: ${e && e.message || e}`); if (window.__itErr) window.__itErr(`Opstarten: ${e && (e.stack || e.message) || e}`); });

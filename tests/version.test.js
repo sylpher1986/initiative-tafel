@@ -8,6 +8,8 @@ test("appversie is x.y.z en gelijk aan de service worker", () => {
   const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
   assert.equal(sw.match(/const VERSION = "([^"]+)"/)?.[1], VERSION, "VERSION in sw.js en js/version.js lopen uit elkaar");
   assert.ok(sw.includes('"./js/version.js"'), "js/version.js ontbreekt in de cache-lijst van sw.js");
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.equal(html.match(/<meta name="it-version" content="([^"]+)">/)?.[1], VERSION, "it-version in index.html loopt uit de pas");
 });
 
 test("elk app-bestand staat in de offline-cache van sw.js", async () => {
