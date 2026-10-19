@@ -273,12 +273,12 @@ const global = {
     // spelers eerst hun initiative (paneel); vanuit het paneel komt start terug met initSkip
     if (!ui.initSkip && !app.S.round && initPcs(app.S.list).length) { openInit(); return false; }
     ui.initSkip = false;
-    apply(startCombat(app.S)); ui.mode = null;
+    apply(startCombat(app.S)); ui.mode = null; rekeyEdit();
   },
   next() { apply(step(app.S, 1)); ui.laPulse = true; },
   "down-tog"() { ui.downOpen = !ui.downOpen; },
   prev() { apply(step(app.S, -1)); },
-  stop() { apply(stopCombat(app.S)); ui.mode = null; },
+  stop() { apply(stopCombat(app.S)); ui.mode = null; rekeyEdit(); },
   /** Volgende encounter: monsters en lair weg, spelers blijven met HP, slots en effecten (één undo-stap) */
   "reset-mons"() {
     const r = clearMonsters(app.S);
@@ -367,6 +367,9 @@ function closePrep() {
 }
 
 export function onClick(e) {
+  // een veld op de kaart (Voorbereiden) eerst vastleggen: blur stuurt change synchroon, vóór de render van deze tik
+  const pf = document.activeElement;
+  if (pf && pf.dataset && pf.dataset.pf && !pf.contains(e.target)) pf.blur();
   if (spellInfoClick(e)) return; // spell-uitleg: tikbare naam of het paneel sluiten
   const sk = e.target.closest("[data-sk]");
   if (sk) {
@@ -389,6 +392,7 @@ export function onClick(e) {
   if (b.dataset.atk) return openAtk(b.dataset.cid, b.dataset.atk, b.dataset.label, b.dataset.laI, b);
   if (b.dataset.setmode) {
     ui.mode = b.dataset.setmode; ui.confirmReset = false;
+    rekeyEdit();
     render();
     if (mode() === "fight") scrollToCard(app.S.active); else window.scrollTo({ top: 0 }); // terug naar het gevecht: naar wie aan de beurt is
     return;
@@ -405,7 +409,7 @@ export function onClick(e) {
     if (global[b.id]() === false) return;
     if (["start", "next", "prev"].includes(b.id)) {
       // een niet-opgeslagen bewerking blijft open staan; anders volgt de open kaart de beurt
-      if (ui.edit && ui.edit.dirty) ui.open = ui.edit.id; else { ui.open = null; ui.panel = null; ui.edit = null; }
+      if (ui.edit && ui.edit.dirty) { ui.open = ui.edit.id; rekeyEdit(); } else { ui.open = null; ui.panel = null; ui.edit = null; }
       ui.fromDown = null;
       ui.castPick = null; ui.effWho = null; ui.atkOpen = null; ui.atkRx = null; ui.atkAdv = null; ui.atk = null;
     }
@@ -451,17 +455,29 @@ export function onChange(e) {
 }
 
 /**
+ * Open ⋯-concept na een moduswissel (✎, Terug, Start): de velden van de nieuwe modus. Wat erbij komt, vers uit de
+ * deelnemer (kan intussen op de kaart veranderd zijn); wat al in het concept stond, blijft.
+ */
+function rekeyEdit() {
+  const ed = ui.edit, c = ed && app.S.list.find((x) => x.id === ed.id);
+  if (!c) return;
+  const keys = editKeys(c, mode() === "prep"), now = { name: c.name, ac: c.ac || "", max: baseMax(c) || "", init: c.init };
+  for (const k of keys) if (!(ed.keys || []).includes(k)) ed[k] = now[k];
+  ed.keys = keys;
+}
+
+/**
  * Kaart in Voorbereiden (IN2): een veld slaat op zodra het de focus verliest. Direct vastleggen (commit: undo-stap,
  * logboek, opslag) maar niet renderen: dan zou de tik op het volgende veld of een knop verloren gaan. main.js
  * rendert na het verlaten van de velden (focusout). Ongeldig: oude waarde terug en een melding.
  */
 function prepField(c, t) {
   const k = t.dataset.pf, raw = t.value.trim();
-  const back = (msg) => { toast(msg); t.value = { init: c.init, max: baseMax(c) || "", hp: c.hp, ac: c.ac || "" }[k] ?? t.value; };
+  const m = c.pid && app.party.find((x) => x.pid === c.pid);
+  const back = (msg) => { toast(msg); t.value = { init: c.init, max: baseMax(c) || "", hp: c.hp, ac: c.ac || "", lvl: (m ? m.lvl : c.lvl) ?? "" }[k] ?? t.value; };
   if (k === "lvl") {
     const v = cleanLvl(raw);
-    if (raw !== "" && !v) { const m0 = c.pid && app.party.find((x) => x.pid === c.pid); toast("Level is 1 t/m 20."); t.value = (m0 ? m0.lvl : c.lvl) ?? ""; return; }
-    const m = c.pid && app.party.find((x) => x.pid === c.pid);
+    if (raw !== "" && !v) return back("Level is 1 t/m 20.");
     if (m) { m.lvl = v; saveParty(); return; } // level hoort bij de party (geen undo-stap), zoals in het Party-paneel
     c.lvl = v ?? undefined; because("level", c.id); commit(); return;
   }

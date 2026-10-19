@@ -177,8 +177,8 @@ export function setMax(c, nMax) {
  */
 export function setHp(c, v) {
   const out = fx();
-  if (!c.max) return out;
-  v = Math.max(0, Math.min(c.max, Math.round(+v) || 0));
+  if (!c.max || !Number.isFinite(+v)) return out; // ongeldige invoer verandert niets (nooit stil naar 0)
+  v = Math.max(0, Math.min(c.max, Math.round(+v)));
   if (v === c.hp) return out;
   if (c.kind === "pc") {
     if (v < c.hp && v > 0) { c.hp = v; return out; } // geen 0: geen gevolgen

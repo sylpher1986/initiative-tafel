@@ -43,3 +43,12 @@ test("setHp: monster, geen HP bekend en gelijke waarde", () => {
   const s = pc();
   assert.deepEqual(setHp(s, 20), { msgs: [], why: [] });
 });
+
+test("setHp: ongeldige invoer verandert niets; monster begrensd op max (ook met Aid erbovenop)", () => {
+  const m = mon({ hp: 5 });
+  assert.deepEqual(setHp(m, "abc"), { msgs: [], why: [] }); assert.equal(m.hp, 5);
+  setHp(m, NaN); assert.equal(m.hp, 5);
+  setHp(m, 99); assert.equal(m.hp, 7);
+  const a = pc({ hp: 20, max: 29, eff: [{ n: "Aid", st: "max", v: 5, hpd: 5 }] });
+  setHp(a, 40); assert.equal(a.hp, 29);
+});

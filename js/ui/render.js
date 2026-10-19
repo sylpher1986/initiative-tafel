@@ -87,11 +87,11 @@ export function render() {
 }
 
 /** Party/Vijanden (+ ronde) voor de kop */
-function sumHtml(S, round) {
+function sumHtml(S, round, sep = "") {
   const pcs = S.list.filter((c) => c.kind === "pc"), mons = S.list.filter((c) => c.kind === "monster");
   return [round && S.round ? `<span>Ronde <b>${S.round}</b></span>` : "",
     pcs.length ? `<span>Party <b>${pcs.filter((c) => !c.max || c.hp > 0).length}/${pcs.length}</b></span>` : "",
-    mons.length ? `<span>Vijanden <b>${mons.filter((c) => c.hp > 0).length}/${mons.length}</b></span>` : ""].join("");
+    mons.length ? `<span>Vijanden <b>${mons.filter((c) => c.hp > 0).length}/${mons.length}</b></span>` : ""].filter(Boolean).join(sep);
 }
 
 const PEN = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
@@ -107,7 +107,7 @@ function paintMode() {
   document.body.dataset.mode = m;
   if (S.round) document.body.dataset.run = "1"; else delete document.body.dataset.run;
   $("#modes").innerHTML = m === "fight"
-    ? `<div class="fhead"><div class="ft"><span class="l">Gevecht</span><span class="rn">Ronde ${n0(S.round)}</span><span class="fsum">${sumHtml(S, false).replace(/<\/span><span>/g, "</span> · <span>")}</span></div>
+    ? `<div class="fhead"><div class="ft"><span class="l">Gevecht</span><span class="rn">Ronde ${n0(S.round)}</span><span class="fsum">${sumHtml(S, false, " · ")}</span></div>
       <button type="button" class="fb" data-setmode="prep" aria-label="Voorbereiden: lijst aanpassen"><span class="fi">${PEN}</span><span class="fl">Voorbereiden</span></button>
       <button type="button" class="fb ic" id="qadd" aria-label="Monster toevoegen aan het gevecht" title="Monster toevoegen aan het gevecht">${PLUS}</button></div>`
     : S.round
