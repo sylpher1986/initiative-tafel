@@ -1,27 +1,17 @@
 // Spell-uitleg: tik op een spellnaam (statblock, speler-sheet, spells op de kaart) → paneel #rsheet met de SRD-tekst.
-// Twee edities: SRD 5.1 (2014) en SRD 5.2 (2024). De voorkeur (Instellingen, bewaard op het apparaat) bepaalt welke het
-// paneel eerst toont; staat de spell in beide, dan wisselt de schakelaar 2014 | 2024 alleen voor dit paneel.
+// Twee edities: SRD 5.1 (2014) en SRD 5.2 (2024). Het paneel opent op de instelling Spells (dezelfde die de regels bepaalt,
+// js/ui/spellrules.js); staat de spell in beide, dan wisselt de schakelaar 2014 | 2024 alleen voor dit paneel. Rekent de app
+// voor die spell anders per editie (rulesDiffer), dan zegt een regel dat je ter vergelijking leest.
 // Alleen UI: niets hiervan zit in de encounter, undo of opslag. Data wordt bij de eerste tik geladen (js/data/spells.js).
 import { $, esc } from "./util.js";
 import { app } from "../state.js";
 import { diceify } from "./statblock.js";
 import { ORD } from "../rules/spells.js";
 import { loadSpells, findSpell, spellSrc, normSpell, EDS, pickEd, spellsLoaded } from "../data/spells.js";
+import { rulesDiffer } from "../rules/spellcast.js";
+import { rulesEd } from "./spellrules.js";
 
-const KEY = "it-spell-ed";
-/** Voorkeurseditie op dit apparaat ("2014" standaard) */
-export function getSpellEd() {
-  try { const v = localStorage.getItem(KEY); return EDS.includes(v) ? v : "2014"; } catch { return "2014"; }
-}
-export function setSpellEd(ed) {
-  if (!EDS.includes(ed)) ed = "2014";
-  try { ed === "2014" ? localStorage.removeItem(KEY) : localStorage.setItem(KEY, ed); } catch { /* privémodus: alleen deze sessie */ }
-  pref = ed;
-  return ed;
-}
-let pref = getSpellEd();
-
-let cur = null;   // { n: naam zoals getikt, cid: speler (terugval uit de sheet), ed: gekozen editie (null = voorkeur), busy, err } of null
+let cur = null;   // { n: naam zoals getikt, cid: speler (terugval uit de sheet), ed: gekozen editie (null = instelling Spells), busy, err } of null
 let from = null;  // knop die het paneel opende (focus terug bij sluiten)
 
 export const spellOpen = () => !!cur;
@@ -87,11 +77,13 @@ function sheetSpell(cid, n) {
 }
 
 function body(c) {
-  const { ed, eds } = pickEd(c.n, c.ed || pref), s = findSpell(c.n, ed);
+  const pref = rulesEd(), { ed, eds } = pickEd(c.n, c.ed || pref), s = findSpell(c.n, ed);
   if (s) {
-    // voorkeurseditie niet geladen (offline, oude cache): dat zeggen, niet "staat alleen in …"
+    // andere editie dan de instelling: alleen een waarschuwing als de app voor deze spell echt anders rekent
+    const calc = rulesDiffer(c.n) ? ` De app rekent met ${pref}.` : "";
     const only = ed === pref ? "" : !spellsLoaded(pref) ? `<p class="hint">${SRD[pref]} niet geladen (offline?); dit is de ${SRD[ed]}.</p>`
-      : eds.length === 1 ? `<p class="hint">Staat alleen in de ${SRD[ed]}.</p>` : "";
+      : eds.length === 1 ? `<p class="hint">Staat alleen in de ${SRD[ed]}.${calc}</p>`
+      : calc ? `<p class="rcmp">Ter vergelijking.${calc}</p>` : "";
     const aka = normSpell(c.n) !== normSpell(s.n) ? `<p class="hint raka">Ook bekend als ${esc(c.n)}</p>` : "";
     const m = s.c.match(/^([^(]*?)\s*\((.*)\)$/); // "V, S, M (materiaal)" → componenten en materiaal apart
     return { title: s.n, eds, ed, html: `<p class="rmeta">${esc(lvlText(s, ed))}${s.conc ? ' <span class="tag m">Conc</span>' : ""}${s.rit ? ' <span class="tag">Ritual</span>' : ""}</p>${aka}${only}

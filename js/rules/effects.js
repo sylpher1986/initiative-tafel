@@ -6,7 +6,7 @@ import { fx, applyPcHp, revertMax, newDs, setUncon, dropConc, merge } from "./co
 /**
  * Presets. dur: sleutel uit DURS (turns.js) of "lr" (tot long rest). dex: 13 + Dex-mod (Mage Armor).
  * after: effect dat volgt als dit effect afloopt (Haste → Lethargy, tot na de volgende beurt van het doelwit); after.cond = ook die conditie.
- * r24: afwijkingen volgens de spellregels van 2024 (instelling "Spellregels"), zie presetsFor.
+ * r24: afwijkingen volgens de spellregels van 2024 (instelling "Spells"), zie presetsFor.
  * sv: invloed op saves ({ ab, b } vaste bonus, alleen op die ability; { d } = ±1dN op elke save). grp: sluiten elkaar uit (cover).
  */
 export const PRESETS = [

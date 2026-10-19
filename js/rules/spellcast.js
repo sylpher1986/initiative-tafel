@@ -3,7 +3,8 @@
 // Condities van een concentratie-spell hangen aan de caster (cd[k].by/spell/cast), net als effecten:
 // endConcConds haalt ze weg zodra die concentratie voorbij is (aangeroepen in commit()). Puur: geen DOM.
 import { fx, merge, startConc, dropConc, downPc } from "./combat.js";
-import { presetsFor, addEffect, endOtherCasts } from "./effects.js";
+import { PRESETS, presetsFor, addEffect, endOtherCasts } from "./effects.js";
+import { isConc, keys } from "./spells.js";
 import { makeDur, isOut } from "./turns.js";
 import { NO_ACT } from "./legendary.js";
 
@@ -51,6 +52,15 @@ export function condImmune(m) {
 const immText = (m) => ((m && Array.isArray(m.x) ? m.x : []).find((r) => r[0] === "Condition Immunities") || [])[1] || "";
 /** Immuun voor deze spell: voor de hoofdconditie, of (Sleep) voor `auto` (exhaustion) → slaagt vanzelf */
 export const spellImmune = (sp, m) => !!sp.conds && (condImmune(m).includes(sp.conds[0]) || (!!sp.auto && new RegExp(`\\b${sp.auto}\\b`, "i").test(immText(m))));
+/**
+ * Rekent de app voor deze spell anders bij 2014 en 2024? Concentratie verschilt, een effect-preset heeft 2024-afwijkingen
+ * (Barkskin, Haste) of er is een preset voor maar één editie (Sleep). Zo niet, dan is de andere editie alleen leesstof.
+ */
+export function rulesDiffer(n) {
+  const K = keys(n), has = (x) => K.includes(x.n.toLowerCase());
+  return isConc(n, "2014") !== isConc(n, "2024") || PRESETS.some((p) => p.r24 && has(p)) || SPELLS.some((s) => s.ed && has(s));
+}
+
 /** Preset hoort bij deze spellregels (Sleep alleen bij 2024) */
 export const spellFor = (sp, ed = "2014") => !sp.ed || sp.ed === ed;
 

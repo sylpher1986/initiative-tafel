@@ -75,7 +75,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [ ] Spelersscherm op andere apparaten: WebSocket-kamer (Durable Object) met kamercode, zelfde send/on als `js/share.js`; portretten apart en één keer per id sturen
 - [ ] Spelersscherm: zichtbaarheid (`VIS`) instelbaar maken; verbergen ook bij snel toevoegen
 - [x] Spellregels 2014 | 2024 (Instellingen, alleen spells): Barkskin 17 zonder concentratie, Lethargy = Incapacitated, concentratie per editie, Sleep 2024 (Incapacitated → Unconscious); concentratielijst uit de SRD-data (Enthrall/Forcecage eruit, o.a. Hideous Laughter, Spike Growth, Vampiric Touch erbij); Web duurt zolang de concentratie (1.21.0)
-- [ ] 2024-regels buiten spells (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Spellregels aanpassen
+- [ ] 2024-regels buiten spells (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen
 
 
 ## Fase 2: sync

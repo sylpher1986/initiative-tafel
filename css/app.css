@@ -671,3 +671,4 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .rtbl td:first-child{white-space:nowrap;font-variant-numeric:tabular-nums}
 .rsheet .credit{margin-top:4px}
 .rsw{max-width:180px}
+.rcmp{margin:0;font-size:.85rem;border-left:3px solid var(--warn);padding:4px 0 4px 10px}

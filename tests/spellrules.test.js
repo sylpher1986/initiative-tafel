@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { CONC } from "../js/rules/conclist.js";
 import { isConc, spellsAtLevel, pickList } from "../js/rules/spells.js";
 import { PRESETS, presetsFor, addEffect, removeEffect } from "../js/rules/effects.js";
-import { SPELLS, castSpell, spellDefault, spellFor } from "../js/rules/spellcast.js";
+import { SPELLS, castSpell, spellDefault, spellFor, rulesDiffer } from "../js/rules/spellcast.js";
 import { turnSaves, resolveSave } from "../js/rules/saves.js";
 import { applyDamage, startConc } from "../js/rules/combat.js";
 import { cleanCombatant } from "../js/backup.js";
@@ -180,4 +180,9 @@ test("Sleep 2024: tweede save vergeten = Incapacitated blijft en de save komt de
   assert.ok(g.cond.includes("Incapacitated"));
   turnSaves(S, "G");
   assert.ok(S.saves.some((s) => s.id === "G" && s.n === "Incapacitated"));
+});
+
+test("rekent de app anders per editie? Alleen dan de regel 'Ter vergelijking' in het spell-paneel", () => {
+  for (const n of ["Barkskin", "Haste", "Sleep", "Spiritual Weapon", "magic weapon", "True Strike", "Enthrall"]) assert.equal(rulesDiffer(n), true, n);
+  for (const n of ["Fireball", "Bless", "Hold Person", "Hex", "Shield", "Feeblemind", "Befuddlement", "Toll the Dead", ""]) assert.equal(rulesDiffer(n), false, n);
 });
