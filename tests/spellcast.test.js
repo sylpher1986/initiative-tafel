@@ -169,3 +169,28 @@ test("import: koppeling in cd blijft bewaard en wordt opgeschoond", () => {
   const d = cleanCombatant(mon("G", { cond: ["Prone"], cd: { Prone: { kind: "inf", at: "start" } } }));
   assert.equal(d.cd.Prone.by, undefined);
 });
+
+test("legendary resistance zonder tellers over: de save blijft gefaald", () => {
+  const w = pc("W"), dr = mon("Dragon", { lr: { max: 3, left: 0 } }), list = [w, dr];
+  const r = castSpell(list, SP("Hold Person"), w, [pick(dr, { lr: true })], { round: 1, active: "W", dc: 15 });
+  assert.deepEqual(r.hit, ["Dragon"]); assert.ok(dr.cond.includes("Paralyzed")); assert.equal(dr.lr.left, 0);
+});
+
+test("Paralyzed/Incapacitated door de spell beëindigt de concentratie van het doelwit (PHB p. 203); Web niet", () => {
+  const w = pc("W"), sh = mon("Shaman", { cond: ["Concentrating"], concSpell: "Bless" }), g = mon("G", { cond: ["Concentrating"], concSpell: "Fly" }), list = [w, sh, g];
+  castSpell(list, SP("Hold Person"), w, [pick(sh)], { round: 1, active: "W", dc: 15 });
+  assert.deepEqual(sh.cond, ["Paralyzed"]); assert.equal(sh.concSpell, null);
+  castSpell(list, SP("Web"), w, [pick(g)], { round: 2, active: "W", dc: 15 });
+  assert.ok(g.cond.includes("Concentrating"), "Restrained breekt geen concentratie");
+  const b = pc("B"), h = mon("H", { cond: ["Concentrating"], concSpell: "X" });
+  castSpell([b, h], SP("Hypnotic Pattern"), b, [pick(h)], { round: 1, active: "B", dc: 14 });
+  assert.equal(h.cond.includes("Concentrating"), false);
+});
+
+test("fit: immuun of geen humanoid komt niet in aanmerking (knoppen Monsters/Spelers)", () => {
+  const cl = pc("C");
+  assert.equal(spellDefault(SP("Hold Person"), cl, mon("L"), lich).fit, false);
+  assert.equal(spellDefault(SP("Hold Person"), cl, mon("U"), { meta: "Large undead" }).fit, false);
+  assert.equal(spellDefault(SP("Hold Person"), cl, mon("B"), bugbear).fit, true);
+  assert.equal(spellDefault(SP("Bless"), cl, mon("U"), lich).fit, true);
+});

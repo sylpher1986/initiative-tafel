@@ -2,7 +2,7 @@
 import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
 import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview, curSpell, spellPick } from "./render.js";
-import { castSpell, casterDC, spellTargets } from "../rules/spellcast.js";
+import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
 import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc } from "../rules/effects.js";
@@ -70,7 +70,7 @@ export function normalize(c) {
 function applyEff(c, p, byId, join = null) {
   const S = app.S, out = R.fx();
   const d = ["inf", "lr"].includes(p.dur) ? null : makeDur(c, { dur: p.dur }, S.active);
-  let by = null, cast = join || `${S.round}:${S.active || ""}`, old = null;
+  let by = null, cast = join || castKey(S.round, S.active), old = null;
   if (p.conc) {
     const caster = S.list.find((x) => x.id === byId);
     if (caster) {
@@ -781,7 +781,9 @@ function spellClick(a, k, b) {
   if (!sp) return k.startsWith("s");
   if (k === "ssave") set({ ok: b.dataset.v === "1", lr: false });
   else if (k === "slr") set({ ok: false, lr: true });
-  else if (k === "sall") spellTargets(app.S.list).forEach((c) => { a.s[c.id] = { ...(a.s[c.id] || {}), sel: !!b.dataset.v && c.kind === b.dataset.v }; });
+  else if (k === "sall") spellTargets(app.S.list).forEach((c) => { // niet de caster, niet wie immuun of (Hold Person) geen humanoid is
+    a.s[c.id] = { ...(a.s[c.id] || {}), sel: !!b.dataset.v && c.kind === b.dataset.v && c.id !== a.by && spellPick(a, sp, caster, c).fit };
+  });
   else if (k === "sroll") {
     const dc = parseInt(a.sdc);
     if (!(dc > 0)) { toast("Vul eerst de DC in."); $("#s-dc")?.focus(); return true; }

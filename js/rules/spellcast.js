@@ -2,9 +2,10 @@
 // Eén caster, per doel een save (gefaald = effect/conditie, geslaagd = niets), alles in één stap.
 // Condities van een concentratie-spell hangen aan de caster (cd[k].by/spell/cast), net als effecten:
 // endConcConds haalt ze weg zodra die concentratie voorbij is (aangeroepen in commit()). Puur: geen DOM.
-import { fx, merge, startConc } from "./combat.js";
+import { fx, merge, startConc, dropConc } from "./combat.js";
 import { PRESETS, addEffect, endOtherCasts } from "./effects.js";
 import { makeDur, isOut } from "./turns.js";
+import { NO_ACT } from "./legendary.js";
 
 /**
  * Presets. eff = effect-preset (effects.js), conds = condities bij een gefaalde save (de eerste bepaalt immuniteit),
@@ -53,7 +54,8 @@ export function casterDC(c, m) {
 
 /**
  * Standaardkeuze voor één doel: aan bij de goede kant, uit voor de caster, spelers op 0 HP, immuun of (Hold Person) geen humanoid.
- * → { sel, tags: [tekst], immune } (immune = immuun voor de hoofdconditie: krijgt niets, ook als de DM hem aanvinkt)
+ * → { sel, tags: [tekst], immune, fit } (immune = immuun voor de hoofdconditie: krijgt niets, ook als de DM hem aanvinkt;
+ *   fit = komt in aanmerking: niet immuun, humanoid waar nodig; voor "Monsters"/"Spelers" aanvinken)
  */
 export function spellDefault(sp, caster, c, m) {
   const tags = [];
@@ -67,7 +69,7 @@ export function spellDefault(sp, caster, c, m) {
   const own = caster ? (caster.kind === "pc") === (c.kind === "pc") : false;
   const side = sp.side === "own" ? own : !own;
   const sel = !!caster && side && c.id !== caster.id && !immune && human && !(c.kind === "pc" && c.max && c.hp <= 0);
-  return { sel, tags, immune };
+  return { sel, tags, immune, fit: !immune && human };
 }
 
 /** Cast-sleutel: doelen in dezelfde beurt horen bij dezelfde cast (zelfde schema als effecten) */
@@ -122,10 +124,11 @@ export function castSpell(list, sp, caster, picks, ctx = {}) {
   const pre = sp.eff ? PRESETS.find((p) => p.n === sp.eff) : null;
   for (const p of picks) {
     const c = p.c, note = p.note ? `${p.note}, ` : "";
-    if (p.lr && c.lr && c.lr.left > 0) { c.lr.left--; out.why.push({ t: "legendary resistance gebruikt", id: c.id }); }
+    const lr = !p.ok && p.lr && c.lr && c.lr.left > 0; // zonder resistance over telt de save gewoon als gefaald
+    if (lr) { c.lr.left--; out.why.push({ t: "legendary resistance gebruikt", id: c.id }); }
     // wie niets krijgt verandert niet en heeft dus geen eigen logregel: de oorzaak hangt aan de caster
     const own = caster ? caster.id : c.id;
-    if (p.ok || p.lr) { out.ok.push(c.name); out.why.push({ t: `${label}: ${c.name} ${note}save geslaagd, geen effect`, id: own }); continue; }
+    if (p.ok || lr) { out.ok.push(c.name); out.why.push({ t: `${label}: ${c.name} ${note}save geslaagd, geen effect`, id: own }); continue; }
     if (sp.conds && condImmune(p.m).includes(sp.conds[0])) { out.immune.push(c.name); out.why.push({ t: `${label}: ${c.name} immuun voor ${sp.conds[0]}`, id: own }); continue; }
     out.hit.push(c.name);
     out.why.push({ t: `${label}${sp.ab ? `: ${note}save gefaald` : ""}`, id: c.id });
@@ -140,6 +143,8 @@ export function castSpell(list, sp, caster, picks, ctx = {}) {
       const d = makeDur(c, { dur: sp.dur, ...save }, ctx.active) || { kind: "inf" };
       c.cd[k] = by ? { ...d, by, spell: sp.n, cast } : d;
     });
+    // PHB p. 203: incapacitated (ook Paralyzed/Stunned/Petrified) beëindigt de eigen concentratie; effecten volgen in commit()
+    if (sp.conds.some((k) => NO_ACT.includes(k))) merge(out, dropConc(c, `${sp.conds.find((k) => NO_ACT.includes(k))} door ${sp.n}`));
   }
   return out;
 }

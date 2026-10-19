@@ -21,6 +21,7 @@
 - Open saves in de beurtbalk: condition- en concentration saves met één tik rollen (monster) of ✓/✗ (speler), met Ongedaan
 - Legendary actions in de beurtbalk: per monster wat er over is, één tik naar de opties met kosten en worpen, Gebruik met logregel en Ongedaan
 - Aanval op een doel vanaf kaart, statblock en legendary-paneel, met advantage/disadvantage automatisch uit condities
+- Spell op meerdere doelen (tab Spell in AoE): effecten en condities met save per doel, gekoppeld aan de concentratie van de caster
 - Monsterbeurt zonder statblock: aanvallen op de kaart (open bij wie aan de beurt is, ingeklapt bij andere monsters voor opportunity attacks en legendary actions); statblock op telefoon half hoog boven de beurtbalk, volgt de beurt
 
 ## DM-review (oktober 2026), op prioriteit
@@ -37,7 +38,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 ### Prioriteit 2: voorbereiding en tempo
 - [x] Volgende encounter: "Encounter wissen" vraagt "Monsters wissen, spelers houden" of "Alles"; spelers blijven met HP, slots en effecten, één Ongedaan (1.12.1). Encounters vooraf klaarzetten en XP-moeilijkheid: zie Functies
 - [x] Initiative van spelers bij Start gevecht: paneel met alle spelers (oude waarden ingevuld), cijferpad, Rol per speler, Volgende/Start; één Ongedaan (1.13.0)
-- [ ] Effect/conditie op meerdere doelen tegelijk (Bless, Hold Person, Hypnotic Pattern, Web), met de doelkeuze uit AoE; Bless op 3 doelen kost nu 9 tikken
+- [x] Effect/conditie op meerdere doelen tegelijk: tab Spell in het AoE-paneel (Bless, Bane, Hold Person, Hypnotic Pattern, Web, eigen conditie) met caster, DC, saves per doel en Rol monsters; condities hangen aan de concentratie van de caster; Bless op 3 doelen 4–5 tikken i.p.v. 9 (1.15.0). Later: Hypnotic Pattern weg bij schade, slots verbruiken, maximaal aantal doelen
 - [ ] Groepsbeurten: zelfde monster met dezelfde groepsworp als één beurt
 - [ ] Monsters zoeken op CR en type (nu alleen naam: "undead" of "cr 5" geeft niets) en statblock-preview vóór toevoegen
 - [x] Desktop en tablet: zijkolom altijd gevuld en volgt de beurt (monster: statblock, speler: sheet met live HP/AC/condities/effecten/slots, plus de D&D Beyond-sheet als die er is); Vastzetten met "Beurt: X →"; zonder gevecht het laatst geopende of toegevoegde (1.8.0)
