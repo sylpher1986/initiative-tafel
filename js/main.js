@@ -6,15 +6,7 @@ import { toPlayerView } from "./playerview.js";
 import { localChannel, dmLink } from "./share.js";
 import { $, toast } from "./ui/util.js";
 import { VERSION } from "./version.js";
-import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, bindAoe, bindAtk, bindInit, addMonsters, normalize, scrollToCard } from "./ui/actions.js";
-
-const sample = () => ({
-  list: [
-    { id: "ex1", name: "Thalia (voorbeeld)", kind: "pc", race: "Elf", init: 17, dex: 3, ac: 15, hp: 24, max: 24, cond: [] },
-    { id: "ex2", name: "Brom (voorbeeld)", kind: "pc", race: "Dwarf", init: 9, dex: 0, ac: 18, hp: 31, max: 31, cond: [] },
-  ],
-  round: 0, active: null, sample: true,
-});
+import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, bindAoe, bindAtk, bindInit, normalize, scrollToCard } from "./ui/actions.js";
 
 function start() {
   ui.mode = null; // ook na een import: de modus volgt weer het gevecht
@@ -45,11 +37,7 @@ async function boot() {
   // echte hoogte van de beurtbalk: het statblock op de telefoon staat er precies boven
   if ("ResizeObserver" in window) new ResizeObserver(([e]) => document.documentElement.style.setProperty("--dock-h", Math.ceil(e.target.getBoundingClientRect().height) + "px")).observe($("#dock"));
 
-  if (!app.S) {
-    app.S = sample();
-    addMonsters("Goblin", 2, "avg", "each", true);
-    addMonsters("Hobgoblin", 1, "avg", "each", true);
-  }
+  if (!app.S) app.S = { list: [], round: 0, active: null, sample: false }; // eerste keer: welkomstkaart met "Start met voorbeeld"
   // spelersscherm (ander venster op dit apparaat): krijgt alleen de gefilterde snapshot
   const ch = localChannel();
   if (ch) {

@@ -42,6 +42,9 @@ export const ui = {
   laPulse: false,      // net Volgende getikt: legendary-knoppen lichten één keer op
   sv: false,           // paneel met alle open saves (bij 3 of meer)
   svRetry: null,       // { sid, id, step } = laatst gerolde monster-save, voor "Legendary Resistance" / "Advantage" in de melding
+  prep: null,          // "pc" | "mon" | "custom" | "party" | "data" = paneel in Voorbereiden open (knoppen in de beurtbalk)
+  prepLast: null,      // id van de laatst toegevoegde deelnemer terwijl dat paneel open was (bij Sluit in beeld)
+  welcome: true,       // welkomstkaart bij een lege start; "Begin leeg" zet hem uit voor deze sessie
 };
 export const openId = () => (ui.open === null ? app.S.active : ui.open);
 export const mode = () => ui.mode || (app.S.round ? "fight" : "prep");
@@ -57,6 +60,7 @@ export function render() {
   paintDock();
   paintSheet();
   paintQadd();
+  paintPrep();
   paintAoe();
   paintAtk();
   paintInit();
@@ -74,6 +78,20 @@ function paintMode() {
   document.body.dataset.mode = m;
   document.querySelectorAll("[data-setmode]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.setmode === m));
   $("#qadd").hidden = m !== "fight";
+  if (m !== "prep") ui.prep = null;
+}
+
+/* ---------- Voorbereiden: één paneel met de bestaande formulieren (statisch in index.html, alleen hidden wisselt) ---------- */
+const PREP = { pc: "Speler toevoegen", mon: "Monster toevoegen", custom: "Monster toevoegen", party: "Party", data: "Instellingen" };
+export function paintPrep() {
+  const el = $("#psheet"), p = PREP[ui.prep] ? ui.prep : null;
+  el.hidden = !p;
+  if (!p) return;
+  $("#p-title").textContent = PREP[p];
+  $("#p-montabs").hidden = p !== "mon" && p !== "custom";
+  $("#p-montabs").querySelectorAll("[data-prep]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.prep === p));
+  el.querySelectorAll("[data-panel]").forEach((x) => (x.hidden = x.dataset.panel !== p));
+  if (p === "mon" && app.S.list.some((c) => c.kind === "lair")) $("#addlair").hidden = true;
 }
 
 /* ---------- onderdelen van een kaart ---------- */
@@ -380,22 +398,38 @@ function paintEncounter() {
   $("#sum").innerHTML = L.length
     ? `${S.round ? `<span>Ronde <b>${S.round}</b></span>` : ""}${pcs.length ? `<span>Party <b>${pcs.filter((c) => !c.max || c.hp > 0).length}/${pcs.length}</b></span>` : ""}${mons.length ? `<span>Vijanden <b>${mons.filter((c) => c.hp > 0).length}/${mons.length}</b></span>` : ""}`
     : "";
-  $("#order").innerHTML = L.map((c) => row(c, S)).join("")
-    || `<li class="hint" style="padding:20px;text-align:center">Nog niemand aan tafel. ${mode() === "fight" ? "Voeg spelers en monsters toe onder Voorbereiden." : "Voeg hieronder spelers en monsters toe."}</li>`;
+  const prep = mode() === "prep";
+  $("#order").innerHTML = L.length
+    ? (S.sample && prep ? `<li class="sbanner"><span>Voorbeeld-encounter</span><button type="button" class="btn small" id="sample-clear">Begin leeg</button></li>` : "") + L.map((c) => row(c, S)).join("")
+    : emptyState(S, prep);
   $("#resetbar").innerHTML = ui.confirmReset
     ? S.list.some((c) => c.kind !== "pc")
       ? `<div class="confirm">Wat wissen?<button class="btn small primary" id="reset-mons">Monsters wissen, spelers houden</button><button class="btn small ghost" id="reset-yes">Alles</button><button class="btn small" id="reset-no">Annuleer</button></div>`
       : `<div class="confirm">Alles wissen?<button class="btn small primary" id="reset-yes">Ja, wis encounter</button><button class="btn small" id="reset-no">Annuleer</button></div>`
-    : `${S.list.some((c) => c.kind === "lair") ? "" : `<button class="btn small" id="addlair">+ Lair actions (init 20)</button>`}${S.list.length ? `<button class="btn small ghost" id="reset">Encounter wissen</button>` : ""}${S.round ? `<button class="btn small ghost" id="stop">Gevecht stoppen</button>` : ""}
-       ${S.sample ? `<p class="note">De deelnemers hierboven zijn voorbeelden. Wis ze en voeg je eigen groep toe.</p>` : ""}`;
+    : `${S.list.length ? `<button class="btn small ghost" id="reset">Encounter wissen</button>` : ""}${S.round ? `<button class="btn small ghost" id="stop">Gevecht stoppen</button>` : ""}`;
 }
+
+/** Lege lijst: welkomstkaart (echt de eerste keer), knop voor de party, of een korte hint */
+function emptyState(S, prep) {
+  if (!prep) return `<li class="hint empty">Nog niemand aan tafel. Voeg spelers en monsters toe onder Voorbereiden.</li>`;
+  if (app.party.length) return `<li class="welcome"><p>Nog niemand aan tafel. Je party staat klaar.</p><button type="button" class="btn primary tap" data-prep="party">Party aan tafel zetten</button></li>`;
+  if (ui.welcome) return `<li class="welcome"><h2>Welkom aan tafel</h2>
+    <p>Houd initiative, HP, condities en spell slots bij voor D&amp;D 5e (2014). Alles blijft op dit apparaat en werkt ook offline.</p>
+    <div class="wbtns"><button type="button" class="btn primary tap" id="welcome-sample">Start met voorbeeld</button><button type="button" class="btn tap" id="welcome-empty">Begin leeg</button></div>
+    <p class="hint">Voorbeeld: 2 spelers, 2 Goblins en een Hobgoblin. Probeer daarna Start gevecht.</p></li>`;
+  return `<li class="hint empty">Nog niemand aan tafel. Voeg spelers en monsters toe met de knoppen onderaan.</li>`;
+}
+
+const GEAR = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`;
 
 function paintDock() {
   const S = app.S;
   const L = sortOrder(S.list);
   const undoBtn = `<button id="undo" ${canUndo() ? "" : "disabled"} aria-label="Ongedaan maken" title="Ongedaan maken">↶</button>`;
+  const pb = (k, l, al) => `<button type="button" data-prep="${k}" aria-pressed="${ui.prep === k || (k === "mon" && ui.prep === "custom")}"${al ? ` aria-label="${al}" title="${al}"` : ""}>${l}</button>`;
+  const prepRow = mode() === "prep" ? `<div class="prow">${pb("mon", `<span class="pp">+&nbsp;</span>Monster`, "")}${pb("pc", `<span class="pp">+&nbsp;</span>Speler`, "")}${pb("party", "Party", "")}${pb("data", GEAR, "Instellingen")}</div>` : "";
   if (!S.round) {
-    $("#dock").innerHTML = `<div class="who"><span><span class="l">Encounter</span><br><b>${L.length} deelnemer${L.length === 1 ? "" : "s"}</b></span></div>
+    $("#dock").innerHTML = `${prepRow || `<div class="who"><span><span class="l">Encounter</span><br><b>${L.length} deelnemer${L.length === 1 ? "" : "s"}</b></span></div>`}
       ${svBar(S)}<div class="row one">${undoBtn}<button class="nx" id="start" ${L.length ? "" : "disabled"}>Start gevecht</button></div>`;
     return;
   }
@@ -404,7 +438,7 @@ function paintDock() {
   let nxt = null;
   for (let k = 1; k <= L.length; k++) { const c = L[(i + k) % L.length]; if (c && !isOut(c) && c.id !== S.active) { nxt = c; break; } }
   const g = act ? groupOf(L, act.id) : null; // groepsbeurt: "Bugbear 2 · 2/3"
-  $("#dock").innerHTML = `<div class="who"><span><span class="l">Aan de beurt</span><br><b>${act ? esc(act.name) : "–"}</b>${g ? ` <span class="gk" title="Groepsbeurt: lid ${g.k} van ${g.live.length}">· ${g.k}/${g.live.length}</span>` : ""}</span><span class="r">Ronde ${S.round}${nxt ? ` · volgende: ${esc(nxt.name)}` : ""}</span></div>
+  $("#dock").innerHTML = `${prepRow}<div class="who"><span><span class="l">Aan de beurt</span><br><b>${act ? esc(act.name) : "–"}</b>${g ? ` <span class="gk" title="Groepsbeurt: lid ${g.k} van ${g.live.length}">· ${g.k}/${g.live.length}</span>` : ""}</span><span class="r">Ronde ${S.round}${nxt ? ` · volgende: ${esc(nxt.name)}` : ""}</span></div>
     ${svBar(S)}${laBar(S, L)}<div class="row">${undoBtn}<button id="prev" aria-label="Vorige beurt">‹</button><button class="aoeb" id="aoe" aria-label="Area of effect: schade of een spell op meerdere doelen" ${spellTargets(app.S.list).length ? "" : "disabled"}>AoE</button><button class="nx" id="next">Volgende<span class="nb"> beurt</span> ›</button></div>`;
 }
 

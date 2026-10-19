@@ -271,7 +271,21 @@ const global = {
   addlair() {
     const lm = app.S.list.find((x) => x.la);
     const key = lm ? "Lair: " + lm.ref : Object.keys(app.lairs)[0] || "Lair";
-    app.S.list.push({ id: uid(), name: key, key, kind: "lair", init: 20, dex: -99, cond: [], last: null });
+    const id = uid();
+    app.S.list.push({ id, name: key, key, kind: "lair", init: 20, dex: -99, cond: [], last: null });
+    app.S.sample = false;
+    ui.prep = null; ui.prepLast = null; ui.open = id; // kaart staat bovenaan (init 20) en is direct in te vullen
+    render(); scrollToCard(id, true);
+    return false;
+  },
+  "welcome-sample"() { loadSample(); ui.welcome = false; },
+  "welcome-empty"() { ui.welcome = false; },
+  /** Voorbeeld weg: zelfde als "Alles wissen", met Ongedaan */
+  "sample-clear"() {
+    app.S = { list: [], round: 0, active: null, sample: false }; Object.assign(ui, { welcome: false, open: null, panel: null, mode: null, confirmReset: false });
+    render();
+    toastHtml(`Voorbeeld gewist. <button class="tundo" id="toast-undo">Ongedaan</button>`);
+    return false;
   },
   reset() { ui.confirmReset = true; },
   "reset-no"() { ui.confirmReset = false; },
@@ -295,6 +309,37 @@ export function scrollToCard(id, onlyIfHidden, instant) {
   window.scrollBy({ top: r.top - 64, behavior: reduce || instant ? "auto" : "smooth" });
 }
 
+/** Voorbeeld-encounter: twee spelers, twee Goblins en een Hobgoblin (één undo-stap) */
+export function loadSample() {
+  app.S.list.push(
+    { id: uid(), name: "Thalia (voorbeeld)", kind: "pc", race: "Elf", init: 17, dex: 3, ac: 15, hp: 24, max: 24, cond: [] },
+    { id: uid(), name: "Brom (voorbeeld)", kind: "pc", race: "Dwarf", init: 9, dex: 0, ac: 18, hp: 31, max: 31, cond: [] },
+  );
+  addMonsters("Goblin", 2, "avg", "each", true);
+  addMonsters("Hobgoblin", 1, "avg", "each", true);
+  app.S.sample = true;
+}
+
+/** Paneel in Voorbereiden openen of wisselen (Monster/Speler/Party/Instellingen); andere panelen gaan dicht */
+function openPrep(k) {
+  const was = ui.prep;
+  Object.assign(ui, { prep: k, sheet: null, qadd: null, aoe: null, atk: null, la: null, sv: false, confirmReset: false });
+  if (!was) ui.prepLast = null;
+  render();
+  if (k === "mon" && was !== "mon") bindForms.renderMonList(); // eigen monsters van elders staan er ook in
+  // focus in de dialog, niet op een invoerveld: dat zou op de telefoon meteen het toetsenbord openen
+  if (!was) $("#psheet .psheet").focus(); else $("#psheet .psheet").scrollTop = 0;
+}
+
+/** Paneel dicht: focus terug op de knop, en wat er net bijkwam in beeld */
+function closePrep() {
+  const k = ui.prep === "custom" ? "mon" : ui.prep, last = ui.prepLast;
+  ui.prep = null; ui.prepLast = null;
+  render();
+  $(`#dock [data-prep="${k}"]`)?.focus({ preventScroll: true });
+  if (last) scrollToCard(last, true);
+}
+
 export function onClick(e) {
   const sk = e.target.closest("[data-sk]");
   if (sk) {
@@ -304,6 +349,7 @@ export function onClick(e) {
     return;
   }
   if (e.target.closest('.dim[data-lsh="close"]')) { closeLa(); return; } // achtergrond van het legendary-paneel
+  if (e.target.closest('.dim[data-prep="close"]')) { closePrep(); return; } // achtergrond van het Voorbereiden-paneel
   if (e.target.closest(".dim[data-svsheet]")) { ui.sv = false; render(); $("[data-svsheet]")?.focus(); return; } // achtergrond van het saves-paneel
   const b = e.target.closest("button");
   if (!b) return;
@@ -320,11 +366,7 @@ export function onClick(e) {
     window.scrollTo({ top: 0 });
     return;
   }
-  if (b.dataset.tab) {
-    document.querySelectorAll(".tabs button").forEach((x) => x.setAttribute("aria-selected", x === b));
-    document.querySelectorAll("[data-panel]").forEach((p) => (p.hidden = p.dataset.panel !== b.dataset.tab));
-    return;
-  }
+  if (b.dataset.prep) { if (b.dataset.prep === "close") closePrep(); else openPrep(b.dataset.prep); return; }
   if (b.dataset.svroll) { svRoll(b.dataset.svroll); return; }
   if (b.dataset.svok) { const s = (app.S.saves || []).find((x) => x.sid === b.dataset.svok), c = s && app.S.list.find((x) => x.id === s.id); if (c) svDone(c, s.sid, b.dataset.v === "1", "", ""); return; }
   if (b.dataset.svrollall) { svRollAll(); return; }
@@ -380,6 +422,7 @@ export function onChange(e) {
 }
 
 export function onKey(e) {
+  if (ui.prep && e.key === "Escape") { e.preventDefault(); closePrep(); return; }
   if (ui.qadd && e.key === "Escape") { e.preventDefault(); closeQadd(); return; }
   if (ui.aoe && e.key === "Escape") { e.preventDefault(); closeAoe(); return; }
   if (ui.atk && e.key === "Escape") { e.preventDefault(); closeAtk(); return; }
@@ -522,7 +565,7 @@ export function bindForms() {
       casting: manual || (sh && sh.casting ? structuredClone(sh.casting) : null), res: sh ? structuredClone(sh.res || []) : [], sheet: sh || null, initBonus: sh ? sh.initBonus : dex,
       ...(pendingDdb && !pendingNew ? { ddbId: pendingDdb } : {}), // "Als nieuwe speler": geen tweede koppeling aan hetzelfde character
     });
-    app.S.sample = false;
+    app.S.sample = false; ui.prepLast = app.S.list[app.S.list.length - 1].id;
     resetPcForm(); render(); $("#pc-name").focus();
   });
   $("#pc-roll").addEventListener("click", () => {
@@ -580,6 +623,7 @@ export function bindForms() {
     if (!selMon) { toast("Tik eerst een monster in de lijst aan."); return; }
     $("#mon-q").blur();
     addMonsters(selMon, monN(), $("#mon-hpmode").value, $("#mon-initmode").value);
+    ui.prepLast = app.S.list.at(-1)?.id ?? null;
     render();
   });
 
@@ -596,7 +640,7 @@ export function bindForms() {
     if (!m.n) return;
     app.custom = [m, ...app.custom.filter((x) => x.n !== m.n)]; saveLibrary();
     e.target.reset(); selMon = m.n; $("#mon-q").value = ""; renderMonList();
-    document.querySelector('[data-tab="mon"]').click(); toast(`${m.n} opgeslagen. Kies aantal en voeg toe.`);
+    ui.prep = "mon"; render(); $("#mon-add").focus(); toast(`${m.n} opgeslagen. Kies aantal en voeg toe.`);
   });
 
   const impStatus = () => {
@@ -1120,7 +1164,9 @@ export function bindParty() {
         app.S.list.push({ ...c, id: uid(), pid: m.pid, kind: "pc", init: parseInt(ui.partyInit[m.pid]) || 0, cond: c.hp > 0 ? [] : ["Unconscious"], reaction: false });
         delete ui.partyInit[m.pid];
       });
-      app.S.sample = false; toast(`${todo.length} speler${todo.length === 1 ? "" : "s"} aan tafel gezet.`); render(); return;
+      app.S.sample = false; ui.prepLast = app.S.list[app.S.list.length - 1].id; toast(`${todo.length} speler${todo.length === 1 ? "" : "s"} aan tafel gezet.`);
+      if (ui.prep === "party") closePrep(); else render();
+      return;
     }
     if (b.id === "p-short" || b.id === "p-long") {
       const long = b.id === "p-long";

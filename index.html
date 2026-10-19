@@ -38,92 +38,6 @@
     <div class="bar" id="resetbar"></div>
     <div id="logwrap"></div>
 
-    <div class="panel">
-      <div class="tabs" role="tablist">
-        <button role="tab" id="tab-pc" aria-selected="true" data-tab="pc">Speler</button>
-        <button role="tab" id="tab-mon" aria-selected="false" data-tab="mon">Monster</button>
-        <button role="tab" id="tab-custom" aria-selected="false" data-tab="custom">Eigen monster</button>
-        <button role="tab" id="tab-party" aria-selected="false" data-tab="party">Party</button>
-        <button role="tab" id="tab-data" aria-selected="false" data-tab="data">Instellingen</button>
-      </div>
-
-      <form class="form" id="f-pc" data-panel="pc">
-        <label>D&amp;D Beyond-link<span class="ddbrow"><input id="pc-ddb" type="text" inputmode="url" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="dndbeyond.com/characters/…"><button type="button" class="btn tap" id="pc-ddbgo">Ophalen</button></span></label>
-        <p class="hint">Sheet moet op Public staan: Character Settings → Character Privacy → Public.</p>
-        <label class="sub">Of PDF-export van D&amp;D Beyond<input id="pc-pdf" type="file" accept="application/pdf,.pdf"></label>
-        <p class="hint" id="pc-sheetinfo" aria-live="polite"></p>
-        <div id="pc-match"></div>
-        <div class="f2">
-          <label>Naam<input id="pc-name" required placeholder="bijv. Thalia"></label>
-          <label>Initiative<span style="display:flex;gap:6px"><input id="pc-init" type="number" inputmode="numeric" required placeholder="worp + mod"><button type="button" class="btn small" id="pc-roll" title="d20 + initiative bonus">Rol</button></span></label>
-        </div>
-        <div class="f2">
-          <label>AC<span class="opt"> (optioneel)</span><span class="cw"> · controleer</span><input id="pc-ac" type="number" inputmode="numeric"></label>
-          <label>Max HP<span class="opt"> (optioneel)</span><span class="cw"> · controleer</span><input id="pc-hp" type="number" inputmode="numeric"></label>
-          <label>Dex-mod (tiebreak)<input id="pc-dex" type="number" inputmode="numeric" value="0"></label>
-          <label>Ras (icoon)<select id="pc-race"><option value="">Anders / onbekend</option></select></label>
-        </div>
-        <p class="hint warnline" id="pc-check" hidden></p>
-        <details class="cast"><summary class="link">Spellcaster? Spell slots invullen</summary>
-          <div class="slotin" style="margin-top:8px"><label>1e<input id="pc-sl1" type="number" min="0" max="9" inputmode="numeric"></label><label>2e<input id="pc-sl2" type="number" min="0" max="9" inputmode="numeric"></label><label>3e<input id="pc-sl3" type="number" min="0" max="9" inputmode="numeric"></label><label>4e<input id="pc-sl4" type="number" min="0" max="9" inputmode="numeric"></label><label>5e<input id="pc-sl5" type="number" min="0" max="9" inputmode="numeric"></label><label>6e<input id="pc-sl6" type="number" min="0" max="9" inputmode="numeric"></label><label>7e<input id="pc-sl7" type="number" min="0" max="9" inputmode="numeric"></label><label>8e<input id="pc-sl8" type="number" min="0" max="9" inputmode="numeric"></label><label>9e<input id="pc-sl9" type="number" min="0" max="9" inputmode="numeric"></label></div>
-        </details>
-        <label class="chk"><input type="checkbox" id="pc-party" checked> Ook opslaan in vaste party</label>
-        <button class="btn primary" type="submit">Speler toevoegen</button>
-      </form>
-
-      <form class="form" id="f-mon" data-panel="mon" hidden>
-        <label>Zoek monster<input id="mon-q" placeholder="goblin, troll, cultist…" autocomplete="off"></label>
-        <div class="mlist" id="mon-list"></div>
-        <div class="f2">
-          <label>Aantal<input id="mon-n" type="number" min="1" max="20" value="1" inputmode="numeric"></label>
-          <label>HP<select id="mon-hpmode"><option value="avg">Gemiddeld</option><option value="roll">Rollen (hit dice)</option></select></label>
-          <label>Initiative<select id="mon-initmode"><option value="each">Per monster</option><option value="group">Eén worp voor de groep</option></select></label>
-        </div>
-        <button class="btn primary" type="submit" id="mon-add">Goblin toevoegen</button>
-      </form>
-
-      <div class="form" id="party-panel" data-panel="party" hidden></div>
-      <div class="form" id="data-panel" data-panel="data" hidden>
-        <h2 class="sethead" id="theme-head">Weergave</h2>
-        <div class="seg" role="group" aria-labelledby="theme-head" id="theme-seg">
-          <button type="button" data-theme-set="system" aria-pressed="true">Systeem</button>
-          <button type="button" data-theme-set="light" aria-pressed="false">Licht</button>
-          <button type="button" data-theme-set="dark" aria-pressed="false">Donker</button>
-        </div>
-        <h2 class="sethead">Spelersscherm</h2>
-        <p class="hint">Een tweede venster voor de spelers (tv, tweede scherm of tablet in split view): volgorde, wie aan de beurt is, HP-status van monsters. Geen statblocks of exacte monster-HP. Werkt tussen vensters van dezelfde browser op dit apparaat (op iPhone/iPad: open de site in Safari, niet de app op je beginscherm). Monsters verberg je via ⋯.</p>
-        <div class="bar"><button type="button" class="btn" id="spelers">Open spelersscherm</button></div>
-        <h2 class="sethead">Opslag</h2>
-        <p class="hint">Alles staat op dit apparaat. Maak af en toe een export: als backup, om naar een ander apparaat te gaan, of om je party met een co-DM te delen.</p>
-        <div class="bar"><button type="button" class="btn primary" id="exp-file">Exporteer als bestand</button><button type="button" class="btn small" id="exp-copy">Kopieer als tekst</button></div>
-        <label>Export importeren (bestand)<input id="imp-backup" type="file" accept=".json,application/json"></label>
-        <details class="cast"><summary class="link">Of plak de tekst van een export (bijv. uit de Claude-versie)</summary>
-          <div class="form" style="margin-top:8px"><textarea id="imp-text" placeholder='{"format":"initiative-tafel", …}'></textarea>
-          <button type="button" class="btn small" id="imp-text-go">Importeren</button></div></details>
-        <div id="imp-confirm"></div>
-        <p class="hint" id="data-info"></p>
-        <p class="hint appver" id="app-version"></p>
-      </div>
-      <form class="form" id="f-custom" data-panel="custom" hidden>
-        <p class="hint">Voor monsters buiten de SRD. Ze worden in deze browser bewaard en verschijnen daarna gewoon in de monsterlijst.</p>
-        <div class="f2">
-          <label>Naam<input id="cu-name" required></label>
-          <label>CR<input id="cu-cr" placeholder="1/2"></label>
-        </div>
-        <div class="f2">
-          <label>AC<input id="cu-ac" type="number" required inputmode="numeric"></label>
-          <label>HP of dice<input id="cu-hp" required placeholder="22 of 5d8"></label>
-          <label>Dex-score<input id="cu-dex" type="number" value="10" inputmode="numeric"></label>
-        </div>
-        <label>Statblock (plak tekst)<textarea id="cu-text" placeholder="Multiattack. … &#10;Bite. Melee Weapon Attack: +4 to hit, reach 5 ft. Hit: 7 (2d4 + 2) piercing damage."></textarea></label>
-        <p class="hint">Dobbelstenen als (2d6 + 3) en "+4 to hit" worden in het statblock klikbaar.</p>
-        <button class="btn primary" type="submit">Monster opslaan</button>
-        <hr style="border:0;border-top:1px solid var(--line);margin:6px 0">
-        <label>Monsterbestand importeren (JSON)<input id="imp-file" type="file" accept=".json,application/json"></label>
-        <p class="hint">Werkt met <b>5e-SRD-Monsters.json</b> uit de 5e-database van 5e-bits op GitHub (map src/2014/en) en met een Open5e-export. Je eigen JSON-lijst in hetzelfde formaat mag ook. Meerdere bestanden na elkaar importeren mag; ze worden samengevoegd.</p>
-        <p class="hint" id="imp-status"></p>
-      </form>
-    </div>
   </section>
 
   <aside class="sbwrap" id="sbwrap" data-open="false" aria-label="Statblock">
@@ -132,6 +46,92 @@
   </aside>
 </div>
 <div class="dock" id="dock"></div>
+<div class="sheet-wrap" id="psheet" hidden>
+  <div class="dim" data-prep="close"></div>
+  <div class="sheet qsheet psheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="p-title">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="shead"><h3 id="p-title">Toevoegen</h3><button type="button" class="link" data-prep="close">Sluit</button></div>
+    <div class="seg2" id="p-montabs" role="group" aria-label="Soort monster"><button type="button" data-prep="mon">Uit de lijst</button><button type="button" data-prep="custom">Eigen monster</button></div>
+
+    <form class="form" id="f-pc" data-panel="pc">
+      <label>D&amp;D Beyond-link<span class="ddbrow"><input id="pc-ddb" type="text" inputmode="url" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="dndbeyond.com/characters/…"><button type="button" class="btn tap" id="pc-ddbgo">Ophalen</button></span></label>
+      <p class="hint">Sheet moet op Public staan: Character Settings → Character Privacy → Public.</p>
+      <label class="sub">Of PDF-export van D&amp;D Beyond<input id="pc-pdf" type="file" accept="application/pdf,.pdf"></label>
+      <p class="hint" id="pc-sheetinfo" aria-live="polite"></p>
+      <div id="pc-match"></div>
+      <div class="f2">
+        <label>Naam<input id="pc-name" required placeholder="bijv. Thalia"></label>
+        <label>Initiative<span style="display:flex;gap:6px"><input id="pc-init" type="number" inputmode="numeric" required placeholder="worp + mod"><button type="button" class="btn small" id="pc-roll" title="d20 + initiative bonus">Rol</button></span></label>
+      </div>
+      <div class="f2">
+        <label>AC<span class="opt"> (optioneel)</span><span class="cw"> · controleer</span><input id="pc-ac" type="number" inputmode="numeric"></label>
+        <label>Max HP<span class="opt"> (optioneel)</span><span class="cw"> · controleer</span><input id="pc-hp" type="number" inputmode="numeric"></label>
+        <label>Dex-mod (tiebreak)<input id="pc-dex" type="number" inputmode="numeric" value="0"></label>
+        <label>Ras (icoon)<select id="pc-race"><option value="">Anders / onbekend</option></select></label>
+      </div>
+      <p class="hint warnline" id="pc-check" hidden></p>
+      <details class="cast"><summary class="link">Spellcaster? Spell slots invullen</summary>
+        <div class="slotin" style="margin-top:8px"><label>1e<input id="pc-sl1" type="number" min="0" max="9" inputmode="numeric"></label><label>2e<input id="pc-sl2" type="number" min="0" max="9" inputmode="numeric"></label><label>3e<input id="pc-sl3" type="number" min="0" max="9" inputmode="numeric"></label><label>4e<input id="pc-sl4" type="number" min="0" max="9" inputmode="numeric"></label><label>5e<input id="pc-sl5" type="number" min="0" max="9" inputmode="numeric"></label><label>6e<input id="pc-sl6" type="number" min="0" max="9" inputmode="numeric"></label><label>7e<input id="pc-sl7" type="number" min="0" max="9" inputmode="numeric"></label><label>8e<input id="pc-sl8" type="number" min="0" max="9" inputmode="numeric"></label><label>9e<input id="pc-sl9" type="number" min="0" max="9" inputmode="numeric"></label></div>
+      </details>
+      <label class="chk"><input type="checkbox" id="pc-party" checked> Ook opslaan in vaste party</label>
+      <button class="btn primary" type="submit">Speler toevoegen</button>
+    </form>
+
+    <form class="form" id="f-mon" data-panel="mon" hidden>
+      <label>Zoek monster<input id="mon-q" placeholder="goblin, troll, cultist…" autocomplete="off"></label>
+      <div class="mlist" id="mon-list"></div>
+      <div class="f2">
+        <label>Aantal<input id="mon-n" type="number" min="1" max="20" value="1" inputmode="numeric"></label>
+        <label>HP<select id="mon-hpmode"><option value="avg">Gemiddeld</option><option value="roll">Rollen (hit dice)</option></select></label>
+        <label>Initiative<select id="mon-initmode"><option value="each">Per monster</option><option value="group">Groepsworp</option></select></label>
+      </div>
+      <button class="btn primary" type="submit" id="mon-add">Goblin toevoegen</button>
+    </form>
+
+    <div class="form" id="party-panel" data-panel="party" hidden></div>
+    <div class="form" id="data-panel" data-panel="data" hidden>
+      <h2 class="sethead" id="theme-head">Weergave</h2>
+      <div class="seg" role="group" aria-labelledby="theme-head" id="theme-seg">
+        <button type="button" data-theme-set="system" aria-pressed="true">Systeem</button>
+        <button type="button" data-theme-set="light" aria-pressed="false">Licht</button>
+        <button type="button" data-theme-set="dark" aria-pressed="false">Donker</button>
+      </div>
+      <h2 class="sethead">Spelersscherm</h2>
+      <p class="hint">Een tweede venster voor de spelers (tv, tweede scherm of tablet in split view): volgorde, wie aan de beurt is, HP-status van monsters. Geen statblocks of exacte monster-HP. Werkt tussen vensters van dezelfde browser op dit apparaat (op iPhone/iPad: open de site in Safari, niet de app op je beginscherm). Monsters verberg je via ⋯.</p>
+      <div class="bar"><button type="button" class="btn" id="spelers">Open spelersscherm</button></div>
+      <h2 class="sethead">Opslag</h2>
+      <p class="hint">Alles staat op dit apparaat. Maak af en toe een export: als backup, om naar een ander apparaat te gaan, of om je party met een co-DM te delen.</p>
+      <div class="bar"><button type="button" class="btn primary" id="exp-file">Exporteer als bestand</button><button type="button" class="btn small" id="exp-copy">Kopieer als tekst</button></div>
+      <label>Export importeren (bestand)<input id="imp-backup" type="file" accept=".json,application/json"></label>
+      <details class="cast"><summary class="link">Of plak de tekst van een export (bijv. uit de Claude-versie)</summary>
+        <div class="form" style="margin-top:8px"><textarea id="imp-text" placeholder='{"format":"initiative-tafel", …}'></textarea>
+        <button type="button" class="btn small" id="imp-text-go">Importeren</button></div></details>
+      <div id="imp-confirm"></div>
+      <p class="hint" id="data-info"></p>
+      <p class="hint appver" id="app-version"></p>
+    </div>
+    <form class="form" id="f-custom" data-panel="custom" hidden>
+      <p class="hint">Voor monsters buiten de SRD. Ze worden in deze browser bewaard en verschijnen daarna gewoon in de monsterlijst.</p>
+      <div class="f2">
+        <label>Naam<input id="cu-name" required></label>
+        <label>CR<input id="cu-cr" placeholder="1/2"></label>
+      </div>
+      <div class="f2">
+        <label>AC<input id="cu-ac" type="number" required inputmode="numeric"></label>
+        <label>HP of dice<input id="cu-hp" required placeholder="22 of 5d8"></label>
+        <label>Dex-score<input id="cu-dex" type="number" value="10" inputmode="numeric"></label>
+      </div>
+      <label>Statblock (plak tekst)<textarea id="cu-text" placeholder="Multiattack. … &#10;Bite. Melee Weapon Attack: +4 to hit, reach 5 ft. Hit: 7 (2d4 + 2) piercing damage."></textarea></label>
+      <p class="hint">Dobbelstenen als (2d6 + 3) en "+4 to hit" worden in het statblock klikbaar.</p>
+      <button class="btn primary" type="submit">Monster opslaan</button>
+      <hr style="border:0;border-top:1px solid var(--line);margin:6px 0">
+      <label>Monsterbestand importeren (JSON)<input id="imp-file" type="file" accept=".json,application/json"></label>
+      <p class="hint">Werkt met <b>5e-SRD-Monsters.json</b> uit de 5e-database van 5e-bits op GitHub (map src/2014/en) en met een Open5e-export. Je eigen JSON-lijst in hetzelfde formaat mag ook. Meerdere bestanden na elkaar importeren mag; ze worden samengevoegd.</p>
+      <p class="hint" id="imp-status"></p>
+    </form>
+    <button type="button" class="link plair" id="addlair" data-panel="mon">+ Lair actions (init 20)</button>
+  </div>
+</div>
 <div class="sheet-wrap" id="sheet" hidden></div>
 <div class="sheet-wrap" id="qsheet" hidden></div>
 <div class="sheet-wrap" id="asheet" hidden></div>
