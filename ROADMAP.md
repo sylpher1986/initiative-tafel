@@ -7,7 +7,7 @@
 - HP, temp HP, resistance/vulnerability, death saves, condities met duur en herhaal-saves
 - Spell slots en innate spells (monsters en spelers), concentration gekoppeld aan spells (incl. upcasting)
 - Recharge, legendary actions/resistance, lair actions (zelf in te voeren en bewaard), reactions
-- Export/import (JSON, versie 1), offline PWA, Cloudflare-hosting
+- Export/import (JSON, versie 2 sinds 1.28.0: met encounters), offline PWA, Cloudflare-hosting
 - Weergave Systeem/Licht/Donker (tab Instellingen, keuze bewaard op het apparaat)
 - UX-ronde 1: compacte kaarten (één open), vaste beurtbalk, schade-paneel, meldingen met Ongedaan
 - Avatars: icoon per creature type (monsters) en ras (spelers), portret uit de D&D Beyond-PDF als die er een heeft
@@ -69,8 +69,9 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [ ] Resistances/immunities per speler opslaan (nu handmatig in het AoE-paneel); kan uit de D&D Beyond-data komen
 - [ ] Knop "Bijwerken" per lid in de Party-tab (voor wie een D&D Beyond-link heeft), met hetzelfde bevestigvak
 - [ ] Pact Magic-slots apart bijhouden (komen terug na een short rest); nu opgeteld bij de gewone slots
-- [ ] Encounters vooraf klaarzetten en per sessie inladen
-- [ ] Moeilijkheid berekenen: XP-budget tegen partylevel (DMG 2014, easy t/m deadly)
+- [x] Encounters vooraf klaarzetten en per sessie inladen: tab Encounters in het Monster-paneel (opslaan uit de lijst, inladen met Vervangen/Toevoegen in één Ongedaan, bewerken, dupliceren, verwijderen met Ongedaan), delen/importeren per encounter als bestand met eigen statblocks; snelkoppeling "Encounter inladen" bij een lege lijst (1.28.0)
+- [x] Moeilijkheid berekenen: XP-budget tegen partylevel (DMG 2014, Trivial/Easy t/m Deadly): live boven de lijst in Voorbereiden en per encounter, tik = uitleg; level uit de sheet of een levelveld per partylid (1.28.0)
+- [ ] Encounters: level ook via ⋯ Bewerken voor spelers buiten de party; DMG-regel "monsters met veel lagere CR niet meetellen" (nu telt alles mee)
 - [ ] Herinnering om af en toe een export te maken
 - [x] Spelersscherm op andere apparaten: kamer (Durable Object) met kamercode en link, "Delen met spelers" in Instellingen met aantal verbonden schermen, code invoeren op het spelersscherm, herverbinden na slapen/netwerkwissel, portretten apart en één keer per id (1.24.0)
 - [x] Spelersscherm-kamer: rate-limit op `POST /api/room`: max 10 nieuwe kamers per minuut per IP (Cloudflare rate limiting binding), daarboven 429 en een melding bij Delen met spelers (1.24.4)
@@ -85,7 +86,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 
 
 ## Fase 2: sync
-- [ ] Login en sync tussen apparaten (bijv. Supabase), local-first blijft de basis
+- [ ] Login en sync tussen apparaten (bijv. Supabase), local-first blijft de basis. Eerste collectie: `encounters` (heeft al `id` + `updatedAt`, nieuwste wint); tot dan wisselen via Delen/Importeren per encounter
 - [ ] Delen met een co-DM
 
 ## Fase 3: AI (via Cloudflare Worker, sleutel nooit in de browser)

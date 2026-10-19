@@ -5,17 +5,20 @@ import { uid } from "./rules/dice.js";
 import { setLibrary } from "./data/monsters.js";
 import { endConcEffects } from "./rules/effects.js";
 import { endConcConds } from "./rules/spellcast.js";
+import { cleanEncounters } from "./rules/encounters.js";
 
 /** Alle data van de app. S = de lopende encounter. */
-export const app = { S: null, party: [], lairs: {}, custom: [], imported: [] };
+export const app = { S: null, party: [], lairs: {}, custom: [], imported: [], encounters: [] }; // encounters: klaargezet, niet in undo
 
-let hist = [], lastJSON = null, prevObj = null, pendingWhy = [], steps = 0;
+let hist = [], lastJSON = null, prevObj = null, pendingWhy = [], pendingSum = null, steps = 0;
 let warn = () => {}, warned = false;
 export const setWarn = (fn) => { warn = fn; };
 
 /** Oorzaak voor de volgende logregel(s); id = deelnemer, of leeg voor alle regels van deze stap */
 export const because = (t, id) => pendingWhy.push({ t, id: id || null });
 export const addWhy = (arr) => pendingWhy.push(...arr);
+/** Eén logregel voor deze stap in plaats van een regel per deelnemer die erbij kwam of wegging (encounter inladen) */
+export const logAs = (msg) => { pendingSum = msg; };
 export const canUndo = () => hist.length > 0;
 export const historySize = () => hist.length;
 /** Loopt op bij elke vastgelegde stap en elke undo: "is er sindsdien iets gebeurd?" */
@@ -28,22 +31,25 @@ function save(key, value) {
 }
 export const saveParty = () => save("party", app.party);
 export const saveLairs = () => save("lairs", app.lairs);
+export const saveEncounters = () => save("encounters", app.encounters);
 export function saveLibrary() {
   save("custom", app.custom); save("imported", app.imported);
   setLibrary({ custom: app.custom, imported: app.imported });
 }
 
 export async function load() {
-  [app.S, app.party, app.lairs, app.custom, app.imported] = await Promise.all([
-    store.get("state", null), store.get("party", []), store.get("lairs", {}), store.get("custom", []), store.get("imported", []),
+  let encs;
+  [app.S, app.party, app.lairs, app.custom, app.imported, encs] = await Promise.all([
+    store.get("state", null), store.get("party", []), store.get("lairs", {}), store.get("custom", []), store.get("imported", []), store.get("encounters", []),
   ]);
+  app.encounters = cleanEncounters(encs);
   setLibrary({ custom: app.custom, imported: app.imported });
   store.persistStorage();
 }
 
 /** Na een import of bij opstarten: huidige stand is het nieuwe vertrekpunt (geen undo-stap, geen logregels) */
 export function resetBaseline() {
-  lastJSON = JSON.stringify(app.S); prevObj = JSON.parse(lastJSON); hist = []; pendingWhy = [];
+  lastJSON = JSON.stringify(app.S); prevObj = JSON.parse(lastJSON); hist = []; pendingWhy = []; pendingSum = null;
   save("state", prevObj);
 }
 
@@ -55,13 +61,13 @@ export function commit() {
   // effecten en condities (Hold Person) van een caster die geen concentratie meer heeft (0 HP, nieuwe spell, verwijderd) horen bij deze stap
   pendingWhy.push(...endConcEffects(app.S.list, app.S.active).why, ...endConcConds(app.S.list).why);
   let j = JSON.stringify(app.S);
-  if (j === lastJSON) { pendingWhy = []; return false; }
+  if (j === lastJSON) { pendingWhy = []; pendingSum = null; return false; }
   if (lastJSON !== null) {
     hist.push(lastJSON);
     if (hist.length > 80) hist.shift();
     if (writeLog(prevObj)) j = JSON.stringify(app.S);
   }
-  pendingWhy = []; steps++;
+  pendingWhy = []; pendingSum = null; steps++;
   lastJSON = j; prevObj = JSON.parse(j);
   save("state", prevObj);
   syncParty();
@@ -70,6 +76,7 @@ export function commit() {
 
 export function undo() {
   if (!hist.length) return false;
+  pendingSum = null;
   const j = hist.pop();
   app.S = JSON.parse(j);
   lastJSON = j; prevObj = JSON.parse(j); pendingWhy = []; steps++;
@@ -80,12 +87,17 @@ export function undo() {
 
 function writeLog(prev) {
   const S = app.S;
-  const entries = diffLog(prev, S);
+  let entries = diffLog(prev, S);
+  if (pendingSum) { // erbij of weg (encounter inladen): samen één regel, met alleen de oorzaken die voor de hele stap gelden
+    const P = new Set(prev.list.map((c) => c.id)), C = new Set(S.list.map((c) => c.id));
+    entries = entries.filter((e) => e.type || (P.has(e.who) && C.has(e.who)));
+    entries.push({ msg: pendingSum, sum: true });
+  }
   if (!entries.length) return false;
   S.log = S.log || [];
   const act = S.list.find((c) => c.id === S.active);
   for (const e of entries) {
-    const why = e.type ? "" : pendingWhy.filter((w) => !w.id || w.id === e.who).map((w) => w.t).join("; ");
+    const why = e.type ? "" : pendingWhy.filter((w) => !w.id || (!e.sum && w.id === e.who)).map((w) => w.t).join("; ");
     S.log.push({ id: uid(), r: S.round || 0, turn: e.type ? "" : act ? act.name : "", type: e.type || "", msg: e.msg, why, note: "" });
   }
   if (S.log.length > 600) S.log.splice(0, S.log.length - 600);

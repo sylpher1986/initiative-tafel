@@ -7,7 +7,7 @@
 <meta name="description" content="Initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.">
 <meta name="theme-color" content="#8a1f14" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#13161d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="1.27.0">
+<meta name="it-version" content="1.28.0">
 <script src="js/theme.js"></script>
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
 <script>
@@ -65,7 +65,7 @@
   <div class="sheet qsheet psheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="p-title">
     <div class="grab" aria-hidden="true"></div>
     <div class="shead"><h3 id="p-title">Toevoegen</h3><button type="button" class="link" data-prep="close">Sluit</button></div>
-    <div class="seg2" id="p-montabs" role="group" aria-label="Soort monster"><button type="button" data-prep="mon">Uit de lijst</button><button type="button" data-prep="custom">Eigen monster</button></div>
+    <div class="seg2" id="p-montabs" role="group" aria-label="Soort monster"><button type="button" data-prep="mon">Uit de lijst</button><button type="button" data-prep="custom">Eigen</button><button type="button" data-prep="enc">Encounters</button></div>
 
     <form class="form" id="f-pc" data-panel="pc">
       <label>D&amp;D Beyond-link<span class="ddbrow"><input id="pc-ddb" type="text" inputmode="url" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="dndbeyond.com/characters/…"><button type="button" class="btn tap" id="pc-ddbgo">Ophalen</button></span></label>
@@ -82,6 +82,7 @@
         <label>Max HP<span class="opt"> (optioneel)</span><span class="cw"> · controleer</span><input id="pc-hp" type="number" inputmode="numeric"></label>
         <label>Dex-mod (tiebreak)<input id="pc-dex" type="number" inputmode="numeric" value="0"></label>
         <label>Ras (icoon)<select id="pc-race"><option value="">Anders / onbekend</option></select></label>
+        <label>Level<span class="opt"> (optioneel)</span><input id="pc-lvl" type="number" min="1" max="20" inputmode="numeric" placeholder="uit sheet"></label>
       </div>
       <p class="hint warnline" id="pc-check" hidden></p>
       <details class="cast"><summary class="link">Spellcaster? Spell slots invullen</summary>
@@ -109,6 +110,7 @@
       <button class="btn primary" type="submit" id="mon-add">Goblin toevoegen</button>
     </form>
 
+    <div class="form" id="enc-panel" data-panel="enc" hidden><!-- js/ui/encounters.js --></div>
     <div class="form" id="party-panel" data-panel="party" hidden></div>
     <div class="form" id="data-panel" data-panel="data" hidden>
       <h2 class="sethead" id="theme-head">Weergave</h2>

@@ -18,6 +18,8 @@ import { avatar, icon, monType } from "./avatar.js";
 import { SPELLS, SPELL_CONDS, customSpell, spellTargets, spellDefault, condImmune, spellFor, rulesDiffer } from "../rules/spellcast.js";
 import { rulesEd } from "./spellrules.js";
 import { ANON, anonName } from "../playerview.js";
+import { paintEnc, encBanner } from "./encounters.js";
+import { clsLevel } from "../rules/encounters.js";
 
 /** UI-toestand die niet in de encounter (en dus niet in undo/opslag) hoort */
 export const ui = {
@@ -46,7 +48,12 @@ export const ui = {
   laPulse: false,      // net Volgende getikt: legendary-knoppen lichten één keer op
   sv: false,           // paneel met alle open saves (bij 3 of meer)
   svRetry: null,       // { sid, id, step } = laatst gerolde monster-save, voor "Legendary Resistance" / "Advantage" in de melding
-  prep: null,          // "pc" | "mon" | "custom" | "party" | "data" = paneel in Voorbereiden open (knoppen in de beurtbalk)
+  prep: null,          // "pc" | "mon" | "custom" | "enc" | "party" | "data" = paneel in Voorbereiden open (knoppen in de beurtbalk)
+  encDraft: null,      // { name, notes } = formulier "Huidige lijst opslaan" open
+  encEdit: null,       // { id, name, notes, monsters, lair, lairKey, lairHidden, q } = encounter bewerken (concept)
+  encMenu: null, encAsk: null, encWhy: null, // id: ⋯-menu open / vraag Vervangen|Toevoegen / uitleg moeilijkheid
+  encImp: null,        // { enc, monsters, lairs } = import met bestaande id wacht op Vervangen | Als kopie
+  diffOpen: false,     // uitleg bij de live moeilijkheid boven de lijst
   prepLast: null,      // id van de laatst toegevoegde deelnemer terwijl dat paneel open was (bij Sluit in beeld)
   welcome: true,       // welkomstkaart bij een lege start; "Begin leeg" zet hem uit voor deze sessie
   downOpen: false,     // blok "Neer (N)" onderaan de lijst (Gevecht) opengeklapt
@@ -88,16 +95,18 @@ function paintMode() {
 }
 
 /* ---------- Voorbereiden: één paneel met de bestaande formulieren (statisch in index.html, alleen hidden wisselt) ---------- */
-const PREP = { pc: "Speler toevoegen", mon: "Monster toevoegen", custom: "Monster toevoegen", party: "Party", data: "Instellingen" };
+const PREP = { pc: "Speler toevoegen", mon: "Monster toevoegen", custom: "Monster toevoegen", enc: "Monster toevoegen", party: "Party", data: "Instellingen" };
+const MONTABS = ["mon", "custom", "enc"];
 export function paintPrep() {
   const el = $("#psheet"), p = PREP[ui.prep] ? ui.prep : null;
   el.hidden = !p;
   if (!p) return;
   $("#p-title").textContent = PREP[p];
-  $("#p-montabs").hidden = p !== "mon" && p !== "custom";
+  $("#p-montabs").hidden = !MONTABS.includes(p);
   $("#p-montabs").querySelectorAll("[data-prep]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.prep === p));
   el.querySelectorAll("[data-panel]").forEach((x) => (x.hidden = x.dataset.panel !== p));
   if (p === "mon" && app.S.list.some((c) => c.kind === "lair")) $("#addlair").hidden = true;
+  paintEnc();
 }
 
 /* ---------- onderdelen van een kaart ---------- */
@@ -419,7 +428,7 @@ function paintEncounter() {
     : "";
   const prep = mode() === "prep";
   $("#order").innerHTML = L.length
-    ? (S.sample && prep ? `<li class="sbanner"><span>Voorbeeld-encounter</span><button type="button" class="btn small" id="sample-clear">Begin leeg</button></li>` : "") + listHtml(S, L, prep)
+    ? (S.sample && prep ? `<li class="sbanner"><span>Voorbeeld-encounter</span><button type="button" class="btn small" id="sample-clear">Begin leeg</button></li>` : "") + encBanner(S, prep) + listHtml(S, L, prep)
     : emptyState(S, prep);
   $("#resetbar").innerHTML = ui.confirmReset
     ? S.list.some((c) => c.kind !== "pc")
@@ -450,7 +459,9 @@ function listHtml(S, L, prep) {
 /** Lege lijst: welkomstkaart (echt de eerste keer), knop voor de party, of een korte hint */
 function emptyState(S, prep) {
   if (!prep) return `<li class="hint empty">Nog niemand aan tafel. Voeg spelers en monsters toe onder Voorbereiden.</li>`;
-  if (app.party.length) return `<li class="welcome"><p>Nog niemand aan tafel. Je party staat klaar.</p><button type="button" class="btn primary tap" data-prep="party">Party aan tafel zetten</button></li>`;
+  const encBtn = app.encounters.length ? `<button type="button" class="btn tap" data-prep="enc">Encounter inladen</button>` : "";
+  if (app.party.length) return `<li class="welcome"><p>Nog niemand aan tafel. Je party staat klaar.</p><div class="wbtns"><button type="button" class="btn primary tap" data-prep="party">Party aan tafel zetten</button>${encBtn}</div></li>`;
+  if (encBtn) return `<li class="welcome"><p>Nog niemand aan tafel.</p><div class="wbtns">${encBtn.replace('class="btn tap"', 'class="btn primary tap"')}</div><p class="hint">Spelers voeg je toe met + Speler onderaan.</p></li>`;
   if (ui.welcome) return `<li class="welcome"><h2>Welkom aan tafel</h2>
     <p>Houd initiative, HP, condities en spell slots bij voor D&amp;D 5e (2014). Alles blijft op dit apparaat en werkt ook offline.</p>
     <div class="wbtns"><button type="button" class="btn primary tap" id="welcome-sample">Start met voorbeeld</button><button type="button" class="btn tap" id="welcome-empty">Begin leeg</button></div>
@@ -464,7 +475,7 @@ function paintDock() {
   const S = app.S;
   const L = sortOrder(S.list);
   const undoBtn = `<button id="undo" ${canUndo() ? "" : "disabled"} aria-label="Ongedaan maken" title="Ongedaan maken">↶</button>`;
-  const pb = (k, l, al) => `<button type="button" data-prep="${k}" aria-pressed="${ui.prep === k || (k === "mon" && ui.prep === "custom")}"${al ? ` aria-label="${al}" title="${al}"` : ""}>${l}</button>`;
+  const pb = (k, l, al) => `<button type="button" data-prep="${k}" aria-pressed="${ui.prep === k || (k === "mon" && MONTABS.includes(ui.prep))}"${al ? ` aria-label="${al}" title="${al}"` : ""}>${l}</button>`;
   const prepRow = mode() === "prep" ? `<div class="prow">${pb("mon", `<span class="pp">+&nbsp;</span>Monster`, "")}${pb("pc", `<span class="pp">+&nbsp;</span>Speler`, "")}${pb("party", "Party", "")}${pb("data", GEAR, "Instellingen")}</div>` : "";
   if (!S.round) {
     $("#dock").innerHTML = `${prepRow || `<div class="who"><span><span class="l">Encounter</span><br><b>${L.length} deelnemer${L.length === 1 ? "" : "s"}</b></span></div>`}
@@ -1016,7 +1027,9 @@ export function paintParty() {
   el.innerHTML = `<div>${app.party.map((m) => {
     const sl = m.casting && m.casting.slots.length ? " · slots " + m.casting.slots.map((x) => `${n0(x.left)}/${n0(x.max)}`).join(" ") : "";
     const rs = (m.res || []).map((r) => ` · ${esc(r.n)} ${n0(r.left)}/${n0(r.max)}`).join("");
-    return `<div class="pm">${avatar({ ...m, kind: "pc" })}<div><div class="pn">${esc(m.name)}</div><div class="pi">${m.sheet && m.sheet.cls ? esc(m.sheet.cls) + " · " : ""}${m.ac ? `AC ${n0(m.ac)} · ` : ""}${m.max ? `HP ${n0(m.hp)}/${n0(m.max)}${m.temp ? ` +${n0(m.temp)}` : ""}` : ""}${sl}${rs}</div></div>
+    // level voor de moeilijkheid: uit de klasse-string van de sheet, anders zelf invullen
+    const lv = m.sheet && clsLevel(m.sheet.cls) ? "" : `<label class="plvl">Level <input data-plvl="${esc(m.pid)}" type="number" min="1" max="20" inputmode="numeric" value="${esc(m.lvl ?? "")}" aria-label="Level ${esc(m.name)}"></label>`;
+    return `<div class="pm">${avatar({ ...m, kind: "pc" })}<div><div class="pn">${esc(m.name)}</div><div class="pi">${m.sheet && m.sheet.cls ? esc(m.sheet.cls) + " · " : ""}${m.ac ? `AC ${n0(m.ac)} · ` : ""}${m.max ? `HP ${n0(m.hp)}/${n0(m.max)}${m.temp ? ` +${n0(m.temp)}` : ""}` : ""}${sl}${rs}</div>${lv}</div>
       <div class="pc">${at.has(m.pid) ? `<span class="here">aan tafel</span>` : `<input data-pinit="${esc(m.pid)}" type="number" inputmode="numeric" placeholder="init" aria-label="Initiative ${esc(m.name)}" value="${esc(ui.partyInit[m.pid] ?? "")}"><button type="button" class="btn small" data-proll="${esc(m.pid)}">Rol</button>`}
         <button type="button" class="link" data-pdel="${esc(m.pid)}">Uit party</button></div></div>`;
   }).join("")}</div>

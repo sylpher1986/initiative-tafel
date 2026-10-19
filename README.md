@@ -2,7 +2,7 @@
 
 Initiative tracker voor D&D 5e (2014) om gevechten aan tafel te draaien: spelers (ook via een D&D Beyond-link of PDF), alle 322 SRD-monsters, uitleg van alle SRD-spells (2014 en 2024), condities met duur, spell slots, concentration, death saves, recharge, legendary en lair actions, vaste party, logboek en undo.
 
-Werkt offline als app op je beginscherm (PWA). Alle data staat lokaal in je browser; via **Opslag → Exporteer** maak je een backup of neem je alles mee naar een ander apparaat.
+Werkt offline als app op je beginscherm (PWA). Alle data staat lokaal in je browser; via **Opslag → Exporteer** maak je een backup of neem je alles mee naar een ander apparaat. Klaargezette encounters deel je los via **+ Monster → Encounters → ⋯ → Delen**.
 
 ## Structuur
 
@@ -12,7 +12,7 @@ css/app.css           opmaak (licht en donker)
 js/main.js            opstarten
 js/state.js           toestand, undo, logboek vastleggen, party-sync
 js/storage.js         IndexedDB (met localStorage als terugval)
-js/backup.js          export/import (JSON met versienummer)
+js/backup.js          export/import (JSON met versienummer, nu versie 2)
 js/log.js             logboek: verschil tussen twee stappen
 js/ddb.js             D&D Beyond: PDF-sheets inlezen, online sheet ophalen
 js/ddbjson.js         D&D Beyond character-JSON → sheet (puur, getest)

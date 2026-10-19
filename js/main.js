@@ -8,10 +8,12 @@ import { localChannel, dmLink } from "./share.js";
 import { bindSharing } from "./ui/kamer.js";
 import { $, toast } from "./ui/util.js";
 import { VERSION } from "./version.js";
+import { bindEnc } from "./ui/encounters.js";
 import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, bindAoe, bindAtk, bindInit, normalize, scrollToCard } from "./ui/actions.js";
 
 function start() {
   ui.mode = null; // ook na een import: de modus volgt weer het gevecht
+  Object.assign(ui, { encDraft: null, encEdit: null, encImp: null, encAsk: null, encMenu: null, encWhy: null }); // na een import: geen verouderd concept
   app.S.list.forEach(normalize);
   bindForms.renderMonList();
   bindForms.impStatus();
@@ -38,7 +40,7 @@ async function boot() {
   document.addEventListener("change", onChange);
   document.addEventListener("keydown", onKey);
   document.addEventListener("toggle", onToggle, true);
-  bindForms(); bindParty(); bindLog(); bindQadd(); bindAoe(); bindAtk(); bindInit();
+  bindForms(); bindParty(); bindLog(); bindQadd(); bindAoe(); bindAtk(); bindInit(); bindEnc();
   bindBackup(start);
   // echte hoogte van de beurtbalk: het statblock op de telefoon staat er precies boven
   if ("ResizeObserver" in window) new ResizeObserver(([e]) => document.documentElement.style.setProperty("--dock-h", Math.ceil(e.target.getBoundingClientRect().height) + "px")).observe($("#dock"));

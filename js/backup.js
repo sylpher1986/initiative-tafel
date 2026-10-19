@@ -4,14 +4,15 @@ import { sanitizeOwn } from "./data/monsters.js";
 import { CONDS } from "./rules/turns.js";
 import { cleanImg } from "./ui/avatar.js";
 import { dedupeAnon } from "./playerview.js";
+import { cleanEncounters, cleanLvl } from "./rules/encounters.js";
 
 export const FORMAT = "initiative-tafel";
-export const VERSION = 1;
+export const VERSION = 2; // 2 (1.28.0): encounters erbij
 
 export function buildExport(app) {
   return {
     format: FORMAT, version: VERSION, exported: new Date().toISOString(),
-    state: app.S, party: app.party, lairs: app.lairs, custom: app.custom, imported: app.imported,
+    state: app.S, party: app.party, lairs: app.lairs, custom: app.custom, imported: app.imported, encounters: app.encounters || [],
   };
 }
 
@@ -74,7 +75,7 @@ export function cleanCombatant(c) {
     grp: kind === "monster" && typeof c.grp === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(c.grp) ? c.grp : undefined,
     sur: c.sur === true || c.sur === 2 ? c.sur : undefined, // surprise in ronde 1 (export midden in een gevecht)
     ac: num(c.ac), hp: num(c.hp), max: num(c.max), temp: num(c.temp), reaction: !!c.reaction,
-    pid: c.pid ? str(c.pid, 40) : null, ddbId: /^[1-9]\d{0,11}$/.test(String(c.ddbId)) ? String(c.ddbId) : undefined, race: typeof c.race === "string" ? str(c.race, 120) : undefined, img: (kind === "pc" && cleanImg(c.img)) || undefined, ref: c.ref ? str(c.ref, 120) : undefined, roll: c.roll != null ? num(c.roll) : undefined,
+    pid: c.pid ? str(c.pid, 40) : null, lvl: kind === "pc" ? cleanLvl(c.lvl) ?? undefined : undefined, ddbId: /^[1-9]\d{0,11}$/.test(String(c.ddbId)) ? String(c.ddbId) : undefined, race: typeof c.race === "string" ? str(c.race, 120) : undefined, img: (kind === "pc" && cleanImg(c.img)) || undefined, ref: c.ref ? str(c.ref, 120) : undefined, roll: c.roll != null ? num(c.roll) : undefined,
     initBonus: c.initBonus != null ? num(c.initBonus) : undefined, concSpell: c.concSpell ? str(c.concSpell, 120) : null,
     ds: cleanDs(c.ds), la: counter(c.la), lr: counter(c.lr),
     rc: c.rc === undefined ? undefined : arr(c.rc).map((r) => ({ n: str(r.n, 120), min: r.min == null ? null : num(r.min), rest: !!r.rest, ready: !!r.ready })),
@@ -88,11 +89,14 @@ export function cleanCombatant(c) {
   return out;
 }
 
+/** Versie 1 → 2: encounters bestonden nog niet */
+const migrate1to2 = (json) => ({ ...json, version: 2, encounters: [] });
+
 /** Bestand → schone data, of een Error met een leesbare melding */
 export function parseImport(json) {
   if (!obj(json) || json.format !== FORMAT) throw new Error("Dit is geen export van Initiative Tafel.");
   if (num(json.version) > VERSION) throw new Error("Deze export komt uit een nieuwere versie van de app. Werk de app eerst bij.");
-  // Hier komen migraties per versie, bijv.: if (json.version === 1) json = migrate1to2(json);
+  if (!(num(json.version) >= 2)) json = migrate1to2(json);
   const S = obj(json.state) || { list: [], round: 0, active: null };
   const lairs = {};
   for (const [k, v] of Object.entries(obj(json.lairs) || {})) lairs[str(k, 120)] = arr(v).map((a) => ({ n: str(a.n, 120), t: str(a.t, 4000) }));
@@ -105,5 +109,6 @@ export function parseImport(json) {
     lairs,
     custom: arr(json.custom).filter((m) => obj(m) && m.n).map((m) => ({ ...sanitizeOwn(m), custom: true })),
     imported: arr(json.imported).filter((m) => obj(m) && m.n).map(sanitizeOwn),
+    encounters: cleanEncounters(json.encounters),
   };
 }

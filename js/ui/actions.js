@@ -1,6 +1,6 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, closeToast, show } from "./util.js";
-import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
+import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
 import { render, ui, openId, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview, curSpell, spellPick } from "./render.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
@@ -23,6 +23,7 @@ import { readSheetPdf, fetchDdb } from "../ddb.js";
 import { parseDdbLink, findMember, mergeSheet } from "../ddbjson.js";
 import { RACE_OPTS, raceKey, pickRace, cleanImg } from "./avatar.js";
 import { buildExport, parseImport } from "../backup.js";
+import { cleanLvl } from "../rules/encounters.js";
 
 /** Fx uit de regels: meldingen tonen en oorzaken doorgeven aan het logboek */
 const apply = (fx) => { if (!fx) return; addWhy(fx.why); show(fx); if (fx.saves) fx.saves.forEach((x) => addSave(app.S, x)); };
@@ -58,6 +59,12 @@ export function addMonsters(name, n, hpmode, initmode, silent, fixed = null, hid
     toastHtml(out.map((c) => `${esc(c.name)}: ${c.roll === undefined ? "initiative" : `d20 [${c.roll}] ${sgn(c.dex)} =`} <b>${c.init}</b>`).join("<br>") + (hidden ? "<br>Verborgen voor spelers" : "") + (anon ? "<br>Naam onbekend voor spelers" : ""));
   }
 }
+
+/** Nieuwe lair-deelnemer (init 20, verliest gelijke stand); acties staan in app.lairs[key] */
+export const newLair = (key, hidden = false) => ({ id: uid(), name: key, key, kind: "lair", init: 20, dex: -99, cond: [], last: null, ...(hidden ? { hidden: true } : {}) });
+/** UI-toestand die na monsters wissen (ook encounter vervangen) niet meer klopt */
+export const CLEAR_UI = { confirmReset: false, open: null, panel: null, edit: null, atk: null, aoe: null, la: null, sv: false,
+  effWho: null, castPick: null, atkOpen: null, atkRx: null, atkAdv: null, atkPrev: null, svRetry: null, confirmDel: null };
 
 /** Vult ontbrekende velden aan bij deelnemers uit oudere versies of imports */
 export function normalize(c) {
@@ -274,8 +281,7 @@ const global = {
   "reset-mons"() {
     const r = clearMonsters(app.S);
     apply(r);
-    Object.assign(ui, { confirmReset: false, mode: null, open: null, panel: null, edit: null, atk: null, aoe: null, la: null, sv: false,
-      effWho: null, castPick: null, atkOpen: null, atkRx: null, atkAdv: null, atkPrev: null, svRetry: null, confirmDel: null });
+    Object.assign(ui, CLEAR_UI, { mode: null });
     render();
     toastHtml(`${esc(`${r.n ? `${r.n} monster${r.n === 1 ? "" : "s"}` : ""}${r.n && r.lairs ? " en " : ""}${r.lairs ? "lair" : ""} gewist. Spelers blijven; hun initiative vul je in bij Start gevecht.`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
     return false;
@@ -289,8 +295,8 @@ const global = {
   addlair() {
     const lm = app.S.list.find((x) => x.la);
     const key = lm ? "Lair: " + lm.ref : Object.keys(app.lairs)[0] || "Lair";
-    const id = uid();
-    app.S.list.push({ id, name: key, key, kind: "lair", init: 20, dex: -99, cond: [], last: null });
+    const l = newLair(key), id = l.id;
+    app.S.list.push(l);
     app.S.sample = false;
     ui.prep = null; ui.prepLast = null; ui.open = id; // kaart staat bovenaan (init 20) en is direct in te vullen
     render(); scrollToCard(id, true);
@@ -351,7 +357,7 @@ function openPrep(k) {
 
 /** Paneel dicht: focus terug op de knop, en wat er net bijkwam in beeld */
 function closePrep() {
-  const k = ui.prep === "custom" ? "mon" : ui.prep, last = ui.prepLast;
+  const k = ui.prep === "custom" || ui.prep === "enc" ? "mon" : ui.prep, last = ui.prepLast;
   ui.prep = null; ui.prepLast = null;
   render();
   $(`#dock [data-prep="${k}"]`)?.focus({ preventScroll: true });
@@ -573,11 +579,12 @@ export function bindForms() {
       return sl.length ? { slots: sl, daily: [] } : null;
     })();
     const sh = pendingSheet, nm = $("#pc-name").value.trim();
-    let pid = null;
+    let pid = null, lvl = cleanLvl($("#pc-lvl").value);
     if ($("#pc-party").checked) {
       // met D&D Beyond-id dezelfde regel als het bevestigvak (nooit een lid dat aan een ánder character hangt)
       const ex = pendingNew ? null : pendingDdb ? findMember(app.party, pendingDdb, nm) : app.party.find((m) => m.name.toLowerCase() === nm.toLowerCase());
       pid = ex ? ex.pid : uid();
+      if (lvl == null && ex) lvl = cleanLvl(ex.lvl); // bestaand partylid houdt zijn level
     }
     const dex = parseInt($("#pc-dex").value) || 0;
     const race = pickRace($("#pc-race").value, sh && sh.race);
@@ -585,9 +592,13 @@ export function bindForms() {
       id: uid(), pid, name: nm, kind: "pc", race, img: pendingImg, init: parseInt($("#pc-init").value) || 0, dex, ac: parseInt($("#pc-ac").value) || 0, hp: max, max, cond: [],
       casting: manual || (sh && sh.casting ? structuredClone(sh.casting) : null), res: sh ? structuredClone(sh.res || []) : [], sheet: sh || null, initBonus: sh ? sh.initBonus : dex,
       ...(pendingDdb && !pendingNew ? { ddbId: pendingDdb } : {}), // "Als nieuwe speler": geen tweede koppeling aan hetzelfde character
+      ...(lvl ? { lvl } : {}), // voor de moeilijkheid (anders uit de klasse-string van de sheet)
     });
     app.S.sample = false; ui.prepLast = app.S.list[app.S.list.length - 1].id;
     resetPcForm(); render(); $("#pc-name").focus();
+    // level hoort bij de party (syncParty neemt lvl niet over: het Party-paneel is de bron)
+    const pm = pid && lvl && app.party.find((x) => x.pid === pid);
+    if (pm && pm.lvl !== lvl) { pm.lvl = lvl; saveParty(); render(); }
   });
   $("#pc-roll").addEventListener("click", () => {
     const b = pendingSheet ? pendingSheet.initBonus : parseInt($("#pc-dex").value) || 0, r = d(20);
@@ -1179,6 +1190,15 @@ export function bindInit() {
 export function bindParty() {
   const panel = $("#party-panel");
   panel.addEventListener("input", (e) => { if (e.target.dataset.pinit) ui.partyInit[e.target.dataset.pinit] = e.target.value; });
+  // level per partylid (moeilijkheid)
+  panel.addEventListener("change", (e) => {
+    const pid = e.target.dataset.plvl; if (!pid) return;
+    const m = app.party.find((x) => x.pid === pid); if (!m) return;
+    const v = cleanLvl(e.target.value);
+    if (e.target.value !== "" && !v) { toast("Level is 1 t/m 20."); e.target.value = m.lvl ?? ""; return; } // ongeldig: oude waarde blijft
+    m.lvl = v; // de party is de bron (geen undo-stap: hoort niet bij de encounter)
+    saveParty(); render();
+  });
   panel.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
     const rollFor = (m) => { const r = d(20), bo = m.initBonus ?? m.dex ?? 0; ui.partyInit[m.pid] = r + bo; return `${esc(m.name)}: d20 [${r}] ${sgn(bo)} = <b>${r + bo}</b>`; };
@@ -1282,7 +1302,7 @@ export function bindBackup(afterImport) {
   const ask = (data) => {
     pending = data;
     const nMon = data.custom.length + data.imported.length, nLair = Object.keys(data.lairs).length;
-    $("#imp-confirm").innerHTML = `<div class="confirmbox"><p style="margin:0">Deze export bevat <b>${data.party.length}</b> partyleden, <b>${data.S.list.length}</b> deelnemers aan tafel, <b>${nMon}</b> eigen/geïmporteerde monsters en <b>${nLair}</b> lairs.
+    $("#imp-confirm").innerHTML = `<div class="confirmbox"><p style="margin:0">Deze export bevat <b>${data.party.length}</b> partyleden, <b>${data.S.list.length}</b> deelnemers aan tafel, <b>${nMon}</b> eigen/geïmporteerde monsters, <b>${nLair}</b> lairs en <b>${data.encounters.length}</b> klaargezette encounters.
       Importeren <b>vervangt</b> alles wat nu in de app staat.</p>
       <div class="bar"><button type="button" class="btn primary" id="imp-yes">Vervang en importeer</button><button type="button" class="btn small" id="imp-no">Annuleer</button></div></div>`;
   };
@@ -1295,7 +1315,8 @@ export function bindBackup(afterImport) {
   $("#imp-confirm").addEventListener("click", (e) => {
     if (e.target.id === "imp-no") { pending = null; $("#imp-confirm").innerHTML = ""; }
     if (e.target.id === "imp-yes" && pending) {
-      Object.assign(app, { S: pending.S, party: pending.party, lairs: pending.lairs, custom: pending.custom, imported: pending.imported });
+      Object.assign(app, { S: pending.S, party: pending.party, lairs: pending.lairs, custom: pending.custom, imported: pending.imported, encounters: pending.encounters });
+      saveParty(); saveLairs(); saveLibrary(); saveEncounters(); // ook opslaan (en de monsterbibliotheek bijwerken), niet alleen de lopende encounter
       pending = null; $("#imp-confirm").innerHTML = ""; $("#imp-text").value = "";
       afterImport();
       toast("Import klaar.");
