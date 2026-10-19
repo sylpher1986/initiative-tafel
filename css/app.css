@@ -670,3 +670,4 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .rtbl th{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 .rtbl td:first-child{white-space:nowrap;font-variant-numeric:tabular-nums}
 .rsheet .credit{margin-top:4px}
+.rsw{max-width:180px}

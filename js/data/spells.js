@@ -1,5 +1,5 @@
-// Spellbibliotheek voor de spell-uitleg: SRD 5.1 (2014) uit data/spells.json, pas geladen bij de eerste tik.
-// Opzet voor later: één bestand per editie ({ ed, src, spells }); `findSpell` zoekt per editie.
+// Spellbibliotheek voor de spell-uitleg, per editie één bestand ({ ed, src, spells }), pas geladen bij de eerste tik:
+// SRD 5.1 (2014) in data/spells.json, SRD 5.2 (2024) in data/spells-2024.json. `findSpell` zoekt per editie.
 // Naam-normalisatie en het splitsen van spell-lijsten zijn puur (testbaar zonder DOM).
 import { splitSpells } from "../rules/spells.js";
 
@@ -10,6 +10,8 @@ const ALIAS = {
   "nystul's magic aura": "arcanist's magic aura",
   "melf's acid arrow": "acid arrow",
   "eye bite": "eyebite", // tikfout in de SRD-hags (coven)
+  "feeblemind": "befuddlement", // 2024 hernoemd; beide kanten op, zodat de andere editie ook gevonden wordt
+  "befuddlement": "feeblemind",
 };
 
 /** "Cure Wounds*", "fireball (3rd level)", "Shield ’" → "cure wounds" / "fireball" / "shield" */
@@ -25,6 +27,8 @@ export function keys(n) {
 }
 
 /* ---------- bibliotheek (per editie) ---------- */
+export const EDS = ["2014", "2024"];
+const FILES = { 2014: "data/spells.json", 2024: "data/spells-2024.json" };
 const lib = new Map();   // ed → { src, idx: Map(sleutel → spell) }
 const busy = new Map();  // ed → lopende fetch
 
@@ -37,7 +41,7 @@ export const spellsLoaded = (ed = "2014") => lib.has(ed);
 export const spellSrc = (ed = "2014") => lib.get(ed)?.src || "";
 
 /** Laadt de spells van een editie één keer (ook bij gelijktijdige aanroepen); bij een fout volgende keer opnieuw */
-export function loadSpells(ed = "2014", url = "data/spells.json") {
+export function loadSpells(ed = "2014", url = FILES[ed]) {
   if (lib.has(ed)) return Promise.resolve();
   if (!busy.has(ed)) {
     busy.set(ed, fetch(url).then((r) => {
@@ -57,6 +61,15 @@ export function findSpell(n, ed = "2014") {
   if (!L) return null;
   for (const k of keys(n)) { const s = L.idx.get(k); if (s) return s; }
   return null;
+}
+
+/**
+ * Welke editie tonen: de voorkeur als de spell daarin bestaat, anders de editie waarin hij wel staat.
+ * eds = edities waarin de spell staat (voor de schakelaar 2014 | 2024; die verschijnt pas bij twee).
+ */
+export function pickEd(n, pref = "2014") {
+  const eds = EDS.filter((e) => findSpell(n, e));
+  return { ed: eds.includes(pref) ? pref : eds[0] || pref, eds };
 }
 
 /* ---------- spell-lijsten in statblocks ---------- */

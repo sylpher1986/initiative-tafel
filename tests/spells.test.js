@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { setSpells, findSpell, spellsLoaded, normSpell, keys, spellParts, spellItem } from "../js/data/spells.js";
+import { setSpells, findSpell, spellsLoaded, normSpell, keys, spellParts, pickEd, spellItem } from "../js/data/spells.js";
 
 const doc = JSON.parse(readFileSync(new URL("../data/spells.json", import.meta.url), "utf8"));
 const srd = JSON.parse(readFileSync(new URL("../data/monsters.json", import.meta.url), "utf8"));
@@ -78,4 +78,46 @@ test("spelldata: tekstblokken zijn alinea's, vette aanloop of tabellen (geen mar
   const conf = doc.spells.find((s) => s.n === "Confusion");
   assert.deepEqual(conf.x.find((p) => p.tbl).tbl[0], ["d10", "Behavior"]);
   assert.equal(doc.spells.find((s) => s.n === "Prismatic Spray").x[1].b, "1. Red.");
+});
+
+// Vanaf hier is ook SRD 5.2 (2024) geladen (tests binnen een bestand draaien op volgorde).
+const doc24 = JSON.parse(readFileSync(new URL("../data/spells-2024.json", import.meta.url), "utf8"));
+
+test("spelldata 2024: SRD 5.2, compleet, zelfde vorm als 2014", () => {
+  setSpells(doc24);
+  assert.equal(doc24.ed, "2024");
+  assert.match(doc24.src, /5\.2.*CC-BY-4\.0/);
+  assert.equal(doc24.spells.length, 339);
+  assert.equal(new Set(doc24.spells.map((s) => normSpell(s.n))).size, 339);
+  const ok = (p) => (typeof p === "string" && p && !/\*|\|/.test(p)) || (p && typeof p.b === "string" && typeof p.t === "string" && !/\*/.test(p.b + p.t))
+    || (p && Array.isArray(p.tbl) && p.tbl.length > 1 && p.tbl.every((r) => r.length === p.tbl[0].length));
+  for (const s of doc24.spells) {
+    assert.ok(s.n && s.sch && s.t && s.r && s.c && s.d && s.x.length, s.n);
+    assert.ok(Number.isInteger(s.lv) && s.lv >= 0 && s.lv <= 9, s.n);
+    if (/^Reaction/.test(s.t)) assert.match(s.t, /which you take|in response/, `${s.n}: trigger`);
+    if (s.conc) assert.match(s.d, /^Concentration, up to /, s.n);
+    for (const p of [...s.x, ...(s.h || [])]) assert.ok(ok(p), `${s.n}: ${JSON.stringify(p).slice(0, 80)}`);
+  }
+  // platte tabellen uit de bron zijn echte tabellen geworden
+  const tbls = (n) => doc24.spells.find((s) => s.n === n).x.filter((p) => p.tbl);
+  assert.equal(tbls("Control Weather").length, 3);
+  assert.deepEqual(tbls("Confusion")[0].tbl.map((r) => r[0]), ["d10", "1", "2–6", "7–8", "9–10"]);
+  assert.equal(tbls("Prismatic Spray")[0].tbl.length, 9); // kop + 8 stralen (5e-bits verloor de helft)
+  // cursieve koppen ("**_Object Creation._**", inline "_Aquatic Adaptation._") zijn vette aanloop, geen underscores over
+  assert.ok(!doc24.spells.some((s) => JSON.stringify(s).includes("_")));
+  assert.equal(doc24.spells.find((s) => s.n === "Wish").x.find((p) => p.b)?.b, "Object Creation.");
+  assert.deepEqual(doc24.spells.find((s) => s.n === "Alter Self").x.filter((p) => p.b).map((p) => p.b), ["Aquatic Adaptation.", "Change Appearance.", "Natural Weapons."]);
+  assert.equal(findSpell("Hex", "2024").lv, 1);
+});
+
+test("editie kiezen: voorkeur als de spell daar staat, anders de andere; schakelaar alleen bij beide", () => {
+  assert.deepEqual(pickEd("Fireball", "2014"), { ed: "2014", eds: ["2014", "2024"] });
+  assert.deepEqual(pickEd("Fireball", "2024"), { ed: "2024", eds: ["2014", "2024"] });
+  assert.deepEqual(pickEd("Hex", "2014"), { ed: "2024", eds: ["2024"] }); // alleen in 2024
+  assert.deepEqual(pickEd("Branding Smite", "2024"), { ed: "2014", eds: ["2014"] }); // alleen in 2014
+  assert.deepEqual(pickEd("Toll the Dead", "2014"), { ed: "2014", eds: [] }); // nergens
+  assert.equal(findSpell("Feeblemind", "2024").n, "Befuddlement"); // hernoemd
+  assert.equal(findSpell("Befuddlement", "2014").n, "Feeblemind");
+  assert.equal(findSpell("Tasha's Hideous Laughter", "2024").n, "Hideous Laughter");
+  assert.equal(findSpell("ray of sickness", "2024").n, "Ray of Sickness"); // hag-coven: nu wel te vinden
 });

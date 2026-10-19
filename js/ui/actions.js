@@ -14,7 +14,7 @@ import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, defMode } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
 import { castInfo, legInfo, rcInfo, pickList, CONC_SPELLS, cleanSpell } from "../rules/spells.js";
-import { spellClick as spellInfoClick, spellOpen, closeSpell } from "./spellinfo.js";
+import { spellClick as spellInfoClick, spellOpen, closeSpell, getSpellEd, setSpellEd } from "./spellinfo.js";
 import { logText } from "../log.js";
 import { readSheetPdf, fetchDdb } from "../ddb.js";
 import { parseDdbLink, findMember, mergeSheet } from "../ddbjson.js";
@@ -1223,6 +1223,11 @@ export function bindBackup(afterImport) {
     const b = e.target.closest("[data-theme-set]");
     if (b && window.itTheme) showTheme(window.itTheme.set(b.dataset.themeSet));
   });
+  // spell-uitleg: welke editie het paneel eerst toont (bewaard op dit apparaat)
+  const eseg = $("#spelled-seg");
+  const showEd = (ed) => eseg.querySelectorAll("[data-spelled]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.spelled === ed));
+  showEd(getSpellEd());
+  eseg.addEventListener("click", (e) => { const b = e.target.closest("[data-spelled]"); if (b) showEd(setSpellEd(b.dataset.spelled)); });
   const json = () => JSON.stringify(buildExport(app));
   const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
   $("#exp-file").addEventListener("click", () => {
