@@ -24,3 +24,16 @@ test("elk app-bestand staat in de offline-cache van sw.js", async () => {
   const missing = files.filter((p) => !sw.includes(`"./${p}"`));
   assert.deepEqual(missing, [], "ontbreekt in ASSETS van sw.js");
 });
+
+test("geen 'share' in id's, classes of data-attributen: contentblokkers (Safari) verbergen die als social-knoppen", async () => {
+  const { readdirSync } = await import("node:fs");
+  const root = new URL("../", import.meta.url);
+  const files = ["index.html", "speler.html", "css/app.css", ...readdirSync(new URL("js/ui/", root)).map((f) => "js/ui/" + f), "js/speler.js"];
+  const bad = [];
+  for (const f of files) {
+    const t = readFileSync(new URL(f, root), "utf8");
+    const hits = t.match(/(?:id|class|data)[-=]?["'\w-]*share|\.share[\w-]*\s*\{|#share[\w-]*|data-share|share-[\w]+/gi) || [];
+    for (const h of hits) if (!/share\.js/.test(h)) bad.push(`${f}: ${h}`);
+  }
+  assert.deepEqual(bad, []);
+});

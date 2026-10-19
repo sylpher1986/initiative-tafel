@@ -4,7 +4,7 @@ import { loadSrd, findMon } from "./data/monsters.js";
 import { render, ui, setAfterRender } from "./ui/render.js";
 import { toPlayerView } from "./playerview.js";
 import { localChannel, dmLink } from "./share.js";
-import { bindSharing } from "./ui/sharing.js";
+import { bindSharing } from "./ui/kamer.js";
 import { $, toast } from "./ui/util.js";
 import { VERSION } from "./version.js";
 import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, bindAoe, bindAtk, bindInit, normalize, scrollToCard } from "./ui/actions.js";
@@ -51,7 +51,7 @@ async function boot() {
   if (ch) links.add(dmLink(ch, getView));
   // los van de rest: een fout bij het delen mag de app niet tegenhouden, en is zichtbaar in Instellingen
   try { bindSharing(getView, (l, on) => (on ? links.add(l) : links.delete(l))); }
-  catch (e) { const b = $("#share-box"); if (b) b.textContent = `Delen met spelers kon niet starten: ${e && e.message || e}`; }
+  catch (e) { const b = $("#kamer-box"); if (b) b.textContent = `Delen met spelers kon niet starten: ${e && e.message || e}`; }
   start();
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {

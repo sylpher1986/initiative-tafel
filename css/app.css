@@ -685,18 +685,18 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .pvdown{list-style:none;color:var(--muted);padding:.4em .7em;border:1px dashed var(--line);border-radius:var(--r)}
 .pvdown .l{font-size:.75em;text-transform:uppercase;letter-spacing:.08em;margin-right:.4em}
 
-/* Delen met spelers (Instellingen → Spelersscherm, js/ui/sharing.js) */
+/* Delen met spelers (Instellingen → Spelersscherm, js/ui/kamer.js) */
 .subhead{font:700 .9rem/1.2 var(--body);margin:6px 0 -2px}
-.sharebox{display:grid;gap:6px}
-.sharebox .hint{margin:0}
-.shareerr{color:var(--bad)}
-.share-code{margin:2px 0 0;font-family:var(--display);font-weight:700;font-size:2.2rem;line-height:1.1;letter-spacing:.12em;font-variant-numeric:tabular-nums;color:var(--active)}
-.share-url{margin:0;font-size:.82rem;color:var(--muted);overflow-wrap:anywhere}
-.share-st{margin:0;font-size:.92rem;color:var(--muted)}
-.share-st.on{color:var(--good)}
-.share-st.on::before{content:"● "}
-html.share-lost .dock .prow [data-prep="data"]{position:relative}
-html.share-lost .dock .prow [data-prep="data"]::after{content:"";position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:var(--bad)}
+.kamerbox{display:grid;gap:6px}
+.kamerbox .hint{margin:0}
+.kamererr{color:var(--bad)}
+.kamer-code{margin:2px 0 0;font-family:var(--display);font-weight:700;font-size:2.2rem;line-height:1.1;letter-spacing:.12em;font-variant-numeric:tabular-nums;color:var(--active)}
+.kamer-url{margin:0;font-size:.82rem;color:var(--muted);overflow-wrap:anywhere}
+.kamer-st{margin:0;font-size:.92rem;color:var(--muted)}
+.kamer-st.on{color:var(--good)}
+.kamer-st.on::before{content:"● "}
+html.kamer-lost .dock .prow [data-prep="data"]{position:relative}
+html.kamer-lost .dock .prow [data-prep="data"]::after{content:"";position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:var(--bad)}
 
 /* Spelersscherm: code invoeren en verbindingsstatus */
 .pvjoin{display:grid;grid-template-columns:minmax(0,1fr);gap:.4em;width:min(20em,100%);margin:1em auto 0}

@@ -49,7 +49,7 @@ const ASSETS = [
   "./js/ui/actions.js",
   "./js/ui/avatar.js",
   "./js/ui/render.js",
-  "./js/ui/sharing.js",
+  "./js/ui/kamer.js",
   "./js/ui/spellinfo.js",
   "./js/ui/spellrules.js",
   "./js/ui/statblock.js",
