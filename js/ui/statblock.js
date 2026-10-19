@@ -3,16 +3,21 @@ import { $, esc, n0, toastHtml } from "./util.js";
 import { findMon } from "../data/monsters.js";
 import { rollExpr, mod, sgn } from "../rules/dice.js";
 import { ORD } from "../rules/spells.js";
-import { rollDmg } from "../rules/attacks.js";
+import { rollDmg, parseAction } from "../rules/attacks.js";
 import { sortOrder } from "../rules/turns.js";
 import { effAc, acBreakdown } from "../rules/effects.js";
 import { newDs } from "../rules/combat.js";
 
-/** Tekst → HTML met klikbare "(2d6 + 3)", "+4 to hit" en losse "1d4" */
-export function diceify(t) {
+/**
+ * Tekst → HTML met klikbare "(2d6 + 3)", "+4 to hit" en losse "1d4".
+ * atk = { cid, n, hit }: de to-hit-knop opent het doelpaneel van die aanval (statblock van een deelnemer);
+ * een tweede to hit met een andere bonus (Druid: "+4 to hit with shillelagh") blijft een losse worp.
+ */
+export function diceify(t, atk) {
+  const hit = atk ? `data-atk="${esc(atk.n)}" data-cid="${esc(atk.cid)}"` : "", own = (b) => atk && +b === atk.hit;
   return esc(t)
     .replace(/\((\d+d\d+(?:\s*[+−-]\s*\d+)?)\)/g, (m, e) => `(<button class="dice" data-roll="${e}">${e}</button>)`)
-    .replace(/([+-]\d+) to hit/g, (m, b) => `<button class="dice" data-roll="1d20${b}" data-hit="1">${b} to hit</button>`)
+    .replace(/([+-]\d+) to hit/g, (m, b) => `<button class="dice" ${own(b) ? hit : `data-roll="1d20${b}" data-hit="1"`}>${b} to hit</button>`)
     .replace(/\b(\d+d\d+)\b(?![^<]*<\/button>)(?![^<]*")/g, (m, e) => `<button class="dice" data-roll="${e}">${e}</button>`);
 }
 
@@ -170,18 +175,22 @@ function paintTurn(c) {
   $("#sbturn").innerHTML = html;
 }
 
+const atkRef = (cid, k, v) => { const a = parseAction(k, v); return { cid, n: a.n, hit: a.hit }; };
+
 export function showSB(c, follow = false) {
   const m = findMon(c.ref);
   if (!m) return;
   const cname = c.name;
   const same = follow && sb.ref === m.n && $("#sbcname");
   sb.cid = c.id; sb.pc = false; sb.live = "";
-  if (same) { // zelfde monster bij een beurtwissel (Goblin 1 → 2): alleen de naam, scroll blijft
+  if (same) { // zelfde monster bij een beurtwissel (Goblin 1 → 2): alleen de naam en de aanvaller, scroll blijft
     nameSB(c);
+    for (const b of $("#sb").querySelectorAll("[data-atk]")) b.dataset.cid = c.id;
     return open();
   }
   sb.ref = m.n;
-  const ent = (arr) => arr.map(([k, v]) => `<p class="entry"><b><i>${esc(k)}.</i></b> ${diceify(v)}</p>`).join("");
+  // aanvallen (acties, bonus, reactions, legendary) openen het doelpaneel; traits en vrije tekst rollen los
+  const ent = (arr, atk) => arr.map(([k, v]) => `<p class="entry"><b><i>${esc(k)}.</i></b> ${diceify(v, atk && atkRef(c.id, k, v))}</p>`).join("");
   $("#sb").innerHTML = `<div class="sbhead"><div><h2>${esc(m.n)}</h2><div class="meta">${esc(m.meta || (m.custom ? "Eigen monster" : ""))}<span id="sbcname">${cname && cname !== m.n ? ` · ${esc(cname)}` : ""}</span></div></div>
     ${headBtns()}</div><hr>
     <p><span class="k">Armor Class</span> ${esc(m.ac)}</p>
@@ -191,10 +200,10 @@ export function showSB(c, follow = false) {
     <hr>${(m.x || []).map(([k, v]) => `<p><span class="k">${esc(k)}</span> ${diceify(v)}</p>`).join("")}
     ${m.cr ? `<p><span class="k">Challenge</span> ${esc(m.cr)}${m.xp ? ` (${n0(m.xp).toLocaleString("nl-NL")} XP)` : ""}</p>` : ""}
     ${m.t && m.t.length ? `<hr>${ent(m.t)}` : ""}
-    ${m.a && m.a.length ? `<h3>Actions</h3>${ent(m.a)}` : ""}
-    ${m.ba && m.ba.length ? `<h3>Bonus Actions</h3>${ent(m.ba)}` : ""}
-    ${m.re && m.re.length ? `<h3>Reactions</h3>${ent(m.re)}` : ""}
-    ${m.l && m.l.length ? `<h3>Legendary Actions</h3>${m.ld ? `<p>${diceify(m.ld)}</p>` : ""}${ent(m.l)}` : ""}
+    ${m.a && m.a.length ? `<h3>Actions</h3>${ent(m.a, true)}` : ""}
+    ${m.ba && m.ba.length ? `<h3>Bonus Actions</h3>${ent(m.ba, true)}` : ""}
+    ${m.re && m.re.length ? `<h3>Reactions</h3>${ent(m.re, true)}` : ""}
+    ${m.l && m.l.length ? `<h3>Legendary Actions</h3>${m.ld ? `<p>${diceify(m.ld)}</p>` : ""}${ent(m.l, true)}` : ""}
     ${m.text ? `<hr><div class="pre">${diceify(m.text)}</div>` : ""}
     ${m.custom ? "" : `<p class="credit">Bron: System Reference Document 5.1 (2014), Wizards of the Coast, CC-BY-4.0, via Open5e.</p>`}`;
   $("#sb").scrollTop = 0;

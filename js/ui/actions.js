@@ -1,7 +1,7 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
-import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, svBonus, aoeTargets, aoePick, okSave, editPreview } from "./render.js";
+import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview } from "./render.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
 import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc } from "../rules/effects.js";
@@ -307,7 +307,7 @@ export function onClick(e) {
   }
   if (b.dataset.dmg) return doDmgRoll(b.dataset.dmg, b.dataset.label);
   if (b.dataset.aoe) return openActAoe(b.dataset.cid, b.dataset.aoe);
-  if (b.dataset.atk) return openAtk(b.dataset.cid, b.dataset.atk, b.dataset.label);
+  if (b.dataset.atk) return openAtk(b.dataset.cid, b.dataset.atk, b.dataset.label, b.dataset.laI, b);
   if (b.dataset.setmode) {
     ui.mode = b.dataset.setmode; ui.confirmReset = false;
     render();
@@ -845,25 +845,50 @@ function findAtk(by, name) {
   return A && [...A.main, ...A.other].find((a) => a.n === name && a.hit !== null);
 }
 
-function openAtk(cid, name, label) {
+let atkFrom = null; // knop die het paneel opende (kaart, statblock of legendary-paneel), voor de focus bij sluiten
+
+/** Doelpaneel openen vanaf een to-hit-knop. laI = index van de legendary-optie (aanval uit het legendary-paneel). */
+function openAtk(cid, name, label, laI, from) {
   const by = app.S.list.find((c) => c.id === cid), a = findAtk(by, name);
-  if (!a) return;
+  if (!a) { // geen aanval met die naam (bijv. to hit in spellcasting-tekst): losse worp zoals voorheen
+    const m = from && from.textContent.match(/[+-]\d+/);
+    if (m) doRoll(`1d20${m[0]}`, label || from.closest(".entry")?.querySelector("i")?.textContent.replace(/\.$/, ""), true);
+    return;
+  }
+  const o = laI != null && laI !== "" ? laOpts(by)[+laI] : null, laBack = ui.la || by.id; // "*" = paneel met alle monsters
   ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = null; ui.sv = false;
-  const adv = ui.atkAdv && ui.atkAdv.by === by.id ? ui.atkAdv.v : 0;
-  ui.atk = { by: by.id, n: a.n, label: label || a.n, bo: a.hit, key: partsKey(a.dmg), adv, tid: null, r: null, parts: null, modes: {}, force: {} };
+  const adv = ui.atkAdv && ui.atkAdv.by === by.id ? ui.atkAdv.v : "a";
+  ui.atk = { by: by.id, n: a.n, label: label || a.n, bo: a.hit, kind: a.kind, key: partsKey(a.dmg), adv, tid: null, r: null, parts: null, modes: {}, force: {},
+    la: o ? { i: +laI, n: o.n, cost: o.cost, on: true, back: laBack } : null };
+  atkFrom = o ? null : from || null;
   render();
   focusAtk();
 }
 
 const focusAtk = () => { const s = $("#xsheet"); (s.querySelector(".qgo:not([disabled])") || s.querySelector(".xt") || s.querySelector(".xsheet"))?.focus(); };
-function closeAtk() { const by = ui.atk && ui.atk.by; ui.atk = null; paintAtk(); if (by) $(`.c[data-id="${CSS.escape(by)}"] .d.hit`)?.focus(); }
+/** Focus terug naar de opener; aanval uit het legendary-paneel: terug naar dat paneel (back) */
+function atkBack(x, back) {
+  if (x && x.la && back) return openLa(x.la.back);
+  const f = atkFrom && atkFrom.isConnected ? atkFrom : x && $(`.c[data-id="${CSS.escape(x.by)}"] .d.hit`);
+  atkFrom = null;
+  f?.focus();
+}
+function closeAtk(back = true) { const x = ui.atk; ui.atk = null; paintAtk(); atkBack(x, back); }
+
+/** Legendary action van deze aanval aftrekken (schakelaar aan), in dezelfde stap als de schade */
+function atkLa(x, by) {
+  if (!x.la || !x.la.on || !laCan(x, by)) return "";
+  const r = useLA(by, { n: x.la.n, cost: x.la.cost }, app.S);
+  addWhy(r.why);
+  return r.why.length ? ` · ${by.name} −${x.la.cost} LA, ${by.la.left} over` : "";
+}
 
 /** Doel gekozen: to hit en damage in één keer rollen (een ander doel kiezen houdt dezelfde worp) */
 function atkTarget(x, id) {
   const c = app.S.list.find((t) => t.id === id);
   if (!c) return;
   x.tid = id;
-  if (!x.r) { x.r = rollAttack(x.bo, x.adv); x.parts = x.key ? rollDmgCrit(x.key, (e) => rollExpr(e)) || [] : []; }
+  if (!x.r) { x.r = rollAttack(x.bo); x.parts = x.key ? rollDmgCrit(x.key, (e) => rollExpr(e)) || [] : []; }
   x.force = {};
   // resistance/immuniteit van een monster uit het statblock (onvoorwaardelijk); spelers normaal
   const m = c.ref ? findMon(c.ref) : null;
@@ -874,16 +899,28 @@ function atkTarget(x, id) {
 function atkGo() {
   const x = ui.atk, by = x && app.S.list.find((c) => c.id === x.by), c = x && app.S.list.find((t) => t.id === x.tid);
   if (!by || !c || !c.max || isOut(c)) return;
-  const ac = effAc(c) || 0, res = atkResult(x.r, ac, x.parts, x.modes, x.force);
+  const { r } = atkRoll(x, by, c), ac = effAc(c) || 0, res = atkResult(r, ac, x.parts, x.modes, x.force);
   if (!res.hit || !res.dealt) return;
   const before = c.hp;
-  because(atkWhy(`${x.label} (${by.name})`, x.r, ac || null, x.parts, res), c.id);
+  because(atkWhy(`${x.label} (${by.name})`, r, ac || null, x.parts, res), c.id);
   apply(atkDamage(c, res));
+  const la = atkLa(x, by); // na de schade: een monster dat zichzelf raakt en neergaat kan geen LA meer
   ui.atkPrev = { by: by.id, id: c.id };
   ui.atk = null;
   render();
-  toastHtml(`${esc(`${c.name}: −${res.dealt} HP${res.crit ? " (kritiek)" : ""} → ${n0(c.hp)}/${n0(c.max)}${before > 0 && c.hp <= 0 ? (c.kind === "pc" ? ", bewusteloos" : ", neer") : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
-  $(`.c[data-id="${CSS.escape(by.id)}"] .d.hit`)?.focus();
+  toastHtml(`${esc(`${c.name}: −${res.dealt} HP${res.crit ? " (kritiek)" : ""} → ${n0(c.hp)}/${n0(c.max)}${before > 0 && c.hp <= 0 ? (c.kind === "pc" ? ", bewusteloos" : ", neer") : ""}${la}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  atkBack(x, false);
+}
+
+/** Mis met de LA-schakelaar aan: legendary action is toch gebruikt */
+function atkMiss() {
+  const x = ui.atk, by = x && app.S.list.find((c) => c.id === x.by);
+  if (!by) return;
+  const la = atkLa(x, by);
+  ui.atk = null;
+  render();
+  if (la) toastHtml(`${esc(`${x.label}: mis${la}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  atkBack(x, false);
 }
 
 export function bindAtk() {
@@ -891,18 +928,20 @@ export function bindAtk() {
     const x = ui.atk; if (!x) return;
     const b = e.target.closest("[data-xa]"); if (!b) return;
     const k = b.dataset.xa;
-    if (k === "close") { closeAtk(); return; }
+    if (k === "close") { closeAtk(!b.classList.contains("qgo")); return; } // Annuleer/achtergrond: terug; Sluit na mis: dicht
     if (k === "go") { atkGo(); return; }
+    if (k === "miss") { atkMiss(); return; }
+    if (k === "la") x.la.on = !x.la.on;
     if (k === "free") { // oude gedrag: alleen de worp als melding
-      const lab = x.label; closeAtk();
+      const lab = x.label; closeAtk(!!x.la); // uit het legendary-paneel: terug, daar staat Gebruik
       doRoll(`1d20${sgn(x.bo)}`, lab, true);
       return;
     }
-    if (k === "adv") { x.adv = +b.dataset.v; ui.atkAdv = { by: x.by, v: x.adv }; x.r = null; }
+    if (k === "adv") { x.adv = b.dataset.v === "a" ? "a" : +b.dataset.v; ui.atkAdv = { by: x.by, v: x.adv }; } // zelfde dobbelstenen, andere modus
     if (k === "tgt") atkTarget(x, b.dataset.id);
     if (k === "back") x.tid = null;
     if (k === "mode") x.modes[b.dataset.t] = +b.dataset.v;
-    if (k === "crit") { const c = app.S.list.find((t) => t.id === x.tid); const res = c && atkResult(x.r, effAc(c) || 0, x.parts, x.modes, x.force); x.force.crit = !(res && res.crit); }
+    if (k === "crit") { const c = app.S.list.find((t) => t.id === x.tid), by = app.S.list.find((t) => t.id === x.by); const res = c && by && atkResult(atkRoll(x, by, c).r, effAc(c) || 0, x.parts, x.modes, x.force); x.force.crit = !(res && res.crit); }
     if (k === "force") x.force.hit = true;
     if (k === "shield") {
       const c = app.S.list.find((t) => t.id === x.tid), p = PRESETS.find((q) => q.n === "Shield");

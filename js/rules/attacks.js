@@ -42,7 +42,7 @@ function damage(t, isAtk) {
   return out;
 }
 
-/** Eén actie → { n, hit, reach, dmg: [{e, type} | {flat, type}], dc: {n, ab} | null, multi, text } */
+/** Eén actie → { n, hit, reach, dmg: [{e, type} | {flat, type}], dc: {n, ab} | null, multi, kind (melee/ranged/both), text } */
 export function parseAction(name, text) {
   const t = String(text || "");
   const n = String(name || "");
@@ -56,6 +56,7 @@ export function parseAction(name, text) {
     dmg: damage(t, hit !== null),
     dc: dm ? { n: +dm[1], ab: [dm[2], dm[3]].filter(Boolean).map((x) => ABIL[x.toLowerCase()]).join("/") } : null,
     multi: /^multiattack/i.test(n),
+    kind: hit !== null ? atkKind(t) : "",
     text: t,
   };
 }
@@ -137,11 +138,53 @@ export function actionAoe(a, roll, types = []) {
 
 /* ---------- aanval op één doel: to hit tegen AC, damage met crit (5e 2014) ---------- */
 
-/** d20 + bonus; adv 1 = advantage (hoogste), -1 = disadvantage (laagste), 0 = normaal. nat = de d20 die telt */
+/**
+ * d20 + bonus; adv 1 = advantage (hoogste), -1 = disadvantage (laagste), 0 = normaal. nat = de d20 die telt.
+ * Er worden altijd twee d20's gerold (dd), zodat wisselen van modus of doel dezelfde dobbelstenen houdt (withAdv).
+ */
 export function rollAttack(bonus, adv = 0, rng = Math.random) {
-  const a = d(20, rng), b = adv ? d(20, rng) : null;
-  const nat = b === null ? a : adv > 0 ? Math.max(a, b) : Math.min(a, b);
-  return { d: b === null ? [a] : [a, b], adv: b === null ? 0 : adv, nat, bo: bonus, tot: nat + bonus };
+  return withAdv({ dd: [d(20, rng), d(20, rng)], bo: bonus }, adv);
+}
+
+/** Dezelfde worp met een andere modus: d = de getoonde dobbelstenen (één bij normaal) */
+export function withAdv(r, adv) {
+  const [a, b] = r.dd, v = adv > 0 ? 1 : adv < 0 ? -1 : 0;
+  const nat = !v ? a : v > 0 ? Math.max(a, b) : Math.min(a, b);
+  return { dd: r.dd, d: v ? [a, b] : [a], adv: v, nat, bo: r.bo, tot: nat + r.bo };
+}
+
+/** Melee of ranged uit de aanvalstekst; "Melee or Ranged …" = beide */
+export const atkKind = (t) => {
+  const m = /\bmelee\b/i.test(t), r = /\branged\b/i.test(t);
+  return m && r ? "both" : m ? "melee" : r ? "ranged" : "";
+};
+
+// PHB 2014, appendix A en hoofdstuk 9
+const DIS_BY = ["Blinded", "Poisoned", "Prone", "Restrained"]; // aanvaller → disadvantage
+const ADV_TGT = ["Blinded", "Paralyzed", "Petrified", "Restrained", "Stunned", "Unconscious"]; // doel → advantage
+
+/**
+ * Advantage/disadvantage van een aanval uit de condities van aanvaller en doel.
+ * kind = atkKind van de aanval (Prone-doel: advantage binnen 5 ft, disadvantage op afstand).
+ * Advantage en disadvantage samen heffen elkaar op (v = 0), ongeacht het aantal bronnen.
+ * Geeft { v: 1|0|-1, adv: [reden], dis: [reden], hint: [reden] }; hint = hangt af van wat de app niet weet.
+ */
+export function atkAdv(by, tgt, kind = "") {
+  const adv = [], dis = [], hint = [];
+  const bc = (by && by.cond) || [], tc = (tgt && tgt.cond) || [];
+  for (const k of DIS_BY) if (bc.includes(k)) dis.push(`${by.name} ${k}`);
+  if (bc.includes("Invisible")) adv.push(`${by.name} Invisible`);
+  if (bc.includes("Frightened")) hint.push(`${by.name} Frightened: disadvantage als de bron in zicht is`);
+  for (const k of ADV_TGT) if (tc.includes(k)) adv.push(`${tgt.name} ${k}`);
+  if (tc.includes("Invisible")) dis.push(`${tgt.name} Invisible`);
+  if (tc.includes("Prone")) {
+    if (kind === "ranged") dis.push(`${tgt.name} Prone (op afstand)`);
+    else {
+      adv.push(`${tgt.name} Prone`);
+      hint.push(`${tgt.name} Prone: advantage binnen 5 ft, disadvantage van verder weg`);
+    }
+  }
+  return { v: adv.length && !dis.length ? 1 : dis.length && !adv.length ? -1 : 0, adv, dis, hint };
 }
 
 /**
@@ -185,8 +228,8 @@ export function atkResult(atk, ac, parts, modes = {}, force = {}) {
   return { hit, natHit, crit, types, raw: sum(types.map((t) => t.raw)), dealt: hit ? sum(types.map((t) => t.dealt)) : 0 };
 }
 
-/** Tekst van de to-hit-worp: "d20 [14, 7] +11 = 25 vs AC 16" */
-export const atkText = (atk, ac) => `d20 [${atk.d.join(", ")}] ${atk.bo >= 0 ? "+" : "−"}${Math.abs(atk.bo)} = ${atk.tot}${ac != null ? ` vs AC ${ac}` : ""}`;
+/** Tekst van de to-hit-worp: "d20 [14, 7] adv +11 = 25 vs AC 16" */
+export const atkText = (atk, ac) => `d20 [${atk.d.join(", ")}]${atk.adv ? (atk.adv > 0 ? " adv" : " dis") : ""} ${atk.bo >= 0 ? "+" : "−"}${Math.abs(atk.bo)} = ${atk.tot}${ac != null ? ` vs AC ${ac}` : ""}`;
 
 const MODE_STEP = { 0.5: "×½", 2: "×2", 0: "immuun" };
 /** Logboek-oorzaak: "Bite (Dragon): d20 [14] +11 = 25 vs AC 16, raak; 2d10+6 [7, 3] +6 = 16 piercing + … → 21" */

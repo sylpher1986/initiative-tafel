@@ -20,6 +20,7 @@
 - Spelers via D&D Beyond-link (publieke sheets, via de Worker): portret, AC/HP berekend met controle-markering, slots en resources; opnieuw ophalen werkt de speler in de party bij
 - Open saves in de beurtbalk: condition- en concentration saves met één tik rollen (monster) of ✓/✗ (speler), met Ongedaan
 - Legendary actions in de beurtbalk: per monster wat er over is, één tik naar de opties met kosten en worpen, Gebruik met logregel en Ongedaan
+- Aanval op een doel vanaf kaart, statblock en legendary-paneel, met advantage/disadvantage automatisch uit condities
 - Monsterbeurt zonder statblock: aanvallen op de kaart (open bij wie aan de beurt is, ingeklapt bij andere monsters voor opportunity attacks en legendary actions); statblock op telefoon half hoog boven de beurtbalk, volgt de beurt
 
 ## DM-review (oktober 2026), op prioriteit
@@ -31,7 +32,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [x] Saves afhandelen: open saves als regels in de beurtbalk (condition-save al bij het begin van de beurt, "einde beurt"; concentration save na schade, ook uit AoE). Monster: "Rol +N" (statblock + Bless/Bane/cover), Legendary Resistance en "Spell? Advantage" in de melding; speler: ✓/✗; 3+: paneel met "Rol alle monsters"; niet afgehandeld vervalt na één extra beurtwissel (1.10.0)
 - [x] Recharge-aanval ↔ AoE: "DC 18 DEX · AoE" op de aanvalsregel van elke save-actie met schade opent AoE met gerolde schade, type, save en DC; spelers aangevinkt; recharge pas bij toepassen op "op" (één Ongedaan); klare recharge-actie staat direct onder Multiattack (1.11.0)
 - [x] Worp direct toepassen: to-hit-knop op de monsterkaart → doel kiezen → raak/mis tegen de AC (met effecten), damage met crit, resist per type, Shield +5, toepassen met Ongedaan (1.12.0)
-- [ ] Aanval op een doel ook vanuit het statblock en het legendary-paneel (zelfde paneel); advantage/disadvantage automatisch uit condities
+- [x] Aanval op een doel ook vanuit het statblock en het legendary-paneel (zelfde paneel, LA aftrekken met schakelaar "−N LA"); advantage/disadvantage automatisch uit condities (Auto/Adv/Dis/Normaal, reden per doel en in de uitslag) (1.14.0)
 
 ### Prioriteit 2: voorbereiding en tempo
 - [x] Volgende encounter: "Encounter wissen" vraagt "Monsters wissen, spelers houden" of "Alles"; spelers blijven met HP, slots en effecten, één Ongedaan (1.12.1). Encounters vooraf klaarzetten en XP-moeilijkheid: zie Functies

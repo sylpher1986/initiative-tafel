@@ -9,7 +9,7 @@ import * as R from "../rules/combat.js";
 import { ORD, pickList } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus } from "../rules/aoe.js";
 import { diceify, syncSB } from "./statblock.js";
-import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, atkText, partText, atkDamage } from "../rules/attacks.js";
+import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
 import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
 import { openSaves } from "../rules/saves.js";
@@ -284,12 +284,12 @@ function actionsBlock(c) {
 const SHORT = { piercing: "pierc.", bludgeoning: "bludg.", slashing: "slash." };
 const MAIN_MAX = 4; // regels bij het monster aan de beurt (Multiattack telt mee), daarna "+N meer"
 
-function atkRow(a, cid) {
+function atkRow(a, cid, la) {
   // zonder worp of DC (Detect, Parry): korte tekst eronder, de rest staat in het statblock
   const sub = [a.tag, a.reach, a.hit !== null && a.dc ? `DC ${a.dc.n} ${a.dc.ab}` : "", useful(a) ? "" : a.text].filter(Boolean).join(" · ");
   const lab = a.label || a.n; // label in de rolmelding (legendary: naam van de optie)
   const key = dmgKey(a.dmg), flat = a.dmg.filter((x) => !x.e);
-  const hit = a.hit !== null && cid ? `<button class="d hit" data-atk="${esc(a.n)}" data-cid="${esc(cid)}" data-label="${esc(lab)}" aria-label="${esc(lab)}: aanval ${sgn(a.hit)} to hit, doel kiezen">${sgn(a.hit)}</button>`
+  const hit = a.hit !== null && cid ? `<button class="d hit" data-atk="${esc(a.an || a.n)}" data-cid="${esc(cid)}" data-label="${esc(lab)}"${la != null ? ` data-la-i="${la}"` : ""} aria-label="${esc(lab)}: aanval ${sgn(a.hit)} to hit, doel kiezen">${sgn(a.hit)}</button>`
     : a.hit !== null ? `<button class="d hit" data-roll="1d20${sgn(a.hit)}" data-hit="1" data-label="${esc(lab)}" aria-label="${esc(lab)}: aanval ${sgn(a.hit)} to hit">${sgn(a.hit)}</button>`
     : isSaveAoe(a) && cid ? `<button class="d dcb" data-aoe="${esc(a.n)}" data-cid="${esc(cid)}" aria-label="${esc(lab)}: DC ${a.dc.n} ${a.dc.ab}, AoE-paneel openen">DC ${a.dc.n} ${a.dc.ab}<small>AoE ▸</small></button>`
     : a.dc ? `<span class="dc">DC ${a.dc.n} ${a.dc.ab}</span>` : "<span></span>";
@@ -476,13 +476,13 @@ function laMon(c, S) {
   const st = laStatus(c, S), ok = st === "ok";
   const opts = laOpts(c).map((o, i) => {
     // eigen worp (Wing Attack) zonder de naam te herhalen; verwijzing (Tail Attack → Tail) met de naam van de aanval
-    const rows = o.act ? [{ ...o.act, n: "Worp", label: o.n }] : o.refs;
+    const rows = o.act ? [{ ...o.act, n: "Worp", an: o.act.n, label: o.n }] : o.refs;
     const can = ok && o.cost <= n0(c.la.left);
     return `<div class="lao">
       <div class="lah"><span class="an">${esc(o.n)}<small>${o.cost} LA</small></span>
         <button type="button" class="btn small${can ? " primary" : ""}" data-lause="${esc(c.id)}" data-i="${i}" ${can ? "" : "disabled"}
           aria-label="${esc(o.n)} gebruiken (${o.cost} LA)">Gebruik</button></div>
-      ${rows.map((a) => atkRow({ ...a, tag: "" })).join("")}
+      ${rows.map((a) => atkRow({ ...a, tag: "" }, c.id, i)).join("")}
       ${!rows.length && o.text ? `<p class="latxt">${esc(o.text)}</p>` : ""}</div>`;
   }).join("");
   return `<section class="lamon"><div class="lamh"><b>${esc(c.name)}</b><span class="ld">${dots(c.la)} <small>${n0(c.la.left)}/${n0(c.la.max)} over</small></span></div>
@@ -668,45 +668,80 @@ export function paintAoe() {
 }
 
 /* ---------- aanval op één doel (to-hit-knop op de monsterkaart) ---------- */
-const ADVS = [[0, "Normaal"], [1, "Advantage"], [-1, "Disadvantage"]];
+const ADVS = [["a", "Auto"], [1, "Adv"], [-1, "Dis"], [0, "Normaal"]];
+const ADV_W = { 1: "Advantage", "-1": "Disadvantage", 0: "Normaal" };
 const XMODES = [[1, "Normaal"], [0.5, "Resist ½"], [2, "Kwetsb. ×2"], [0, "Immuun"]];
-// condities van het doel die advantage of disadvantage geven (alleen als hint; de DM kiest)
-const ATK_CONDS = ["Blinded", "Invisible", "Paralyzed", "Petrified", "Prone", "Restrained", "Stunned", "Unconscious"];
 const AUTO_CRIT = ["Paralyzed", "Unconscious"];
 
 /** Wie een aanval kan krijgen: niet de aanvaller, geen lair, geen dode speler of monster op 0 HP (spelers op 0 HP wel) */
 export const atkTargets = (by) => sortOrder(app.S.list).filter((c) => c.kind !== "lair" && c.id !== by && !isOut(c));
 
 /** Shield (reaction, +5) aanbieden: speler die kan reageren (niet op 0 HP/incapacitated), geraakt maar niet met een natuurlijke 20, en +5 AC zou missen */
-export const shieldOk = (c, x, res) => c.kind === "pc" && c.hp > 0 && !c.cond.some((k) => NO_ACT.includes(k)) && res.hit && !x.force.hit && x.r.nat !== 20 && !c.reaction
-  && !(c.eff || []).some((e) => e.n === "Shield") && x.r.tot < effAc(c) + 5;
+export const shieldOk = (c, x, r, res) => c.kind === "pc" && c.hp > 0 && !c.cond.some((k) => NO_ACT.includes(k)) && res.hit && !x.force.hit && r.nat !== 20 && !c.reaction
+  && !(c.eff || []).some((e) => e.n === "Shield") && r.tot < effAc(c) + 5;
 
-function atkTgtRow(c, prev) {
-  const ac = effAc(c);
+/** Effectieve worp tegen dit doel: Auto = advantage/disadvantage uit condities (atkAdv), anders de handmatige stand */
+export function atkRoll(x, by, c) {
+  const au = atkAdv(by, c, x.kind);
+  return { au, r: withAdv(x.r, x.adv === "a" ? au.v : x.adv) };
+}
+/** Reden als korte tag: "adv Prone", "dis Invisible", "adv/dis heffen op" */
+const advTag = (au) => (!au.adv.length && !au.dis.length ? "" : au.v ? `${au.v > 0 ? "adv" : "dis"} ${(au.v > 0 ? au.adv : au.dis).map((t) => t.replace(/ \(.*\)$/, "").split(" ").pop()).join(", ")}` : "adv/dis heffen op");
+const advWhy = (au) => (au.v > 0 ? au.adv : au.v < 0 ? au.dis : []).join(", ");
+
+/** Kan de LA van deze aanval nu betaald worden? */
+export const laCan = (x, by) => !!x.la && laStatus(by, app.S) === "ok" && x.la.cost <= n0(by.la && by.la.left);
+
+/** Schakelaar "−2 LA" bij een aanval uit het legendary-paneel */
+function laToggle(x, by) {
+  const L = x.la, left = n0(by.la && by.la.left), can = laCan(x, by);
+  return `<div class="xrow xla"><button type="button" class="btn small" data-xa="la" aria-pressed="${can && L.on}" ${can ? "" : "disabled"}>−${L.cost} LA</button>
+    <span class="hint">${can ? `Legendary action: ${esc(L.n)}${L.on ? "" : " (niet aftrekken)"}` : laStatus(by, app.S) === "ok" ? `Te duur (${left} over)` : "Kan nu geen legendary action nemen"}</span></div>`;
+}
+
+function atkTgtRow(c, prev, x, by) {
+  const ac = effAc(c), tag = advTag(atkAdv(by, c, x.kind));
   return `<button type="button" class="xt" data-xa="tgt" data-id="${esc(c.id)}">${avatar(c, c.ref ? findMon(c.ref)?.meta : "")}
     <span class="xn">${esc(c.name)}${prev ? ` <span class="tag">vorige</span>` : ""}</span>
-    <span class="xi">${ac ? `AC ${n0(ac)}` : "AC ?"}${c.max ? ` · ${n0(c.hp)}/${n0(c.max)} HP` : ""}</span></button>`;
+    <span class="xi">${ac ? `AC ${n0(ac)}` : "AC ?"}${c.max ? ` · ${n0(c.hp)}/${n0(c.max)} HP` : ""}${tag ? `<b class="xadvt">${esc(tag)}</b>` : ""}</span></button>`;
 }
 
 function atkPick(x, by) {
   const L = atkTargets(by.id), prev = ui.atkPrev && ui.atkPrev.by === by.id ? L.find((c) => c.id === ui.atkPrev.id) : null;
   const rest = L.filter((c) => c !== prev), pcs = rest.filter((c) => c.kind === "pc"), mons = rest.filter((c) => c.kind !== "pc");
   return `<div class="seg2 sm xadv" role="group" aria-label="Advantage">${ADVS.map(([v, l]) => `<button type="button" data-xa="adv" data-v="${v}" aria-pressed="${x.adv === v}">${l}</button>`).join("")}</div>
-    <div class="xlist">${prev ? atkTgtRow(prev, true) : ""}${pcs.map((c) => atkTgtRow(c)).join("")}
-    ${mons.length ? `<p class="qlbl xsub">Monsters</p>${mons.map((c) => atkTgtRow(c)).join("")}` : ""}
+    ${x.la ? laToggle(x, by) : ""}
+    <div class="xlist">${prev ? atkTgtRow(prev, true, x, by) : ""}${pcs.map((c) => atkTgtRow(c, false, x, by)).join("")}
+    ${mons.length ? `<p class="qlbl xsub">Monsters</p>${mons.map((c) => atkTgtRow(c, false, x, by)).join("")}` : ""}
     ${L.length ? "" : `<p class="hint">Niemand om aan te vallen.</p>`}</div>
     <div class="afoot"><button type="button" class="link" data-xa="free">Zonder doel rollen</button><span></span></div>`;
 }
 
-function atkRes(x, c) {
-  const ac = effAc(c) || 0, res = atkResult(x.r, ac, x.parts, x.modes, x.force);
-  const word = res.crit ? "Kritiek!" : res.hit ? (res.natHit ? "Raak" : "Toch raak") : x.r.nat === 1 ? "Mis (nat 1)" : "Mis";
-  const conds = c.cond.filter((k) => ATK_CONDS.includes(k));
-  const auto = conds.some((k) => AUTO_CRIT.includes(k));
+/** "d20 [14, <s>6</s>] +11 = 25 vs AC 16": de d20 die niet telt doorgestreept */
+function atkHtml(r, ac) {
+  const used = r.d.length > 1 ? r.d.indexOf(r.nat) : 0;
+  const dice = r.d.map((v, i) => (i === used ? String(v) : `<s>${v}</s>`)).join(", ");
+  return `d20 [${dice}] ${r.bo >= 0 ? "+" : "−"}${Math.abs(r.bo)} = ${r.tot}${ac ? ` vs AC ${ac}` : ""}`;
+}
+
+/** Welke modus en waarom: "Advantage (Ayla Prone)", "Handmatig: Advantage · auto: dis (Invisible)" */
+function advLine(x, au, r) {
+  if (x.adv !== "a") return `Handmatig: ${ADV_W[r.adv]}${au.v !== r.adv ? ` · auto: ${esc(advTag(au) || "normaal")}` : ""}`;
+  if (au.v) return `${ADV_W[au.v]} (${esc(advWhy(au))})`;
+  return au.adv.length ? "Normaal (adv en dis heffen op)" : "";
+}
+
+function atkRes(x, c, by) {
+  const { au, r } = atkRoll(x, by, c);
+  const ac = effAc(c) || 0, res = atkResult(r, ac, x.parts, x.modes, x.force);
+  const word = res.crit ? "Kritiek!" : res.hit ? (res.natHit ? "Raak" : "Toch raak") : r.nat === 1 ? "Mis (nat 1)" : "Mis";
+  const crit = c.cond.filter((k) => AUTO_CRIT.includes(k));
   const hints = [
     !ac ? "AC onbekend: vergelijk zelf" : "",
-    conds.length ? `${esc(c.name)}: ${esc(conds.join(", "))}${auto ? " · binnen 5 ft is een treffer kritiek" : ""}` : "",
+    crit.length ? `${esc(c.name)}: ${esc(crit.join(", "))} · binnen 5 ft is een treffer kritiek` : "",
+    ...au.hint.map(esc),
   ].filter(Boolean);
+  const how = advLine(x, au, r);
   let body = "", foot = "";
   if (res.hit) {
     const sim = structuredClone(c), was = c.hp;
@@ -718,12 +753,17 @@ function atkRes(x, c) {
       ${res.types.map((t) => `<div class="xmode"><span class="qlbl">${esc(t.type || "schade")}</span><div class="seg2 sm" role="group" aria-label="Weerstand ${esc(t.type)}">${XMODES.map(([v, l]) => `<button type="button" data-xa="mode" data-t="${esc(t.type)}" data-v="${v}" aria-pressed="${t.mode === v}">${l}</button>`).join("")}</div></div>`).join("")}
       <div class="xrow"><button type="button" class="btn small" data-xa="crit" aria-pressed="${res.crit}">Kritiek</button>
       <span class="acalc">${c.max ? `${n0(c.hp)} → ${n0(sim.hp)} HP${end}` : "HP onbekend"}</span></div>`;
-    foot = `${shieldOk(c, x, res) ? `<button type="button" class="btn" data-xa="shield">Shield +5</button>` : "<span></span>"}
+    foot = `${shieldOk(c, x, r, res) ? `<button type="button" class="btn" data-xa="shield">Shield +5</button>` : "<span></span>"}
       <button type="button" class="btn primary qgo" data-xa="go" ${c.max && res.dealt ? "" : "disabled"}>${!c.max ? "HP onbekend" : res.dealt ? `${res.dealt} schade toepassen` : "Geen schade"}</button>`;
-  } else foot = `<button type="button" class="link" data-xa="force">Toch raak</button><button type="button" class="btn primary qgo" data-xa="close">Sluit</button>`;
+  } else {
+    const spend = x.la && x.la.on && laCan(x, by);
+    foot = `<button type="button" class="link" data-xa="force">Toch raak</button><button type="button" class="btn primary qgo" data-xa="${spend ? "miss" : "close"}">${spend ? `Sluit (−${x.la.cost} LA)` : "Sluit"}</button>`;
+  }
   return `<button type="button" class="link xback" data-xa="back">‹ Ander doel</button>
-    <p class="xhit"><b class="${res.hit ? "ok" : "bad"}">${word}</b> ${esc(atkText(x.r, ac || null))}</p>
+    <p class="xhit"><b class="${res.hit ? "ok" : "bad"}">${word}</b> ${atkHtml(r, ac)}</p>
+    ${how ? `<p class="xhow">${how}</p>` : ""}
     ${hints.length ? `<p class="hint">${hints.join("<br>")}</p>` : ""}
+    ${x.la ? laToggle(x, by) : ""}
     ${body}<div class="afoot">${foot}</div>`;
 }
 
@@ -736,7 +776,7 @@ export function paintAtk() {
     <div class="sheet qsheet xsheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="x-title">
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3 id="x-title">${esc(x.label)} → ${c ? esc(c.name) : "doel?"}</h3><button type="button" class="link" data-xa="close">Annuleer</button></div>
-      ${c ? atkRes(x, c) : atkPick(x, by)}
+      ${c ? atkRes(x, c, by) : atkPick(x, by)}
     </div>`;
   el.hidden = false;
 }

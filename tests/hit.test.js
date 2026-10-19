@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { rollAttack, rollDmgCrit, atkResult, atkText, atkWhy, partText, atkDamage, partsKey, dmgKey } from "../js/rules/attacks.js";
+import { rollAttack, withAdv, atkKind, atkAdv, parseAction, rollDmgCrit, atkResult, atkText, atkWhy, partText, atkDamage, partsKey, dmgKey } from "../js/rules/attacks.js";
 import { rollExpr } from "../js/rules/dice.js";
 
 /** rng die vaste d20-waarden geeft (1..20) */
@@ -9,10 +9,10 @@ const seq = (...v) => { let i = 0; return () => (v[i++ % v.length] - 1) / 20 + 0
 const dice = (...v) => { let i = 0; return (e) => rollExpr(e, () => { const n = +String(e).match(/d(\d+)/)[1]; return (v[i++ % v.length] - 1) / n + 0.0001; }); };
 
 test("to hit: advantage pakt de hoogste, disadvantage de laagste", () => {
-  assert.deepEqual(rollAttack(5, 0, seq(12)), { d: [12], adv: 0, nat: 12, bo: 5, tot: 17 });
+  assert.deepEqual(rollAttack(5, 0, seq(12, 3)), { dd: [12, 3], d: [12], adv: 0, nat: 12, bo: 5, tot: 17 });
   assert.equal(rollAttack(5, 1, seq(4, 15)).nat, 15);
   assert.equal(rollAttack(5, -1, seq(4, 15)).nat, 4);
-  assert.equal(atkText(rollAttack(-1, 1, seq(4, 15)), 16), "d20 [4, 15] −1 = 14 vs AC 16");
+  assert.equal(atkText(rollAttack(-1, 1, seq(4, 15)), 16), "d20 [4, 15] adv −1 = 14 vs AC 16");
 });
 
 test("natuurlijke 20 raakt altijd en is kritiek; natuurlijke 1 mist altijd", () => {
@@ -99,4 +99,43 @@ test("partsKey: ook alleen vaste schade (dmgKey geeft dan geen knop)", () => {
   assert.equal(partsKey([{ flat: 1, type: "piercing" }]), "1:piercing");
   assert.equal(dmgKey([{ flat: 1, type: "piercing" }]), "");
   assert.equal(partsKey([{ flat: 1, type: "piercing" }, { e: "3d4", type: "poison" }]), dmgKey([{ flat: 1, type: "piercing" }, { e: "3d4", type: "poison" }]));
+});
+
+test("withAdv: zelfde dobbelstenen, andere modus", () => {
+  const r = rollAttack(3, 0, seq(4, 15));
+  assert.equal(r.nat, 4);
+  assert.equal(withAdv(r, 1).nat, 15);
+  assert.equal(withAdv(r, -1).tot, 7);
+  assert.deepEqual(withAdv(withAdv(r, 1), 0).d, [4], "terug naar normaal: alleen de eerste d20");
+});
+
+test("atkKind: melee, ranged, beide", () => {
+  assert.equal(atkKind("Melee Weapon Attack: +4 to hit"), "melee");
+  assert.equal(atkKind("Ranged Spell Attack: +7 to hit"), "ranged");
+  assert.equal(atkKind("Melee or Ranged Weapon Attack: +4 to hit"), "both");
+  assert.equal(parseAction("Javelin", "Melee or Ranged Weapon Attack: +4 to hit, reach 5 ft.").kind, "both");
+});
+
+test("atkAdv: condities van aanvaller en doel (PHB 2014)", () => {
+  const C = (name, ...cond) => ({ name, cond });
+  assert.equal(atkAdv(C("Ogre"), C("Ayla")).v, 0);
+  assert.equal(atkAdv(C("Ogre", "Poisoned"), C("Ayla")).v, -1);
+  assert.equal(atkAdv(C("Ogre", "Invisible"), C("Ayla")).v, 1);
+  assert.equal(atkAdv(C("Ogre"), C("Ayla", "Restrained")).v, 1);
+  assert.equal(atkAdv(C("Ogre"), C("Ayla", "Invisible")).v, -1);
+  // opheffen: één bron advantage + twee bronnen disadvantage = normaal
+  const x = atkAdv(C("Ogre", "Poisoned", "Prone"), C("Ayla", "Stunned"));
+  assert.equal(x.v, 0);
+  assert.deepEqual(x.adv, ["Ayla Stunned"]);
+  assert.deepEqual(x.dis, ["Ogre Poisoned", "Ogre Prone"]);
+  // Prone doel: melee advantage, ranged disadvantage
+  assert.equal(atkAdv(C("Ogre"), C("Ayla", "Prone"), "melee").v, 1);
+  assert.equal(atkAdv(C("Ogre"), C("Ayla", "Prone"), "ranged").v, -1);
+  assert.equal(atkAdv(C("Ogre"), C("Ayla", "Prone"), "both").hint.length, 1);
+  // Frightened: alleen een hint (bron in zicht weet de app niet)
+  const f = atkAdv(C("Ogre", "Frightened"), C("Ayla"));
+  assert.equal(f.v, 0);
+  assert.equal(f.hint.length, 1);
+  // Concentrating of rare data: niets
+  assert.equal(atkAdv({ name: "X" }, { name: "Y", cond: ["Concentrating"] }).v, 0);
 });
