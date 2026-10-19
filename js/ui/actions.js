@@ -13,7 +13,7 @@ import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDu
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, defMode } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
-import { castInfo, legInfo, rcInfo, pickList, isConc } from "../rules/spells.js";
+import { castInfo, legInfo, rcInfo, pickList, isConc, edFor } from "../rules/spells.js";
 import { rulesEd, setRulesEd } from "./spellrules.js";
 import { spellClick as spellInfoClick, spellOpen, closeSpell } from "./spellinfo.js";
 import { logText } from "../log.js";
@@ -138,12 +138,18 @@ const row = {
   },
   /* ---- effecten ---- */
   effp(c, b) {
-    const i = +b.dataset.i, p = presetsFor(rulesEd())[i];
-    if (!p) return false;
-    if (p.conc && !app.S.active) { ui.effWho = { id: c.id, i }; return; } // geen beurt: vraag wie cast
-    return applyEff(c, p, p.conc ? app.S.active : null);
+    const i = +b.dataset.i, p0 = PRESETS[i];
+    if (!p0) return false;
+    // editie per caster: zijn D&D Beyond-sheet, anders de instelling Spells (Barkskin 2024 = geen concentratie)
+    const act = app.S.list.find((x) => x.id === app.S.active), p = presetsFor(edFor(act, p0.n, rulesEd()))[i];
+    if ((p0.conc || p.conc) && !act) { ui.effWho = { id: c.id, i }; return; } // geen beurt: vraag wie cast (de sheet bepaalt de editie)
+    return applyEff(c, p, p.conc ? act.id : null);
   },
-  effby(c, b) { const w = ui.effWho; if (!w || w.id !== c.id) return false; return applyEff(c, presetsFor(rulesEd())[w.i], b.dataset.by); },
+  effby(c, b) {
+    const w = ui.effWho; if (!w || w.id !== c.id || !PRESETS[w.i]) return false;
+    const by = app.S.list.find((x) => x.id === b.dataset.by), p = presetsFor(edFor(by, PRESETS[w.i].n, rulesEd()))[w.i];
+    return applyEff(c, p, p.conc ? b.dataset.by : null);
+  },
   "effwho-no"() { ui.effWho = null; },
   effcustom() { ui.effCustom = !ui.effCustom; },
   "eff-add"(c) {
@@ -215,7 +221,7 @@ function rowData(c, b) {
     toggle(o, +ds.i);
     ui.castPick = null;
     if (spend && ds.slot !== undefined && pickList(c, o.lvl, rulesEd()).some((x) => x.conc)) ui.castPick = { id: c.id, lvl: o.lvl };
-    if (spend && ds.daily !== undefined && isConc(o.n, rulesEd())) apply(R.startConc(c, o.n.replace(/\(.*?\)/g, "").trim()));
+    if (spend && ds.daily !== undefined && isConc(o.n, edFor(c, o.n, rulesEd()))) apply(R.startConc(c, o.n.replace(/\(.*?\)/g, "").trim()));
     return true;
   }
   if (ds.pickspell !== undefined) { if (ds.conc) apply(R.startConc(c, ds.pickspell)); ui.castPick = null; return true; }
@@ -860,7 +866,7 @@ function spellGo() {
   const picks = sortOrder(spellTargets(S.list)).map((c) => ({ c, p: spellPick(a, sp, caster, c) })).filter((x) => x.p.sel)
     .map(({ c, p }) => ({ c, m: p.m, ok: !!sp.ab && p.ok, lr: !!sp.ab && p.lr, note: p.roll ? `${sp.ab} save ${rollText(p.roll, dc)}` : "" }));
   if (!picks.length) return;
-  const r = castSpell(S.list, sp, caster, picks, { round: S.round, active: S.active, dc: a.sdc, ed: rulesEd() });
+  const r = castSpell(S.list, sp, caster, picks, { round: S.round, active: S.active, dc: a.sdc, ed: edFor(caster, sp.n, rulesEd()) });
   addWhy(r.why);
   ui.aoe = null;
   render();

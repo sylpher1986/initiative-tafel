@@ -10,6 +10,7 @@ import { ORD } from "../rules/spells.js";
 import { loadSpells, findSpell, spellSrc, normSpell, EDS, pickEd, spellsLoaded } from "../data/spells.js";
 import { rulesDiffer } from "../rules/spellcast.js";
 import { rulesEd } from "./spellrules.js";
+import { edFor, sheetEd } from "../rules/spells.js";
 
 let cur = null;   // { n: naam zoals getikt, cid: speler (terugval uit de sheet), ed: gekozen editie (null = instelling Spells), busy, err } of null
 let from = null;  // knop die het paneel opende (focus terug bij sluiten)
@@ -77,10 +78,12 @@ function sheetSpell(cid, n) {
 }
 
 function body(c) {
-  const pref = rulesEd(), { ed, eds } = pickEd(c.n, c.ed || pref), s = findSpell(c.n, ed);
+  // de app rekent met de editie op de sheet van de speler (als hij de spell daar heeft), anders met de instelling Spells
+  const who = c.cid && app.S.list.find((x) => x.id === c.cid), pref = edFor(who, c.n, rulesEd());
+  const { ed, eds } = pickEd(c.n, c.ed || pref), s = findSpell(c.n, ed);
   if (s) {
-    // andere editie dan de instelling: alleen een waarschuwing als de app voor deze spell echt anders rekent
-    const calc = rulesDiffer(c.n) ? ` De app rekent met ${pref}.` : "";
+    // andere editie dan waarmee gerekend wordt: alleen een waarschuwing als de app voor deze spell echt anders rekent
+    const calc = rulesDiffer(c.n) ? ` De app rekent met ${pref}${sheetEd(who, c.n) ? ` (sheet van ${esc(who.name)})` : ""}.` : "";
     const only = ed === pref ? "" : !spellsLoaded(pref) ? `<p class="hint">${SRD[pref]} niet geladen (offline?); dit is de ${SRD[ed]}.</p>`
       : eds.length === 1 ? `<p class="hint">Staat alleen in de ${SRD[ed]}.${calc}</p>`
       : calc ? `<p class="rcmp">Ter vergelijking.${calc}</p>` : "";

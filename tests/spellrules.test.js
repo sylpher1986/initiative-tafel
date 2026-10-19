@@ -3,7 +3,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { CONC } from "../js/rules/conclist.js";
-import { isConc, spellsAtLevel, pickList } from "../js/rules/spells.js";
+import { isConc, spellsAtLevel, pickList, sheetEd, edFor } from "../js/rules/spells.js";
+import { spellEd } from "../js/ddbjson.js";
 import { PRESETS, presetsFor, addEffect, removeEffect } from "../js/rules/effects.js";
 import { SPELLS, castSpell, spellDefault, spellFor, rulesDiffer } from "../js/rules/spellcast.js";
 import { turnSaves, resolveSave } from "../js/rules/saves.js";
@@ -185,4 +186,37 @@ test("Sleep 2024: tweede save vergeten = Incapacitated blijft en de save komt de
 test("rekent de app anders per editie? Alleen dan de regel 'Ter vergelijking' in het spell-paneel", () => {
   for (const n of ["Barkskin", "Haste", "Sleep", "Spiritual Weapon", "magic weapon", "True Strike", "Enthrall"]) assert.equal(rulesDiffer(n), true, n);
   for (const n of ["Fireball", "Bless", "Hold Person", "Hex", "Shield", "Feeblemind", "Befuddlement", "Toll the Dead", ""]) assert.equal(rulesDiffer(n), false, n);
+});
+
+test("D&D Beyond: editie per spell uit de bronnen (zelfde regel als ddb-importer)", () => {
+  assert.equal(spellEd({ sources: [{ sourceId: 1 }] }), "2014"); // PHB 2014
+  assert.equal(spellEd({ sources: [{ sourceId: 2 }, { sourceId: 27 }] }), "2014");
+  assert.equal(spellEd({ sources: [{ sourceId: 145 }] }), "2024"); // PHB 2024
+  assert.equal(spellEd({ sources: [{ sourceId: 1 }, { sourceId: 145 }] }), "2024", "een 2024-bron = 2024");
+  assert.equal(spellEd({ sources: [{ sourceId: 150 }] }), "2014", "later 2014-boek");
+  assert.equal(spellEd({ sources: [{ sourceId: 200 }] }), "2024");
+  assert.equal(spellEd({ sources: [], isLegacy: true }), "2014");
+  assert.equal(spellEd({ sources: [] }), "");
+  assert.equal(spellEd({ sources: [{ sourceId: "x" }, null] }), "");
+  assert.equal(spellEd(null), "");
+});
+
+test("editie per caster: sheet van de speler, anders de instelling", () => {
+  const druid = pc("Druid", { sheet: { levels: [{ lvl: 2, spells: [{ n: "Barkskin", ed: "2024" }, { n: "Tasha's Hideous Laughter", ed: "2014" }, { n: "Moonbeam" }] }] } });
+  assert.equal(sheetEd(druid, "barkskin"), "2024");
+  assert.equal(sheetEd(druid, "Hideous Laughter"), "2014", "alias / bezitsvorm");
+  assert.equal(sheetEd(druid, "Moonbeam"), "", "zonder editie op de sheet");
+  assert.equal(sheetEd(druid, "Haste"), "", "niet op de sheet");
+  assert.equal(edFor(druid, "Barkskin", "2014"), "2024");
+  assert.equal(edFor(druid, "Haste", "2014"), "2014");
+  assert.equal(edFor(druid, "Moonbeam", "2024"), "2024");
+  assert.equal(edFor(mon("Mage", { sheet: druid.sheet }), "Barkskin", "2014"), "2014", "monsters volgen de instelling");
+  assert.equal(edFor(null, "Barkskin", "2024"), "2024");
+  assert.equal(edFor(pc("X", { sheet: { levels: "kapot" } }), "Barkskin", "2014"), "2014");
+  // Barkskin via de sheet-editie: 2024 = AC 17 zonder concentratie
+  const p = presetsFor(edFor(druid, "Barkskin", "2014")).find((x) => x.n === "Barkskin");
+  assert.equal(p.v, 17); assert.equal(p.conc, false);
+  // import houdt de editie per sheet-spell, rare waarden vallen weg
+  const c = cleanCombatant({ id: "d", name: "D", kind: "pc", cond: [], hp: 5, max: 5, sheet: { levels: [{ lvl: 2, max: 3, spells: [{ n: "Barkskin", ed: "2024" }, { n: "Web", ed: "<b>" }] }] } });
+  assert.equal(c.sheet.levels[0].spells[0].ed, "2024"); assert.equal(c.sheet.levels[0].spells[1].ed, undefined);
 });

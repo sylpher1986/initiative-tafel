@@ -62,6 +62,17 @@ function computeUses(lu, M, prof) {
   return n;
 }
 
+/**
+ * Editie van een spell uit de bronnen van D&D Beyond (zelfde regel als ddb-importer): 2014 als álle bronnen 2014 zijn
+ * (bron-id < 145, plus een paar latere 2014-boeken), anders 2024. Zonder bronnen: isLegacy, anders onbekend ("").
+ */
+const ED24 = new Set([145, 146, 147, 148, 149, 153, 157, 163, 196]), ED14 = new Set([150, 151, 152, 154, 155, 156, 158, 159, 162]);
+export function spellEd(df) {
+  const ids = arr(df && df.sources).map((x) => (obj(x) ? int(x.sourceId) : null)).filter((x) => x != null);
+  if (!ids.length) return df && df.isLegacy === true ? "2014" : df && df.isLegacy === false ? "2024" : "";
+  return ids.every((id) => ED14.has(id) || (!ED24.has(id) && id < 145)) ? "2014" : "2024";
+}
+
 function spellRow(s) {
   const df = obj(s) && obj(s.definition) ? s.definition : null;
   if (!df || !str(df.name)) return null;
@@ -70,7 +81,7 @@ function spellRow(s) {
   const dur = df.concentration ? `Concentration${span ? ", up to " + span : ""}` : str(du.durationType, 30) === "Time" ? span : str(du.durationType, 30);
   const range = int(rg.rangeValue) ? `${int(rg.rangeValue)} ft.` : str(rg.origin, 30);
   return { lvl: clamp(int(df.level) || 0, 0, 9), use: !!(s.prepared || s.alwaysPrepared || s.countsAsKnownSpell || !int(df.level)),
-    sp: { n: str(df.name), src: "", hit: "", time: ACT[int(ac.activationType)] || "", range, dur, notes: "" } };
+    sp: { n: str(df.name), src: "", hit: "", time: ACT[int(ac.activationType)] || "", range, dur, notes: "", ...(spellEd(df) ? { ed: spellEd(df) } : {}) } };
 }
 
 /**

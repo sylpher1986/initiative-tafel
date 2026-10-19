@@ -29,6 +29,18 @@ export function keys(n) {
 /** Concentratie per editie: SRD uit de spelldata (conclist.js, gegenereerd) plus PHB-spells die niet in de SRD staan */
 const CONC_SET = { 2014: new Set(CONC[2014]), 2024: new Set(CONC[2024]) };
 const CONC_EXTRA = new Set(["aura of life", "aura of purity", "aura of vitality", "crown of madness", "grasping vine", "hex", "phantasmal force", "witch bolt"]);
+/** Editie van deze spell op de D&D Beyond-sheet van een speler ("2014", "2024"), of "" (geen sheet, niet erop, onbekend) */
+export function sheetEd(c, n) {
+  if (!c || c.kind !== "pc" || !c.sheet || !Array.isArray(c.sheet.levels)) return "";
+  const K = keys(n);
+  for (const l of c.sheet.levels) for (const sp of (l && Array.isArray(l.spells) ? l.spells : [])) {
+    if (sp && (sp.ed === "2014" || sp.ed === "2024") && keys(sp.n).some((k) => K.includes(k))) return sp.ed; // ook "Tasha's …" ↔ SRD-naam
+  }
+  return "";
+}
+/** Met welke editie rekent de app voor deze spell van deze caster: die van zijn sheet, anders de instelling */
+export const edFor = (c, n, setting = "2014") => sheetEd(c, n) || setting;
+
 /** Is dit een concentratie-spell volgens deze spellregels? Onbekende spells: nee. */
 export const isConc = (n, ed = "2014") => keys(n).some((k) => (CONC_SET[ed] || CONC_SET[2014]).has(k)) || CONC_EXTRA.has(normSpell(n));
 
