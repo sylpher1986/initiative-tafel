@@ -1016,13 +1016,13 @@ export function paintLog() {
     if (e.type === "round") return `<li class="lg-round">${esc(e.msg)}</li>`;
     if (e.type === "turn") return `<li class="lg-turn">${esc(e.msg)}</li>`;
     return `<li class="lg"><span class="lg-meta">R${n0(e.r) || "–"}${e.turn ? ` · beurt ${esc(e.turn)}` : ""}</span>
-      <span class="lg-msg">${esc(e.msg)}</span>
+      <button type="button" class="lg-msg" data-logedit="${esc(e.id)}" aria-label="${esc(`Reden bij: ${e.msg}`)}">${esc(e.msg)}</button>
       ${e.why ? `<span class="lg-why">${esc(e.why)}</span>` : ""}
       ${ui.editLog === e.id ? `<input class="lg-in" data-lognote="${esc(e.id)}" value="${esc(e.note || "")}" placeholder="Waarom? bijv. Fireball van Wolfim" aria-label="Reden">`
-        : e.note ? `<button class="lg-note" data-logedit="${esc(e.id)}">${esc(e.note)}</button>` : `<button class="link lg-add" data-logedit="${esc(e.id)}">+ reden</button>`}</li>`;
+        : e.note ? `<button type="button" class="lg-note" data-logedit="${esc(e.id)}">${esc(e.note)}</button>` : ""}</li>`;
   }).join("");
   el.innerHTML = `<details class="logbox" id="logbox" ${ui.logOpen ? "open" : ""}><summary><span>Logboek</span> <span class="hint">${L.filter((e) => !e.type).length} gebeurtenissen</span></summary>
-    ${L.length ? `<div class="bar" style="margin:8px 0"><button class="btn small" id="logcopy">Kopieer als tekst</button></div><ol class="lglist">${items}</ol>`
+    ${L.length ? `<div class="bar" style="margin:8px 0"><button class="btn small" id="logcopy">Kopieer als tekst</button></div><p class="hint lg-tip">Tik op een regel voor een reden.</p><ol class="lglist">${items}</ol>`
       : `<p class="hint">Nog niets gebeurd. Schade, condities, spells, death saves en beurten verschijnen hier automatisch, met ronde en oorzaak.</p>`}</details>`;
   if (ui.editLog) { const i = el.querySelector(".lg-in"); if (i) i.focus(); }
 }

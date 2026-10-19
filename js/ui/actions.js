@@ -1,5 +1,5 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
-import { $, esc, n0, toast, toastHtml, show } from "./util.js";
+import { $, esc, n0, toast, toastHtml, closeToast, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
 import { render, ui, openId, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview, curSpell, spellPick } from "./render.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
@@ -241,10 +241,10 @@ function rowData(c, b) {
 
 /* ---------- algemene acties (op id) ---------- */
 const global = {
-  "toast-undo"() { $("#toast").hidden = true; return global.undo(); },
+  "toast-undo"() { closeToast(); return global.undo(); },
   /** Bless "nieuwe cast" was toch een extra doel: terugdraaien en bij de vorige cast aansluiten */
   "toast-join"() {
-    const j = ui.effJoin; $("#toast").hidden = true; ui.effJoin = null;
+    const j = ui.effJoin; closeToast(); ui.effJoin = null;
     if (!j || stepNo() !== j.step || !undo()) return;
     const c = app.S.list.find((x) => x.id === j.id);
     if (c) { const r = applyEff(c, j.p, j.by, j.cast || "-"); toastHtml(`${esc(r.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`); }
@@ -760,7 +760,7 @@ function svDone(c, sid, ok, note, shown, quiet = false, adv = false) {
 
 /** Laatste gefaalde save terugdraaien en anders afhandelen (alleen als er sindsdien niets gebeurde) */
 function svRetry(fn) {
-  const j = ui.svRetry; $("#toast").hidden = true; ui.svRetry = null;
+  const j = ui.svRetry; closeToast(); ui.svRetry = null;
   if (!j || stepNo() !== j.step || !undo()) return;
   const c = app.S.list.find((x) => x.id === j.id);
   if (c) fn(c, j.sid);

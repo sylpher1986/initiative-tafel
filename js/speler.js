@@ -43,9 +43,15 @@ function paint(V) {
     ? `<div><span class="l">Ronde ${V.round} · aan de beurt</span><b>${V.gname ? esc(V.gname) : act ? esc(act.name) : "…"}</b></div>${nxt ? `<div class="r"><span class="l">Daarna</span>${esc(nxt.name)}</div>` : ""}`
     : `<div><span class="l">Nog geen gevecht</span><b>Rol initiative</b></div>`;
   // dode monsters niet in de volgorde maar als één regel onderaan (zoals het blok "Neer" bij de DM)
+  // (buiten de lijst, zodat hij bij twee kolommen onder beide kolommen staat)
   const down = V.list.filter((c) => c.kind === "monster" && c.out);
-  $("#pv-list").innerHTML = V.list.filter((c) => !down.includes(c)).map((c) => row(c, V)).join("")
-    + (down.length ? `<li class="pvdown"><span class="l">Neer</span> ${down.map((c) => esc(c.name)).join(", ")}</li>` : "");
+  const rows = V.list.filter((c) => !down.includes(c));
+  const L = $("#pv-list");
+  L.innerHTML = rows.map((c) => row(c, V)).join("");
+  // tv/tablet liggend: vanaf 7 regels twee kolommen (eerst links van boven naar beneden, dan rechts); CSS bepaalt wanneer
+  document.body.classList.toggle("two", rows.length >= 7);
+  $("#pv-down").hidden = !down.length;
+  $("#pv-down").innerHTML = down.length ? `<span class="l">Neer</span> ${down.map((c) => esc(c.name)).join(", ")}` : "";
   const el = document.querySelector(".pvc.turn");
   if (el) {
     const r = el.getBoundingClientRect();
@@ -114,6 +120,7 @@ function leave(msg) {
   room = null;
   $("#pv-net").hidden = true;
   $("#pv-now").innerHTML = ""; $("#pv-list").innerHTML = "";
+  $("#pv-down").hidden = true; $("#pv-down").innerHTML = ""; document.body.classList.remove("two");
   try { history.replaceState(null, "", location.pathname); } catch { /* geen probleem */ }
   showJoin(msg);
 }

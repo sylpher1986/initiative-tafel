@@ -32,6 +32,8 @@ async function boot() {
     return;
   }
   document.addEventListener("click", onClick);
+  // tik op een melding (niet op een knop) sluit hem
+  $("#toast").addEventListener("click", (e) => { if (!e.target.closest("button")) e.target.closest(".tmsg")?.remove(); });
   document.addEventListener("change", onChange);
   document.addEventListener("keydown", onKey);
   document.addEventListener("toggle", onToggle, true);
