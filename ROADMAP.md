@@ -1,6 +1,122 @@
 # Roadmap
 
-## Klaar (fase 1)
+Geordend op soort wijziging. Elk open punt heeft een code (bijv. **IN1**); de **priolijst** hieronder verwijst daarnaar. Afgevinkte punten staan onderaan onder "Klaar".
+
+## Priolijst (19-10-2026)
+Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zie "DM-review 2" onderaan). Leidraad: eerst wat elke sessie verwarring of tikken kost, dan voorbereiding, dan uitbreidingen.
+
+**P1: nu (indeling, elke sessie)**
+1. **IN1** Voorbereiden en Gevecht duidelijk laten verschillen (UX-agent: mockup vóór het bouwen)
+2. **IN2** Kaartacties per modus: Voorbereiden = inrichten, Gevecht = vechten
+3. **IN3** Lege Gevecht-modus en Gevecht vóór Start opruimen
+4. **IN4** Eén manier van monsters toevoegen (Monster-paneel = snel toevoegen)
+5. **VB1** "level onbekend" tikbaar maken + levels in het voorbeeld
+
+**P2: volgende (tempo en voorbereiding)**
+6. **GV1** Tik op HP-balk = schadepaneel
+7. **IN5** Voorbereiden tijdens een gevecht: beurtbalk niet twee rijen hoog
+8. **VB2** Encounters vindbaar + notitie van de ingeladen encounter tijdens het gevecht
+9. **GV2** Einde-gevecht-samenvatting met XP
+10. **IN6** Dubbele statblock-knop op de monsterkaart
+11. **DA1** Herinnering om een export te maken
+12. **SP1** Knop "Bijwerken" per lid in de Party
+13. **GV3** Tablet: zijkolom bij een speler zonder sheet nuttig vullen
+14. **DA2** Undo-geschiedenis na herladen
+
+**P3: later**
+- Afwerking: **AF1–AF5**
+- Regels: **RE1–RE7**
+- Encounters: **VB3**
+- Spelers en D&D Beyond: **SP2–SP3**
+- Gevecht: **GV4–GV5**, **IN7**
+- Spelersscherm: **SC1**
+- Taal: **TA1**
+- Technische schuld: **TS1–TS2** (oppakken wanneer je die code toch aanraakt)
+- Fase 2 en 3
+
+---
+
+## Indeling en navigatie
+- [ ] **IN1 Voorbereiden en Gevecht duidelijk laten verschillen.** Nu zijn beide schermen bijna gelijk: dezelfde lijst, dezelfde open kaart met Schade/Heal/Reaction, Gevecht vóór Start toont alleen "Encounter · 5 deelnemers" en dezelfde Start-knop. Opties voor de UX-agent:
+  - (a) modus = toestand: vóór Start altijd Voorbereiden, Start schakelt naar Gevecht, tijdens een gevecht is Voorbereiden een secundaire knop (✎) in plaats van een gelijkwaardige tab;
+  - (b) seg-knop houden, maar Gevecht een eigen gezicht geven: geen titel "Initiative Tafel", kop met grote "Ronde N" (nu staat de ronde twee keer klein: kop en beurtbalk), donkere kopbalk.
+  Doel: een beginner ziet in één oogopslag in welke fase hij zit.
+- [ ] **IN2 Kaartacties per modus.** Voorbereiden: Bewerken (naam/AC/HP/init), Statblock, Effect (pre-buffs zoals Mage Armor), Verbergen/Naam onbekend, Verwijderen; geen Schade/Heal/Reaction/Conditie. Gevecht: zoals nu.
+- [ ] **IN3 Lege Gevecht-modus.** Nu "0 deelnemers" en een uitgeschakelde Start gevecht. Toon een knop "Naar Voorbereiden" (of de welkomstkaart). Hangt samen met IN1.
+- [ ] **IN4 Eén manier van monsters toevoegen.** Monster-paneel (invoerveld Aantal, selects HP en Initiative) en snel toevoegen (stepper −/+, seg Rollen/Invullen) verschillen. Het snel-toevoegen-patroon is beter op de telefoon: gebruik het in beide; HP-modus als seg.
+- [ ] **IN5 Voorbereiden tijdens een gevecht:** prep-rij boven de beurtbalk maakt de dock twee rijen hoog; op 360 × 740 blijven ~3 kaarten zichtbaar. Opties: prep-rij in plaats van de beurtbalk, of prep-knoppen achter één knop.
+- [ ] **IN6 Statblock dubbel op de monsterkaart:** knop "Statblock" én link "Volledig statblock" onder de aanvallen. Eén van beide weg.
+- [ ] **IN7 Logboek dichter bij de beurtbalk:** eigen tab, of de laatste 2 gebeurtenissen onder de beurtbalk.
+
+## Gevecht aan tafel
+- [ ] **GV1 Tik op de HP-balk of het HP-getal opent direct het schadepaneel** (nu: kaart openen, dan − Schade). Scheelt een tik per treffer bij monsters die niet aan de beurt zijn.
+- [ ] **GV2 Einde-gevecht-samenvatting** bij Gevecht stoppen: rondes, totale XP en XP per speler (uit `difficulty`), wie neer ging; kopieerbaar voor de sessienotities.
+- [ ] **GV3 Tablet/desktop: zijkolom bij een speler zonder sheet** toont nu alleen vier vakjes. Toon eronder het statblock van het volgende monster ("Daarna: Hobgoblin"), zodat de DM vooruit kan lezen.
+- [ ] **GV4 Reaction-knop bij spelers optioneel** (Instellingen): veel tafels laten spelers dat zelf bijhouden; scheelt een knop op elke spelerskaart.
+- [ ] **GV5 Initiative van monsters opnieuw rollen bij Start** (keuze in het initiative-paneel): nu wordt bij toevoegen gerold, ook als dat uren vóór de sessie was.
+
+## Voorbereiding en encounters
+- [ ] **VB1 "level onbekend" tikbaar:** de chip opent direct de levels van de party om in te vullen; voorbeeldspelers krijgen een level (nu toont het voorbeeld meteen "level onbekend").
+- [ ] **VB2 Encounters vindbaar:** paneeltitel wordt "Encounters" op die tab (nu "Monster toevoegen"); na inladen staat de naam van de encounter boven de lijst en de notitie ingeklapt in Gevecht.
+- [ ] **VB3 Encounters:** level ook via ⋯ Bewerken voor spelers buiten de party; DMG-regel "monsters met veel lagere CR niet meetellen" (nu telt alles mee).
+
+## Spelregels
+- [ ] **RE1 Slots en effecten:** Bless via Effect verbruikt geen slot. Voorstel: niet koppelen maar spelers-slots optioneel maken (spelers houden die vaak zelf bij)
+- [ ] **RE2 Spell op doelen:** slots verbruiken en maximaal aantal doelen
+- [ ] **RE3 Pact Magic-slots apart bijhouden** (komen terug na een short rest); nu opgeteld bij de gewone slots
+- [ ] **RE4 2024-regels buiten spells** (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen
+- [ ] **RE5 Surprise:** keuze ook zonder spelers aan tafel (paneel opent dan niet)
+- [ ] **RE6 Spell-uitleg:** link vanuit AoE-Spell en Effect-presets; eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie)
+- [ ] **RE7 Open saves:** ‹ Vorige telt de ttl niet terug (vervalt dan een beurt eerder); monster zonder statblock toont "Rol +0" zonder hint
+
+## Spelers en D&D Beyond
+- [ ] **SP1 Knop "Bijwerken" per lid in de Party** (voor wie een D&D Beyond-link heeft), met hetzelfde bevestigvak
+- [ ] **SP2 Resistances/immunities per speler opslaan** (nu handmatig in het AoE-paneel); kan uit de D&D Beyond-data komen
+- [ ] **SP3 D&D Beyond-randgevallen:** speler die al in de party staat toevoegen zonder Bijwerken zet de opgeslagen HP terug op vol (ook bij de PDF); spells van items tonen ook als het item niet gedragen/geattuned is; een PDF die nog gelezen wordt kan een net opgehaalde link-sheet overschrijven (klein risico)
+
+## Spelersscherm
+- [ ] **SC1 QR-code bij de kamercode** (alleen als een kleine zelf-gehoste lib past)
+
+## Afwerking (klein)
+- [ ] **AF1** Bestandskiezers tonen de Engelse browserknop "Choose File" (encounter-import, backup, monsterbestand): eigen knop "Kies bestand…"
+- [ ] **AF2** Logboek vóór het gevecht toont "R–": vervangen door "Voorbereiding"
+- [ ] **AF3** Knop "‹" in de beurtbalk zonder tekst: "‹ Vorige" of een duidelijk aria-label + tooltip
+- [ ] **AF4** Eenmalige uitleg voor nieuwe DM's: korte hint per modus ("Tik op een kaart…", "AoE = schade of spell op meerdere doelen"), weg te tikken, terug te halen in Instellingen
+- [ ] **AF5** Instellingen is één lange lijst: kopjes inklapbaar of een korte inhoud bovenaan (Weergave · Spells · Spelersscherm · Opslag)
+
+## Opslag en data
+- [ ] **DA1 Herinnering om af en toe een export te maken**
+- [ ] **DA2 Undo-geschiedenis is weg na herladen**
+
+## Taal
+- [ ] **TA1 Taaloptie Nederlands / English** (Instellingen, keuze bewaard op het apparaat). Bij English alle Nederlandse tekst vervangen: knoppen, labels, meldingen, logboek, hints, formulieren, spelersscherm en foutmeldingen (ook van de Worker). D&D-termen zijn al Engels. Aanpak: teksten centraal in een vertaalbestand per taal (`js/i18n/nl.js`, `en.js`) met een `t("sleutel")`-functie; logboekregels als sleutel + waarden opslaan zodat ze na wisselen ook vertaald zijn; test die bewaakt dat elke sleutel in beide talen bestaat
+
+## Technische schuld
+- [ ] **TS1** pdf.js zelf hosten (nu via CDN, zonder SRI)
+- [ ] **TS2** Character sheets zitten in elke undo-stap; apart opslaan scheelt geheugen
+- Open saves (RE7) en D&D Beyond-randgevallen (SP3) stonden eerder hier en staan nu bij hun onderwerp.
+
+## Fase 2: sync
+- [ ] Login en sync tussen apparaten (bijv. Supabase), local-first blijft de basis. Eerste collectie: `encounters` (heeft al `id` + `updatedAt`, nieuwste wint); tot dan wisselen via Delen/Importeren per encounter
+- [ ] Delen met een co-DM
+- [ ] Spelersscherm-kamer: vaste code per campagne zodra er accounts zijn (`isOwner` in `worker/room.js`)
+
+## Fase 3: AI (via Cloudflare Worker, sleutel nooit in de browser)
+- [ ] AI-gestuurde vijanden: voorgestelde actie op basis van statblock, HP, condities en logboek
+- [ ] Battle maps: bij voorkeur als gestructureerde data (grid, muren, terrein) die de app tekent
+- [ ] Kostenbeheer: login en een limiet per gebruiker voordat dit publiek gaat
+
+---
+
+## DM-review 2 (19-10-2026): drie persona's
+Op 360/390 px en 1024 px, met het voorbeeld, alle panelen en een paar beurten. Volledig verslag: projectdoc `claude/dm-review-persona-s.md`.
+- **Sanne** (beginner, eerste campagne, telefoon): weet niet waarom ze naar Gevecht zou gaan als Start gevecht ook in Voorbereiden staat; schrikt van "level onbekend" in het voorbeeld; vindt Encounters niet onder "Monster toevoegen"; "‹" en "AoE" zeggen haar niets.
+- **Joost** (ervaren, homebrew, tablet + tv): wil in Voorbereiden geen Schade/Reaction maar inrichten; mist XP na het gevecht; zijkolom bij een speler zonder sheet is leeg.
+- **Gerard** (oude rot, 30 jaar DM): elke tik telt: HP-balk moet direct schade openen; twee verschillende toevoegschermen; initiative bij Start rollen, niet bij toevoegen; Reaction bij spelers overbodig.
+
+## Klaar
+
+### Fase 1 (basis)
 - Initiative, beurten, rondes, undo, logboek met oorzaken en eigen notities
 - 322 SRD-monsters, eigen monsters, monsterimport (Open5e / 5e-bits)
 - Spelers handmatig of via D&D Beyond PDF; vaste party met short/long rest
@@ -24,80 +140,41 @@
 - Spell op meerdere doelen (tab Spell in AoE): effecten en condities met save per doel, gekoppeld aan de concentratie van de caster
 - Monsterbeurt zonder statblock: aanvallen op de kaart (open bij wie aan de beurt is, ingeklapt bij andere monsters voor opportunity attacks en legendary actions); statblock op telefoon half hoog boven de beurtbalk, volgt de beurt
 
-## DM-review (oktober 2026), op prioriteit
+### DM-review 1 (oktober 2026)
 Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair, AoE, Bless, death saves, spelersscherm) op 320/390/1024 px.
-
-### Prioriteit 1: speelt elke beurt
 - [x] Monsterbeurt zonder statblock openen: aanvallen compact op de kaart (to hit · damage, DC), statblock op telefoon half hoog boven de beurtbalk en volgt de beurt (1.7.0)
 - [x] Legendary actions-herinnering: vaste regel in de beurtbalk per LA-monster (●●○), licht op na Volgende; paneel met opties, kosten (2/3 LA), worp of verwezen aanval en Gebruik (1.9.0)
 - [x] Saves afhandelen: open saves als regels in de beurtbalk (condition-save al bij het begin van de beurt, "einde beurt"; concentration save na schade, ook uit AoE). Monster: "Rol +N" (statblock + Bless/Bane/cover), Legendary Resistance en "Spell? Advantage" in de melding; speler: ✓/✗; 3+: paneel met "Rol alle monsters"; niet afgehandeld vervalt na één extra beurtwissel (1.10.0)
 - [x] Recharge-aanval ↔ AoE: "DC 18 DEX · AoE" op de aanvalsregel van elke save-actie met schade opent AoE met gerolde schade, type, save en DC; spelers aangevinkt; recharge pas bij toepassen op "op" (één Ongedaan); klare recharge-actie staat direct onder Multiattack (1.11.0)
 - [x] Worp direct toepassen: to-hit-knop op de monsterkaart → doel kiezen → raak/mis tegen de AC (met effecten), damage met crit, resist per type, Shield +5, toepassen met Ongedaan (1.12.0)
 - [x] Aanval op een doel ook vanuit het statblock en het legendary-paneel (zelfde paneel, LA aftrekken met schakelaar "−N LA"); advantage/disadvantage automatisch uit condities (Auto/Adv/Dis/Normaal, reden per doel en in de uitslag) (1.14.0)
-
-### Prioriteit 2: voorbereiding en tempo
-- [x] Volgende encounter: "Encounter wissen" vraagt "Monsters wissen, spelers houden" of "Alles"; spelers blijven met HP, slots en effecten, één Ongedaan (1.12.1). Encounters vooraf klaarzetten en XP-moeilijkheid: zie Functies
+- [x] Volgende encounter: "Encounter wissen" vraagt "Monsters wissen, spelers houden" of "Alles"; spelers blijven met HP, slots en effecten, één Ongedaan (1.12.1)
 - [x] Initiative van spelers bij Start gevecht: paneel met alle spelers (oude waarden ingevuld), cijferpad, Rol per speler, Volgende/Start; één Ongedaan (1.13.0)
-- [x] Effect/conditie op meerdere doelen tegelijk: tab Spell in het AoE-paneel (Bless, Bane, Hold Person, Hypnotic Pattern, Web, eigen conditie) met caster, DC, saves per doel en Rol monsters; condities hangen aan de concentratie van de caster; Bless op 3 doelen 4–5 tikken i.p.v. 9 (1.15.0); Hypnotic Pattern en Sleep vervallen bij schade (1.21.0). Later: slots verbruiken, maximaal aantal doelen
+- [x] Effect/conditie op meerdere doelen tegelijk: tab Spell in het AoE-paneel (Bless, Bane, Hold Person, Hypnotic Pattern, Web, eigen conditie) met caster, DC, saves per doel en Rol monsters; condities hangen aan de concentratie van de caster; Bless op 3 doelen 4–5 tikken i.p.v. 9 (1.15.0); Hypnotic Pattern en Sleep vervallen bij schade (1.21.0)
 - [x] Groepsbeurten: leden van een groepsworp tonen als groepsbeurt ("Bugbear 2 · 2/3" in de beurtbalk, hele groep aan de beurt op het spelersscherm); beurten blijven per lid zodat recharge, saves en condities per lid kloppen; namen sorteren numeriek (1.16.0)
 - [x] Monsters zoeken op naam, type, subtype en CR ("undead cr 2-4", "cr 1/4", "cr 10+", "demon") met kopregel en telling; compacte preview van de keuze (AC/HP/CR, verdediging, eerste aanvallen) met "Volledig statblock", op tablet/desktop in de zijkolom; ook bij snel toevoegen (1.18.0)
 - [x] Desktop en tablet: zijkolom altijd gevuld en volgt de beurt (monster: statblock, speler: sheet met live HP/AC/condities/effecten/slots, plus de D&D Beyond-sheet als die er is); Vastzetten met "Beurt: X →"; zonder gevecht het laatst geopende of toegevoegde (1.8.0)
-- [x] Spell-uitleg: tik op een spellnaam in het statblock (Spellcasting), de speler-sheet of bij de slots op de kaart → paneel met level/school, casting time, range, components, duration, conc/ritual, tekst (tabellen, worpen tikbaar) en At Higher Levels. Alle 319 SRD 5.1-spells, pas geladen bij de eerste tik en offline beschikbaar; PHB-namen (Tasha's, Melf's, Bigby's) gevonden; niet-SRD: sheet-gegevens van de speler + zoeken op D&D Beyond (1.19.0). SRD 5.2 (2024)-spells als tweede editie: voorkeur in Instellingen, schakelaar 2014 | 2024 in het paneel, spells die alleen in één editie staan (Hex, Branding Smite) vallen terug op die editie (1.20.0). Later: uitleg-link vanuit AoE-Spell en Effect-presets, eigen notitie voor niet-SRD-spells
+- [x] Spell-uitleg: tik op een spellnaam in het statblock (Spellcasting), de speler-sheet of bij de slots op de kaart → paneel met level/school, casting time, range, components, duration, conc/ritual, tekst (tabellen, worpen tikbaar) en At Higher Levels. Alle 319 SRD 5.1-spells, pas geladen bij de eerste tik en offline beschikbaar; PHB-namen (Tasha's, Melf's, Bigby's) gevonden; niet-SRD: sheet-gegevens van de speler + zoeken op D&D Beyond (1.19.0). SRD 5.2 (2024)-spells als tweede editie: voorkeur in Instellingen, schakelaar 2014 | 2024 in het paneel, spells die alleen in één editie staan (Hex, Branding Smite) vallen terug op die editie (1.20.0)
 - [x] Voorbereiden-indeling: knoppen + Monster / + Speler / Party / ⚙ in de beurtbalk openen een paneel; lijst blijft staan, geen scrollen naar tabs, Instellingen altijd bereikbaar (1.17.0)
-
-### Prioriteit 3: kleine bugs en afwerking
 - [x] Na herladen, uit de achtergrond of na import springt de lijst naar wie aan de beurt is (1.6.4)
-- [ ] Undo-geschiedenis is weg na herladen
 - [x] Meldingen net boven de beurtbalk als stapel (max 3, nieuwste onderaan, alleen de nieuwste houdt Ongedaan); bij een open paneel bovenaan; tik sluit (1.24.3)
 - [x] Logboek: geen "+ reden" meer per regel; tik op een regel opent het redenveld (1.24.3)
 - [x] Bug: één los monster kreeg "groepsworp" in het logboek (1.6.4)
-- [x] Monster-tab: knoptekst met aantal (1.6.4); was ("Bugbear toevoegen" bij aantal 3; snel toevoegen zegt wel "3× …")
+- [x] Monster-tab: knoptekst met aantal (1.6.4)
 - [x] Spelersscherm op tv: liggend ≥ 900 px schaalt de letter met de hoogte en vanaf 7 regels twee kolommen; 11 deelnemers + "Neer" passen op 720p (1.24.3)
-- Tablet: statblock rechts volgt de beurt niet → opgenomen in "Desktop en tablet" bij prioriteit 2
 - [x] Dode monsters: in Gevecht onderaan in een ingeklapt blok "Neer (N)"; net neergegaan en open blijft op zijn plek tot de kaart dicht gaat of de beurt wisselt; dode spelers blijven staan; spelersscherm: één regel "Neer: …" (1.23.0)
-- [x] Surprise (2014): "Verrast: Niemand | Monsters | Spelers" in het initiative-paneel, per deelnemer via ⋯ in ronde 1; eerste beurt overgeslagen (beurtgrenzen tellen af), geen reaction en geen legendary actions tot die beurt voorbij is (1.23.0). Later: keuze ook zonder spelers aan tafel (paneel opent dan niet)
-- [ ] Slots en effecten: Bless via Effect verbruikt geen slot. Voorstel: niet koppelen maar spelers-slots optioneel maken (spelers houden die vaak zelf bij)
-
-## UX-verbeterpunten (uit review)
-- [ ] Logboek dichter bij de beurtbalk: eigen tab, of de laatste 2 gebeurtenissen onder de beurtbalk
-- [x] Statblock-paneel op telefoon versleepbaar (half/heel) en dicht met veeg omlaag (vervangen door half/Groot boven de beurtbalk, 1.7.0)
+- [x] Surprise (2014): "Verrast: Niemand | Monsters | Spelers" in het initiative-paneel, per deelnemer via ⋯ in ronde 1; eerste beurt overgeslagen (beurtgrenzen tellen af), geen reaction en geen legendary actions tot die beurt voorbij is (1.23.0)
+- [x] Statblock-paneel op telefoon (vervangen door half/Groot boven de beurtbalk, 1.7.0)
 - [x] Lettertypes zelf meeleveren in plaats van Google Fonts (offline en privacy)
 - [x] Welkomstkaart bij een lege start ("Start met voorbeeld" / "Begin leeg"), voorbeeld-banner boven de lijst (1.17.0)
 
-## Functies
-- [ ] Taaloptie Nederlands / English (Instellingen, keuze bewaard op het apparaat). Bij English alle Nederlandse tekst vervangen: knoppen, labels, meldingen, logboek, hints, formulieren, spelersscherm en foutmeldingen (ook van de Worker). D&D-termen zijn al Engels. Aanpak: teksten centraal in een vertaalbestand per taal (`js/i18n/nl.js`, `en.js`) met een `t("sleutel")`-functie; logboekregels als sleutel + waarden opslaan zodat ze na wisselen ook vertaald zijn; test die bewaakt dat elke sleutel in beide talen bestaat
-- [ ] Resistances/immunities per speler opslaan (nu handmatig in het AoE-paneel); kan uit de D&D Beyond-data komen
-- [ ] Knop "Bijwerken" per lid in de Party-tab (voor wie een D&D Beyond-link heeft), met hetzelfde bevestigvak
-- [ ] Pact Magic-slots apart bijhouden (komen terug na een short rest); nu opgeteld bij de gewone slots
+### Functies
 - [x] Encounters vooraf klaarzetten en per sessie inladen: tab Encounters in het Monster-paneel (opslaan uit de lijst, inladen met Vervangen/Toevoegen in één Ongedaan, bewerken, dupliceren, verwijderen met Ongedaan), delen/importeren per encounter als bestand met eigen statblocks; snelkoppeling "Encounter inladen" bij een lege lijst (1.28.0)
 - [x] Moeilijkheid berekenen: XP-budget tegen partylevel (DMG 2014, Trivial/Easy t/m Deadly): live boven de lijst in Voorbereiden en per encounter, tik = uitleg; level uit de sheet of een levelveld per partylid (1.28.0)
-- [ ] Encounters: level ook via ⋯ Bewerken voor spelers buiten de party; DMG-regel "monsters met veel lagere CR niet meetellen" (nu telt alles mee)
-- [ ] Herinnering om af en toe een export te maken
 - [x] Spelersscherm op andere apparaten: kamer (Durable Object) met kamercode en link, "Delen met spelers" in Instellingen met aantal verbonden schermen, code invoeren op het spelersscherm, herverbinden na slapen/netwerkwissel, portretten apart en één keer per id (1.24.0)
 - [x] Spelersscherm-kamer: rate-limit op `POST /api/room`: max 10 nieuwe kamers per minuut per IP (Cloudflare rate limiting binding), daarboven 429 en een melding bij Delen met spelers (1.24.4)
 - [x] Spelersscherm-kamer: delen pauzeert na 30 min zonder gewijzigde stand (timer in de kamer); spelers zien "De DM deelt op dit moment niet", de DM "Opnieuw delen" met dezelfde code (1.27.0)
-- [ ] Spelersscherm-kamer: QR-code bij de code (alleen als een kleine zelf-gehoste lib past)
-- [ ] Spelersscherm-kamer: vaste code per campagne zodra er accounts zijn (fase 2, `isOwner` in `worker/room.js`)
 - [x] Spelersscherm: zichtbaarheid instelbaar (HP monsters, initiativegetallen, condities: tonen/alleen spelers/verbergen), lair verbergen op zijn kaart, "Verborgen voor spelers" bij snel toevoegen en in de Monster-tab (1.25.0)
 - [x] Spelersscherm: naam onbekend per monster (⋯ of bij toevoegen): spelers zien "Onbekend wezen (N)" met een algemeen icoon, ook in groepsnaam en "Neer: …" (1.26.0)
 - [x] Spellregels 2014 | 2024 (Instellingen, alleen spells): Barkskin 17 zonder concentratie, Lethargy = Incapacitated, concentratie per editie, Sleep 2024 (Incapacitated → Unconscious); concentratielijst uit de SRD-data (Enthrall/Forcecage eruit, o.a. Hideous Laughter, Spike Growth, Vampiric Touch erbij); Web duurt zolang de concentratie (1.21.0)
 - [x] Spells per speler volgens de versie op zijn D&D Beyond-sheet (bronnen per spell), tag "2024 · sheet" waar het afwijkt van de instelling (1.22.0)
-- [ ] 2024-regels buiten spells (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen
-
-
-## Fase 2: sync
-- [ ] Login en sync tussen apparaten (bijv. Supabase), local-first blijft de basis. Eerste collectie: `encounters` (heeft al `id` + `updatedAt`, nieuwste wint); tot dan wisselen via Delen/Importeren per encounter
-- [ ] Delen met een co-DM
-
-## Fase 3: AI (via Cloudflare Worker, sleutel nooit in de browser)
-- [ ] AI-gestuurde vijanden: voorgestelde actie op basis van statblock, HP, condities en logboek
-- [ ] Battle maps: bij voorkeur als gestructureerde data (grid, muren, terrein) die de app tekent
-- [ ] Kostenbeheer: login en een limiet per gebruiker voordat dit publiek gaat
-
-## Technische schuld (uit code-review)
-- [ ] Open saves: ‹ Vorige telt de ttl niet terug (vervalt dan een beurt eerder); monster zonder statblock toont "Rol +0" zonder hint
-- [ ] pdf.js zelf hosten (nu via CDN, zonder SRI)
-- [ ] Character sheets zitten in elke undo-stap; apart opslaan scheelt geheugen
-- [ ] D&D Beyond: speler die al in de party staat toevoegen zonder Bijwerken zet de opgeslagen HP terug op vol (zelfde als bij de PDF)
-- [ ] D&D Beyond: spells van items tonen ook als het item niet gedragen/geattuned is
-- [ ] D&D Beyond: een PDF die nog gelezen wordt kan een net opgehaalde link-sheet overschrijven (klein risico)
