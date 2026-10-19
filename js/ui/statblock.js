@@ -1,5 +1,5 @@
 // Statblocks (monsters) en character sheets (spelers) in het zijpaneel, met klikbare dobbelstenen.
-import { $, esc, n0, toastHtml } from "./util.js";
+import { $, esc, n0, toastHtml, spellLink } from "./util.js";
 import { findMon } from "../data/monsters.js";
 import { rollExpr, mod, sgn } from "../rules/dice.js";
 import { ORD, legInfo, castInfo } from "../rules/spells.js";
@@ -7,6 +7,7 @@ import { rollDmg, parseAction, monsterActions } from "../rules/attacks.js";
 import { sortOrder } from "../rules/turns.js";
 import { effAc, acBreakdown } from "../rules/effects.js";
 import { newDs } from "../rules/combat.js";
+import { spellParts } from "../data/spells.js";
 
 /**
  * Tekst → HTML met klikbare "(2d6 + 3)", "+4 to hit" en losse "1d4".
@@ -20,6 +21,10 @@ export function diceify(t, atk) {
     .replace(/([+-]\d+) to hit/g, (m, b) => `<button class="dice" ${own(b) ? hit : `data-roll="1d20${b}" data-hit="1"`}>${b} to hit</button>`)
     .replace(/\b(\d+d\d+)\b(?![^<]*<\/button>)(?![^<]*")/g, (m, e) => `<button class="dice" data-roll="${e}">${e}</button>`);
 }
+
+/** Spellcasting-tekst: spell-lijsten ("1st level (4 slots): …", "At will: …") met tikbare namen, de rest via diceify */
+export const linkSpells = (t, atk) => String(t).split("\n").map((line) =>
+  spellParts(line).map((p) => (p.sp ? spellLink(p.sp, p.t) : diceify(p.t, atk))).join("")).join("\n");
 
 export function doRoll(expr, label, isHit) {
   const r = rollExpr(expr);
@@ -206,7 +211,7 @@ const atkRef = (cid, k, v) => { const a = parseAction(k, v); return { cid, n: a.
  * zonder cid (preview vóór toevoegen) zijn alle worpen losse worpen. Traits en vrije tekst rollen altijd los.
  */
 export function sbBody(m, cid = null) {
-  const ent = (arr, atk) => arr.map(([k, v]) => `<p class="entry"><b><i>${esc(k)}.</i></b> ${diceify(v, atk && cid && atkRef(cid, k, v))}</p>`).join("");
+  const ent = (arr, atk) => arr.map(([k, v]) => `<p class="entry"><b><i>${esc(k)}.</i></b> ${(/spellcasting/i.test(k) ? linkSpells : diceify)(v, atk && cid && atkRef(cid, k, v))}</p>`).join("");
   return `<p><span class="k">Armor Class</span> ${esc(m.ac)}</p>
     <p><span class="k">Hit Points</span> ${n0(m.hp)}${m.hd ? ` (<button class="dice" data-roll="${esc(m.hd)}">${esc(m.hd.replace(/([+-])/, " $1 "))}</button>)` : ""}</p>
     ${m.spd ? `<p><span class="k">Speed</span> ${esc(m.spd)}</p>` : ""}
@@ -291,7 +296,7 @@ export function showSheet(c, chips = sb.args && sb.args[2]) {
     ${h.senses ? `<p><span class="k">Senses</span> ${esc(h.senses)}</p>` : ""}
     ${h.attacks && h.attacks.length ? `<h3>Attacks</h3>${h.attacks.map((a) => `<p class="entry"><b><i>${esc(a.n)}.</i></b> ${hitBtn(a.hit, a.n)} to hit, ${dice(a.dmg)}${a.notes ? ` <span class="hint">${esc(a.notes)}</span>` : ""}</p>`).join("")}` : ""}
     ${h.levels && h.levels.length ? `<h3>Spellcasting</h3><p>${h.spellAbility ? `${esc(h.spellAbility)} · ` : ""}${h.spellDC ? `save DC ${esc(h.spellDC)}` : ""}${h.spellAtk ? ` · spell attack ${hitBtn(h.spellAtk, "Spell attack")}` : ""}</p>
-      ${h.levels.map((l) => `<p class="entry"><b><i>${l.lvl ? ORD[l.lvl] + " level" + (l.max ? ` (${n0(l.max)} slots)` : "") : "Cantrips"}.</i></b> ${(l.spells || []).map((sp) => `${esc(sp.n)}${sp.hit && sp.hit !== "--" ? ` <span class="hint">(${esc(sp.hit)})</span>` : ""}${/concentration/i.test(sp.dur) ? ` <span class="hint">conc.</span>` : ""}`).join(", ")}</p>`).join("")}` : ""}
+      ${h.levels.map((l) => `<p class="entry"><b><i>${l.lvl ? ORD[l.lvl] + " level" + (l.max ? ` (${n0(l.max)} slots)` : "") : "Cantrips"}.</i></b> ${(l.spells || []).map((sp) => `${sp.n ? spellLink(sp.n, sp.n, c.id) : ""}${sp.hit && sp.hit !== "--" ? ` <span class="hint">(${esc(sp.hit)})</span>` : ""}${/concentration/i.test(sp.dur) ? ` <span class="hint">conc.</span>` : ""}`).join(", ")}</p>`).join("")}` : ""}
     ${h.features ? `<h3>Features &amp; Actions</h3><details><summary class="link">Toon alles</summary><p class="entry">${dice(h.features)}</p></details>` : ""}
     <p class="credit">Geïmporteerd uit D&amp;D Beyond character sheet.</p>`
     : `<p class="hint sbnosheet">Geen sheet: voeg de speler toe via een D&amp;D Beyond-link of -PDF voor abilities, saves en spells.</p>`}`;

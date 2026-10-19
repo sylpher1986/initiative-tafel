@@ -17,3 +17,9 @@ export function toastHtml(html) {
 export const toast = (text) => toastHtml(esc(text));
 /** Fx-meldingen uit de regels tonen */
 export const show = (fx) => fx && fx.msgs.forEach((m) => toast(m));
+/**
+ * Tikbare spellnaam: opent de spell-uitleg (js/ui/spellinfo.js). label = getoonde tekst (ook met annotatie),
+ * name = naam om op te zoeken, cid = speler van wie de sheet-gegevens als terugval dienen (niet-SRD-spell).
+ */
+export const spellLink = (name, label = name, cid = "") =>
+  `<button type="button" class="spl" data-spell="${esc(name)}"${cid ? ` data-cid="${esc(cid)}"` : ""}>${esc(label)}</button>`;

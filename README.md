@@ -1,6 +1,6 @@
 # Initiative Tafel
 
-Initiative tracker voor D&D 5e (2014) om gevechten aan tafel te draaien: spelers (ook via een D&D Beyond-link of PDF), alle 322 SRD-monsters, condities met duur, spell slots, concentration, death saves, recharge, legendary en lair actions, vaste party, logboek en undo.
+Initiative tracker voor D&D 5e (2014) om gevechten aan tafel te draaien: spelers (ook via een D&D Beyond-link of PDF), alle 322 SRD-monsters, uitleg van alle 319 SRD-spells, condities met duur, spell slots, concentration, death saves, recharge, legendary en lair actions, vaste party, logboek en undo.
 
 Werkt offline als app op je beginscherm (PWA). Alle data staat lokaal in je browser; via **Opslag → Exporteer** maak je een backup of neem je alles mee naar een ander apparaat.
 
@@ -18,9 +18,11 @@ js/ddb.js             D&D Beyond: PDF-sheets inlezen, online sheet ophalen
 js/ddbjson.js         D&D Beyond character-JSON → sheet (puur, getest)
 worker/index.js       Cloudflare Worker: /api/ddb (alleen D&D Beyond-sheets)
 js/data/monsters.js   monsterbibliotheek en import (Open5e / 5e-bits)
+js/data/spells.js     spellbibliotheek voor de spell-uitleg (laden bij de eerste tik, naam-aliassen)
 js/rules/             spelregels, puur en getest
 js/ui/                tekenen en gebruikersacties
 data/monsters.json    SRD 5.1 monsters
+data/spells.json      SRD 5.1 spells (gemaakt met tools/spells_srd.py uit 5e-bits/5e-database)
 sw.js                 service worker (offline)
 tests/                tests voor de regels
 ```
@@ -45,6 +47,6 @@ Verhoog `VERSION` in `sw.js` én `js/version.js`, anders blijven geïnstalleerde
 
 ## Licentie van de monsterdata
 
-Bevat materiaal uit het System Reference Document 5.1 (2014) van Wizards of the Coast LLC, beschikbaar onder [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode), via [Open5e](https://open5e.com). Dungeons & Dragons is een handelsmerk van Wizards of the Coast; dit project is daar niet aan verbonden.
+Bevat materiaal uit het System Reference Document 5.1 (2014) van Wizards of the Coast LLC, beschikbaar onder [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode), via [Open5e](https://open5e.com) (monsters) en [5e-bits/5e-database](https://github.com/5e-bits/5e-database) (spells). Dungeons & Dragons is een handelsmerk van Wizards of the Coast; dit project is daar niet aan verbonden.
 
 Icoontjes voor rassen en creature types (`icons/creatures.svg`) komen van [game-icons.net](https://game-icons.net), door Lorc, Delapouite, Sbed en Cathelineau, onder [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Lettertypes Alegreya SC en Alegreya Sans: SIL Open Font License (`fonts/OFL.txt`).

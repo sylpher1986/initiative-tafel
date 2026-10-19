@@ -14,6 +14,7 @@ import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, defMode } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
 import { castInfo, legInfo, rcInfo, pickList, CONC_SPELLS, cleanSpell } from "../rules/spells.js";
+import { spellClick as spellInfoClick, spellOpen, closeSpell } from "./spellinfo.js";
 import { logText } from "../log.js";
 import { readSheetPdf, fetchDdb } from "../ddb.js";
 import { parseDdbLink, findMember, mergeSheet } from "../ddbjson.js";
@@ -341,6 +342,7 @@ function closePrep() {
 }
 
 export function onClick(e) {
+  if (spellInfoClick(e)) return; // spell-uitleg: tikbare naam of het paneel sluiten
   const sk = e.target.closest("[data-sk]");
   if (sk) {
     const res = sheetKey(sk.dataset.sk, sk.dataset.v);
@@ -422,6 +424,7 @@ export function onChange(e) {
 }
 
 export function onKey(e) {
+  if (spellOpen()) { if (e.key === "Escape") { e.preventDefault(); closeSpell(); } return; } // ligt boven alle andere panelen: toetsen niet naar het cijferpad eronder
   if (ui.prep && e.key === "Escape") { e.preventDefault(); closePrep(); return; }
   if (ui.qadd && e.key === "Escape") { e.preventDefault(); closeQadd(); return; }
   if (ui.aoe && e.key === "Escape") { e.preventDefault(); closeAoe(); return; }

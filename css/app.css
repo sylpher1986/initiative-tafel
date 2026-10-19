@@ -644,3 +644,29 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .order .empty{list-style:none;padding:20px;text-align:center}
 .order .sbanner{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.85rem;color:var(--muted);border-left:3px solid var(--warn);padding:2px 0 2px 10px}
 .sbanner .btn{min-height:40px}
+
+/* Spell-uitleg: tikbare spellnaam (cursief met stippel, zoals spellnamen in een statblock) en paneel #rsheet */
+.spl{font:inherit;font-style:italic;color:inherit;background:none;border:0;border-bottom:1px dotted var(--muted);border-radius:0;
+  padding:10px 0 4px;margin:-10px 0 -4px;line-height:inherit;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent}
+.spl:hover,.spl:focus-visible{color:var(--accent);border-bottom-color:var(--accent)}
+.rwrap{z-index:45}
+.rsheet{max-height:85dvh;gap:8px;padding-top:0}
+.rsheet .grab{margin-top:10px}
+.rhead{position:sticky;top:0;background:var(--surface);z-index:1;padding:6px 0 4px;gap:12px}
+.rhead h3{min-width:0;overflow-wrap:anywhere}
+.rhead .link{min-height:44px;flex:0 0 auto}
+.rsheet .hint,.rmeta{margin:0}
+.rmeta{font-style:italic;color:var(--muted)}
+.rgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin:0;padding:8px 0;border-block:1px solid var(--line)}
+.rgrid div{min-width:0}.rgrid .w{grid-column:1/-1}
+.rgrid dt{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.rgrid dd{margin:0;overflow-wrap:anywhere}
+.rmat{font-size:.85rem}
+.rtext p{margin:0 0 8px}
+.rtext h4{margin:12px 0 4px;font-family:var(--display);font-size:1rem}
+.rtbl{overflow-x:auto;margin:0 0 8px}
+.rtbl table{border-collapse:collapse;font-size:.88rem;width:100%}
+.rtbl th,.rtbl td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+.rtbl th{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.rtbl td:first-child{white-space:nowrap;font-variant-numeric:tabular-nums}
+.rsheet .credit{margin-top:4px}

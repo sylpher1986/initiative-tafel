@@ -1,13 +1,14 @@
 // Tekent de encounter (compacte kaarten, één tegelijk open), de beurtbalk, het schade-paneel,
 // de party en het logboek. Render past de data niet aan.
-import { $, esc, n0 } from "./util.js";
+import { $, esc, n0, spellLink } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
 import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf } from "../rules/turns.js";
 import { PRESETS, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn } from "../rules/effects.js";
 import * as R from "../rules/combat.js";
-import { ORD, pickList } from "../rules/spells.js";
+import { ORD, pickList, splitSpells } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus } from "../rules/aoe.js";
+import { spellItem } from "../data/spells.js";
 import { diceify, syncSB, monCard, isPhone } from "./statblock.js";
 import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
@@ -183,6 +184,12 @@ function dsBlock(c) {
     <span class="dsg">Success ${p("s", d.s, "Success")}</span><span class="dsg">Failure ${p("f", d.f, "Failure")}</span>${st}</div>`;
 }
 
+/** Spellnamen bij een slot of x/day als tikbare namen ("cure wounds (3rd level)" → naam tikbaar, annotatie niet) */
+const spLinks = (t, c) => splitSpells(String(t || "")).map((n) => {
+  const [name, rest] = spellItem(n);
+  return name ? spellLink(name, name, c.kind === "pc" ? c.id : "") + esc(rest) : esc(n);
+}).join(", ");
+
 function castBlock(c) {
   const k = c.casting;
   if (!k || (!k.slots.length && !k.daily.length)) return "";
@@ -193,8 +200,8 @@ function castBlock(c) {
       `<button class="btn small ${sp.conc ? "conc" : ""}" data-pickspell="${esc(sp.n)}" data-conc="${sp.conc ? 1 : ""}">${esc(sp.n)}${sp.lv < x.lvl ? ` (${sp.lv}e, upcast)` : ""}${sp.conc ? " · conc." : ""}</button>`).join("")}<button class="link" data-pickspell="">Andere / overslaan</button></div>` : "";
   return `<details class="cast" data-cast ${ui.openCast.has(c.id) || ui.castPick?.id === c.id ? "open" : ""}><summary class="link strong">Spells <span style="font-weight:400">(${sum})</span></summary>
     <div class="castbox">
-      ${k.slots.map((x, i) => `<div class="slotrow"><span class="lv">${ORD[x.lvl] || ""}</span><span class="pp">${pp(x, `data-slot="${i}"`)}</span><span class="sp">${esc(x.spells)}</span></div>${pick(x)}`).join("")}
-      ${k.daily.map((g, gi) => g.items.map((it, ii) => `<div class="slotrow"><span class="lv">${esc(g.label.split(" ")[0])}</span><span class="pp">${pp(it, `data-daily="${gi}.${ii}"`)}</span><span class="sp">${esc(it.n)}</span></div>`).join("")).join("")}
+      ${k.slots.map((x, i) => `<div class="slotrow"><span class="lv">${ORD[x.lvl] || ""}</span><span class="pp">${pp(x, `data-slot="${i}"`)}</span><span class="sp">${spLinks(x.spells, c)}</span></div>${pick(x)}`).join("")}
+      ${k.daily.map((g, gi) => g.items.map((it, ii) => `<div class="slotrow"><span class="lv">${esc(g.label.split(" ")[0])}</span><span class="pp">${pp(it, `data-daily="${gi}.${ii}"`)}</span><span class="sp">${spLinks(it.n, c)}</span></div>`).join("")).join("")}
       <div><button class="link" data-a="cast-reset">Alles herstellen (long rest)</button></div>
     </div></details>`;
 }
