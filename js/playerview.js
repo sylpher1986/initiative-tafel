@@ -4,14 +4,24 @@
 import { sortOrder, isOut, groupOf, nextUp, isSurprised } from "./rules/turns.js";
 import { iconId, cleanImg } from "./ui/avatar.js";
 
-/** Wat spelers zien. Eén plek om later aan te passen (of per tafel instelbaar te maken). */
+/**
+ * Wat spelers zien (standaard). Instelbaar per apparaat (Instellingen → Spelersscherm, js/ui/playervis.js).
+ * Spelers-HP is altijd exact (vaste keuze); de lair verberg je zoals een monster (c.hidden).
+ */
 export const VIS = {
   monHp: "status", // monsters: "status" (Ongedeerd … Bijna dood) | "none" | "exact"
-  pcHp: "exact",   // spelers: "exact" | "status" | "none"
   init: false,     // initiativegetallen tonen (anders alleen de volgorde)
-  tags: true,      // condities en effecten (alleen namen, geen notities of bron)
-  lair: true,      // lair als regel in de volgorde
+  tags: "all",     // condities en effecten (alleen namen): "all" | "pc" (alleen bij spelers) | "none"
 };
+export const VIS_OPTS = { monHp: ["status", "none", "exact"], init: [false, true], tags: ["all", "pc", "none"] };
+
+/** Onbetrouwbare instelling (localStorage) → geldige VIS; per sleutel terug naar de standaard */
+export function cleanVis(v) {
+  const o = v && typeof v === "object" ? v : {};
+  const out = {};
+  for (const k of Object.keys(VIS)) out[k] = VIS_OPTS[k].includes(o[k]) ? o[k] : VIS[k];
+  return out;
+}
 
 /** HP als status voor spelers, zonder getallen */
 export function hpStatus(c) {
@@ -45,7 +55,7 @@ function tagsFor(c, S) {
  */
 export function toPlayerView(S, metaOf = () => "", vis = VIS) {
   const all = sortOrder(S.list || []);
-  const seen = (c) => !c.hidden && (c.kind !== "lair" || vis.lair);
+  const seen = (c) => !c.hidden;
   const shown = all.filter(seen);
   const active = shown.some((c) => c.id === S.active) ? S.active : null;
   // groepsbeurt: spelers zien de zichtbare levende leden samen aan de beurt, "volgende" ligt voorbij de groep
@@ -59,7 +69,7 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS) {
     const r = {
       id: c.id, kind: pc ? "pc" : "monster", name: c.name, init: vis.init ? c.init : null,
       icon: iconId(c, pc ? "" : metaOf(c)), img: pc ? cleanImg(c.img) : null,
-      out: isOut(c), hp: hpFor(c, pc ? vis.pcHp : vis.monHp), tags: vis.tags ? tagsFor(c, S) : [],
+      out: isOut(c), hp: hpFor(c, pc ? "exact" : vis.monHp), tags: vis.tags === "all" || (pc && vis.tags === "pc") ? tagsFor(c, S) : [],
     };
     const d = c.ds || {}; // zonder ds-object nog geen worpen (zoals de DM-kaart met newDs())
     if (pc && c.max && c.hp <= 0 && !d.dead && !d.stable) r.ds = { s: d.s || 0, f: d.f || 0 };

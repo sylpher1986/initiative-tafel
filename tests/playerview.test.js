@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toPlayerView, cleanView, hpStatus, VIS } from "../js/playerview.js";
+import { toPlayerView, cleanView, hpStatus, VIS, cleanVis } from "../js/playerview.js";
 import { cleanCombatant } from "../js/backup.js";
 import { diffLog } from "../js/log.js";
 
@@ -53,15 +53,61 @@ test("volgende slaat wie neer is over; buiten gevecht geen beurt", () => {
   assert.equal(toPlayerView({ list: [], round: 0, active: null }).list.length, 0);
 });
 
-test("instellingen: exacte monster-HP, getallen, geen tags, geen lair", () => {
-  const list = [mon({ id: "m", name: "M", init: 12, hp: 2, cond: ["Prone"] }), { id: "l", kind: "lair", name: "Lair: X", key: "x", init: 20, dex: -99, cond: [] }];
-  const V = toPlayerView(S(list), () => "", { ...VIS, monHp: "exact", init: true, tags: false, lair: false });
-  assert.equal(V.list.length, 1);
-  assert.deepEqual(V.list[0].hp, { hp: 2, max: 10, temp: 0, st: "Bijna dood" });
-  assert.equal(V.list[0].init, 12);
-  assert.deepEqual(V.list[0].tags, []);
+test("instellingen: exacte monster-HP, getallen, geen tags; lair alleen weg als verborgen", () => {
+  const lair = { id: "l", kind: "lair", name: "Lair: X", key: "x", init: 20, dex: -99, cond: [] };
+  const list = [mon({ id: "m", name: "M", init: 12, hp: 2, cond: ["Prone"] }), lair];
+  const V = toPlayerView(S(list), () => "", { ...VIS, monHp: "exact", init: true, tags: "none" });
+  assert.equal(V.list.length, 2);
+  assert.equal(V.list[0].init, 20, "lair (20) eerst");
+  assert.deepEqual(V.list[1].hp, { hp: 2, max: 10, temp: 0, st: "Bijna dood" });
+  assert.equal(V.list[1].init, 12);
+  assert.deepEqual(V.list[1].tags, []);
   const W = toPlayerView(S(list));
   assert.deepEqual(W.list[0], { id: "l", kind: "lair", name: "Lair", init: null }, "lairnaam verraadt de bron niet");
+  const H = toPlayerView(S([list[0], { ...lair, hidden: true }], { active: "l" }));
+  assert.equal(H.list.length, 1, "verborgen lair bestaat niet voor spelers");
+  assert.equal(H.active, null, "ook zijn beurt niet");
+  assert.equal(H.next, "m", "volgende = eerstvolgende zichtbare");
+});
+
+test("instellingen: monster-HP geen, condities alleen bij spelers; spelers-HP altijd exact", () => {
+  const list = [pc({ id: "a", name: "A", init: 15, hp: 5, cond: ["Prone"] }), mon({ id: "m", name: "M", init: 12, hp: 0, cond: ["Prone"] })];
+  const V = toPlayerView(S(list), () => "", { ...VIS, monHp: "none", tags: "pc" });
+  assert.deepEqual(V.list[0].hp, { hp: 5, max: 20, temp: 0, st: "Bijna dood" });
+  assert.deepEqual(V.list[0].tags, ["Prone"]);
+  assert.equal(V.list[1].hp, null);
+  assert.equal(V.list[1].out, true, "Neer blijft: spelers zagen hem vallen");
+  assert.deepEqual(V.list[1].tags, []);
+  const D = toPlayerView(S([pc({ id: "a", name: "A", hp: 0, ds: { s: 1, f: 0 } })]), () => "", { ...VIS, tags: "none" });
+  assert.deepEqual(D.list[0].ds, { s: 1, f: 0 }, "death saves zijn spelersinfo, los van condities");
+});
+
+test("groep met een verborgen lid: alleen zichtbare leden aan de beurt, volgende voorbij de groep", () => {
+  const b = (i, o = {}) => mon({ id: `b${i}`, name: `Bugbear ${i}`, init: 12, grp: "g", ...o });
+  const L = [b(1), b(2, { hidden: true }), b(3), pc({ id: "p", name: "P", init: 5 })];
+  const V = toPlayerView(S(L, { active: "b1" }));
+  assert.deepEqual(V.group, ["b1", "b3"]);
+  assert.equal(V.gname, "Bugbear ×2");
+  assert.equal(V.next, "p");
+  assert.ok(!V.list.some((c) => c.id === "b2"));
+  const W = toPlayerView(S(L, { active: "b2" }));
+  assert.equal(W.active, null, "verborgen lid aan de beurt: spelers zien geen beurt");
+  assert.equal(W.group, undefined);
+  assert.equal(W.next, "b3");
+});
+
+test("tags \"pc\": Verrast alleen bij spelers", () => {
+  const L = [pc({ id: "a", name: "A", init: 15, sur: true }), mon({ id: "m", name: "M", init: 12, sur: true }), pc({ id: "z", name: "Z", init: 1 })];
+  const V = toPlayerView(S(L, { active: "z" }), () => "", { ...VIS, tags: "pc" });
+  assert.deepEqual(V.list.find((c) => c.id === "a").tags, ["Verrast"]);
+  assert.deepEqual(V.list.find((c) => c.id === "m").tags, []);
+});
+
+test("cleanVis: per sleutel terug naar de standaard, oude sleutels vervallen", () => {
+  assert.deepEqual(cleanVis(null), VIS);
+  assert.deepEqual(cleanVis("rommel"), VIS);
+  assert.deepEqual(cleanVis({ monHp: "exact", init: "ja", tags: true, lair: false, pcHp: "none" }), { ...VIS, monHp: "exact" });
+  assert.deepEqual(cleanVis({ init: true, tags: "pc" }), { ...VIS, init: true, tags: "pc" });
 });
 
 test("death saves alleen zolang ze lopen; concentratie-spell alleen bij spelers", () => {
@@ -99,6 +145,8 @@ test("cleanView: rommel en scripts eruit, onbekende ids weg", () => {
 test("verborgen: blijft bij import (alleen monsters) en komt in het logboek", () => {
   assert.equal(cleanCombatant(mon({ id: "m", name: "M", hidden: true })).hidden, true);
   assert.equal(cleanCombatant(pc({ id: "p", name: "P", hidden: true })).hidden, undefined);
+  assert.equal(cleanCombatant({ id: "l", kind: "lair", name: "Lair", hidden: true }).hidden, true, "lair verbergen overleeft export");
+  assert.equal("hidden" in cleanCombatant({ id: "l", kind: "lair", name: "Lair" }), false);
   const a = { list: [mon({ id: "m", name: "M", init: 1 })], round: 0 };
   const b = { list: [mon({ id: "m", name: "M", init: 1, hidden: true })], round: 0 };
   assert.match(diffLog(a, b)[0].msg, /verborgen voor spelers/);

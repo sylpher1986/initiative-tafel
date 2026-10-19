@@ -365,6 +365,7 @@ function lairRow(c, S) {
     <div class="i">${n0(c.init)}</div>
     <div class="n"><select class="lairsel" data-f="lairkey" aria-label="Welke lair">${keys.map((k) => `<option ${k === c.key ? "selected" : ""}>${esc(k)}</option>`).join("")}</select></div>
     <div class="meta">lair</div>
+    ${c.hidden ? `<div class="badges">${hidBadge(c)}</div>` : ""}
     <div class="kbody">
     <div class="lacts">${acts.length ? acts.map((a, i) => `<div class="lact ${c.last === a.n ? "used" : ""}">
         <p><b>${esc(a.n)}.</b> ${diceify(a.t)}</p>
@@ -376,6 +377,7 @@ function lairRow(c, S) {
         <label>Naam<input data-f="la-n" placeholder="bijv. Magma Eruption"></label>
         <label>Effect<textarea data-f="la-t" style="min-height:80px" placeholder="Magma erupts from a point... DC 15 Dexterity saving throw or take 21 (6d6) fire damage."></textarea></label>
         <button class="btn small primary" data-a="lair-add">Opslaan</button></div></details>
+    <div class="bar"><button class="btn small" data-a="hide" aria-pressed="${!!c.hidden}">${c.hidden ? "Tonen aan spelers" : "Verbergen voor spelers"}</button></div>
     <div class="row3"><span class="hint">Initiative 20, verliest gelijke stand.</span><button class="link" data-a="del">Lair verwijderen</button></div></div></li>`;
 }
 
@@ -634,6 +636,10 @@ export const monLabel = (f) => (f.bad ? "CR niet herkend. Gebruik bijv. cr 5, cr
 /** Preview van de keuze: telefoon met knop naar het volledige statblock, tablet/desktop zonder (zijkolom toont het) */
 export const monPrev = (m, full, side) => (m ? monCard(m, full, !side || isPhone()) : "");
 
+/** Knoptekst bij monsters toevoegen: "2× Goblin verborgen toevoegen" (verborgen staat in de knop, zodat je het niet mist) */
+export const addLabel = (n, name, hid) => `${n > 1 ? `${n}× ` : ""}${name}${hid ? " verborgen" : ""} toevoegen`;
+export const HID_HINT = "Spelers zien ze niet, ook hun beurt niet. Later tonen via ⋯ → Tonen aan spelers.";
+
 /* ---------- snel toevoegen tijdens het gevecht ---------- */
 /** Bouwt het paneel één keer per opening en werkt daarna alleen de delen bij, zodat het zoekveld focus houdt */
 export function paintQadd() {
@@ -656,6 +662,8 @@ export function paintQadd() {
       </div>
       <label id="q-fixw">Initiative<input id="q-fix" type="number" inputmode="numeric" placeholder="bijv. 14"></label>
       <p class="hint">Ze komen op hun initiative in de volgorde. Zit dat vóór wie nu aan de beurt is, dan doen ze pas volgende ronde mee.</p>
+      <label class="chk tall"><input type="checkbox" data-q="hid" id="q-hid"> Verborgen voor spelers</label>
+      <p class="hint" id="q-hidh" hidden>${HID_HINT}</p>
       <button type="button" class="btn primary qgo" data-q="go"></button>
     </div>`;
     el.hidden = false;
@@ -672,7 +680,8 @@ export function paintQadd() {
   $("#q-fixw").hidden = q.init !== "fixed";
   const go = el.querySelector(".qgo");
   go.disabled = !q.sel || (q.init === "fixed" && parseInit(q.fix) === null);
-  go.textContent = q.sel ? `${q.n > 1 ? `${q.n}× ` : ""}${q.sel} toevoegen` : "Kies een monster";
+  go.textContent = q.sel ? addLabel(q.n, q.sel, q.hid) : "Kies een monster";
+  $("#q-hid").checked = q.hid; $("#q-hidh").hidden = !q.hid;
 }
 
 /* ---------- AoE: één schadeworp op meerdere doelen ---------- */

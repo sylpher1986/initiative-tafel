@@ -7,7 +7,7 @@
 <meta name="description" content="Initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.">
 <meta name="theme-color" content="#8a1f14" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#13161d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="1.24.4">
+<meta name="it-version" content="1.25.0">
 <script src="js/theme.js"></script>
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
 <script>
@@ -102,6 +102,8 @@
         <label>HP<select id="mon-hpmode"><option value="avg">Gemiddeld</option><option value="roll">Rollen (hit dice)</option></select></label>
         <label>Initiative<select id="mon-initmode"><option value="each">Per monster</option><option value="group">Groepsworp</option></select></label>
       </div>
+      <label class="chk tall"><input type="checkbox" id="mon-hid"> Verborgen voor spelers</label>
+      <p class="hint" id="mon-hidh" hidden><!-- tekst: HID_HINT in js/ui/render.js --></p>
       <button class="btn primary" type="submit" id="mon-add">Goblin toevoegen</button>
     </form>
 
@@ -121,7 +123,17 @@
       <!-- Tekst bijwerken zodra er meer dan spells per editie verandert -->
       <p class="hint">Regels en uitleg van spells: de presets Barkskin, Haste en Sleep (alleen 2024), welke spells concentratie vragen, en welke tekst het spell-paneel toont. <b>Geldt alleen voor spells:</b> de rest van de app (condities, crits, concentratie-DC) blijft 2014. Spelers met een D&amp;D Beyond-sheet volgen per spell de versie op hun sheet; monsters, spelers zonder sheet en spells die niet op de sheet staan, volgen deze instelling. In het spell-paneel kun je de andere versie bekijken; dat verandert niets aan de regels. Wat al loopt, houdt de regels van het moment van casten.</p>
       <h2 class="sethead">Spelersscherm</h2>
-      <p class="hint">Volgorde, wie aan de beurt is en de HP-status van monsters. Geen statblocks of exacte monster-HP. Monsters verberg je via ⋯.</p>
+      <p class="hint">Spelers zien de volgorde, wie aan de beurt is en de HP van spelers. Nooit statblocks, notities of wat je verbergt (monsters via ⋯, de lair op zijn kaart).</p>
+      <h3 class="subhead">Wat spelers zien</h3>
+      <div id="vis-box" class="visbox">
+        <p class="vlbl" id="vis-monHp">HP monsters</p>
+        <div class="seg" role="group" aria-labelledby="vis-monHp" data-vis="monHp"><button type="button" data-v="status" aria-pressed="true">Status</button><button type="button" data-v="none" aria-pressed="false">Geen</button><button type="button" data-v="exact" aria-pressed="false">Exact</button></div>
+        <p class="vlbl" id="vis-init">Initiative</p>
+        <div class="seg" role="group" aria-labelledby="vis-init" data-vis="init"><button type="button" data-v="false" aria-pressed="true">Volgorde</button><button type="button" data-v="true" aria-pressed="false">Getallen</button></div>
+        <p class="vlbl" id="vis-tags">Condities en effecten</p>
+        <div class="seg" role="group" aria-labelledby="vis-tags" data-vis="tags"><button type="button" data-v="all" aria-pressed="true">Tonen</button><button type="button" data-v="pc" aria-pressed="false">Alleen spelers</button><button type="button" data-v="none" aria-pressed="false">Verbergen</button></div>
+      </div>
+      <p class="hint">Status = Ongedeerd, Gewond, Bloodied, Bijna dood. Geldt op dit apparaat, voor alle spelersschermen.</p>
       <h3 class="subhead">Op andere apparaten</h3>
       <div id="kamer-box" class="kamerbox"><p class="hint">Delen met spelers is niet gestart. Ververs de pagina.</p></div>
       <h3 class="subhead">Op dit apparaat</h3>

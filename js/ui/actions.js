@@ -1,7 +1,7 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, closeToast, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
-import { render, ui, openId, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview, curSpell, spellPick } from "./render.js";
+import { render, ui, openId, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview, curSpell, spellPick } from "./render.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
@@ -15,6 +15,7 @@ import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
 import { castInfo, legInfo, rcInfo, pickList, isConc, edFor } from "../rules/spells.js";
 import { rulesEd, setRulesEd } from "./spellrules.js";
+import { visNow, setVis } from "./playervis.js";
 import { spellClick as spellInfoClick, spellOpen, closeSpell } from "./spellinfo.js";
 import { logText } from "../log.js";
 import { readSheetPdf, fetchDdb } from "../ddb.js";
@@ -26,8 +27,11 @@ import { buildExport, parseImport } from "../backup.js";
 const apply = (fx) => { if (!fx) return; addWhy(fx.why); show(fx); if (fx.saves) fx.saves.forEach((x) => addSave(app.S, x)); };
 
 /* ---------- monsters toevoegen ---------- */
-/** initmode: "each" (per monster rollen), "group" (één worp) of "fixed" (initiative = fixed, bijv. al aan tafel gerold) */
-export function addMonsters(name, n, hpmode, initmode, silent, fixed = null) {
+/**
+ * initmode: "each" (per monster rollen), "group" (één worp) of "fixed" (initiative = fixed, bijv. al aan tafel gerold).
+ * hidden: meteen verborgen voor spelers (vóór de eerste render, dus vóór de eerste snapshot).
+ */
+export function addMonsters(name, n, hpmode, initmode, silent, fixed = null, hidden = false) {
   const S = app.S, m = findMon(name);
   if (!m) return;
   const dx = mod(m.ab ? m.ab[1] : m.dexScore || 10);
@@ -43,14 +47,14 @@ export function addMonsters(name, n, hpmode, initmode, silent, fixed = null) {
     let hp = m.hp;
     if (hpmode === "roll" && m.hd) { const x = rollExpr(m.hd); if (x) hp = Math.max(1, x.total); }
     const label = n > 1 || nums.length ? `${m.n} ${next + i}` : m.n;
-    const c = { id: uid(), name: label, kind: "monster", ref: m.n, ...(grp ? { grp } : {}), init: set ? fixed : r + dx, roll: r, dex: dx, ac: parseInt(m.ac) || 10, hp, max: hp, cond: [], ...legInfo(m), rc: rcInfo(m), casting: castInfo(m) };
+    const c = { id: uid(), name: label, kind: "monster", ref: m.n, ...(grp ? { grp } : {}), ...(hidden ? { hidden: true } : {}), init: set ? fixed : r + dx, roll: r, dex: dx, ac: parseInt(m.ac) || 10, hp, max: hp, cond: [], ...legInfo(m), rc: rcInfo(m), casting: castInfo(m) };
     S.list.push(c); out.push(c);
     because(`${set ? "initiative ingevuld" : `d20 [${r}] ${sgn(dx)}`}${group !== null && n > 1 ? ", groepsworp" : ""}${hpmode === "roll" ? `, HP gerold (${m.hd})` : ""}`, c.id);
   }
   if (!silent) {
     S.sample = false;
     wantSB(out[out.length - 1].id); // zijkolom toont het net toegevoegde monster
-    toastHtml(out.map((c) => `${esc(c.name)}: ${c.roll === undefined ? "initiative" : `d20 [${c.roll}] ${sgn(c.dex)} =`} <b>${c.init}</b>`).join("<br>"));
+    toastHtml(out.map((c) => `${esc(c.name)}: ${c.roll === undefined ? "initiative" : `d20 [${c.roll}] ${sgn(c.dex)} =`} <b>${c.init}</b>`).join("<br>") + (hidden ? "<br>Verborgen voor spelers" : ""));
   }
 }
 
@@ -274,7 +278,7 @@ const global = {
     toastHtml(`${esc(`${r.n ? `${r.n} monster${r.n === 1 ? "" : "s"}` : ""}${r.n && r.lairs ? " en " : ""}${r.lairs ? "lair" : ""} gewist. Spelers blijven; hun initiative vul je in bij Start gevecht.`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
     return false;
   },
-  qadd() { ui.qadd = { q: "", sel: null, n: 1, init: "roll", fix: "" }; },
+  qadd() { ui.qadd = { q: "", sel: null, n: 1, init: "roll", fix: "", hid: false }; },
   aoe() {
     ui.sheet = null; ui.qadd = null; ui.atk = null;
     const act = app.S.list.find((x) => x.id === app.S.active && x.kind !== "lair");
@@ -620,7 +624,8 @@ export function bindForms() {
   const monBtn = () => {
     const btn = $("#mon-add"), n = monN();
     btn.disabled = !selMon;
-    btn.textContent = selMon ? `${n > 1 ? `${n}× ` : ""}${selMon} toevoegen` : "Kies een monster";
+    btn.textContent = selMon ? addLabel(n, selMon, $("#mon-hid").checked) : "Kies een monster";
+    $("#mon-hidh").hidden = !$("#mon-hid").checked;
   };
   const renderMonList = () => {
     const f = filterMonsters(allMonsters(), $("#mon-q").value, selMon);
@@ -636,13 +641,16 @@ export function bindForms() {
   bindForms.renderMonList = renderMonList;
   $("#mon-q").addEventListener("input", renderMonList);
   $("#mon-n").addEventListener("input", monBtn);
+  $("#mon-hidh").textContent = HID_HINT; // één tekst voor Monster-tab en snel toevoegen
+  $("#mon-hid").addEventListener("change", monBtn);
   $("#mon-list").addEventListener("click", (e) => { const b = e.target.closest("[data-pick]"); if (!b) return; if (selMon !== b.dataset.pick) ui.monFull = false; selMon = b.dataset.pick; renderMonList(); });
   $("#mon-prev").addEventListener("click", (e) => { if (!e.target.closest("[data-mpfull]")) return; ui.monFull = !ui.monFull; renderMonList(); });
   $("#f-mon").addEventListener("submit", (e) => {
     e.preventDefault();
     if (!selMon) { toast("Tik eerst een monster in de lijst aan."); return; }
     $("#mon-q").blur();
-    addMonsters(selMon, monN(), $("#mon-hpmode").value, $("#mon-initmode").value);
+    addMonsters(selMon, monN(), $("#mon-hpmode").value, $("#mon-initmode").value, false, null, $("#mon-hid").checked);
+    $("#mon-hid").checked = false; monBtn(); // elke keer opnieuw kiezen: nooit per ongeluk verborgen toevoegen
     ui.prepLast = app.S.list.at(-1)?.id ?? null;
     render();
   });
@@ -709,6 +717,7 @@ export function bindQadd() {
     if (k === "close") { closeQadd(); return; }
     if (k === "n") q.n = Math.min(20, Math.max(1, q.n + +b.dataset.v));
     if (k === "init") q.init = b.dataset.v;
+    if (k === "hid") q.hid = b.checked;
     if (k === "go") { qGo(); return; }
     paintQadd();
     if (k === "init" && q.init === "fixed") $("#q-fix").focus();
@@ -724,7 +733,7 @@ function qGo() {
   const fix = parseInit(q.fix);
   if (q.init === "fixed" && fix === null) { $("#q-fix").focus(); return; }
   because("tijdens het gevecht toegevoegd");
-  addMonsters(q.sel, q.n, "avg", q.init === "fixed" ? "fixed" : "each", false, fix);
+  addMonsters(q.sel, q.n, "avg", q.init === "fixed" ? "fixed" : "each", false, fix, q.hid);
   ui.qadd = null;
   render();
   $("#qadd").focus();
@@ -1242,6 +1251,15 @@ export function bindBackup(afterImport) {
   const showRules = (ed) => rseg.querySelectorAll("[data-rules]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.rules === ed));
   showRules(rulesEd());
   rseg.addEventListener("click", (e) => { const b = e.target.closest("[data-rules]"); if (b) { showRules(setRulesEd(b.dataset.rules)); render(); } });
+  // Wat spelers zien: per apparaat; render() maakt een nieuwe snapshot, dus alle spelersschermen volgen meteen
+  const vbox = $("#vis-box");
+  const val = (v) => (v === "true" ? true : v === "false" ? false : v);
+  const showVis = (V) => vbox.querySelectorAll("[data-vis]").forEach((g) => g.querySelectorAll("[data-v]").forEach((b) => b.setAttribute("aria-pressed", val(b.dataset.v) === V[g.dataset.vis])));
+  showVis(visNow());
+  vbox.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-v]"), g = b && b.closest("[data-vis]");
+    if (g) { showVis(setVis(g.dataset.vis, val(b.dataset.v))); render(); }
+  });
   const json = () => JSON.stringify(buildExport(app));
   const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
   $("#exp-file").addEventListener("click", () => {

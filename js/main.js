@@ -3,6 +3,7 @@ import { app, load, resetBaseline, setWarn } from "./state.js";
 import { loadSrd, findMon } from "./data/monsters.js";
 import { render, ui, setAfterRender } from "./ui/render.js";
 import { toPlayerView } from "./playerview.js";
+import { visNow } from "./ui/playervis.js";
 import { localChannel, dmLink } from "./share.js";
 import { bindSharing } from "./ui/kamer.js";
 import { $, toast } from "./ui/util.js";
@@ -47,7 +48,7 @@ async function boot() {
   // en andere apparaten via een kamer (Instellingen → Delen met spelers). Eén snapshot per render, ook met beide.
   const links = new Set();
   let view = null;
-  const getView = () => (view ||= toPlayerView(app.S, (c) => (c.ref ? findMon(c.ref)?.meta : "")));
+  const getView = () => (view ||= toPlayerView(app.S, (c) => (c.ref ? findMon(c.ref)?.meta : ""), visNow()));
   setAfterRender(() => { view = null; links.forEach((l) => l.update()); });
   const ch = localChannel();
   if (ch) links.add(dmLink(ch, getView));

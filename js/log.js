@@ -14,7 +14,7 @@ export function diffLog(prev, cur) {
 
   for (const [id, c] of C) {
     const o = P.get(id);
-    if (!o) { out.push({ who: id, msg: `${nm(c)} doet mee${c.kind === "lair" ? "" : ` (initiative ${c.init})`}` }); continue; }
+    if (!o) { out.push({ who: id, msg: `${nm(c)} doet mee${c.kind === "lair" ? "" : ` (initiative ${c.init})`}${c.hidden ? " · verborgen voor spelers" : ""}` }); continue; }
     const m = [];
     if (o.name !== c.name) m.push(`heette ${o.name}`);
     if ((o.ac || 0) !== (c.ac || 0)) m.push(`AC ${o.ac || 0} → ${c.ac || 0}`);

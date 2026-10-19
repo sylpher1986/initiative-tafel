@@ -730,3 +730,8 @@ html.kamer-lost .dock .prow [data-prep="data"]::after{content:"";position:absolu
 .pvjoin .err{color:var(--bad)}
 .pvnet{background:var(--sunk);border:1px solid var(--line);border-radius:var(--r);padding:.35em .8em;font-size:.75em;color:var(--muted);text-align:center}
 .pvcode{font-size:.6em;color:var(--muted);letter-spacing:.08em}
+
+/* Instellingen → Spelersscherm → Wat spelers zien; "Verborgen voor spelers" bij toevoegen */
+.visbox{display:grid;gap:4px}
+.vlbl{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:6px 0 0}
+.chk.tall{min-height:44px}

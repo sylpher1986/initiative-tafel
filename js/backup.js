@@ -66,7 +66,7 @@ export function cleanCombatant(c) {
     id: str(c.id, 40) || Math.random().toString(36).slice(2, 9), name: str(c.name, 120), kind,
     init: num(c.init), dex: num(c.dex), cond: arr(c.cond).filter((x) => CONDS.includes(x)),
   };
-  if (kind === "lair") return { ...out, key: str(c.key || c.name, 120), last: c.last ? str(c.last, 120) : null };
+  if (kind === "lair") return { ...out, key: str(c.key || c.name, 120), last: c.last ? str(c.last, 120) : null, ...(c.hidden ? { hidden: true } : {}) };
   Object.assign(out, {
     hidden: kind === "monster" && c.hidden ? true : undefined,
     grp: kind === "monster" && typeof c.grp === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(c.grp) ? c.grp : undefined,
