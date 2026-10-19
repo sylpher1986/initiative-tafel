@@ -72,7 +72,10 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [ ] Encounters vooraf klaarzetten en per sessie inladen
 - [ ] Moeilijkheid berekenen: XP-budget tegen partylevel (DMG 2014, easy t/m deadly)
 - [ ] Herinnering om af en toe een export te maken
-- [ ] Spelersscherm op andere apparaten: WebSocket-kamer (Durable Object) met kamercode, zelfde send/on als `js/share.js`; portretten apart en één keer per id sturen
+- [x] Spelersscherm op andere apparaten: kamer (Durable Object) met kamercode en link, "Delen met spelers" in Instellingen met aantal verbonden schermen, code invoeren op het spelersscherm, herverbinden na slapen/netwerkwissel, portretten apart en één keer per id (1.24.0)
+- [ ] Spelersscherm-kamer: rate-limit op `POST /api/room` (Cloudflare rate limiting binding)
+- [ ] Spelersscherm-kamer: QR-code bij de code (alleen als een kleine zelf-gehoste lib past)
+- [ ] Spelersscherm-kamer: vaste code per campagne zodra er accounts zijn (fase 2, `isOwner` in `worker/room.js`)
 - [ ] Spelersscherm: zichtbaarheid (`VIS`) instelbaar maken; verbergen ook bij snel toevoegen
 - [x] Spellregels 2014 | 2024 (Instellingen, alleen spells): Barkskin 17 zonder concentratie, Lethargy = Incapacitated, concentratie per editie, Sleep 2024 (Incapacitated → Unconscious); concentratielijst uit de SRD-data (Enthrall/Forcecage eruit, o.a. Hideous Laughter, Spike Growth, Vampiric Touch erbij); Web duurt zolang de concentratie (1.21.0)
 - [x] Spells per speler volgens de versie op zijn D&D Beyond-sheet (bronnen per spell), tag "2024 · sheet" waar het afwijkt van de instelling (1.22.0)

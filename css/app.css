@@ -498,7 +498,7 @@ label.warn input{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
 
 /* Spelersscherm (speler.html): groot en rustig, leesbaar op afstand (tv) of op een tablet */
 body.pv{font-size:clamp(16px,1.1rem + .9vw,30px);padding-bottom:max(24px,env(safe-area-inset-bottom,0px))}
-.pvwrap{max-width:1000px;margin:0 auto;display:grid;gap:.8em}
+.pvwrap{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:.8em}
 .pvtop{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .pv h1{font-size:1.3em}
 .pvnow{background:var(--active-soft);border:1px solid var(--active);border-radius:var(--r);padding:.6em .9em;display:flex;justify-content:space-between;align-items:flex-end;gap:.4em 1.2em;flex-wrap:wrap}
@@ -684,3 +684,27 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .downbtn:focus-visible{outline:2px solid var(--active);outline-offset:2px}
 .pvdown{list-style:none;color:var(--muted);padding:.4em .7em;border:1px dashed var(--line);border-radius:var(--r)}
 .pvdown .l{font-size:.75em;text-transform:uppercase;letter-spacing:.08em;margin-right:.4em}
+
+/* Delen met spelers (Instellingen → Spelersscherm, js/ui/sharing.js) */
+.subhead{font:700 .9rem/1.2 var(--body);margin:6px 0 -2px}
+.sharebox{display:grid;gap:6px}
+.sharebox .hint{margin:0}
+.shareerr{color:var(--bad)}
+.share-code{margin:2px 0 0;font-family:var(--display);font-weight:700;font-size:2.2rem;line-height:1.1;letter-spacing:.12em;font-variant-numeric:tabular-nums;color:var(--active)}
+.share-url{margin:0;font-size:.82rem;color:var(--muted);overflow-wrap:anywhere}
+.share-st{margin:0;font-size:.92rem;color:var(--muted)}
+.share-st.on{color:var(--good)}
+.share-st.on::before{content:"● "}
+html.share-lost .dock .prow [data-prep="data"]{position:relative}
+html.share-lost .dock .prow [data-prep="data"]::after{content:"";position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:var(--bad)}
+
+/* Spelersscherm: code invoeren en verbindingsstatus */
+.pvjoin{display:grid;grid-template-columns:minmax(0,1fr);gap:.4em;width:min(20em,100%);margin:1em auto 0}
+.pvjoin label{font-weight:700}
+.pvjoin .row{display:flex;gap:.4em}
+.pvjoin input{flex:1;min-width:0;width:0;min-height:48px;font-size:1.3em;font-family:var(--display);letter-spacing:.1em;text-transform:uppercase;padding:0 .5em}
+.pvjoin .btn{min-height:48px}
+.pvjoin .hint{margin:0}
+.pvjoin .err{color:var(--bad)}
+.pvnet{background:var(--sunk);border:1px solid var(--line);border-radius:var(--r);padding:.35em .8em;font-size:.75em;color:var(--muted);text-align:center}
+.pvcode{font-size:.6em;color:var(--muted);letter-spacing:.08em}

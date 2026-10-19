@@ -20,9 +20,15 @@
       <button type="button" class="btn small" id="pv-full">Volledig scherm</button>
     </div>
   </header>
+  <p class="pvnet" id="pv-net" role="status" hidden></p>
   <section class="pvnow" id="pv-now" aria-live="polite"></section>
   <ol class="pvlist" id="pv-list"></ol>
-  <p class="hint pvwait" id="pv-wait">Wacht op het DM-scherm… Open Initiative Tafel in een ander venster of tabblad van deze browser op dit apparaat.</p>
+  <p class="hint pvwait" id="pv-wait">Wacht op het DM-scherm…</p>
+  <form class="pvjoin" id="pv-join" hidden>
+    <label for="pv-code">Code van de DM</label>
+    <div class="row"><input id="pv-code" name="k" maxlength="9" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" aria-describedby="pv-joinmsg"><button class="btn primary" type="submit">Volg</button></div>
+    <p class="hint" id="pv-joinmsg">Of open Initiative Tafel in een ander venster van deze browser.</p>
+  </form>
 </main>
 <noscript><p style="padding:16px">Het spelersscherm heeft JavaScript nodig.</p></noscript>
 </body>

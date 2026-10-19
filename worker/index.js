@@ -2,10 +2,14 @@
 //
 // GET /api/ddb/:id          → character-JSON van D&D Beyond (ongewijzigd doorgegeven)
 // GET /api/ddb/:id/avatar   → het portret van díé character (url komt uit de character-data, nooit van de client)
+// /api/room…                → spelersscherm op andere apparaten (Durable Object, zie worker/room.js)
 //
 // Bewust geen open proxy: vaste upstream-host, alleen numerieke id's, geen doorgestuurde headers of cookies,
 // geen CORS-headers (andere sites kunnen het antwoord in de browser niet lezen), grootte- en tijdslimieten.
 // De endpoint van D&D Beyond is onofficieel en kan zonder aankondiging veranderen.
+
+import { Room, roomRoute } from "./room.js";
+export { Room };
 
 export const ID_RE = /^[1-9]\d{0,11}$/;
 const UPSTREAM = "https://character-service.dndbeyond.com/character/v5/character/";
@@ -110,6 +114,7 @@ async function avatar(id) {
 export async function handle(req, env) {
   const url = new URL(req.url);
   if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
+  if (url.pathname.startsWith("/api/room")) { const r = await roomRoute(req, env, url); if (r) return r; }
   const m = url.pathname.match(/^\/api\/ddb\/([^/]+)(\/avatar)?\/?$/);
   if (!m) return fail("notfound", 404);
   if (req.method !== "GET") return fail("method", 405, { allow: "GET" });
