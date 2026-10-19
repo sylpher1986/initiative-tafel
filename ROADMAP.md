@@ -24,7 +24,8 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 14. **DA2** Undo-geschiedenis na herladen
 
 **P3: later**
-- Afwerking: **AF1–AF5**
+- Afwerking: **AF1–AF3**, **AF5**
+- Nice to have: **OB1** rondleiding bij eerste gebruik, daarna **OB2** opnieuw starten
 - Regels: **RE1–RE7**
 - Encounters: **VB3**
 - Spelers en D&D Beyond: **SP2–SP3**
@@ -81,8 +82,12 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - [ ] **AF1** Bestandskiezers tonen de Engelse browserknop "Choose File" (encounter-import, backup, monsterbestand): eigen knop "Kies bestand…"
 - [ ] **AF2** Logboek vóór het gevecht toont "R–": vervangen door "Voorbereiding"
 - [ ] **AF3** Knop "‹" in de beurtbalk zonder tekst: "‹ Vorige" of een duidelijk aria-label + tooltip
-- [ ] **AF4** Eenmalige uitleg voor nieuwe DM's: korte hint per modus ("Tik op een kaart…", "AoE = schade of spell op meerdere doelen"), weg te tikken, terug te halen in Instellingen
+- AF4 is opgegaan in **OB1/OB2** (rondleiding, zie Eerste gebruik)
 - [ ] **AF5** Instellingen is één lange lijst: kopjes inklapbaar of een korte inhoud bovenaan (Weergave · Spells · Spelersscherm · Opslag)
+
+## Eerste gebruik (nice to have)
+- [ ] **OB1 Visuele rondleiding bij de eerste keer openen.** Elementen één voor één uitlichten (rest van het scherm gedimd) met een korte uitleg en Volgende / Overslaan, zoals veel apps dat doen. Stops bijvoorbeeld: modus Voorbereiden/Gevecht, + Monster / + Speler / Party / ⚙, een kaart (tik = openen), Start gevecht, en in Gevecht de beurtbalk (Volgende, ‹ Vorige, ↶ Ongedaan, AoE). Eenmalig per apparaat (`localStorage`), niet in undo of export; nooit over een open paneel heen. Zelf bouwen (geen tour-library: geen dependencies). Pas bouwen na IN1–IN4, anders wijzen de stops naar een indeling die nog verandert. UX-agent: rondleiding vs losse hints op de plek zelf naast elkaar zetten.
+- [ ] **OB2 Rondleiding opnieuw starten** vanuit Instellingen (bijv. "Rondleiding opnieuw bekijken"), zodat een DM hem later nog eens kan zien of aan een co-DM kan laten zien. Bouwt op OB1.
 
 ## Opslag en data
 - [ ] **DA1 Herinnering om af en toe een export te maken**
