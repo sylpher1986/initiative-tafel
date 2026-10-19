@@ -4,7 +4,7 @@ import { loadSrd, findMon } from "./data/monsters.js";
 import { render, ui, setAfterRender } from "./ui/render.js";
 import { toPlayerView } from "./playerview.js";
 import { localChannel, dmLink } from "./share.js";
-import { bindSharing } from "./ui/sharing.js";
+import { bindSharing } from "./ui/kamer.js";
 import { $, toast } from "./ui/util.js";
 import { VERSION } from "./version.js";
 import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, bindAoe, bindAtk, bindInit, normalize, scrollToCard } from "./ui/actions.js";
@@ -22,7 +22,9 @@ function start() {
 
 async function boot() {
   setWarn(toast);
-  $("#app-version").textContent = `Initiative Tafel ${VERSION}`;
+  // pagina (index.html) en scripts moeten van dezelfde versie zijn; anders zichtbaar maken
+  const pv = document.querySelector('meta[name="it-version"]')?.content;
+  $("#app-version").textContent = `Initiative Tafel ${VERSION}${pv === VERSION ? "" : ` · pagina ${pv || "ouder"}`}`;
   try {
     await Promise.all([load(), loadSrd()]);
   } catch (e) {
@@ -49,7 +51,7 @@ async function boot() {
   if (ch) links.add(dmLink(ch, getView));
   // los van de rest: een fout bij het delen mag de app niet tegenhouden, en is zichtbaar in Instellingen
   try { bindSharing(getView, (l, on) => (on ? links.add(l) : links.delete(l))); }
-  catch (e) { const b = $("#share-box"); if (b) b.textContent = `Delen met spelers kon niet starten: ${e && e.message || e}`; }
+  catch (e) { const b = $("#kamer-box"); if (b) b.textContent = `Delen met spelers kon niet starten: ${e && e.message || e}`; }
   start();
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {
@@ -58,4 +60,4 @@ async function boot() {
 }
 
 // onverwachte fout bij het opstarten: zichtbaar maken in plaats van stil een half werkende app
-boot().catch((e) => toast(`Fout bij opstarten: ${e && e.message || e}`));
+boot().catch((e) => { toast(`Fout bij opstarten: ${e && e.message || e}`); if (window.__itErr) window.__itErr(`Opstarten: ${e && (e.stack || e.message) || e}`); });

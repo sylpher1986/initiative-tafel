@@ -23,9 +23,9 @@ const shareUrl = () => `${location.origin}/speler?k=${room.code}`;
 
 function lost(on) {
   clearTimeout(lostT); lostT = 0;
-  if (!on) { document.documentElement.classList.remove("share-lost"); warned = false; return; }
+  if (!on) { document.documentElement.classList.remove("kamer-lost"); warned = false; return; }
   lostT = setTimeout(() => {
-    document.documentElement.classList.add("share-lost");
+    document.documentElement.classList.add("kamer-lost");
     if (!warned) { warned = true; toast("Spelersscherm: verbinding kwijt, opnieuw verbinden…"); }
   }, LOST_MS);
 }
@@ -84,24 +84,24 @@ async function copy() {
 }
 
 function paint() {
-  const box = $("#share-box");
+  const box = $("#kamer-box");
   if (!box) return;
   if (!room) {
     box.innerHTML = `<p class="hint">Spelers volgen op hun telefoon of de tv via een code. Vraagt internet.</p>
-      ${err ? `<p class="hint shareerr" role="alert">${esc(err)}</p>` : ""}
-      <div class="bar"><button type="button" class="btn primary tap" data-share="start" ${st === "maken" ? "disabled" : ""}>${st === "maken" ? "Kamer maken…" : err.startsWith("Kamer verlopen") ? "Opnieuw delen" : "Delen met spelers"}</button></div>`;
+      ${err ? `<p class="hint kamererr" role="alert">${esc(err)}</p>` : ""}
+      <div class="bar"><button type="button" class="btn primary tap" data-kamer="start" ${st === "maken" ? "disabled" : ""}>${st === "maken" ? "Kamer maken…" : err.startsWith("Kamer verlopen") ? "Opnieuw delen" : "Delen met spelers"}</button></div>`;
     return;
   }
   const status = st === "open" ? (n ? `${n} scherm${n === 1 ? "" : "en"} verbonden` : "Nog niemand verbonden")
     : st === "elders" ? "Het delen loopt nu in een ander tabblad of venster."
     : st === "kwijt" ? "Verbinding kwijt, opnieuw verbinden…" : "Verbinden…";
   const canShare = typeof navigator.share === "function";
-  box.innerHTML = `<p class="share-code" aria-label="Code ${esc(room.code.split("").join(" "))}">${esc(fmtCode(room.code))}</p>
-    <p class="share-url">${esc(shareUrl())}</p>
-    <p class="share-st ${st === "open" ? "on" : ""}" aria-live="polite">${esc(status)}</p>
-    <div class="bar">${st === "elders" ? `<button type="button" class="btn primary tap" data-share="resume">Hier verder delen</button>` : ""}
-      ${canShare ? `<button type="button" class="btn tap" data-share="deel">Deel</button>` : ""}<button type="button" class="btn tap" data-share="copy">Kopieer link</button>
-      <button type="button" class="btn tap" data-share="stop">Stop met delen</button></div>`;
+  box.innerHTML = `<p class="kamer-code" aria-label="Code ${esc(room.code.split("").join(" "))}">${esc(fmtCode(room.code))}</p>
+    <p class="kamer-url">${esc(shareUrl())}</p>
+    <p class="kamer-st ${st === "open" ? "on" : ""}" aria-live="polite">${esc(status)}</p>
+    <div class="bar">${st === "elders" ? `<button type="button" class="btn primary tap" data-kamer="resume">Hier verder delen</button>` : ""}
+      ${canShare ? `<button type="button" class="btn tap" data-kamer="deel">Deel</button>` : ""}<button type="button" class="btn tap" data-kamer="copy">Kopieer link</button>
+      <button type="button" class="btn tap" data-kamer="stop">Stop met delen</button></div>`;
 }
 
 /**
@@ -110,10 +110,11 @@ function paint() {
  */
 export function bindSharing(view, links) {
   getView = view; addLink = links;
-  $("#share-box")?.addEventListener("click", (e) => {
-    const b = e.target.closest("[data-share]");
+  if (!$("#kamer-box") && window.__itErr) window.__itErr("Delen: #kamer-box ontbreekt in de pagina (oude index.html?)");
+  $("#kamer-box")?.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-kamer]");
     if (!b) return;
-    const k = b.dataset.share;
+    const k = b.dataset.kamer;
     if (k === "start") start();
     else if (k === "stop") stop();
     else if (k === "copy") copy();
