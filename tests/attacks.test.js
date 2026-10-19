@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseAction, monsterActions, dmgKey, rollDmg, useful } from "../js/rules/attacks.js";
+import { parseAction, monsterActions, dmgKey, rollDmg, useful, isSaveAoe, rcIndex, actionAoe } from "../js/rules/attacks.js";
+import { rcInfo } from "../js/rules/spells.js";
+import { DTYPES } from "../js/rules/aoe.js";
 import { rollExpr } from "../js/rules/dice.js";
 
 const SRD = JSON.parse(readFileSync(new URL("../data/monsters.json", import.meta.url)));
@@ -100,4 +102,64 @@ test("alle SRD-monsters: elke damage-sleutel is rolbaar", () => {
       if (k) assert.ok(rollDmg(k, (e) => rollExpr(e)), `${m.n}: ${a.n} (${k})`);
     }
   }
+});
+
+/* ---------- save-actie → AoE-paneel (recharge) ---------- */
+const max = (e) => rollExpr(e, () => 0.999999); // elke dobbelsteen op het maximum
+
+test("AoE uit een save-actie: schade, type, ability, DC en halve schade", () => {
+  const m = mon("Adult Black Dragon");
+  const a = monsterActions(m).main.find((x) => x.n === "Acid Breath");
+  assert.ok(isSaveAoe(a));
+  const x = actionAoe(a, max, DTYPES);
+  assert.equal(x.dmg, 96);
+  assert.equal(x.type, "acid");
+  assert.equal(x.ab, "DEX");
+  assert.equal(x.dc, 18);
+  assert.equal(x.half, true);
+  assert.match(x.roll, /^12d8 \[8, 8, .*\] = 96$/);
+  assert.equal(x.extra, "");
+});
+
+test("AoE uit een save-actie: geen halve schade (Wing Attack), 'half the bludgeoning damage' wel", () => {
+  const wing = monsterActions(mon("Adult Black Dragon")).other.find((x) => /Wing Attack/.test(x.n));
+  assert.equal(actionAoe(wing, max, DTYPES).half, false);
+  const ww = parseAction("Whirlwind (Recharge 4–6)", "Each creature in the elemental's space must make a DC 13 Strength saving throw. On a failure, a target takes 15 (3d8 + 2) bludgeoning damage and is flung up 20 feet. If the saving throw is successful, the target takes half the bludgeoning damage and isn't flung away.");
+  assert.equal(actionAoe(ww, max, DTYPES).half, true);
+  const hd = parseAction("Burst", "Each creature must make a DC 12 Dexterity saving throw, taking 7 (2d6) fire damage on a failed save, or half damage on a successful one.");
+  assert.equal(actionAoe(hd, max, DTYPES).half, true);
+});
+
+test("AoE uit een save-actie: zelfde type telt op, ander type als hint; onbekend type leeg", () => {
+  const a = parseAction("Breath", "DC 15 Constitution saving throw, taking 10 (3d6) poison damage plus 7 (2d6) poison damage plus 3 (1d6) fire damage on a failed save, or half as much damage on a successful one.");
+  const x = actionAoe(a, max, DTYPES);
+  assert.equal(x.dmg, 30);
+  assert.equal(x.roll, "3d6 [6, 6, 6] = 18 + 2d6 [6, 6] = 12 = 30");
+  assert.equal(x.extra, "plus 1d6 fire");
+  const b = parseAction("Storm", "DC 17 Dexterity saving throw, taking 22 (4d10) lightning or thunder damage (djinni's choice) on a failed save.");
+  assert.equal(actionAoe(b, max, DTYPES).type, "");
+  assert.equal(actionAoe(b, max, DTYPES).half, false);
+});
+
+test("AoE uit een save-actie: twee abilities → de eerste; aanval met to hit of zonder schade → null", () => {
+  const a = parseAction("Gaze", "DC 14 Strength or Dexterity saving throw, taking 9 (2d8) force damage.");
+  assert.equal(actionAoe(a, max, DTYPES).ab, "STR");
+  assert.equal(actionAoe(parseAction("Bite", "Melee Weapon Attack: +5 to hit. Hit: 7 (1d8 + 3) piercing damage."), max, DTYPES), null);
+  assert.equal(actionAoe(parseAction("Frightful Presence", "DC 16 Wisdom saving throw or become frightened."), max, DTYPES), null);
+});
+
+test("recharge-chip bij een actie op naam (hoofdletterongevoelig), -1 zonder chip", () => {
+  const m = mon("Adult Black Dragon");
+  const rc = rcInfo(m);
+  assert.equal(rcIndex(rc, "Acid Breath"), 0);
+  assert.equal(rcIndex(rc, "acid breath"), 0);
+  assert.equal(rcIndex(rc, "Bite"), -1);
+  assert.equal(rcIndex(undefined, "Acid Breath"), -1);
+  // alle SRD-recharge-acties met DC en schade vinden hun chip
+  let n = 0;
+  for (const mm of SRD) {
+    const A = monsterActions(mm); if (!A) continue;
+    for (const x of [...A.main, ...A.other]) if (isSaveAoe(x) && /recharge/i.test(JSON.stringify([...(mm.a || []), ...(mm.l || [])].find((r) => r[0].startsWith(x.n)) || ""))) { n++; assert.ok(rcIndex(rcInfo(mm), x.n) >= 0, mm.n + ": " + x.n); }
+  }
+  assert.ok(n > 40);
 });

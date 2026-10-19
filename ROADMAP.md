@@ -29,12 +29,13 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [x] Monsterbeurt zonder statblock openen: aanvallen compact op de kaart (to hit · damage, DC), statblock op telefoon half hoog boven de beurtbalk en volgt de beurt (1.7.0)
 - [x] Legendary actions-herinnering: vaste regel in de beurtbalk per LA-monster (●●○), licht op na Volgende; paneel met opties, kosten (2/3 LA), worp of verwezen aanval en Gebruik (1.9.0)
 - [x] Saves afhandelen: open saves als regels in de beurtbalk (condition-save al bij het begin van de beurt, "einde beurt"; concentration save na schade, ook uit AoE). Monster: "Rol +N" (statblock + Bless/Bane/cover), Legendary Resistance en "Spell? Advantage" in de melding; speler: ✓/✗; 3+: paneel met "Rol alle monsters"; niet afgehandeld vervalt na één extra beurtwissel (1.10.0)
-- [ ] Recharge-aanval ↔ AoE: "Gebruik" op de recharge-chip opent AoE met gerolde schade, type, save en DC uit het statblock en zet de aanval op "op" (nu blijft Acid Breath "klaar" na de AoE)
-- [ ] Worp direct toepassen: damage-worp uit het statblock met één tik op een doel; "+4 to hit" vergelijken met de AC van het doel; crit = dubbele dice
+- [x] Recharge-aanval ↔ AoE: "DC 18 DEX · AoE" op de aanvalsregel van elke save-actie met schade opent AoE met gerolde schade, type, save en DC; spelers aangevinkt; recharge pas bij toepassen op "op" (één Ongedaan); klare recharge-actie staat direct onder Multiattack (1.11.0)
+- [x] Worp direct toepassen: to-hit-knop op de monsterkaart → doel kiezen → raak/mis tegen de AC (met effecten), damage met crit, resist per type, Shield +5, toepassen met Ongedaan (1.12.0)
+- [ ] Aanval op een doel ook vanuit het statblock en het legendary-paneel (zelfde paneel); advantage/disadvantage automatisch uit condities
 
 ### Prioriteit 2: voorbereiding en tempo
-- [ ] Volgende encounter: "Monsters wissen, spelers houden" (nu wist "Encounter wissen" ook de party). Samen met encounters vooraf klaarzetten en XP-moeilijkheid (zie Functies)
-- [ ] Initiative van spelers bij Start gevecht: één paneel met alle spelers en een cijferpad
+- [x] Volgende encounter: "Encounter wissen" vraagt "Monsters wissen, spelers houden" of "Alles"; spelers blijven met HP, slots en effecten, één Ongedaan (1.12.1). Encounters vooraf klaarzetten en XP-moeilijkheid: zie Functies
+- [x] Initiative van spelers bij Start gevecht: paneel met alle spelers (oude waarden ingevuld), cijferpad, Rol per speler, Volgende/Start; één Ongedaan (1.13.0)
 - [ ] Effect/conditie op meerdere doelen tegelijk (Bless, Hold Person, Hypnotic Pattern, Web), met de doelkeuze uit AoE; Bless op 3 doelen kost nu 9 tikken
 - [ ] Groepsbeurten: zelfde monster met dezelfde groepsworp als één beurt
 - [ ] Monsters zoeken op CR en type (nu alleen naam: "undead" of "cr 5" geeft niets) en statblock-preview vóór toevoegen

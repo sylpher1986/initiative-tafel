@@ -518,6 +518,9 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .ar .d.dm small{display:block;font-weight:400;font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ar .d:active{background:var(--sunk)}
 .ar .dc{font-size:.82rem;font-weight:700;color:var(--warn);white-space:nowrap}
+.ar .d.dcb{color:var(--warn);border-color:var(--warn);font-size:.82rem;white-space:nowrap}
+.ar .d.dcb small{display:block;font-weight:400;font-size:.68rem;color:var(--muted)}
+.asrc{margin:-2px 0 8px;font-variant-numeric:tabular-nums}
 .ar .dflat{font-size:.82rem;color:var(--muted);white-space:nowrap}
 .atkmore{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:40px}
 .atkmore .link{min-height:40px}
@@ -564,3 +567,34 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .dock .svall{width:100%;min-height:44px;font-size:.95rem;border-color:var(--warn);color:var(--warn)}
 .ssheet{gap:10px}
 .ssheet .hint{margin:0}
+
+/* Aanval op één doel (to-hit-knop op de monsterkaart) */
+.xsheet{gap:10px}
+.xlist{display:grid;gap:6px}
+.xsub{margin:6px 0 0}
+.xt{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;min-height:52px;padding:4px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);text-align:left;font:inherit}
+.xt:active{background:var(--sunk)}
+.xt .xn{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xt .xi{font-size:.82rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.xback{justify-self:start;min-height:40px}
+.xhit{margin:0;font-size:.95rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.xhit b{font-size:1.15rem;margin-right:6px}
+.xhit .ok{color:var(--good)}.xhit .bad{color:var(--bad)}
+.xdmg{font-size:.88rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.xmode{display:grid;gap:4px}
+.xrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.xrow .btn[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.xsheet .afoot{grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px}
+
+/* Initiative van spelers bij Start gevecht */
+.isheet{gap:10px}
+.ilist{display:grid;gap:6px;max-height:min(300px,36dvh);overflow:auto}
+.ir{display:grid;grid-template-columns:minmax(0,1fr) 52px auto;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:2px 6px 2px 2px;background:var(--surface)}
+.ir.act{border-color:var(--active);box-shadow:0 0 0 1px var(--active)}
+.irn{min-height:44px;border:0;background:transparent;text-align:left;font:inherit;font-weight:700;color:var(--fg);padding:4px 8px;min-width:0}
+.irn span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.irn small{display:block;font-weight:400;font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.ir .iv{font-family:var(--display);font-size:1.4rem;text-align:center;font-variant-numeric:tabular-nums}
+.ifoot{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center}
+.ifoot .btn{min-height:50px}
+.ir .btn{min-height:44px;min-width:52px}

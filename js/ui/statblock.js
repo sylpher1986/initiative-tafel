@@ -131,6 +131,7 @@ export function syncSB(S, openCard, chips) {
       else if (isOpen()) setOpen(false); // follow blijft aan: terug bij het volgende monster
     }
     if (sb.pc && isOpen()) { const c = find(sb.cid); if (c) paintLive(c, chips); else closeSB(); }
+    else if (isOpen() && sb.cid && !find(sb.cid)) closeSB(); // getoond monster is weg (verwijderd, volgende encounter)
     return;
   }
   let t = null;

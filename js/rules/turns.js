@@ -1,7 +1,7 @@
 // Beurtvolgorde, conditie-duur en alles wat aan het begin/einde van een beurt gebeurt.
 import { d } from "./dice.js";
 import { fx } from "./combat.js";
-import { tickEffects } from "./effects.js";
+import { tickEffects, endFightEffects } from "./effects.js";
 import { tickSaves, turnSaves } from "./saves.js";
 
 export const CONDS = ["Blinded", "Charmed", "Deafened", "Frightened", "Grappled", "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned", "Prone", "Restrained", "Stunned", "Unconscious", "Concentrating"];
@@ -136,4 +136,44 @@ export function startCombat(state, rng = Math.random) {
   state.round = 1;
   state.active = null;
   return step(state, 1, rng);
+}
+
+/** Gevecht stoppen: ronde-effecten weg, geen ronde of beurt, open saves vervallen */
+export function stopCombat(state) {
+  const out = endFightEffects(state.list);
+  state.round = 0; state.active = null; state.saves = [];
+  return out;
+}
+
+/**
+ * Volgende encounter: gevecht stoppen en alle monsters en lairs weghalen (ook verborgen monsters).
+ * Spelers blijven met HP, slots, condities, death saves en lange effecten; het logboek blijft.
+ * Concentratie-effecten van een weggehaalde caster verdwijnen in commit() (endConcEffects).
+ */
+export function clearMonsters(state) {
+  const out = stopCombat(state);
+  const gone = new Set(state.list.filter((c) => c.kind === "monster" || c.kind === "lair").map((c) => c.id));
+  const n = state.list.filter((c) => c.kind === "monster").length;
+  state.list = state.list.filter((c) => !gone.has(c.id));
+  // conditieduur die aan de beurt van een gewist monster hing telt nooit meer af: conditie blijft, zonder duur
+  for (const c of state.list) for (const [k, e] of Object.entries(c.cd || {})) if (e && gone.has(e.who)) {
+    if (e.save) c.cd[k] = { kind: "inf", save: e.save }; else delete c.cd[k];
+  }
+  out.why.push({ t: "volgende encounter: monsters gewist", id: null });
+  return Object.assign(out, { n, lairs: gone.size - n });
+}
+
+/** Spelers die bij Start gevecht hun initiative opgeven: levend (niet dood), ook verborgen of op 0 HP */
+export const initPcs = (list) => sortOrder(list.filter((c) => c.kind === "pc" && !(c.ds && c.ds.dead)));
+
+/**
+ * Initiative van spelers vastleggen (paneel bij Start gevecht). map = { id: tekst }.
+ * Alles of niets: missing = namen van spelers zonder geldige waarde (parseInit); dan verandert er niets
+ * (de UI start het gevecht niet en Annuleer moet daarna echt niets veranderd hebben).
+ */
+export function setInits(list, map) {
+  const L = initPcs(list), vals = L.map((c) => parseInit(map[c.id]));
+  const out = Object.assign(fx(), { missing: L.filter((c, i) => vals[i] === null).map((c) => c.name) });
+  if (!out.missing.length) L.forEach((c, i) => { if (vals[i] !== c.init) c.init = vals[i]; }); // het logboek noemt de wijziging zelf ("initiative 12 → 17")
+  return out;
 }

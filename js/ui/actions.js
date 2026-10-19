@@ -1,16 +1,17 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, show } from "./util.js";
 import { app, because, addWhy, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, resetBaseline } from "../state.js";
-import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, paintSv, laOpts, svBonus, aoeTargets, aoePick, editPreview } from "./render.js";
+import { render, ui, openId, paintLog, paintParty, paintQadd, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, svBonus, aoeTargets, aoePick, okSave, editPreview } from "./render.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
-import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods } from "../rules/effects.js";
+import { PRESETS, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc } from "../rules/effects.js";
 import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
-import { step, startCombat, makeDur, parseInit } from "../rules/turns.js";
+import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
-import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes } from "../rules/aoe.js";
+import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, defMode } from "../rules/aoe.js";
+import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
 import { castInfo, legInfo, rcInfo, pickList, CONC_SPELLS, cleanSpell } from "../rules/spells.js";
 import { logText } from "../log.js";
 import { readSheetPdf, fetchDdb } from "../ddb.js";
@@ -240,12 +241,27 @@ const global = {
   "toast-svadv"() { svRetry((c, sid) => svRoll(sid, true)); },
   undo() { if (undo()) { ui.confirmReset = false; toast(`Ongedaan gemaakt${historySize() ? ` (nog ${historySize()} stappen terug)` : ""}.`); } },
   // na starten of stoppen volgt de modus weer het gevecht (ui.mode = null)
-  start() { apply(startCombat(app.S)); ui.mode = null; },
+  start() {
+    // spelers eerst hun initiative (paneel); vanuit het paneel komt start terug met initSkip
+    if (!ui.initSkip && !app.S.round && initPcs(app.S.list).length) { openInit(); return false; }
+    ui.initSkip = false;
+    apply(startCombat(app.S)); ui.mode = null;
+  },
   next() { apply(step(app.S, 1)); ui.laPulse = true; },
   prev() { apply(step(app.S, -1)); },
-  stop() { apply(endFightEffects(app.S.list)); app.S.round = 0; app.S.active = null; app.S.saves = []; ui.mode = null; },
+  stop() { apply(stopCombat(app.S)); ui.mode = null; },
+  /** Volgende encounter: monsters en lair weg, spelers blijven met HP, slots en effecten (één undo-stap) */
+  "reset-mons"() {
+    const r = clearMonsters(app.S);
+    apply(r);
+    Object.assign(ui, { confirmReset: false, mode: null, open: null, panel: null, edit: null, atk: null, aoe: null, la: null, sv: false,
+      effWho: null, castPick: null, atkOpen: null, atkRx: null, atkAdv: null, atkPrev: null, svRetry: null, confirmDel: null });
+    render();
+    toastHtml(`${esc(`${r.n ? `${r.n} monster${r.n === 1 ? "" : "s"}` : ""}${r.n && r.lairs ? " en " : ""}${r.lairs ? "lair" : ""} gewist. Spelers blijven; hun initiative vul je in bij Start gevecht.`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+    return false;
+  },
   qadd() { ui.qadd = { q: "", sel: null, n: 1, init: "roll", fix: "" }; },
-  aoe() { ui.sheet = null; ui.qadd = null; ui.aoe = { dmg: "", ...ui.aoeLast, t: {} }; },
+  aoe() { ui.sheet = null; ui.qadd = null; ui.atk = null; ui.aoe = { dmg: "", ...ui.aoeLast, t: {} }; },
   addlair() {
     const lm = app.S.list.find((x) => x.la);
     const key = lm ? "Lair: " + lm.ref : Object.keys(app.lairs)[0] || "Lair";
@@ -290,6 +306,8 @@ export function onClick(e) {
     return doRoll(b.dataset.roll, lab, !!b.dataset.hit);
   }
   if (b.dataset.dmg) return doDmgRoll(b.dataset.dmg, b.dataset.label);
+  if (b.dataset.aoe) return openActAoe(b.dataset.cid, b.dataset.aoe);
+  if (b.dataset.atk) return openAtk(b.dataset.cid, b.dataset.atk, b.dataset.label);
   if (b.dataset.setmode) {
     ui.mode = b.dataset.setmode; ui.confirmReset = false;
     render();
@@ -304,7 +322,7 @@ export function onClick(e) {
   if (b.dataset.svroll) { svRoll(b.dataset.svroll); return; }
   if (b.dataset.svok) { const s = (app.S.saves || []).find((x) => x.sid === b.dataset.svok), c = s && app.S.list.find((x) => x.id === s.id); if (c) svDone(c, s.sid, b.dataset.v === "1", "", ""); return; }
   if (b.dataset.svrollall) { svRollAll(); return; }
-  if (b.dataset.svsheet) { ui.sv = b.dataset.svsheet === "1"; if (ui.sv) { ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = null; } render(); if (ui.sv) $("#ssheet .ssheet")?.focus(); else $("[data-svsheet]")?.focus(); return; }
+  if (b.dataset.svsheet) { ui.sv = b.dataset.svsheet === "1"; if (ui.sv) { ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = null; ui.atk = null; } render(); if (ui.sv) $("#ssheet .ssheet")?.focus(); else $("[data-svsheet]")?.focus(); return; }
   if (b.dataset.la) { openLa(b.dataset.la); return; }
   if (b.dataset.lsh === "close") { closeLa(); return; }
   if (b.dataset.lause) { laUse(b.dataset.lause, +b.dataset.i); return; }
@@ -313,7 +331,7 @@ export function onClick(e) {
     if (["start", "next", "prev"].includes(b.id)) {
       // een niet-opgeslagen bewerking blijft open staan; anders volgt de open kaart de beurt
       if (ui.edit && ui.edit.dirty) ui.open = ui.edit.id; else { ui.open = null; ui.panel = null; ui.edit = null; }
-      ui.castPick = null; ui.effWho = null; ui.atkOpen = null; ui.atkRx = null;
+      ui.castPick = null; ui.effWho = null; ui.atkOpen = null; ui.atkRx = null; ui.atkAdv = null; ui.atk = null;
     }
     render();
     ui.laPulse = false; // alleen de render direct na Volgende laat de legendary-knoppen oplichten
@@ -358,9 +376,17 @@ export function onChange(e) {
 export function onKey(e) {
   if (ui.qadd && e.key === "Escape") { e.preventDefault(); closeQadd(); return; }
   if (ui.aoe && e.key === "Escape") { e.preventDefault(); closeAoe(); return; }
+  if (ui.atk && e.key === "Escape") { e.preventDefault(); closeAtk(); return; }
+  if (ui.initDraft && !e.ctrlKey && !e.metaKey) {
+    // Enter/spatie op een knop in het paneel (Rol, Start, …) doet wat die knop doet
+    const onBtn = e.target.closest?.("#isheet button");
+    const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" && !onBtn ? ["enter"] : null;
+    if (k) { e.preventDefault(); initKey(...k); }
+    return;
+  }
   if (ui.la && e.key === "Escape") { e.preventDefault(); closeLa(); return; }
   if (ui.sv && e.key === "Escape") { e.preventDefault(); ui.sv = false; paintSv(); return; }
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); ui.qadd = null; ui.aoe = null; global.undo(); render(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); ui.qadd = null; ui.aoe = null; ui.atk = null; ui.initDraft = null; global.undo(); render(); return; }
   if (ui.sheet && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
     const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" ? ["apply"] : null;
     if (k) { e.preventDefault(); const res = sheetKey(...k); render(); if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`); }
@@ -681,7 +707,7 @@ function svRollAll() {
 /* ---------- legendary actions (regel in de beurtbalk) ---------- */
 let laFrom = null; // knop die het paneel opende, voor de focus bij sluiten
 function openLa(id) {
-  ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = id;
+  ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.atk = null; ui.la = id;
   laFrom = id;
   render();
   const sh = $("#lsheet .lsheet"); if (sh) sh.focus();
@@ -706,8 +732,11 @@ function laUse(id, i) {
 
 /* ---------- AoE: één schadeworp op meerdere doelen (knop AoE in de beurtbalk) ---------- */
 function closeAoe() {
+  const a = ui.aoe;
   ui.aoe = null; paintAoe();
-  const b = $("#aoe"); if (b) b.focus();
+  // geopend vanaf een save-actie op de kaart: focus terug op die knop, anders op AoE in de beurtbalk
+  const src = a && a.src && document.querySelector(`.c[data-id="${CSS.escape(a.src)}"] [data-aoe="${CSS.escape(a.act)}"]`);
+  (src || $("#aoe"))?.focus();
 }
 
 /** Keuze voor één doelwit bijwerken (UI-toestand, niet in undo) */
@@ -725,7 +754,7 @@ export function bindAoe() {
       a.dc = ui.aoeLast.dc = e.target.value;
       // al gerolde saves opnieuw tegen de nieuwe DC leggen
       const dc = parseInt(a.dc);
-      Object.values(a.t).forEach((t) => { if (t.roll) { t.lr = false; t.save = dc > 0 && t.roll.tot >= dc ? "half" : "fail"; } });
+      Object.values(a.t).forEach((t) => { if (t.roll) { t.lr = false; t.save = dc > 0 && t.roll.tot >= dc ? okSave(a) : "fail"; } });
     }
     else return;
     paintAoe();
@@ -744,16 +773,17 @@ export function bindAoe() {
     if (k === "go") { aoeGo(); return; }
     if (k === "save") aoeSet(a, id, { save: b.dataset.v, lr: false });
     if (k === "mode") aoeSet(a, id, { mode: +b.dataset.v });
-    if (k === "lr") aoeSet(a, id, { save: "half", lr: true });
-    if (k === "all") aoeTargets().forEach((c) => aoeSet(a, c.id, { sel: !!b.dataset.v && c.kind === b.dataset.v }));
+    if (k === "lr") aoeSet(a, id, { save: okSave(a), lr: true });
+    if (k === "reroll") { const x = srcAoe(a); if (x) { a.dmg = String(x.dmg); a.roll = x.roll; a.extra = x.extra; $("#a-dmg").value = a.dmg; } }
+    if (k === "all") aoeTargets(a.src).forEach((c) => aoeSet(a, c.id, { sel: !!b.dataset.v && c.kind === b.dataset.v }));
     if (k === "roll") {
       const dc = parseInt(a.dc);
       if (!(dc > 0)) { toast("Vul eerst de DC in."); $("#a-dc").focus(); return; }
-      const mons = aoeTargets().filter((c) => c.kind === "monster" && aoePick(a, c).sel);
+      const mons = aoeTargets(a.src).filter((c) => c.kind === "monster" && aoePick(a, c).sel);
       if (!mons.length) { toast("Kies eerst de monsters die een save doen."); return; }
       mons.forEach((c) => {
         const m = findMon(c.ref), x = rollSave(saveBonus(m, a.ab), hasMagicRes(m), Math.random, saveMods(c, a.ab));
-        aoeSet(a, c.id, { roll: x, save: x.tot >= dc ? "half" : "fail", lr: false });
+        aoeSet(a, c.id, { roll: x, save: x.tot >= dc ? okSave(a) : "fail", lr: false });
       });
     }
     paintAoe();
@@ -763,21 +793,188 @@ export function bindAoe() {
   });
 }
 
+/** De save-actie achter het paneel opnieuw opzoeken en rollen (monster kan intussen weg zijn) */
+function srcAoe(a) {
+  const c = app.S.list.find((x) => x.id === a.src), A = c && c.ref ? monsterActions(findMon(c.ref)) : null;
+  const act = A && [...A.main, ...A.other].find((x) => x.n === a.act);
+  return act ? actionAoe(act, (e) => rollExpr(e), DTYPES) : null;
+}
+
+/** "DC 18 DEX · AoE" op een aanvalsregel: AoE-paneel met gerolde schade, type, save en DC; spelers aangevinkt */
+function openActAoe(cid, name) {
+  const c = app.S.list.find((x) => x.id === cid);
+  if (!c) return;
+  const a = { src: c.id, srcName: c.name, act: name, t: {} };
+  const x = srcAoe(a);
+  if (!x) { toast("Deze actie kon niet gelezen worden. Gebruik de knop AoE in de beurtbalk."); return; }
+  const ri = rcIndex(c.rc, name);
+  ui.aoe = null; paintAoe(); // paneel opnieuw opbouwen met de titel van deze actie
+  ui.sheet = null; ui.qadd = null; ui.la = null; ui.atk = null;
+  ui.aoe = Object.assign(a, { dmg: String(x.dmg), type: x.type, ab: x.ab, dc: String(x.dc), half: x.half, roll: x.roll, extra: x.extra,
+    title: `${name} · ${c.name}`, used: ri >= 0 && !c.rc[ri].ready });
+  aoeTargets(a.src).forEach((t) => { if (t.kind === "pc") aoeSet(ui.aoe, t.id, { sel: true }); });
+  render();
+  $("#asheet .asheet")?.focus();
+}
+
 function aoeGo() {
   const a = ui.aoe; if (!a) return;
   const n = clampDmg(a.dmg), dc = parseInt(a.dc);
-  const picks = aoeTargets().map((c) => ({ c, p: aoePick(a, c) })).filter((x) => x.p.sel)
+  const picks = aoeTargets(a.src).map((c) => ({ c, p: aoePick(a, c) })).filter((x) => x.p.sel)
     .map(({ c, p }) => ({ c, save: p.save, mode: p.mode, lr: p.lr, note: p.roll ? `${a.ab} save ${rollText(p.roll, dc)}` : "", up: c.hp > 0 }));
   if (!n || !picks.length) return;
   const L = picks.map((x) => x.c);
-  const label = `${n}${a.type ? " " + a.type : ""}${dc > 0 ? ` (${a.ab} DC ${dc})` : ""}`;
+  const label = `${a.act ? `${a.srcName}: ${a.act} ` : ""}${n}${a.type ? " " + a.type : ""}${dc > 0 ? ` (${a.ab} DC ${dc})` : ""}`;
   const r = applyAoe(picks, n, label);
   apply(r);
+  // recharge-actie: pas bij toepassen op "op", in dezelfde stap (één keer Ongedaan)
+  const src = a.src && app.S.list.find((x) => x.id === a.src), ri = src ? rcIndex(src.rc, a.act) : -1;
+  const rcUsed = ri >= 0 && src.rc[ri].ready;
+  if (rcUsed) src.rc[ri].ready = false;
   const down = picks.filter((x) => x.up && x.c.hp <= 0).length;
   ui.aoe = null;
   render();
-  toastHtml(`${esc(`AoE ${label}: ${L.length} doel${L.length === 1 ? "" : "en"}, ${r.hits.reduce((s, h) => s + h.dealt, 0)} schade${down ? `, ${down} neer` : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  toastHtml(`${esc(`${a.act || `AoE ${label}`}: ${L.length} doel${L.length === 1 ? "" : "en"}, ${r.hits.reduce((s, h) => s + h.dealt, 0)} schade${down ? `, ${down} neer` : ""}${rcUsed ? " · recharge op" : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
   const ab = $("#aoe"); if (ab) ab.focus();
+}
+
+/* ---------- aanval op één doel (to-hit-knop op de monsterkaart) ---------- */
+/** Aanval opzoeken in het statblock van de aanvaller (op naam) */
+function findAtk(by, name) {
+  const A = by && by.ref ? monsterActions(findMon(by.ref)) : null;
+  return A && [...A.main, ...A.other].find((a) => a.n === name && a.hit !== null);
+}
+
+function openAtk(cid, name, label) {
+  const by = app.S.list.find((c) => c.id === cid), a = findAtk(by, name);
+  if (!a) return;
+  ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = null; ui.sv = false;
+  const adv = ui.atkAdv && ui.atkAdv.by === by.id ? ui.atkAdv.v : 0;
+  ui.atk = { by: by.id, n: a.n, label: label || a.n, bo: a.hit, key: partsKey(a.dmg), adv, tid: null, r: null, parts: null, modes: {}, force: {} };
+  render();
+  focusAtk();
+}
+
+const focusAtk = () => { const s = $("#xsheet"); (s.querySelector(".qgo:not([disabled])") || s.querySelector(".xt") || s.querySelector(".xsheet"))?.focus(); };
+function closeAtk() { const by = ui.atk && ui.atk.by; ui.atk = null; paintAtk(); if (by) $(`.c[data-id="${CSS.escape(by)}"] .d.hit`)?.focus(); }
+
+/** Doel gekozen: to hit en damage in één keer rollen (een ander doel kiezen houdt dezelfde worp) */
+function atkTarget(x, id) {
+  const c = app.S.list.find((t) => t.id === id);
+  if (!c) return;
+  x.tid = id;
+  if (!x.r) { x.r = rollAttack(x.bo, x.adv); x.parts = x.key ? rollDmgCrit(x.key, (e) => rollExpr(e)) || [] : []; }
+  x.force = {};
+  // resistance/immuniteit van een monster uit het statblock (onvoorwaardelijk); spelers normaal
+  const m = c.ref ? findMon(c.ref) : null;
+  x.modes = {};
+  for (const p of x.parts) if (!(p.type in x.modes)) x.modes[p.type] = m ? defMode(m.x, p.type).mode : 1;
+}
+
+function atkGo() {
+  const x = ui.atk, by = x && app.S.list.find((c) => c.id === x.by), c = x && app.S.list.find((t) => t.id === x.tid);
+  if (!by || !c || !c.max || isOut(c)) return;
+  const ac = effAc(c) || 0, res = atkResult(x.r, ac, x.parts, x.modes, x.force);
+  if (!res.hit || !res.dealt) return;
+  const before = c.hp;
+  because(atkWhy(`${x.label} (${by.name})`, x.r, ac || null, x.parts, res), c.id);
+  apply(atkDamage(c, res));
+  ui.atkPrev = { by: by.id, id: c.id };
+  ui.atk = null;
+  render();
+  toastHtml(`${esc(`${c.name}: −${res.dealt} HP${res.crit ? " (kritiek)" : ""} → ${n0(c.hp)}/${n0(c.max)}${before > 0 && c.hp <= 0 ? (c.kind === "pc" ? ", bewusteloos" : ", neer") : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  $(`.c[data-id="${CSS.escape(by.id)}"] .d.hit`)?.focus();
+}
+
+export function bindAtk() {
+  $("#xsheet").addEventListener("click", (e) => {
+    const x = ui.atk; if (!x) return;
+    const b = e.target.closest("[data-xa]"); if (!b) return;
+    const k = b.dataset.xa;
+    if (k === "close") { closeAtk(); return; }
+    if (k === "go") { atkGo(); return; }
+    if (k === "free") { // oude gedrag: alleen de worp als melding
+      const lab = x.label; closeAtk();
+      doRoll(`1d20${sgn(x.bo)}`, lab, true);
+      return;
+    }
+    if (k === "adv") { x.adv = +b.dataset.v; ui.atkAdv = { by: x.by, v: x.adv }; x.r = null; }
+    if (k === "tgt") atkTarget(x, b.dataset.id);
+    if (k === "back") x.tid = null;
+    if (k === "mode") x.modes[b.dataset.t] = +b.dataset.v;
+    if (k === "crit") { const c = app.S.list.find((t) => t.id === x.tid); const res = c && atkResult(x.r, effAc(c) || 0, x.parts, x.modes, x.force); x.force.crit = !(res && res.crit); }
+    if (k === "force") x.force.hit = true;
+    if (k === "shield") {
+      const c = app.S.list.find((t) => t.id === x.tid), p = PRESETS.find((q) => q.n === "Shield");
+      if (c && p) { const r = applyEff(c, p, null); render(); if (r.undoToast) toastHtml(`${esc(r.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`); focusAtk(); return; }
+    }
+    paintAtk();
+    focusAtk();
+  });
+}
+
+/* ---------- initiative van spelers bij Start gevecht ---------- */
+function openInit() {
+  const L = initPcs(app.S.list);
+  ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.atk = null; ui.la = null; ui.sv = false;
+  ui.initDraft = { v: Object.fromEntries(L.map((c) => [c.id, c.init == null ? "" : String(c.init)])), act: L[0].id, fresh: true, rolls: {} };
+  render();
+  $("#isheet .isheet")?.focus();
+}
+function closeInit() { ui.initDraft = null; paintInit(); $("#start")?.focus(); }
+
+/** Volgende speler in het paneel (op de laatste blijft hij staan) */
+function initNext(x) {
+  const L = initPcs(app.S.list), i = L.findIndex((c) => c.id === x.act);
+  if (i >= 0 && i < L.length - 1) { x.act = L[i + 1].id; x.fresh = true; return true; }
+  return false;
+}
+
+function initGo() {
+  const x = ui.initDraft; if (!x) return;
+  const r = setInits(app.S.list, x.v);
+  if (r.missing.length) {
+    const L = initPcs(app.S.list), first = L.find((c) => parseInit(x.v[c.id]) === null);
+    if (first) { x.act = first.id; x.fresh = true; }
+    paintInit();
+    toast(`Nog geen initiative voor: ${r.missing.join(", ")}.`);
+    return;
+  }
+  apply(r);
+  ui.initDraft = null; ui.initSkip = true;
+  paintInit();
+  $("#start")?.click(); // zelfde afhandeling als de knop: gevecht starten, kaart van wie begint, één undo-stap
+  ui.initSkip = false; // click is synchroon; zonder (werkende) #start mag de vlag niet blijven hangen
+  render(); // vangnet: commit de nieuwe waarden als er toch niet gestart is (anders no-op)
+}
+
+/** Knop of toets in het paneel. k: d (cijfer), back, clear, sel, roll, next, enter, go, close */
+function initKey(k, v) {
+  const x = ui.initDraft; if (!x) return;
+  if (k === "close") { closeInit(); return; }
+  if (k === "go" || (k === "enter" && !initNext(x))) { initGo(); return; }
+  const cur = x.v[x.act] ?? "";
+  if (k === "d") { x.v[x.act] = x.fresh ? String(v) : cur.length < 2 ? cur + v : cur; x.fresh = false; delete x.rolls[x.act]; }
+  if (k === "back") { x.v[x.act] = x.fresh ? "" : cur.slice(0, -1); x.fresh = false; delete x.rolls[x.act]; }
+  if (k === "clear") { x.v[x.act] = ""; x.fresh = false; delete x.rolls[x.act]; }
+  if (k === "sel") { x.act = v; x.fresh = true; }
+  if (k === "next") initNext(x);
+  if (k === "roll") {
+    const c = app.S.list.find((t) => t.id === v); if (!c) return;
+    const r = d(20), bo = c.initBonus ?? c.dex ?? 0;
+    x.v[c.id] = String(r + bo); x.rolls[c.id] = `d20 [${r}] ${sgn(bo)}`;
+    x.act = c.id; initNext(x);
+  }
+  paintInit();
+  const b = $("#isheet .ir.act .irn"); if (b) b.scrollIntoView({ block: "nearest" });
+  $("#isheet .isheet")?.focus({ preventScroll: true });
+}
+
+export function bindInit() {
+  $("#isheet").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-ia]"); if (!b) return;
+    initKey(b.dataset.ia, b.dataset.v ?? b.dataset.id);
+  });
 }
 
 /* ---------- party-tab ---------- */

@@ -3,15 +3,15 @@
 import { $, esc, n0 } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
-import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit } from "../rules/turns.js";
+import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs } from "../rules/turns.js";
 import { PRESETS, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn } from "../rules/effects.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus } from "../rules/aoe.js";
 import { diceify, syncSB } from "./statblock.js";
-import { monsterActions, dmgKey, useful } from "../rules/attacks.js";
+import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, atkText, partText, atkDamage } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
-import { laList, laStatus, laOptions } from "../rules/legendary.js";
+import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
 import { openSaves } from "../rules/saves.js";
 import { avatar } from "./avatar.js";
 
@@ -26,6 +26,10 @@ export const ui = {
   qadd: null,          // { q, sel, n, init: "roll"|"fixed", fix } = snel-toevoegen-paneel open
   aoe: null,           // { dmg, type, ab, dc, t: { [id]: { sel, save, mode|null, roll, lr } } } = AoE-paneel open
   aoeLast: { type: "", ab: "DEX", dc: "" }, // laatst gebruikte type/save/DC (bijv. dezelfde breath weapon)
+  atk: null,           // { by, n, label, bo, key, adv, tid, r, parts, modes, force } = aanvalspaneel open (to-hit-knop)
+  atkAdv: null,        // { by, v }: advantage/disadvantage blijft staan voor de volgende aanval van dezelfde aanvaller
+  initDraft: null,     // { v: { id: tekst }, act: id, fresh, rolls: { id: tekst } } = initiative-paneel bij Start gevecht
+  atkPrev: null,       // { by, id }: vorige doel van deze aanvaller (bovenaan in de lijst)
   edit: null,          // { id, name, ac, max, init } = concept in het bewerkpaneel (⋯)
   effWho: null,        // { id, i } = preset met concentratie wacht op "Wie cast?"
   effJoin: null,       // { id, p, by, cast } = laatste "nieuwe cast" (Bless), voor "Hoort erbij" in de melding
@@ -52,6 +56,8 @@ export function render() {
   paintSheet();
   paintQadd();
   paintAoe();
+  paintAtk();
+  paintInit();
   paintLa();
   paintSv();
   paintParty();
@@ -278,12 +284,14 @@ function actionsBlock(c) {
 const SHORT = { piercing: "pierc.", bludgeoning: "bludg.", slashing: "slash." };
 const MAIN_MAX = 4; // regels bij het monster aan de beurt (Multiattack telt mee), daarna "+N meer"
 
-function atkRow(a) {
+function atkRow(a, cid) {
   // zonder worp of DC (Detect, Parry): korte tekst eronder, de rest staat in het statblock
   const sub = [a.tag, a.reach, a.hit !== null && a.dc ? `DC ${a.dc.n} ${a.dc.ab}` : "", useful(a) ? "" : a.text].filter(Boolean).join(" · ");
   const lab = a.label || a.n; // label in de rolmelding (legendary: naam van de optie)
   const key = dmgKey(a.dmg), flat = a.dmg.filter((x) => !x.e);
-  const hit = a.hit !== null ? `<button class="d hit" data-roll="1d20${sgn(a.hit)}" data-hit="1" data-label="${esc(lab)}" aria-label="${esc(lab)}: aanval ${sgn(a.hit)} to hit">${sgn(a.hit)}</button>`
+  const hit = a.hit !== null && cid ? `<button class="d hit" data-atk="${esc(a.n)}" data-cid="${esc(cid)}" data-label="${esc(lab)}" aria-label="${esc(lab)}: aanval ${sgn(a.hit)} to hit, doel kiezen">${sgn(a.hit)}</button>`
+    : a.hit !== null ? `<button class="d hit" data-roll="1d20${sgn(a.hit)}" data-hit="1" data-label="${esc(lab)}" aria-label="${esc(lab)}: aanval ${sgn(a.hit)} to hit">${sgn(a.hit)}</button>`
+    : isSaveAoe(a) && cid ? `<button class="d dcb" data-aoe="${esc(a.n)}" data-cid="${esc(cid)}" aria-label="${esc(lab)}: DC ${a.dc.n} ${a.dc.ab}, AoE-paneel openen">DC ${a.dc.n} ${a.dc.ab}<small>AoE ▸</small></button>`
     : a.dc ? `<span class="dc">DC ${a.dc.n} ${a.dc.ab}</span>` : "<span></span>";
   const dmg = key ? `<button class="d dm" data-dmg="${esc(key)}" data-label="${esc(lab)}" aria-label="${esc(lab)}: damage rollen">${esc(a.dmg.map((x) => x.e || x.flat).join(" + "))}<small>${esc(a.dmg.map((x) => SHORT[x.type] || x.type).join(" + "))}</small></button>`
     : flat.length ? `<span class="dflat">${esc(flat.map((x) => `${x.flat} ${x.type}`).join(" + "))}</span>` : "<span></span>";
@@ -297,17 +305,21 @@ function atkBlock(c, S) {
   if (!A) return "";
   const turn = c.id === S.active, all = ui.atkOpen === c.id;
   const n = A.main.length + A.other.length;
+  // klare recharge-actie (Acid Breath) direct na Multiattack, zodat hij niet achter "+N meer" valt
+  const ready = (a) => { const i = rcIndex(c.rc, a.n); return i >= 0 && c.rc[i].ready; };
+  const main = A.main.some(ready) ? [...A.main.filter(ready), ...A.main.filter((a) => !ready(a))] : A.main;
+  const row = (a) => atkRow(a, c.id);
   if (!turn && !all) return `<button class="atkfold" data-a="atk-open" aria-expanded="false">Aanvallen${n ? ` (${n})` : ""} <span aria-hidden="true">▸</span></button>`;
   const room = turn && !all ? Math.max(1, MAIN_MAX - (A.multi ? 1 : 0)) : A.main.length;
   const hidden = A.main.length - room;
   const rx = !turn || ui.atkRx === c.id;
   const multi = A.multi ? `<p class="multi"><b>Multiattack:</b> ${esc(A.multi.text)}</p>` : "";
   const other = !A.other.length ? "" : rx
-    ? `${turn ? `<button class="atkfold sub" data-a="atk-rx" aria-expanded="true">Reactions · Legendary <span aria-hidden="true">▾</span></button>` : ""}${A.other.map(atkRow).join("")}`
+    ? `${turn ? `<button class="atkfold sub" data-a="atk-rx" aria-expanded="true">Reactions · Legendary <span aria-hidden="true">▾</span></button>` : ""}${A.other.map(row).join("")}`
     : `<button class="atkfold sub" data-a="atk-rx" aria-expanded="false">Reactions · Legendary (${A.other.length}) <span aria-hidden="true">▸</span></button>`;
   return `<div class="atk">
     ${!turn ? `<button class="atkfold" data-a="atk-close" aria-expanded="true">Aanvallen <span aria-hidden="true">▾</span></button>` : ""}
-    ${multi}${A.main.slice(0, room).map(atkRow).join("")}
+    ${multi}${main.slice(0, room).map(row).join("")}
     <div class="atkmore">${hidden > 0 ? `<button class="link" data-a="atk-open">+${hidden} meer</button>` : "<span></span>"}<button class="link" data-a="sb">Volledig statblock</button></div>
     ${other}</div>`;
 }
@@ -369,7 +381,9 @@ function paintEncounter() {
   $("#order").innerHTML = L.map((c) => row(c, S)).join("")
     || `<li class="hint" style="padding:20px;text-align:center">Nog niemand aan tafel. ${mode() === "fight" ? "Voeg spelers en monsters toe onder Voorbereiden." : "Voeg hieronder spelers en monsters toe."}</li>`;
   $("#resetbar").innerHTML = ui.confirmReset
-    ? `<div class="confirm">Alles wissen?<button class="btn small primary" id="reset-yes">Ja, wis encounter</button><button class="btn small" id="reset-no">Annuleer</button></div>`
+    ? S.list.some((c) => c.kind !== "pc")
+      ? `<div class="confirm">Wat wissen?<button class="btn small primary" id="reset-mons">Monsters wissen, spelers houden</button><button class="btn small ghost" id="reset-yes">Alles</button><button class="btn small" id="reset-no">Annuleer</button></div>`
+      : `<div class="confirm">Alles wissen?<button class="btn small primary" id="reset-yes">Ja, wis encounter</button><button class="btn small" id="reset-no">Annuleer</button></div>`
     : `${S.list.some((c) => c.kind === "lair") ? "" : `<button class="btn small" id="addlair">+ Lair actions (init 20)</button>`}${S.list.length ? `<button class="btn small ghost" id="reset">Encounter wissen</button>` : ""}${S.round ? `<button class="btn small ghost" id="stop">Gevecht stoppen</button>` : ""}
        ${S.sample ? `<p class="note">De deelnemers hierboven zijn voorbeelden. Wis ze en voeg je eigen groep toe.</p>` : ""}`;
 }
@@ -575,8 +589,8 @@ export function paintQadd() {
 }
 
 /* ---------- AoE: één schadeworp op meerdere doelen ---------- */
-/** Wie geraakt kan worden: iedereen met HP die nog meedoet (spelers op 0 HP ook: dat kost een death save) */
-export const aoeTargets = () => sortOrder(app.S.list).filter((c) => c.kind !== "lair" && c.max && !isOut(c));
+/** Wie geraakt kan worden: iedereen met HP die nog meedoet (spelers op 0 HP ook: dat kost een death save). ex = bron van een save-actie */
+export const aoeTargets = (ex = null) => sortOrder(app.S.list).filter((c) => c.kind !== "lair" && c.max && !isOut(c) && c.id !== ex);
 
 /** Effectieve keuze per doelwit (mode null = volg het statblock voor het gekozen damage type) */
 export function aoePick(a, c) {
@@ -586,6 +600,9 @@ export function aoePick(a, c) {
 
 const MODES = [[1, "Normaal"], [0.5, "Resist"], [2, "×2"], [0, "Immuun"]];
 const SAVES = [["fail", "Gefaald"], ["half", "Geslaagd ½"], ["none", "0"]];
+const SAVES0 = [["fail", "Gefaald"], ["none", "Geslaagd 0"]]; // save-actie zonder halve schade (Wing Attack)
+/** Uitkomst van een geslaagde save in dit paneel */
+export const okSave = (a) => (a && a.half === false ? "none" : "half");
 
 function aoeRow(a, c, p, o, n) {
   const id = esc(c.id), nm = esc(c.name), dc = parseInt(a.dc);
@@ -603,7 +620,7 @@ function aoeRow(a, c, p, o, n) {
     <label class="atop"><input type="checkbox" data-ao="sel" data-id="${id}" ${p.sel ? "checked" : ""}>
       <span class="atn"><span>${nm}</span> <span class="tag ${c.kind === "pc" ? "" : "m"}">${c.kind === "pc" ? "speler" : "monster"}</span><small>${n0(c.hp)}/${n0(c.max)} HP${c.temp ? ` +${n0(c.temp)}` : ""}</small></span>
       ${p.sel && n ? `<b class="adealt ${o.dealt ? "" : "zero"}">−${o.dealt}</b>` : ""}</label>
-    ${p.sel ? `<div class="seg2 sm" role="group" aria-label="Save ${nm}">${SAVES.map(([v, l]) => `<button type="button" data-ao="save" data-id="${id}" data-v="${v}" aria-pressed="${p.save === v}"${v === "none" ? ` aria-label="Geen schade (bijv. Evasion)" title="Geen schade (bijv. Evasion)"` : ""}>${l}</button>`).join("")}</div>
+    ${p.sel ? `<div class="seg2 sm" role="group" aria-label="Save ${nm}">${(a.half === false ? SAVES0 : SAVES).map(([v, l]) => `<button type="button" data-ao="save" data-id="${id}" data-v="${v}" aria-pressed="${p.save === v}"${v === "none" && a.half !== false ? ` aria-label="Geen schade (bijv. Evasion)" title="Geen schade (bijv. Evasion)"` : ""}>${l}</button>`).join("")}</div>
       <div class="seg2 sm" role="group" aria-label="Weerstand ${nm}">${MODES.map(([v, l]) => `<button type="button" data-ao="mode" data-id="${id}" data-v="${v}" aria-pressed="${p.mode === v}">${l}</button>`).join("")}</div>
       <div class="acalc">${n ? o.steps.join(" → ") + end : "Vul de schade in"}${info ? `<br>${info}` : ""}</div>${lrBtn}` : ""}
   </div>`;
@@ -617,11 +634,12 @@ export function paintAoe() {
     el.innerHTML = `<div class="dim" data-ao="close"></div>
     <div class="sheet qsheet asheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="a-title">
       <div class="grab" aria-hidden="true"></div>
-      <div class="shead"><h3 id="a-title">AoE-schade</h3><button type="button" class="link" data-ao="close">Annuleer</button></div>
+      <div class="shead"><h3 id="a-title">${a.title ? esc(a.title) : "AoE-schade"}</h3><button type="button" class="link" data-ao="close">Annuleer</button></div>
       <div class="arow">
         <label>Schade<input id="a-dmg" type="number" inputmode="numeric" min="0" max="999" placeholder="28" enterkeyhint="done"></label>
         <label>Damage type<select id="a-type"><option value="">geen / onbekend</option>${DTYPES.map((t) => `<option value="${t}">${t[0].toUpperCase() + t.slice(1)}</option>`).join("")}</select></label>
       </div>
+      <div class="asrc hint" id="a-src" aria-live="polite"></div>
       <div class="asave"><span class="qlbl">Save</span>
         <select id="a-ab" aria-label="Save-ability">${ABS.map((x) => `<option>${x}</option>`).join("")}</select>
         <input id="a-dc" type="number" inputmode="numeric" placeholder="DC" aria-label="DC" min="1" max="40">
@@ -634,7 +652,10 @@ export function paintAoe() {
     el.hidden = false;
   }
   // per paint één keer per doel: keuze (statblock-opzoeking) en uitkomst (gesimuleerd op een kopie)
-  const L = aoeTargets(), n = clampDmg(a.dmg);
+  const src = $("#a-src");
+  src.hidden = !a.roll;
+  if (a.roll) src.innerHTML = `${esc(a.roll)} <button type="button" class="link" data-ao="reroll">Opnieuw</button>${a.extra ? `<br>${esc(a.extra)}: apart toepassen` : ""}${a.used ? `<br><b class="bad">${esc(a.act)} is nog niet herladen</b>` : ""}`;
+  const L = aoeTargets(a.src), n = clampDmg(a.dmg);
   const rows = L.map((c) => { const p = aoePick(a, c); return { c, p, o: p.sel && n ? aoeOutcome(c, p, n) : { dealt: 0, steps: [], res: "", hp: c.hp } }; });
   const sel = rows.filter((x) => x.p.sel);
   $("#a-list").innerHTML = rows.map((x) => aoeRow(a, x.c, x.p, x.o, n)).join("") || `<p class="hint">Niemand om te raken.</p>`;
@@ -644,6 +665,101 @@ export function paintAoe() {
   const go = el.querySelector(".ago");
   go.disabled = !n || !sel.length;
   go.textContent = !n ? "Vul de schade in" : !sel.length ? "Kies doelwitten" : `${n}${a.type ? " " + a.type : ""} toepassen op ${sel.length} doel${sel.length === 1 ? "" : "en"}`;
+}
+
+/* ---------- aanval op één doel (to-hit-knop op de monsterkaart) ---------- */
+const ADVS = [[0, "Normaal"], [1, "Advantage"], [-1, "Disadvantage"]];
+const XMODES = [[1, "Normaal"], [0.5, "Resist ½"], [2, "Kwetsb. ×2"], [0, "Immuun"]];
+// condities van het doel die advantage of disadvantage geven (alleen als hint; de DM kiest)
+const ATK_CONDS = ["Blinded", "Invisible", "Paralyzed", "Petrified", "Prone", "Restrained", "Stunned", "Unconscious"];
+const AUTO_CRIT = ["Paralyzed", "Unconscious"];
+
+/** Wie een aanval kan krijgen: niet de aanvaller, geen lair, geen dode speler of monster op 0 HP (spelers op 0 HP wel) */
+export const atkTargets = (by) => sortOrder(app.S.list).filter((c) => c.kind !== "lair" && c.id !== by && !isOut(c));
+
+/** Shield (reaction, +5) aanbieden: speler die kan reageren (niet op 0 HP/incapacitated), geraakt maar niet met een natuurlijke 20, en +5 AC zou missen */
+export const shieldOk = (c, x, res) => c.kind === "pc" && c.hp > 0 && !c.cond.some((k) => NO_ACT.includes(k)) && res.hit && !x.force.hit && x.r.nat !== 20 && !c.reaction
+  && !(c.eff || []).some((e) => e.n === "Shield") && x.r.tot < effAc(c) + 5;
+
+function atkTgtRow(c, prev) {
+  const ac = effAc(c);
+  return `<button type="button" class="xt" data-xa="tgt" data-id="${esc(c.id)}">${avatar(c, c.ref ? findMon(c.ref)?.meta : "")}
+    <span class="xn">${esc(c.name)}${prev ? ` <span class="tag">vorige</span>` : ""}</span>
+    <span class="xi">${ac ? `AC ${n0(ac)}` : "AC ?"}${c.max ? ` · ${n0(c.hp)}/${n0(c.max)} HP` : ""}</span></button>`;
+}
+
+function atkPick(x, by) {
+  const L = atkTargets(by.id), prev = ui.atkPrev && ui.atkPrev.by === by.id ? L.find((c) => c.id === ui.atkPrev.id) : null;
+  const rest = L.filter((c) => c !== prev), pcs = rest.filter((c) => c.kind === "pc"), mons = rest.filter((c) => c.kind !== "pc");
+  return `<div class="seg2 sm xadv" role="group" aria-label="Advantage">${ADVS.map(([v, l]) => `<button type="button" data-xa="adv" data-v="${v}" aria-pressed="${x.adv === v}">${l}</button>`).join("")}</div>
+    <div class="xlist">${prev ? atkTgtRow(prev, true) : ""}${pcs.map((c) => atkTgtRow(c)).join("")}
+    ${mons.length ? `<p class="qlbl xsub">Monsters</p>${mons.map((c) => atkTgtRow(c)).join("")}` : ""}
+    ${L.length ? "" : `<p class="hint">Niemand om aan te vallen.</p>`}</div>
+    <div class="afoot"><button type="button" class="link" data-xa="free">Zonder doel rollen</button><span></span></div>`;
+}
+
+function atkRes(x, c) {
+  const ac = effAc(c) || 0, res = atkResult(x.r, ac, x.parts, x.modes, x.force);
+  const word = res.crit ? "Kritiek!" : res.hit ? (res.natHit ? "Raak" : "Toch raak") : x.r.nat === 1 ? "Mis (nat 1)" : "Mis";
+  const conds = c.cond.filter((k) => ATK_CONDS.includes(k));
+  const auto = conds.some((k) => AUTO_CRIT.includes(k));
+  const hints = [
+    !ac ? "AC onbekend: vergelijk zelf" : "",
+    conds.length ? `${esc(c.name)}: ${esc(conds.join(", "))}${auto ? " · binnen 5 ft is een treffer kritiek" : ""}` : "",
+  ].filter(Boolean);
+  let body = "", foot = "";
+  if (res.hit) {
+    const sim = structuredClone(c), was = c.hp;
+    if (c.max) atkDamage(sim, res);
+    const end = !c.max ? "" : sim.ds && sim.ds.dead && !(c.ds && c.ds.dead) ? ` · <b class="bad">sterft</b>`
+      : was > 0 && sim.hp <= 0 ? ` · <b class="bad">${c.kind === "pc" ? "bewusteloos" : "neer"}</b>`
+      : c.kind === "pc" && was <= 0 && res.dealt ? ` · <b class="bad">${res.crit ? "twee failures" : "death save failure"}</b>` : "";
+    body = `${x.parts.length ? `<div class="xdmg">${x.parts.map((p) => esc(partText(p, res.crit))).join("<br>")}</div>` : `<p class="hint">Geen schade-worp in deze aanval.</p>`}
+      ${res.types.map((t) => `<div class="xmode"><span class="qlbl">${esc(t.type || "schade")}</span><div class="seg2 sm" role="group" aria-label="Weerstand ${esc(t.type)}">${XMODES.map(([v, l]) => `<button type="button" data-xa="mode" data-t="${esc(t.type)}" data-v="${v}" aria-pressed="${t.mode === v}">${l}</button>`).join("")}</div></div>`).join("")}
+      <div class="xrow"><button type="button" class="btn small" data-xa="crit" aria-pressed="${res.crit}">Kritiek</button>
+      <span class="acalc">${c.max ? `${n0(c.hp)} → ${n0(sim.hp)} HP${end}` : "HP onbekend"}</span></div>`;
+    foot = `${shieldOk(c, x, res) ? `<button type="button" class="btn" data-xa="shield">Shield +5</button>` : "<span></span>"}
+      <button type="button" class="btn primary qgo" data-xa="go" ${c.max && res.dealt ? "" : "disabled"}>${!c.max ? "HP onbekend" : res.dealt ? `${res.dealt} schade toepassen` : "Geen schade"}</button>`;
+  } else foot = `<button type="button" class="link" data-xa="force">Toch raak</button><button type="button" class="btn primary qgo" data-xa="close">Sluit</button>`;
+  return `<button type="button" class="link xback" data-xa="back">‹ Ander doel</button>
+    <p class="xhit"><b class="${res.hit ? "ok" : "bad"}">${word}</b> ${esc(atkText(x.r, ac || null))}</p>
+    ${hints.length ? `<p class="hint">${hints.join("<br>")}</p>` : ""}
+    ${body}<div class="afoot">${foot}</div>`;
+}
+
+export function paintAtk() {
+  const el = $("#xsheet"), x = ui.atk;
+  const by = x && app.S.list.find((c) => c.id === x.by);
+  const c = x && x.tid && app.S.list.find((t) => t.id === x.tid && !isOut(t)); // doel intussen dood/neer (Ongedaan): terug naar de lijst
+  if (!x || !by) { el.hidden = true; el.innerHTML = ""; return; }
+  el.innerHTML = `<div class="dim" data-xa="close"></div>
+    <div class="sheet qsheet xsheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="x-title">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="shead"><h3 id="x-title">${esc(x.label)} → ${c ? esc(c.name) : "doel?"}</h3><button type="button" class="link" data-xa="close">Annuleer</button></div>
+      ${c ? atkRes(x, c) : atkPick(x, by)}
+    </div>`;
+  el.hidden = false;
+}
+
+/* ---------- initiative van spelers bij Start gevecht ---------- */
+export function paintInit() {
+  const el = $("#isheet"), x = ui.initDraft;
+  if (!x) { el.hidden = true; el.innerHTML = ""; return; }
+  const L = initPcs(app.S.list), mons = app.S.list.filter((c) => c.kind === "monster").length;
+  const last = L.length && L[L.length - 1].id === x.act;
+  el.innerHTML = `<div class="dim" data-ia="close"></div>
+    <div class="sheet qsheet isheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="i-title">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="shead"><h3 id="i-title">Initiative spelers</h3><button type="button" class="link" data-ia="close">Annuleer</button></div>
+      ${mons ? `<p class="hint">Monsters: initiative al gerold (${mons}).</p>` : ""}
+      <div class="ilist">${L.map((c) => `<div class="ir ${c.id === x.act ? "act" : ""}">
+        <button type="button" class="irn" data-ia="sel" data-id="${esc(c.id)}" aria-pressed="${c.id === x.act}" aria-label="${esc(c.name)}: initiative ${esc(x.v[c.id] || "leeg")}"><span>${esc(c.name)}</span>${x.rolls[c.id] ? `<small>${esc(x.rolls[c.id])}</small>` : ""}</button>
+        <b class="iv" aria-hidden="true">${x.v[c.id] !== "" && x.v[c.id] != null ? esc(x.v[c.id]) : "—"}</b>
+        <button type="button" class="btn small" data-ia="roll" data-id="${esc(c.id)}" aria-label="Initiative rollen voor ${esc(c.name)}">Rol</button></div>`).join("")}</div>
+      <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button type="button" data-ia="d" data-v="${n}">${n}</button>`).join("")}<button type="button" data-ia="back" aria-label="Wissen">⌫</button><button type="button" data-ia="d" data-v="0">0</button><button type="button" data-ia="clear" aria-label="Leegmaken">C</button></div>
+      <div class="ifoot"><button type="button" class="btn" data-ia="next" ${last ? "disabled" : ""}>Volgende ›</button><button type="button" class="btn primary qgo" data-ia="go">Start gevecht</button></div>
+    </div>`;
+  el.hidden = false;
 }
 
 /* ---------- party en logboek ---------- */
