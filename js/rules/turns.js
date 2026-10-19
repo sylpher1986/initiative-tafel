@@ -21,7 +21,7 @@ export const sortOrder = (list) => [...list].sort((a, b) =>
   || ((a.kind === "lair") - (b.kind === "lair"))
   || b.dex - a.dex
   || ((b.kind === "pc") - (a.kind === "pc"))
-  || a.name.localeCompare(b.name));
+  || a.name.localeCompare(b.name, undefined, { numeric: true })); // Bugbear 2 vóór Bugbear 10
 
 /** Ingevulde initiative ("14", 14, "-1") → heel getal binnen -10..40; leeg of ongeldig → null */
 export function parseInit(v) {
@@ -30,7 +30,24 @@ export function parseInit(v) {
   return Math.max(-10, Math.min(40, Math.round(+s)));
 }
 
-export const isOut =(c) => (c.kind === "monster" && c.hp <= 0) || !!(c.ds && c.ds.dead);
+export const isOut = (c) => (c.kind === "monster" && c.hp <= 0) || !!(c.ds && c.ds.dead);
+
+/**
+ * Groepsbeurt: monsters die samen met één groepsworp (of ingevulde initiative) zijn toegevoegd (`grp`).
+ * Elk lid houdt zijn eigen beurt (beurtgrenzen, recharge, saves per lid); dit is alleen voor de weergave.
+ * Groep = aaneengesloten reeks in sortOrder met dezelfde grp én initiative (ander initiative = uit de groep).
+ * Geeft { live, k } (levende leden en positie 1..n van id daarin) of null als id zelf neer is of er geen groep van 2+ levende leden is.
+ */
+export function groupOf(L, id) {
+  const i = L.findIndex((c) => c.id === id), c = L[i];
+  if (!c || !c.grp || isOut(c)) return null; // wie zelf neer is (bijv. in de eigen beurt gedood) staat los: geen "0/2"
+  const same = (x) => x && x.grp === c.grp && x.init === c.init;
+  let a = i, b = i;
+  while (same(L[a - 1])) a--;
+  while (same(L[b + 1])) b++;
+  const live = L.slice(a, b + 1).filter((x) => !isOut(x));
+  return live.length > 1 ? { live, k: live.indexOf(c) + 1 } : null;
+}
 
 /**
  * Duur van een nieuwe conditie. Teltrigger: begin of einde van de beurt van `who`.

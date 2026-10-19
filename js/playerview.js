@@ -1,7 +1,7 @@
 // Spelersscherm: wat spelers mogen zien. Puur (geen DOM), getest.
 // Alleen deze snapshot verlaat het DM-scherm, nooit de volledige toestand. Zo kan dezelfde snapshot
 // later ook via een server naar andere apparaten zonder dat er DM-info meegaat.
-import { sortOrder, isOut } from "./rules/turns.js";
+import { sortOrder, isOut, groupOf } from "./rules/turns.js";
 import { iconId, cleanImg } from "./ui/avatar.js";
 
 /** Wat spelers zien. Eén plek om later aan te passen (of per tafel instelbaar te maken). */
@@ -47,12 +47,15 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS) {
   const seen = (c) => !c.hidden && (c.kind !== "lair" || vis.lair);
   const shown = all.filter(seen);
   const active = shown.some((c) => c.id === S.active) ? S.active : null;
+  // groepsbeurt: spelers zien de zichtbare levende leden samen aan de beurt, "volgende" ligt voorbij de groep
+  const g = S.round && active ? groupOf(all, active) : null;
+  const inTurn = new Set(g ? g.live.filter(seen).map((c) => c.id) : []);
   let next = null;
   if (S.round && S.active) {
     const i = all.findIndex((c) => c.id === S.active);
     for (let k = 1; k <= all.length; k++) {
       const c = all[(i + k) % all.length];
-      if (c.id !== S.active && seen(c) && !isOut(c)) { next = c.id; break; }
+      if (c.id !== S.active && !inTurn.has(c.id) && seen(c) && !isOut(c)) { next = c.id; break; }
     }
   }
   const list = shown.map((c) => {
@@ -67,7 +70,15 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS) {
     if (pc && c.max && c.hp <= 0 && !d.dead && !d.stable) r.ds = { s: d.s || 0, f: d.f || 0 };
     return r;
   });
-  return { v: 1, round: S.round || 0, active, next, list };
+  const out = { v: 1, round: S.round || 0, active, next, list };
+  if (inTurn.size > 1) Object.assign(out, { group: [...inTurn], gname: groupName(list.filter((c) => inTurn.has(c.id))) });
+  return out;
+}
+
+/** "Bugbear ×3" als alle leden dezelfde naam met een nummer hebben, anders de namen achter elkaar */
+export function groupName(rows) {
+  const base = rows.map((c) => c.name.replace(/ \d+$/, ""));
+  return base.every((b) => b === base[0]) ? `${base[0]} ×${rows.length}` : rows.map((c) => c.name).join(", ");
 }
 
 /* ---------- ontvangen: snapshot opschonen (nu uit een ander venster, later uit het netwerk) ---------- */
@@ -97,5 +108,8 @@ export function cleanView(d) {
   });
   const ids = new Set(list.map((c) => c.id));
   const pick = (v) => (typeof v === "string" && ids.has(v) ? v : null);
-  return { v: 1, round: Math.max(0, int(d.round)), active: pick(d.active), next: pick(d.next), list };
+  const out = { v: 1, round: Math.max(0, int(d.round)), active: pick(d.active), next: pick(d.next), list };
+  const group = Array.isArray(d.group) ? [...new Set(d.group.map(pick).filter(Boolean))].slice(0, 20) : [];
+  if (out.active && group.length > 1 && group.includes(out.active)) Object.assign(out, { group, gname: str(d.gname, 200) || null });
+  return out;
 }

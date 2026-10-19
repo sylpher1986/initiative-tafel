@@ -34,13 +34,14 @@ export function addMonsters(name, n, hpmode, initmode, silent, fixed = null) {
   const next = nums.length ? Math.max(...nums) + 1 : 1;
   const set = initmode === "fixed" && Number.isFinite(fixed);
   const group = initmode === "group" ? d(20) : null;
+  const grp = n > 1 && (group !== null || set) ? uid() : undefined; // groepsbeurt in de weergave (groupOf)
   const out = [];
   for (let i = 0; i < n; i++) {
     const r = set ? undefined : group ?? d(20);
     let hp = m.hp;
     if (hpmode === "roll" && m.hd) { const x = rollExpr(m.hd); if (x) hp = Math.max(1, x.total); }
     const label = n > 1 || nums.length ? `${m.n} ${next + i}` : m.n;
-    const c = { id: uid(), name: label, kind: "monster", ref: m.n, init: set ? fixed : r + dx, roll: r, dex: dx, ac: parseInt(m.ac) || 10, hp, max: hp, cond: [], ...legInfo(m), rc: rcInfo(m), casting: castInfo(m) };
+    const c = { id: uid(), name: label, kind: "monster", ref: m.n, ...(grp ? { grp } : {}), init: set ? fixed : r + dx, roll: r, dex: dx, ac: parseInt(m.ac) || 10, hp, max: hp, cond: [], ...legInfo(m), rc: rcInfo(m), casting: castInfo(m) };
     S.list.push(c); out.push(c);
     because(`${set ? "initiative ingevuld" : `d20 [${r}] ${sgn(dx)}`}${group !== null && n > 1 ? ", groepsworp" : ""}${hpmode === "roll" ? `, HP gerold (${m.hd})` : ""}`, c.id);
   }

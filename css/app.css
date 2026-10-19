@@ -349,6 +349,7 @@ ol.order{gap:6px}
 .dock .who{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
 .dock .who .l{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .dock .who b{font-family:var(--display);font-size:1.15rem;color:var(--active)}
+.dock .who .gk{font-size:.85rem;font-weight:700;color:var(--muted);white-space:nowrap}
 .dock .who .r{font-size:.8rem;color:var(--muted);text-align:right;min-width:0}
 .dock .row{display:grid;grid-template-columns:52px 52px minmax(0,1fr);gap:8px}
 .dock .row.one{grid-template-columns:52px minmax(0,1fr)}

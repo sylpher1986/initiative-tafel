@@ -25,7 +25,7 @@ function hp(c) {
 }
 
 function row(c, V) {
-  const turn = c.id === V.active, nxt = c.id === V.next;
+  const turn = c.id === V.active || (V.group || []).includes(c.id), nxt = c.id === V.next;
   const ds = c.ds ? `<span class="bd r">Death saves ✓${c.ds.s} ✗${c.ds.f}</span>` : "";
   const tags = (c.tags || []).map((t) => `<span class="bd cc">${esc(t)}</span>`).join("");
   return `<li class="pvc ${c.kind} ${turn ? "turn" : ""} ${c.out ? "out" : ""}">
@@ -40,7 +40,7 @@ function paint(V) {
   $("#pv-wait").hidden = true;
   const act = V.list.find((c) => c.id === V.active), nxt = V.list.find((c) => c.id === V.next);
   $("#pv-now").innerHTML = V.round
-    ? `<div><span class="l">Ronde ${V.round} · aan de beurt</span><b>${act ? esc(act.name) : "…"}</b></div>${nxt ? `<div class="r"><span class="l">Daarna</span>${esc(nxt.name)}</div>` : ""}`
+    ? `<div><span class="l">Ronde ${V.round} · aan de beurt</span><b>${V.gname ? esc(V.gname) : act ? esc(act.name) : "…"}</b></div>${nxt ? `<div class="r"><span class="l">Daarna</span>${esc(nxt.name)}</div>` : ""}`
     : `<div><span class="l">Nog geen gevecht</span><b>Rol initiative</b></div>`;
   $("#pv-list").innerHTML = V.list.map((c) => row(c, V)).join("");
   const el = document.querySelector(".pvc.turn");
