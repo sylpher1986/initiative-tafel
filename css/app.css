@@ -158,6 +158,8 @@ details.conds summary::-webkit-details-marker{display:none}
 .lg-msg:focus-visible::after{outline:2px solid var(--accent);outline-offset:-2px;border-radius:6px}
 @media (hover:hover){.lg:hover{background:var(--sunk)}}
 .lg-tip{margin:0 0 6px}
+.gsheet .lg{min-height:44px;align-content:center}
+.gsheet .lglist{max-height:none;overflow:visible}
 .lg-why{font-size:.85rem;color:var(--muted);font-style:italic}
 .lg-note{position:relative;z-index:1;justify-self:start;border:0;background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:2px 8px;font-size:.85rem;text-align:left}
 .lg-in{position:relative;z-index:1;width:100%;border:1px solid var(--line);border-radius:6px;background:var(--bg);padding:6px 8px;margin-top:2px}
@@ -431,7 +433,10 @@ body[data-mode="fight"] #resetbar{display:none}
 .phase .on .dot{background:var(--fg);border-color:var(--fg);color:var(--bg)}
 .phase .ln{flex:0 0 28px;height:1.5px;background:var(--line)}
 .fhead{background:var(--fight-bg);color:var(--fight-fg);border-radius:14px;padding:12px 12px 12px 16px;display:flex;align-items:center;gap:10px}
-.fhead .ft{flex:1 1 auto;min-width:0;display:grid}
+.fhead .ft{flex:1 1 auto;min-width:0;display:grid;justify-items:start;text-align:left;font:inherit;color:inherit;background:transparent;border:1px solid var(--fight-btn-line);border-radius:12px;padding:6px 10px;margin:-6px 0 -6px -10px;cursor:pointer}
+.fhead .ft:focus-visible{outline-color:var(--fight-fg)}
+@media (hover:hover){.fhead .ft:hover{background:var(--fight-btn)}}
+.fhead .lk{color:var(--fight-fg)}
 .fhead .l{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--fight-muted)}
 .fhead .rn{font-family:var(--display);font-size:2rem;line-height:1.05;font-weight:800;white-space:nowrap}
 .fhead .fsum{font-size:.85rem;color:var(--fight-muted);margin-top:4px;font-variant-numeric:tabular-nums}

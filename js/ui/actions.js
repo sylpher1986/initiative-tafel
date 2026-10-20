@@ -428,6 +428,7 @@ export function onClick(e) {
   if (e.target.closest(".dim[data-svsheet]")) { ui.sv = false; render(); $("[data-svsheet]")?.focus(); return; } // achtergrond van het saves-paneel
   const b = e.target.closest("button");
   if (!b) return;
+  if (b.id === "logopen") { openLogSheet(); return; }
   if (b.dataset.roll) {
     const lab = b.dataset.label || b.closest(".entry")?.querySelector("i")?.textContent.replace(/\.$/, "");
     return doRoll(b.dataset.roll, lab, !!b.dataset.hit);
@@ -566,6 +567,7 @@ export function onKey(e) {
   if (e.key === "Enter" && e.target.dataset && e.target.dataset.pf) { e.preventDefault(); e.target.blur(); return; } // veld op de kaart: klaar = opslaan
   if (spellOpen()) { if (e.key === "Escape") { e.preventDefault(); closeSpell(); } return; } // ligt boven alle andere panelen: toetsen niet naar het cijferpad eronder
   if (ui.end && e.key === "Escape") { e.preventDefault(); closeEnd(); return; }
+  if (ui.logSheet && e.key === "Escape") { e.preventDefault(); closeLogSheet(); return; }
   if (ui.prep && e.key === "Escape") { e.preventDefault(); closePrep(); return; }
   if (ui.qadd && e.key === "Escape") { e.preventDefault(); closeQadd(); return; }
   if (ui.aoe && e.key === "Escape") { e.preventDefault(); closeAoe(); return; }
@@ -1421,20 +1423,27 @@ export function bindParty() {
 
 /* ---------- logboek ---------- */
 export function bindLog() {
-  const wrap = $("#logwrap");
-  wrap.addEventListener("click", async (e) => {
-    const b = e.target.closest("button"); if (!b) return;
-    if (b.dataset.logedit) { ui.editLog = b.dataset.logedit; paintLog(); return; }
-    if (b.id === "logcopy") copyText(logText(app.S.log), "Logboek gekopieerd.", $("#logbox"));
-  });
   const commitNote = (inp) => { const e = (app.S.log || []).find((x) => x.id === inp.dataset.lognote); if (e) e.note = inp.value.trim(); ui.editLog = null; render(); };
-  wrap.addEventListener("keydown", (e) => {
-    if (!e.target.dataset.lognote) return;
-    if (e.key === "Enter") { e.preventDefault(); commitNote(e.target); }
-    if (e.key === "Escape") { ui.editLog = null; paintLog(); }
-  });
-  wrap.addEventListener("focusout", (e) => { if (e.target.dataset.lognote && ui.editLog) commitNote(e.target); });
+  // twee plekken met dezelfde regels: het blok onder de lijst (Voorbereiden) en het paneel (Gevecht, IN7)
+  for (const wrap of [$("#logwrap"), $("#gsheet")]) {
+    wrap.addEventListener("click", async (e) => {
+      const b = e.target.closest("button, [data-log]"); if (!b) return;
+      if (b.dataset.log === "close") { closeLogSheet(); return; }
+      if (b.dataset.logedit) { ui.editLog = b.dataset.logedit; paintLog(); return; }
+      if (b.id === "logcopy") copyText(logText(app.S.log), "Logboek gekopieerd.", b.closest(".logbox, .gsheet"));
+    });
+    wrap.addEventListener("keydown", (e) => {
+      if (!e.target.dataset.lognote) return;
+      if (e.key === "Enter") { e.preventDefault(); commitNote(e.target); }
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); ui.editLog = null; paintLog(); wrap.querySelector(".gsheet")?.focus({ preventScroll: true }); }
+    });
+    wrap.addEventListener("focusout", (e) => { if (e.target.dataset.lognote && ui.editLog) commitNote(e.target); });
+  }
 }
+/** IN7: logboek-paneel openen vanuit het rondeblok in de Gevecht-kop */
+function openLogSheet() { ui.logSheet = true; ui.editLog = null; paintLog(); $("#gsheet .gsheet")?.focus(); }
+/** Sluit, Escape, achtergrond: focus terug naar het rondeblok */
+function closeLogSheet() { ui.logSheet = false; ui.editLog = null; paintLog(); $("#logopen")?.focus({ preventScroll: true }); }
 
 /** true als het klembord het heeft; anders staat de tekst geselecteerd in `box` */
 async function copyText(t, okMsg, box) {

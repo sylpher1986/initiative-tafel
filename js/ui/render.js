@@ -68,6 +68,7 @@ export const ui = {
   endFlee: false,      // "Gevlucht of overgegeven?" opengeklapt in de samenvatting
   downOpen: false,     // blok "Neer (N)" onderaan de lijst (Gevecht) opengeklapt
   fromDown: null,      // id van een dood monster dat vanuit dat blok geopend is (blijft dan in het blok)
+  logSheet: false,     // logboek als paneel (IN7, alleen in Gevecht; geopend via het rondeblok in de kop)
 };
 export const openId = () => (ui.open === null ? app.S.active : ui.open);
 /** Modus volgt het gevecht: zonder gevecht altijd Voorbereiden; tijdens een gevecht kan de DM tussendoor naar Voorbereiden (✎) */
@@ -118,7 +119,7 @@ function paintMode() {
   document.body.dataset.mode = m;
   if (S.round) document.body.dataset.run = "1"; else delete document.body.dataset.run;
   $("#modes").innerHTML = m === "fight"
-    ? `<div class="fhead"><div class="ft"><span class="l">Gevecht</span><span class="rn">Ronde ${n0(S.round)}</span><span class="fsum">${sumHtml(S, false, " · ")}</span></div>
+    ? `<div class="fhead"><button type="button" class="ft" id="logopen" aria-haspopup="dialog" aria-label="Logboek openen, ronde ${n0(S.round)}, ${logCount(S)} gebeurtenissen"><span class="l">Gevecht · <span class="lk">Logboek <span aria-hidden="true">▸</span></span></span><span class="rn">Ronde ${n0(S.round)}</span><span class="fsum">${sumHtml(S, false, " · ")}</span></button>
       <button type="button" class="fb" data-setmode="prep" aria-label="Voorbereiden: lijst aanpassen"><span class="fi">${PEN}</span><span class="fl">Voorbereiden</span></button>
       <button type="button" class="fb ic" id="qadd" aria-label="Monster toevoegen aan het gevecht" title="Monster toevoegen aan het gevecht">${PLUS}</button></div>`
     : S.round
@@ -1177,11 +1178,10 @@ export function paintParty() {
     <p class="hint">Rust geldt voor de hele party, ook wie aan tafel zit. Long rest: volle HP, slots en resources. Short rest: resources met "per short rest".</p>${ENC_LINK}`;
 }
 
-export function paintLog() {
-  const el = $("#logwrap");
-  const L = app.S.log || [];
-  if (!L.length && !app.S.list.length) { el.innerHTML = ""; return; } // lege start: geen leeg logboek
-  const items = !ui.logOpen ? "" : [...L].reverse().map((e) => {
+const logCount = (S) => (S.log || []).filter((e) => !e.type).length;
+/** Regels van het logboek, nieuwste bovenaan (gedeeld door het blok onder de lijst en het paneel in Gevecht) */
+function logItems(L) {
+  return [...L].reverse().map((e) => {
     if (e.type === "round") return `<li class="lg-round">${esc(e.msg)}</li>`;
     if (e.type === "turn") return `<li class="lg-turn">${esc(e.msg)}</li>`;
     return `<li class="lg"><span class="lg-meta">${logRound(e.r)}${e.turn ? ` · beurt ${esc(e.turn)}` : ""}</span>
@@ -1190,8 +1190,32 @@ export function paintLog() {
       ${ui.editLog === e.id ? `<input class="lg-in" data-lognote="${esc(e.id)}" value="${esc(e.note || "")}" placeholder="Waarom? bijv. Fireball van Wolfim" aria-label="Reden">`
         : e.note ? `<button type="button" class="lg-note" data-logedit="${esc(e.id)}">${esc(e.note)}</button>` : ""}</li>`;
   }).join("");
-  el.innerHTML = `<details class="logbox" id="logbox" ${ui.logOpen ? "open" : ""}><summary><span>Logboek</span> <span class="hint">${L.filter((e) => !e.type).length} gebeurtenissen</span></summary>
-    ${L.length ? `<div class="bar" style="margin:8px 0"><button class="btn small" id="logcopy">Kopieer als tekst</button></div><p class="hint lg-tip">Tik op een regel voor een reden.</p><ol class="lglist">${items}</ol>`
-      : `<p class="hint">Nog niets gebeurd. Schade, condities, spells, death saves en beurten verschijnen hier automatisch, met ronde en oorzaak.</p>`}</details>`;
-  if (ui.editLog) { const i = el.querySelector(".lg-in"); if (i) i.focus(); }
+}
+const EMPTY_LOG = `<p class="hint">Nog niets gebeurd. Schade, condities, spells, death saves en beurten verschijnen hier automatisch, met ronde en oorzaak.</p>`;
+
+/**
+ * Logboek: in Voorbereiden een uitklapblok onder de lijst; in Gevecht alleen als paneel #gsheet (IN7), want onder de
+ * kaarten is het ver van de duim. Nooit beide tegelijk (zelfde id's).
+ */
+export function paintLog() {
+  const el = $("#logwrap"), gs = $("#gsheet");
+  const L = app.S.log || [], fight = mode() === "fight";
+  if (!fight) ui.logSheet = false; // gevecht voorbij of naar Voorbereiden: paneel dicht (UI-toestand)
+  if (!ui.logSheet) { if (!gs.hidden) { gs.hidden = true; gs.innerHTML = ""; } }
+  else {
+    const old = gs.querySelector(".gsheet"), top = old ? old.scrollTop : 0;
+    gs.innerHTML = `<div class="dim" data-log="close"></div>
+      <div class="sheet qsheet gsheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="g-title">
+        <div class="grab" aria-hidden="true"></div>
+        <div class="shead"><h3 id="g-title">Logboek · ronde ${n0(app.S.round)}</h3><button type="button" class="link" data-log="close">Sluit</button></div>
+        ${L.length ? `<p class="hint lg-tip">Tik op een regel voor een reden.</p><ol class="lglist">${logItems(L)}</ol>` : EMPTY_LOG}
+        ${L.length ? `<div class="ifoot"><button type="button" class="btn" id="logcopy">Kopieer als tekst</button><button type="button" class="btn" data-log="close">Sluit</button></div>` : ""}
+      </div>`;
+    gs.hidden = false;
+    gs.querySelector(".gsheet").scrollTop = top;
+  }
+  if (fight || (!L.length && !app.S.list.length)) { el.innerHTML = ""; } // Gevecht: alleen het paneel; lege start: geen leeg logboek
+  else el.innerHTML = `<details class="logbox" id="logbox" ${ui.logOpen ? "open" : ""}><summary><span>Logboek</span> <span class="hint">${logCount(app.S)} gebeurtenissen</span></summary>
+    ${L.length ? `<div class="bar" style="margin:8px 0"><button class="btn small" id="logcopy">Kopieer als tekst</button></div><p class="hint lg-tip">Tik op een regel voor een reden.</p><ol class="lglist">${ui.logOpen ? logItems(L) : ""}</ol>` : EMPTY_LOG}</details>`;
+  if (ui.editLog) { const i = (ui.logSheet ? gs : el).querySelector(".lg-in"); if (i) i.focus(); }
 }
