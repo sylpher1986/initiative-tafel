@@ -26,6 +26,12 @@ export function lastExportText(exp, now = Date.now()) {
   return `Laatste export: ${d.getDate()} ${MON[d.getMonth()]}${yr} (${ago})`;
 }
 
+/** AF5: korte vorm voor de kop van Instellingen → Opslag: "Export: 8 dagen geleden" */
+export function exportStat(exp, now = Date.now()) {
+  const m = lastExportText(exp, now).match(/\((.+)\)$/);
+  return m ? `Export: ${m[1]}` : "Nog nooit geëxporteerd";
+}
+
 /* ---------- localStorage (privémodus of geblokkeerd: dan gewoon geen herinnering) ---------- */
 const num = (k) => { try { const v = +globalThis.localStorage?.getItem(k); return v > 0 ? v : 0; } catch { return 0; } };
 const put = (k, v) => { try { v ? globalThis.localStorage?.setItem(k, String(v)) : globalThis.localStorage?.removeItem(k); } catch { /* geen opslag: geen herinnering */ } };

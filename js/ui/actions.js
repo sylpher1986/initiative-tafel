@@ -1,7 +1,8 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
+import { openSettings } from "./settings.js";
 import { $, esc, n0, toast, toastHtml, closeToast, show } from "./util.js";
 import { app, because, addWhy, commit, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
-import { render, ui, openId, mode, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview, editKeys, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
+import { render, ui, openId, mode, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
@@ -397,6 +398,7 @@ function openPrep(k) {
   }
   // focus in de dialog, niet op een invoerveld: dat zou op de telefoon meteen het toetsenbord openen
   if (!was) $("#psheet .psheet").focus(); else $("#psheet .psheet").scrollTop = 0;
+  if (k === "data" && was !== "data") openSettings(); // AF5: sectie waarvoor de DM komt (kamer kwijt, export nodig) open
 }
 
 /** Paneel dicht: focus terug op de knop, en wat er net bijkwam in beeld */
@@ -601,7 +603,7 @@ export function onToggle(e) {
 
 /* ---------- formulieren: speler, monster, eigen monster ---------- */
 // UI-toestand van het spelersformulier (geen data: hoort niet in undo/opslag)
-let pendingSheet = null, pendingImg = null, pendingDdb = null, pendingNew = false, matchPid = null, ddbBusy = null, pdfSeq = 0, selMon = "Goblin";
+let pendingSheet = null, pendingCheck = null, pendingImg = null, pendingDdb = null, pendingNew = false, matchPid = null, ddbBusy = null, pdfSeq = 0, selMon = "Goblin";
 
 /** Bijwerken toepassen: partylid én wie aan tafel zit (zelfde pid). Eén undo-stap voor de tafel; geeft de wijzigingen terug */
 function updMember(m, f) {
@@ -625,8 +627,8 @@ function setCheck(check) {
 }
 
 function clearPending() {
-  pendingSheet = pendingImg = pendingDdb = matchPid = null; pendingNew = false;
-  setCheck(null); $("#pc-match").innerHTML = "";
+  pendingSheet = pendingCheck = pendingImg = pendingDdb = matchPid = null; pendingNew = false;
+  setCheck(null); showMatch();
 }
 
 /** Sheet (uit PDF of link) in het formulier zetten */
@@ -649,17 +651,47 @@ function formUpdate() {
   };
 }
 
-/** Bestaat deze speler al in de party? Dan een bevestigvak met de wijzigingen */
-function showMatch(check) {
-  const m = findMember(app.party, pendingDdb, pendingSheet.name);
+/** Welk partylid bedoelt het formulier? Alleen met "Ook opslaan in vaste party" aan en niet na "Als nieuwe speler" (SP3) */
+function curMatch() {
+  if (pendingNew || !$("#pc-party").checked) return null;
+  return findMember(app.party, pendingDdb, $("#pc-name").value.trim() || (pendingSheet && pendingSheet.name));
+}
+
+/**
+ * Staat deze speler al in de party? Dan een vak dat zegt wat Toevoegen doet, en een knop met die naam (SP3):
+ * met sheet = bijwerken (schade en verbruik blijven) en aan tafel; alleen een naam = aan tafel met de bewaarde stand;
+ * zit hij al aan tafel = nooit een tweede deelnemer.
+ */
+function showMatch() {
+  const m = curMatch(), btn = $("#pc-add"), init = $("#pc-init");
   matchPid = m ? m.pid : null;
+  const here = !!m && app.S.list.some((c) => c.pid === m.pid);
+  btn.disabled = !!m && here && !pendingSheet;
+  btn.textContent = !m ? "Speler toevoegen" : here ? (pendingSheet ? "Bijwerken" : "Zit al aan tafel") : pendingSheet ? "Bijwerken en aan tafel" : "Aan tafel zetten";
+  init.required = !here;
   if (!m) { $("#pc-match").innerHTML = ""; return; }
-  const ch = mergeSheet(structuredClone(m), structuredClone(formUpdate())) // alleen voorproefje, op een kopie
-    .map((t) => (/^AC /.test(t) && check.ac.length) || (/^max HP /.test(t) && check.hp.length) ? t + " (controleer)" : t);
-  const here = app.S.list.some((c) => c.pid === m.pid);
-  $("#pc-match").innerHTML = `<div class="confirmbox"><p style="margin:0"><b>${esc(m.name)}</b> staat al in de party${here ? " en zit aan tafel" : ""}.</p>
-    <p class="hint">${ch.length ? esc(ch.join(" · ")) : "Geen wijzigingen in klasse, AC, HP of spell slots"}. Schade en verbruik blijven staan.</p>
-    <div class="bar"><button type="button" class="btn primary tap" id="pc-upd">Bijwerken</button><button type="button" class="btn tap" id="pc-new">Als nieuwe speler</button></div></div>`;
+  const nm = `<b>${esc(m.name)}</b>`;
+  let txt;
+  if (pendingSheet) {
+    const ck = pendingCheck || { ac: [], hp: [] };
+    const ch = mergeSheet(structuredClone(m), structuredClone(formUpdate())) // alleen voorproefje, op een kopie
+      .map((t) => (/^AC /.test(t) && ck.ac.length) || (/^max HP /.test(t) && ck.hp.length) ? t + " (controleer)" : t);
+    const what = ch.length ? esc(ch.join(" · ")) : "geen wijzigingen in klasse, AC, HP of spell slots";
+    txt = here ? `${nm} staat al in de party en zit aan tafel. Bijwerken: ${what}. Schade en verbruik blijven staan, initiative ook.`
+      : `${nm} staat al in de party. Toevoegen werkt de sheet bij: ${what}. Schade en verbruik blijven staan.`;
+  } else {
+    txt = here ? `${nm} staat in de party en zit al aan tafel.`
+      : `${nm} staat al in de party${m.max ? ` (${n0(m.hp)}/${n0(m.max)} HP)` : ""}. Toevoegen zet ${esc(m.name)} aan tafel met de bewaarde HP en slots.`;
+  }
+  $("#pc-match").innerHTML = `<div class="confirmbox"><p class="hint" style="margin:0">${txt}</p>
+    <div class="bar"><button type="button" class="btn tap" id="pc-new">Als nieuwe speler</button></div></div>`;
+}
+
+/** Partylid aan tafel zetten met de bewaarde stand (HP, slots, death saves, lange effecten); gedeeld met "Party aan tafel zetten" */
+function seatMember(m, init) {
+  const c = structuredClone(m); delete c.pid;
+  endFightEffects([c]); // ronde-effecten van een vorig (niet gestopt) gevecht vervallen
+  app.S.list.push({ ...c, id: uid(), pid: m.pid, kind: "pc", init, cond: c.hp > 0 ? [] : ["Unconscious"], reaction: false });
 }
 
 async function ddbFetch() {
@@ -674,7 +706,7 @@ async function ddbFetch() {
     if (ctl !== ddbBusy) return;
     clearPending();
     pendingDdb = got.id || id;
-    fillSheet(got.sheet, got.img); setCheck(got.check); showMatch(got.check);
+    pendingCheck = got.check; fillSheet(got.sheet, got.img); setCheck(got.check); showMatch();
   } catch (e) {
     if (ctl !== ddbBusy || e.name === "AbortError") return;
     info.textContent = ddbMsg(e.code);
@@ -691,30 +723,41 @@ function stopDdb() {
 }
 
 function resetPcForm() {
-  stopDdb(); pdfSeq++; clearPending(); $("#f-pc").reset(); $("#pc-dex").value = 0; $("#pc-sheetinfo").textContent = "";
+  stopDdb(); pdfSeq++; $("#f-pc").reset(); clearPending(); $("#pc-dex").value = 0; $("#pc-sheetinfo").textContent = "";
 }
 
 export function bindForms() {
   $("#pc-race").insertAdjacentHTML("beforeend", RACE_OPTS.map((r) => `<option>${esc(r)}</option>`).join(""));
   $("#f-pc").addEventListener("submit", (e) => {
     e.preventDefault();
+    const sh = pendingSheet, nm = $("#pc-name").value.trim(), init = parseInt($("#pc-init").value) || 0;
+    let lvl = cleanLvl($("#pc-lvl").value);
+    const ex = curMatch(); // zelfde regel als het vak hierboven
+    if (ex) { // SP3: bestaand partylid nooit met volle HP opnieuw aanmaken (dat overschreef de bewaarde stand)
+      const here = app.S.list.some((c) => c.pid === ex.pid);
+      if (here && !sh) return; // knop staat uit: zit al aan tafel
+      let ch = [];
+      if (sh) ch = updMember(ex, formUpdate()); else because("uit de party aan tafel gezet");
+      if (lvl) ex.lvl = lvl;
+      if (!here) { seatMember(ex, init); ui.prepLast = app.S.list[app.S.list.length - 1].id; }
+      app.S.sample = false; saveParty();
+      const what = ch.length ? ` (${ch.join(", ")})` : "";
+      resetPcForm(); render(); $("#pc-name").focus();
+      toast(here ? `${ex.name} zit al aan tafel: bijgewerkt${what}. Initiative blijft.`
+        : sh ? `${ex.name} bijgewerkt${what} en aan tafel gezet. Schade en verbruik blijven staan.`
+        : `${ex.name} aan tafel gezet met ${n0(ex.hp)}/${n0(ex.max)} HP.`);
+      return;
+    }
     const max = parseInt($("#pc-hp").value) || 0;
     const manual = (() => {
       const sl = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((l) => ({ lvl: l, max: parseInt($("#pc-sl" + l).value) || 0 })).filter((x) => x.max > 0).map((x) => ({ ...x, left: x.max, spells: "" }));
       return sl.length ? { slots: sl, daily: [] } : null;
     })();
-    const sh = pendingSheet, nm = $("#pc-name").value.trim();
-    let pid = null, lvl = cleanLvl($("#pc-lvl").value);
-    if ($("#pc-party").checked) {
-      // met D&D Beyond-id dezelfde regel als het bevestigvak (nooit een lid dat aan een ánder character hangt)
-      const ex = pendingNew ? null : pendingDdb ? findMember(app.party, pendingDdb, nm) : app.party.find((m) => m.name.toLowerCase() === nm.toLowerCase());
-      pid = ex ? ex.pid : uid();
-      if (lvl == null && ex) lvl = cleanLvl(ex.lvl); // bestaand partylid houdt zijn level
-    }
+    const pid = $("#pc-party").checked ? uid() : null;
     const dex = parseInt($("#pc-dex").value) || 0;
     const race = pickRace($("#pc-race").value, sh && sh.race);
     app.S.list.push({
-      id: uid(), pid, name: nm, kind: "pc", race, img: pendingImg, init: parseInt($("#pc-init").value) || 0, dex, ac: parseInt($("#pc-ac").value) || 0, hp: max, max, cond: [],
+      id: uid(), pid, name: nm, kind: "pc", race, img: pendingImg, init, dex, ac: parseInt($("#pc-ac").value) || 0, hp: max, max, cond: [],
       casting: manual || (sh && sh.casting ? structuredClone(sh.casting) : null), res: sh ? structuredClone(sh.res || []) : [], sheet: sh || null, initBonus: sh ? sh.initBonus : dex,
       ...(pendingDdb && !pendingNew ? { ddbId: pendingDdb } : {}), // "Als nieuwe speler": geen tweede koppeling aan hetzelfde character
       ...(lvl ? { lvl } : {}), // voor de moeilijkheid (anders uit de klasse-string van de sheet)
@@ -733,16 +776,10 @@ export function bindForms() {
   $("#pc-ddb").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); ddbFetch(); } }); // niet de submit (initiative is verplicht)
   for (const k of ["ac", "hp"]) $("#pc-" + k).addEventListener("input", (e) => e.target.closest("label").classList.remove("warn"));
   $("#pc-match").addEventListener("click", (e) => {
-    const b = e.target.closest("button");
-    if (!b || !pendingSheet) return;
-    if (b.id === "pc-new") { pendingNew = true; matchPid = null; $("#pc-match").innerHTML = ""; toast("Wordt als nieuwe speler toegevoegd. Vul initiative in."); return; }
-    if (b.id !== "pc-upd") return;
-    const m = app.party.find((x) => x.pid === matchPid);
-    if (!m) { $("#pc-match").innerHTML = ""; return; }
-    const ch = updMember(m, formUpdate());
-    resetPcForm(); render();
-    toast(`${m.name} bijgewerkt${ch.length ? ": " + ch.join(", ") : ""}.`);
+    if (e.target.closest("#pc-new")) { pendingNew = true; showMatch(); toast("Wordt als nieuwe speler toegevoegd. Vul initiative in."); }
   });
+  $("#pc-name").addEventListener("input", () => showMatch());
+  $("#pc-party").addEventListener("change", () => showMatch());
   $("#pc-pdf").addEventListener("change", async (e) => {
     const f = e.target.files[0]; if (!f) return;
     e.target.value = ""; // zelfde bestand opnieuw kiezen moet weer werken, ook na een fout
@@ -753,7 +790,7 @@ export function bindForms() {
       const got = await readSheetPdf(f), h = got && got.sheet;
       if (seq !== pdfSeq) return;
       if (!h) { $("#pc-sheetinfo").textContent = "Geen D&D Beyond-formuliervelden gevonden. Is dit een PDF-export van D&D Beyond?"; return; }
-      clearPending(); fillSheet(h, got.img);
+      clearPending(); fillSheet(h, got.img); showMatch();
     } catch { if (seq === pdfSeq) $("#pc-sheetinfo").textContent = "De PDF-lezer kon niet laden of het bestand niet openen. Controleer je verbinding en probeer het opnieuw."; }
   });
 
@@ -928,9 +965,15 @@ function svRetry(fn) {
   if (c) fn(c, j.sid);
 }
 
+/** RE7: monsters zonder bekende savebonus worden niet gerold; melden wie de DM zelf rolt */
+function selfToast(list, ab) {
+  const n = [...new Set(list.filter((c) => selfRoll(c, ab)).map((c) => c.name))];
+  if (n.length) toast(`Zelf rollen: ${n.join(", ")} (geen ${ab}-save bekend).`);
+}
+
 function svRollAll() {
   const S = app.S;
-  const ids = openSaves(S).filter((s) => (S.list.find((x) => x.id === s.id) || {}).kind === "monster").map((s) => s.sid);
+  const ids = openSaves(S).filter((s) => { const c = S.list.find((x) => x.id === s.id); return c && c.kind === "monster" && !selfRoll(c, s.ab); }).map((s) => s.sid);
   const lines = ids.map((sid) => svRoll(sid, false, true)).filter(Boolean);
   ui.svRetry = null;
   render();
@@ -1017,8 +1060,9 @@ function spellClick(a, k, b) {
     if (!(dc > 0)) { toast("Vul eerst de DC in."); $("#s-dc")?.focus(); return true; }
     const mons = spellTargets(app.S.list).map((c) => ({ c, p: spellPick(a, sp, caster, c) })).filter((x) => x.c.kind === "monster" && x.p.sel && !x.p.immune);
     if (!mons.length) { toast("Kies eerst de monsters die een save doen."); return true; }
+    selfToast(mons.map((x) => x.c), sp.ab);
     // altijd een spell: Magic Resistance geeft advantage; Bless/Bane en cover tellen mee
-    mons.forEach(({ c, p }) => { const x = rollSave(saveBonus(p.m, sp.ab), hasMagicRes(p.m), Math.random, saveMods(c, sp.ab)); a.s[c.id] = { ...(a.s[c.id] || {}), roll: x, ok: x.tot >= dc, lr: false }; });
+    mons.filter(({ c }) => !selfRoll(c, sp.ab)).forEach(({ c, p }) => { const x = rollSave(saveBonus(p.m, sp.ab), hasMagicRes(p.m), Math.random, saveMods(c, sp.ab)); a.s[c.id] = { ...(a.s[c.id] || {}), roll: x, ok: x.tot >= dc, lr: false }; });
   } else return false;
   paintAoe();
   return true;
@@ -1085,7 +1129,8 @@ export function bindAoe() {
       if (!(dc > 0)) { toast("Vul eerst de DC in."); $("#a-dc").focus(); return; }
       const mons = aoeTargets(a.src).filter((c) => c.kind === "monster" && aoePick(a, c).sel);
       if (!mons.length) { toast("Kies eerst de monsters die een save doen."); return; }
-      mons.forEach((c) => {
+      selfToast(mons, a.ab);
+      mons.filter((c) => !selfRoll(c, a.ab)).forEach((c) => {
         const m = findMon(c.ref), x = rollSave(saveBonus(m, a.ab), hasMagicRes(m), Math.random, saveMods(c, a.ab));
         aoeSet(a, c.id, { roll: x, save: x.tot >= dc ? okSave(a) : "fail", lr: false });
       });
@@ -1409,12 +1454,7 @@ export function bindParty() {
       const missing = todo.filter((m) => ui.partyInit[m.pid] === undefined || ui.partyInit[m.pid] === "");
       if (missing.length) { toast(`Nog geen initiative voor: ${missing.map((m) => m.name).join(", ")}. Vul in of tik op "Rol voor iedereen".`); return; }
       because("party aan tafel gezet");
-      todo.forEach((m) => {
-        const c = structuredClone(m); delete c.pid;
-        endFightEffects([c]); // ronde-effecten van een vorig (niet gestopt) gevecht vervallen
-        app.S.list.push({ ...c, id: uid(), pid: m.pid, kind: "pc", init: parseInt(ui.partyInit[m.pid]) || 0, cond: c.hp > 0 ? [] : ["Unconscious"], reaction: false });
-        delete ui.partyInit[m.pid];
-      });
+      todo.forEach((m) => { seatMember(m, parseInt(ui.partyInit[m.pid]) || 0); delete ui.partyInit[m.pid]; });
       app.S.sample = false; ui.prepLast = app.S.list[app.S.list.length - 1].id; toast(`${todo.length} speler${todo.length === 1 ? "" : "s"} aan tafel gezet.`);
       if (ui.prep === "party") closePrep(); else render();
       return;

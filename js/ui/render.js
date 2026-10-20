@@ -1,5 +1,6 @@
 // Tekent de encounter (compacte kaarten, één tegelijk open), de beurtbalk, het schade-paneel,
 // de party en het logboek. Render past de data niet aan.
+import { paintSetStat } from "./settings.js";
 import { $, esc, n0, spellLink } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
@@ -7,7 +8,7 @@ import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, g
 import { PRESETS as PRESETS_14, presetsFor, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn } from "../rules/effects.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList, splitSpells, edFor, sheetEd } from "../rules/spells.js";
-import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus } from "../rules/aoe.js";
+import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus, saveKnown } from "../rules/aoe.js";
 import { spellItem } from "../data/spells.js";
 import { diceify, syncSB, monCard, isPhone } from "./statblock.js";
 import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv } from "../rules/attacks.js";
@@ -143,7 +144,7 @@ export function paintPrep() {
   $("#p-montabs").querySelectorAll("[data-prep]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.prep === p));
   el.querySelectorAll("[data-panel]").forEach((x) => (x.hidden = x.dataset.panel !== p));
   if (p === "mon" && app.S.list.some((c) => c.kind === "lair")) $("#addlair").hidden = true;
-  if (p === "data") paintExpLast();
+  if (p === "data") { paintExpLast(); paintSetStat(); }
   paintEnc();
 }
 
@@ -581,14 +582,18 @@ function paintDock() {
 /* ---------- open saves: regels in de beurtbalk (max 2) of één knop met paneel ---------- */
 /** Bonus voor de knop "Rol": statblock-save of ability-modifier (Bless/Bane en cover tellen bij het rollen mee) */
 export const svBonus = (c, ab) => saveBonus(c.ref ? findMon(c.ref) : null, ab);
+/** RE7: monster zonder bekende savebonus (geen statblock/ability score): de DM rolt zelf, de app gokt geen +0 */
+export const selfRoll = (c, ab) => c.kind === "monster" && !saveKnown(c.ref ? findMon(c.ref) : null, ab);
+const SELF = ` <span class="tag">zelf rollen</span>`;
 
 function svRow(S, s) {
   const c = S.list.find((x) => x.id === s.id);
   const what = s.kind === "conc" ? `concentratie${c.concSpell ? ` · ${c.concSpell}` : ""}` : `${s.n} · einde beurt`;
-  const btns = c.kind === "monster"
+  const self = selfRoll(c, s.ab);
+  const btns = c.kind === "monster" && !self
     ? `<button type="button" class="svroll" data-svroll="${esc(s.sid)}" aria-label="${esc(c.name)}: ${esc(s.ab)}-save rollen, DC ${s.dc}">Rol ${sgn(svBonus(c, s.ab))}</button>`
     : `<button type="button" class="svok" data-svok="${esc(s.sid)}" data-v="1" aria-label="${esc(c.name)}: ${esc(s.ab)}-save geslaagd">✓</button><button type="button" class="svok bad" data-svok="${esc(s.sid)}" data-v="0" aria-label="${esc(c.name)}: ${esc(s.ab)}-save gefaald">✗</button>`;
-  return `<div class="svrow"><span class="svn"><b>${esc(c.name)}</b><small>${esc(`${s.ab} ${s.dc} · ${what}`)}</small></span>${btns}</div>`;
+  return `<div class="svrow"><span class="svn"><b>${esc(c.name)}</b><small>${esc(`${s.ab} ${s.dc} · ${what}${self ? " · zelf rollen" : ""}`)}</small></span>${btns}</div>`;
 }
 
 /** GV2: alle monsters op 0 HP (minstens één; lair telt niet): regel in de beurtbalk, de DM rondt zelf af */
@@ -605,7 +610,8 @@ export function paintSv() {
   const el = $("#ssheet");
   const O = ui.sv ? openSaves(app.S) : [];
   if (!O.length) { ui.sv = false; el.hidden = true; el.innerHTML = ""; return; }
-  const mons = O.filter((s) => (app.S.list.find((x) => x.id === s.id) || {}).kind === "monster").length;
+  const M = O.map((s) => [s, app.S.list.find((x) => x.id === s.id)]).filter(([, c]) => c && c.kind === "monster");
+  const mons = M.filter(([s, c]) => !selfRoll(c, s.ab)).length, self = [...new Set(M.filter(([s, c]) => selfRoll(c, s.ab)).map(([, c]) => c.name))];
   const old = el.querySelector(".ssheet"), top = old ? old.scrollTop : 0;
   el.innerHTML = `<div class="dim" data-svsheet="0"></div>
     <div class="sheet qsheet ssheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="s-title">
@@ -613,6 +619,7 @@ export function paintSv() {
       <div class="shead"><h3 id="s-title">Open saves</h3><button type="button" class="link" data-svsheet="0">Sluit</button></div>
       <div class="svbar">${O.map((s) => svRow(app.S, s)).join("")}</div>
       ${mons > 1 ? `<button type="button" class="btn primary qgo" data-svrollall="1">Rol alle monsters (${mons})</button>` : ""}
+      ${self.length ? `<p class="hint">Zelf rollen (geen save bekend): ${esc(self.join(", "))}.</p>` : ""}
       <p class="hint">Niet afgehandeld vervalt na de volgende beurtwissel, zonder gevolg.</p>
     </div>`;
   el.hidden = false;
@@ -856,7 +863,7 @@ function aoeRow(a, c, p, o, n) {
     : p.save === "fail" && lrLeft > 0 ? `<button type="button" class="link" data-ao="lr" data-id="${id}">Legendary resistance gebruiken (${lrLeft} over)</button>` : "";
   return `<div class="at ${p.sel ? "" : "off"}">
     <label class="atop"><input type="checkbox" data-ao="sel" data-id="${id}" ${p.sel ? "checked" : ""}>
-      <span class="atn"><span>${nm}</span> <span class="tag ${c.kind === "pc" ? "" : "m"}">${c.kind === "pc" ? "speler" : "monster"}</span><small>${n0(c.hp)}/${n0(c.max)} HP${c.temp ? ` +${n0(c.temp)}` : ""}</small></span>
+      <span class="atn"><span>${nm}</span> <span class="tag ${c.kind === "pc" ? "" : "m"}">${c.kind === "pc" ? "speler" : "monster"}</span>${p.sel && !p.roll && a.ab && selfRoll(c, a.ab) ? SELF : ""}<small>${n0(c.hp)}/${n0(c.max)} HP${c.temp ? ` +${n0(c.temp)}` : ""}</small></span>
       ${p.sel && n ? `<b class="adealt ${o.dealt ? "" : "zero"}">−${o.dealt}</b>` : ""}</label>
     ${p.sel ? `<div class="seg2 sm" role="group" aria-label="Save ${nm}">${(a.half === false ? SAVES0 : SAVES).map(([v, l]) => `<button type="button" data-ao="save" data-id="${id}" data-v="${v}" aria-pressed="${p.save === v}"${v === "none" && a.half !== false ? ` aria-label="Geen schade (bijv. Evasion)" title="Geen schade (bijv. Evasion)"` : ""}>${l}</button>`).join("")}</div>
       <div class="seg2 sm" role="group" aria-label="Weerstand ${nm}">${MODES.map(([v, l]) => `<button type="button" data-ao="mode" data-id="${id}" data-v="${v}" aria-pressed="${p.mode === v}">${l}</button>`).join("")}</div>
@@ -941,7 +948,7 @@ function spellRow(a, sp, caster, c, p) {
     : sp.ab && !p.ok && !p.immune && lrLeft > 0 ? `<button type="button" class="link" data-ao="slr" data-id="${id}">Legendary resistance gebruiken (${lrLeft} over)</button>` : "";
   return `<div class="at ${p.sel ? "" : "off"}">
     <label class="atop"><input type="checkbox" data-ao="ssel" data-id="${id}" ${p.sel ? "checked" : ""}>
-      <span class="atn"><span>${nm}</span> <span class="tag ${c.kind === "pc" ? "" : "m"}">${c.kind === "pc" ? "speler" : "monster"}</span>${p.tags.map((t) => ` <span class="tag">${esc(t)}</span>`).join("")}<small>${c.max ? `${n0(c.hp)}/${n0(c.max)} HP` : "HP onbekend"}</small></span>
+      <span class="atn"><span>${nm}</span> <span class="tag ${c.kind === "pc" ? "" : "m"}">${c.kind === "pc" ? "speler" : "monster"}</span>${p.tags.map((t) => ` <span class="tag">${esc(t)}</span>`).join("")}${p.sel && !p.roll && !p.immune && sp.ab && selfRoll(c, sp.ab) ? SELF : ""}<small>${c.max ? `${n0(c.hp)}/${n0(c.max)} HP` : "HP onbekend"}</small></span>
       ${res}</label>
     ${p.sel && sp.ab && !p.immune ? `<div class="seg2 sm" role="group" aria-label="Save ${nm}">${[["0", "Gefaald"], ["1", "Geslaagd"]].map(([v, l]) => `<button type="button" data-ao="ssave" data-id="${id}" data-v="${v}" aria-pressed="${(p.ok || p.lr) === (v === "1")}">${l}</button>`).join("")}</div>
       ${info ? `<div class="acalc">${info}</div>` : ""}${lrBtn}` : ""}

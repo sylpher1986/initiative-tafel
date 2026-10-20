@@ -26,9 +26,9 @@ const shareUrl = () => `${location.origin}/speler?k=${room.code}`;
 
 function lost(on) {
   clearTimeout(lostT); lostT = 0;
-  if (!on) { document.documentElement.classList.remove("kamer-lost"); warned = false; return; }
+  if (!on) { document.documentElement.classList.remove("kamer-lost"); warned = false; changed(); return; }
   lostT = setTimeout(() => {
-    document.documentElement.classList.add("kamer-lost");
+    document.documentElement.classList.add("kamer-lost"); changed();
     if (!warned) { warned = true; toast("Spelersscherm: verbinding kwijt, opnieuw verbinden…"); }
   }, LOST_MS);
 }
@@ -36,7 +36,7 @@ function lost(on) {
 /** Rode stip op ⚙ tijdens een pauze (zoals bij "verbinding kwijt"): blijft tot de DM hervat of stopt */
 function setPaused(on) {
   paused = on; resuming = false; missed = false;
-  document.documentElement.classList.toggle("kamer-pauze", on);
+  document.documentElement.classList.toggle("kamer-pauze", on); changed();
 }
 
 function resume() {
@@ -108,7 +108,20 @@ async function copy() {
   catch { toast("Kopiëren lukt niet. Houd de link ingedrukt om hem te kopiëren."); }
 }
 
+/** AF5: korte status voor de kop van de sectie Spelersscherm; warn = zelfde rode stip als op ⚙ */
+export function kamerStat() {
+  const h = document.documentElement.classList, warn = h.contains("kamer-lost") || h.contains("kamer-pauze");
+  if (!room) return { t: "Niet gedeeld", warn };
+  if (paused && st !== "elders") return { t: "Gepauzeerd", warn: true };
+  if (st === "kwijt" || h.contains("kamer-lost")) return { t: "Verbinding kwijt", warn: true };
+  if (st === "elders") return { t: "In ander tabblad", warn };
+  if (st === "open") return { t: `Gedeeld · ${fmtCode(room.code)} · ${n} scherm${n === 1 ? "" : "en"}`, warn };
+  return { t: "Verbinden…", warn };
+}
+const changed = () => document.dispatchEvent(new Event("it-kamer"));
+
 function paint() {
+  changed();
   const box = $("#kamer-box");
   if (!box) return;
   if (!room) {

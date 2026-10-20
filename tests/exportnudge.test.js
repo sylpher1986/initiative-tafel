@@ -55,3 +55,11 @@ test("opslag kapot (privémodus): geen fout, geen herinnering", () => {
     assert.deepEqual(nudgeState(), { exp: 0, dirty: 0, snooze: 0 });
   } finally { delete globalThis.localStorage; }
 });
+
+test("AF5: korte exportstatus voor de kop van Opslag", async () => {
+  const { exportStat } = await import("../js/exportnudge.js");
+  const now = new Date(2026, 9, 20, 12).getTime();
+  assert.equal(exportStat(0, now), "Nog nooit geëxporteerd");
+  assert.equal(exportStat(now - 8 * 864e5, now), "Export: 8 dagen geleden");
+  assert.equal(exportStat(now, now), "Export: vandaag");
+});

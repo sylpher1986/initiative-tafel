@@ -134,3 +134,13 @@ test("save rollen met cover en Bless/Bane", () => {
   assert.equal(rollText(x, 15), "d20 [11] +3 + 2 Half cover + 1d4 [3] Bless − 1d4 [1] Bane = 18 ✓");
   assert.equal(rollText(rollSave(-1, false, () => 0), 10), "d20 [1] -1 = 0 ✗", "zonder effecten ongewijzigd");
 });
+
+test("RE7: saveKnown alleen met Saving Throws, ability scores of (DEX) een Dex-score", async () => {
+  const { saveKnown } = await import("../js/rules/aoe.js");
+  assert.equal(saveKnown(null, "WIS"), false);
+  assert.equal(saveKnown({ dexScore: 14 }, "DEX"), true);
+  assert.equal(saveKnown({ dexScore: 14 }, "WIS"), false);
+  assert.equal(saveKnown({ ab: [10, 12, 10, 8, 10, 6] }, "CHA"), true);
+  assert.equal(saveKnown({ x: [["Saving Throws", "Con +5, Wis +3"]] }, "WIS"), true);
+  assert.equal(saveKnown({ x: [["Saving Throws", "Con +5"]] }, "WIS"), false);
+});

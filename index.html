@@ -7,7 +7,7 @@
 <meta name="description" content="Initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.">
 <meta name="theme-color" content="#8a1f14" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#13161d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="1.33.0">
+<meta name="it-version" content="1.33.1">
 <script src="js/theme.js"></script>
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
 <script>
@@ -83,7 +83,7 @@
         <div class="slotin" style="margin-top:8px"><label>1e<input id="pc-sl1" type="number" min="0" max="9" inputmode="numeric"></label><label>2e<input id="pc-sl2" type="number" min="0" max="9" inputmode="numeric"></label><label>3e<input id="pc-sl3" type="number" min="0" max="9" inputmode="numeric"></label><label>4e<input id="pc-sl4" type="number" min="0" max="9" inputmode="numeric"></label><label>5e<input id="pc-sl5" type="number" min="0" max="9" inputmode="numeric"></label><label>6e<input id="pc-sl6" type="number" min="0" max="9" inputmode="numeric"></label><label>7e<input id="pc-sl7" type="number" min="0" max="9" inputmode="numeric"></label><label>8e<input id="pc-sl8" type="number" min="0" max="9" inputmode="numeric"></label><label>9e<input id="pc-sl9" type="number" min="0" max="9" inputmode="numeric"></label></div>
       </details>
       <label class="chk"><input type="checkbox" id="pc-party" checked> Ook opslaan in vaste party</label>
-      <button class="btn primary" type="submit">Speler toevoegen</button>
+      <button class="btn primary" type="submit" id="pc-add">Speler toevoegen</button>
     </form>
 
     <form class="form" id="f-mon" data-panel="mon" hidden>
@@ -103,7 +103,8 @@
     <div class="form" id="enc-panel" data-panel="enc" hidden><!-- js/ui/encounters.js --></div>
     <div class="form" id="party-panel" data-panel="party" hidden></div>
     <div class="form" id="data-panel" data-panel="data" hidden>
-      <h2 class="sethead" id="theme-head">Weergave</h2>
+      <details class="setsec" data-sec="look"><summary><h2 class="sethead" id="theme-head">Weergave</h2><span class="sstat" data-sstat="look"></span><span class="schev" aria-hidden="true"></span></summary>
+      <div class="setbody">
       <div class="seg" role="group" aria-labelledby="theme-head" id="theme-seg">
         <button type="button" data-theme-set="system" aria-pressed="true">Systeem</button>
         <button type="button" data-theme-set="light" aria-pressed="false">Licht</button>
@@ -115,14 +116,18 @@
         <button type="button" data-react="off" aria-pressed="false">Spelers zelf</button>
       </div>
       <p class="hint">Spelers zelf: geen Reaction-knop op spelerskaarten. Monsters houden de knop. Verrast en Shield blijven werken.</p>
-      <h2 class="sethead" id="rules-head">Spells</h2>
+      </div></details>
+      <details class="setsec" data-sec="spells"><summary><h2 class="sethead" id="rules-head">Spells</h2><span class="sstat" data-sstat="spells"></span><span class="schev" aria-hidden="true"></span></summary>
+      <div class="setbody">
       <div class="seg" role="group" aria-labelledby="rules-head" id="rules-seg">
         <button type="button" data-rules="2014" aria-pressed="true">2014</button>
         <button type="button" data-rules="2024" aria-pressed="false">2024</button>
       </div>
       <!-- Tekst bijwerken zodra er meer dan spells per editie verandert -->
       <p class="hint">Regels en uitleg van spells: de presets Barkskin, Haste en Sleep (alleen 2024), welke spells concentratie vragen, en welke tekst het spell-paneel toont. <b>Geldt alleen voor spells:</b> de rest van de app (condities, crits, concentratie-DC) blijft 2014. Spelers met een D&amp;D Beyond-sheet volgen per spell de versie op hun sheet; monsters, spelers zonder sheet en spells die niet op de sheet staan, volgen deze instelling. In het spell-paneel kun je de andere versie bekijken; dat verandert niets aan de regels. Wat al loopt, houdt de regels van het moment van casten.</p>
-      <h2 class="sethead">Spelersscherm</h2>
+      </div></details>
+      <details class="setsec" data-sec="player"><summary><h2 class="sethead">Spelersscherm</h2><span class="sstat" data-sstat="player"></span><span class="schev" aria-hidden="true"></span></summary>
+      <div class="setbody">
       <p class="hint">Spelers zien de volgorde, wie aan de beurt is en de HP van spelers. Nooit statblocks, notities of wat je verbergt (monsters via ⋯, de lair op zijn kaart).</p>
       <h3 class="subhead">Wat spelers zien</h3>
       <div id="vis-box" class="visbox">
@@ -139,10 +144,14 @@
       <h3 class="subhead">Op dit apparaat</h3>
       <p class="hint">Een tweede venster van deze browser (tv via kabel, tweede scherm, tablet in split view). Werkt ook zonder internet. Op iPhone/iPad: open de site in Safari, niet de app op je beginscherm.</p>
       <div class="bar"><button type="button" class="btn" id="spelers">Open spelersscherm</button></div>
-      <h2 class="sethead">Hulp</h2>
+      </div></details>
+      <details class="setsec" data-sec="help"><summary><h2 class="sethead">Hulp</h2><span class="sstat" data-sstat="help"></span><span class="schev" aria-hidden="true"></span></summary>
+      <div class="setbody">
       <div class="bar"><button type="button" class="btn tap" id="tour-again">Rondleiding opnieuw</button></div>
       <p class="hint">Uitleg van de knoppen, bijvoorbeeld voor een co-DM. Tijdens een gevecht krijg je het gevecht-deel, anders het voorbereiden-deel; dat van het gevecht volgt bij Start gevecht.</p>
-      <h2 class="sethead">Opslag</h2>
+      </div></details>
+      <details class="setsec" data-sec="store"><summary><h2 class="sethead">Opslag</h2><span class="sstat" data-sstat="store"></span><span class="schev" aria-hidden="true"></span></summary>
+      <div class="setbody">
       <p class="hint">Alles staat op dit apparaat. Maak af en toe een export: als backup, om naar een ander apparaat te gaan, of om je party met een co-DM te delen.</p>
       <div class="bar"><button type="button" class="btn primary" id="exp-file">Exporteer als bestand</button><button type="button" class="btn small" id="exp-copy">Kopieer als tekst</button></div>
       <p class="hint" id="exp-last"></p>
@@ -152,6 +161,7 @@
         <button type="button" class="btn small" id="imp-text-go">Importeren</button></div></details>
       <div id="imp-confirm"></div>
       <p class="hint" id="data-info"></p>
+      </div></details>
       <p class="hint appver" id="app-version"></p>
     </div>
     <form class="form" id="f-custom" data-panel="custom" hidden>
