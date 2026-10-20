@@ -115,8 +115,8 @@ test("defMode: nonsilver en eigen monster zonder ab", async () => {
   assert.equal(saveBonus({ n: "Eigen", text: "" }, "CON"), 0);
   // DM-keuze wint van het statblock, zonder keuze volgt het statblock
   const x = [["Damage Immunities", "fire"]];
-  assert.equal(pickFor(undefined, x, "fire").mode, 0);
-  assert.equal(pickFor({ ...newPick(), mode: 1 }, x, "fire").mode, 1);
+  assert.equal(pickFor(undefined, defMode(x, "fire")).mode, 0);
+  assert.equal(pickFor({ ...newPick(), mode: 1 }, defMode(x, "fire")).mode, 1);
   assert.ok(hasMagicRes({ t: [["Magic Resistance", "..."]] }));
   assert.ok(!hasMagicRes({ t: [] }));
   // advantage: hoogste van twee

@@ -47,7 +47,7 @@ function diffWhy(r, lair, tog) {
 function weakRow(r, tog) {
   if (!r.weak.length) return "";
   const who = esc(r.weak.map((w) => `${w.n}× ${w.name}`).join(", "));
-  return `<p>${r.all ? `Telt mee voor ×, ook met veel lagere CR: ${who}` : `Niet meegeteld voor ×: ${who} (veel lagere CR, DMG)`}</p>
+  return `<p>${r.all ? `Telt mee voor ×, ook met veel lagere CR: ${who}` : `Niet meegeteld voor ×: ${who} (XP onder 1/10 van het sterkste monster)`}</p>
     ${tog ? `<button type="button" class="btn small dall" ${tog} aria-pressed="${r.all}">${r.all ? "✓ " : ""}Toch meetellen</button>` : ""}`;
 }
 

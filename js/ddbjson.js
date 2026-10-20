@@ -93,10 +93,6 @@ function spellRow(s) {
 }
 
 /**
- * Character-JSON → { sheet, id, hasAvatar, check: { ac: [redenen], hp: [redenen] } }, of null als het geen character is.
- * Accepteert zowel het volledige antwoord ({ success, data }) als alleen data.
- */
-/**
  * SP2: weerstanden uit de modifiers (ras, klasse, feats, gedragen items): type resistance/immunity/vulnerability met
  * een damage type als subType. Voorwaardelijke ("…-from-nonmagical-attacks") en conditie-immuniteiten tellen niet.
  * Handmatige "Defenses" op de sheet (customDefenseAdjustments) leest de app niet: die vult de DM zelf aan.
@@ -121,6 +117,10 @@ export function drMerge(cur, oldSh, newSh) {
   return cleanDr(out);
 }
 
+/**
+ * Character-JSON → { sheet, id, hasAvatar, check: { ac: [redenen], hp: [redenen] } }, of null als het geen character is.
+ * Accepteert zowel het volledige antwoord ({ success, data }) als alleen data.
+ */
 export function parseDdbJson(json) {
   const d = obj(json) && obj(json.data) ? json.data : json;
   if (!obj(d) || !str(d.name)) return null;
@@ -337,6 +337,9 @@ export function mergeSheet(t, f) {
   if (f.max && oMax !== f.max) ch.push(`max HP ${oMax || "?"} → ${f.max}`);
   if (f.max) { if (t.hp == null) t.hp = t.max; setMax(t, f.max + extra); }
   if (f.ac) t.ac = f.ac;
+  // PDF-sheet (geen dr) na een link-sheet: de laatst bekende resistances van de link blijven de basis, anders tellen ze
+  // bij een latere link-update als eigen toevoeging
+  if (f.sheet && !f.sheet.dr && t.sheet && t.sheet.dr) f.sheet = { ...f.sheet, dr: t.sheet.dr };
   const dr = drMerge(t.dr, t.sheet, f.sheet); // vóór de sheet wisselt (eigen toevoegingen blijven)
   const dd = drDiff(t.dr, dr);
   if (dd) { ch.push(dd); if (dr) t.dr = dr; else delete t.dr; }

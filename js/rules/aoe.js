@@ -60,9 +60,8 @@ export const drText = (dr) => (!dr ? "" : [["r", "Resist"], ["i", "Immuun"], ["v
 /** Modus voor een doelwit: monster uit het statblock (m.x), speler uit zijn weerstanden */
 export const targetMode = (c, m, type) => (c && c.kind === "pc" ? drMode(c.dr, type) : defMode(m && m.x, type));
 
-/** Effectieve keuze: mode uit het statblock tenzij de DM zelf koos. def = targetMode(...) of een statblock (x) */
-export function pickFor(t, x, type) {
-  const def = x && typeof x === "object" && "mode" in x ? x : defMode(x, type);
+/** Effectieve keuze: standaard-modus (targetMode: statblock of opgeslagen resistances) tenzij de DM zelf koos */
+export function pickFor(t, def) {
   return { ...(t || newPick()), auto: !t || t.mode === null, mode: t && t.mode !== null ? t.mode : def.mode, def };
 }
 

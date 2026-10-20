@@ -191,7 +191,7 @@ const row = {
   react(c) { c.reaction = !c.reaction; },
   hide(c) { if (c.hidden) delete c.hidden; else c.hidden = true; },
   /* ---- resistances van een speler (SP2, in ⋯) ---- */
-  "dr-open"(c) { ui.drOpen = ui.drOpen === c.id ? null : c.id; },
+  "dr-open"(c) { ui.drOpen = ui.drOpen === c.id ? null : c.id; ui.drKind = "r"; },
   "dr-kind"(c, b) { if (DR_LBL[b.dataset.v]) ui.drKind = b.dataset.v; },
   "dr-t"(c, b) {
     const t = b.dataset.t, k = ui.drKind;

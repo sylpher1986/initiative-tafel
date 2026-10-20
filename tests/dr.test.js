@@ -36,11 +36,9 @@ test("drMode/targetMode: speler uit zijn resistances, monster uit het statblock"
   assert.equal(targetMode(pc, { x: [["Damage Immunities", "fire"]] }, "fire").mode, 0.5, "speler: statblock telt niet");
   assert.equal(targetMode(mon, { x }, "fire").mode, 0.5);
   assert.equal(targetMode(mon, null, "fire").mode, 1);
-  // pickFor met een kant-en-klare modus en (oud) met een statblock
-  const p = pickFor(undefined, drMode(dr, "fire"), "fire");
+  const p = pickFor(undefined, drMode(dr, "fire"));
   assert.equal(p.mode, 0.5); assert.equal(p.auto, true);
-  assert.equal(pickFor({ sel: true, save: "fail", mode: 1, roll: null, lr: false }, drMode(dr, "fire"), "fire").mode, 1, "keuze van de DM wint");
-  assert.equal(pickFor(undefined, x, "fire").mode, defMode(x, "fire").mode);
+  assert.equal(pickFor({ sel: true, save: "fail", mode: 1, roll: null, lr: false }, drMode(dr, "fire")).mode, 1, "keuze van de DM wint");
 });
 
 test("drToggle: tik zet het type in de gekozen soort, verplaatst het, tweede tik zet het uit", () => {
@@ -95,6 +93,12 @@ test("mergeSheet en partyUpdate: resistances bijgewerkt met melding", () => {
   const { f } = partyUpdate(m, got);
   mergeSheet(m, f);
   assert.deepEqual(m.dr, { r: ["fire"] });
+  // PDF-update na een link-sheet: de link-resistances blijven de basis (anders later "eigen" toevoeging)
+  const t3 = { name: "Y", sheet: { dr: { r: ["fire"] } }, dr: { r: ["fire"] } };
+  mergeSheet(t3, { name: "Y", sheet: { cls: "Fighter 5" } });
+  assert.deepEqual(t3.sheet.dr, { r: ["fire"] });
+  mergeSheet(t3, { name: "Y", sheet: { dr: {} } });
+  assert.equal("dr" in t3, false);
 });
 
 test("backup: dr alleen bij spelers en opgeschoond; sheet.dr blijft ({} = geen)", () => {

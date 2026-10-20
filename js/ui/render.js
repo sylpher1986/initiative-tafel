@@ -856,7 +856,7 @@ export const aoeTargets = (ex = null) => sortOrder(app.S.list).filter((c) => c.k
 /** Effectieve keuze per doelwit (mode null = volg het statblock voor het gekozen damage type) */
 export function aoePick(a, c) {
   const m = c.ref ? findMon(c.ref) : null;
-  return pickFor(a.t[c.id], targetMode(c, m, a.type), a.type);
+  return pickFor(a.t[c.id], targetMode(c, m, a.type));
 }
 
 const MODES = [[1, "Normaal"], [0.5, "Resist"], [2, "×2"], [0, "Immuun"]];
