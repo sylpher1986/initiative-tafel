@@ -83,10 +83,18 @@ export function restoreHist(rows, { version, now, cur, maxAge = HIST_AGE }) {
 }
 
 // stand + wijzigingen aan de geschiedenis in één transactie; lukt IndexedDB niet, dan de stand zoals vroeger (met terugval)
+// Terugval met de stand van dát moment (prevObj), niet die van deze stap: een latere batch kan al gelukt zijn
+// Mislukte batch (opslag vol): die stap ontbreekt in IndexedDB. Bij de volgende gelukte batch begint de bewaarde
+// geschiedenis opnieuw, anders springt undo na herladen over het gat heen naar een oudere stand.
+let gap = false;
 function persist(ops) {
-  const obj = prevObj;
-  ops.push(["put", "state", obj]);
-  store.batch(ops).then((ok) => { if (!ok) save("state", obj); });
+  const fix = gap;
+  if (fix) {
+    const put = ops.find((o) => o[0] === "put" && o[1] === hk(seq));
+    ops.unshift(put ? ["delRange", HLO, hk(seq - 1)] : ["delRange", HLO, HHI]);
+  }
+  ops.push(["put", "state", prevObj]);
+  store.batch(ops).then((ok) => { if (!ok) gap = true; else if (fix) gap = false; if (!ok) save("state", prevObj); }); // prevObj van nu: altijd de nieuwste stand
 }
 
 /**
@@ -100,7 +108,8 @@ export function resetBaseline(boot = false) {
   if (boot && stored) {
     const r = restoreHist(stored, { version: VERSION, now: Date.now(), cur: lastJSON });
     hist = r.keep.map((x) => x.s); hkeys = r.keep.map((x) => x.k);
-    seq = Math.max(seq, ...hkeys.map((k) => +k.slice(HLO.length)));
+    // boven álle bewaarde sleutels, ook die weg moeten: mislukt het wissen, dan komen nieuwe stappen er toch na
+    for (const x of stored) { const n = x && typeof x.k === "string" ? +x.k.slice(HLO.length) : NaN; if (n > seq) seq = n; }
     ops = r.drop.map((k) => ["del", k]);
   } else {
     hist = []; hkeys = [];
