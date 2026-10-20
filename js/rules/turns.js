@@ -1,5 +1,5 @@
 // Beurtvolgorde, conditie-duur en alles wat aan het begin/einde van een beurt gebeurt.
-import { d } from "./dice.js";
+import { d, sgn } from "./dice.js";
 import { fx } from "./combat.js";
 import { tickEffects, endFightEffects } from "./effects.js";
 import { tickSaves, turnSaves } from "./saves.js";
@@ -264,6 +264,28 @@ export function clearMonsters(state) {
   }
   out.why.push({ t: "volgende encounter: monsters gewist", id: null });
   return Object.assign(out, { n, lairs: gone.size - n });
+}
+
+/** Monster met een worp die niemand heeft aangeraakt (niet ingevuld, niet via ⋯ of de kaart aangepast) */
+export const freshRoll = (c) => c.kind === "monster" && Number.isFinite(c.roll) && Number.isFinite(c.dex) && c.init === c.roll + c.dex;
+
+/**
+ * GV5: initiative van monsters opnieuw rollen bij Start gevecht. Alleen onaangeroerde worpen (freshRoll), ook verborgen
+ * monsters; ingevuld of aangepast blijft. Groep (zelfde grp én init) krijgt één worp, zodat groupOf blijft kloppen.
+ * Lair en spelers niet. Geeft { msgs, why, n }.
+ */
+export function rerollMonsters(list, rng = Math.random) {
+  const out = Object.assign(fx(), { n: 0 }), groups = new Map();
+  for (const c of list) {
+    if (!freshRoll(c)) continue;
+    const k = c.grp ? `${c.grp}|${c.init}` : null;
+    let r = k ? groups.get(k) : undefined;
+    if (r === undefined) { r = d(20, rng); if (k) groups.set(k, r); }
+    c.roll = r; c.init = r + c.dex; out.n++;
+    out.why.push({ t: `d20 [${r}] ${sgn(c.dex)}, opnieuw bij Start${k ? ", groepsworp" : ""}`, id: c.id });
+  }
+  if (out.n) out.msgs.push(`Initiative monsters opnieuw gerold (${out.n}).`);
+  return out;
 }
 
 /** Spelers die bij Start gevecht hun initiative opgeven: levend (niet dood), ook verborgen of op 0 HP */

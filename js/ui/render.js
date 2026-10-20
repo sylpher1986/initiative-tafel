@@ -3,7 +3,7 @@
 import { $, esc, n0, spellLink } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
-import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf, isSurprised, canToggleSurprise, nextUp } from "../rules/turns.js";
+import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf, isSurprised, canToggleSurprise, nextUp, freshRoll } from "../rules/turns.js";
 import { PRESETS as PRESETS_14, presetsFor, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn } from "../rules/effects.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList, splitSpells, edFor, sheetEd } from "../rules/spells.js";
@@ -17,6 +17,7 @@ import { openSaves } from "../rules/saves.js";
 import { avatar, icon, monType } from "./avatar.js";
 import { SPELLS, SPELL_CONDS, customSpell, spellTargets, spellDefault, condImmune, spellFor, rulesDiffer } from "../rules/spellcast.js";
 import { rulesEd } from "./spellrules.js";
+import { initRoll } from "./initroll.js";
 import { ANON, anonName } from "../playerview.js";
 import { paintEnc, encBanner, encStrip } from "./encounters.js";
 import { paintEnd, endBanner } from "./einde.js";
@@ -1114,6 +1115,15 @@ export function paintAtk() {
 }
 
 /* ---------- initiative van spelers bij Start gevecht ---------- */
+/** GV5: Monsters Houden | Opnieuw rollen (alleen met onaangeroerde worpen; ingevuld of aangepast blijft altijd) */
+function monRollHtml(mons) {
+  if (!mons) return "";
+  const fresh = app.S.list.filter(freshRoll).length, fixed = mons - fresh;
+  if (!fresh) return `<p class="hint">Monsters: initiative vast (${mons}).</p>`;
+  const v = initRoll();
+  return `<div class="isur"><span id="i-mon">Monsters</span><div class="seg2" role="group" aria-labelledby="i-mon">${[["keep", "Houden"], ["roll", "Opnieuw rollen"]].map(([k, l]) => `<button type="button" data-ia="mroll" data-v="${k}" aria-pressed="${v === k}">${l}</button>`).join("")}</div></div>
+      <p class="hint">${v === "roll" ? `Rolt bij Start: d20 + Dex.${fixed ? ` Ingevuld of aangepast blijft (${fixed}).` : ""}` : "Gerold bij toevoegen."}</p>`;
+}
 export function paintInit() {
   const el = $("#isheet"), x = ui.initDraft;
   if (!x) { el.hidden = true; el.innerHTML = ""; return; }
@@ -1122,8 +1132,8 @@ export function paintInit() {
   el.innerHTML = `<div class="dim" data-ia="close"></div>
     <div class="sheet qsheet isheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="i-title">
       <div class="grab" aria-hidden="true"></div>
-      <div class="shead"><h3 id="i-title">Initiative spelers</h3><button type="button" class="link" data-ia="close">Annuleer</button></div>
-      ${mons ? `<p class="hint">Monsters: initiative al gerold (${mons}).</p>` : ""}
+      <div class="shead"><h3 id="i-title">Initiative</h3><button type="button" class="link" data-ia="close">Annuleer</button></div>
+      ${monRollHtml(mons)}
       <div class="isur"><span id="i-sur">Verrast</span><div class="seg2" role="group" aria-labelledby="i-sur">${[["none", "Niemand"], ["mon", "Monsters"], ["pc", "Spelers"]].map(([k, l]) => `<button type="button" data-ia="sur" data-v="${k}" aria-pressed="${(x.sur || "none") === k}" ${k === "mon" && !mons ? "disabled" : ""}>${l}</button>`).join("")}</div></div>
       <div class="ilist">${L.map((c) => `<div class="ir ${c.id === x.act ? "act" : ""}">
         <button type="button" class="irn" data-ia="sel" data-id="${esc(c.id)}" aria-pressed="${c.id === x.act}" aria-label="${esc(c.name)}: initiative ${esc(x.v[c.id] || "leeg")}"><span>${esc(c.name)}</span>${x.rolls[c.id] ? `<small>${esc(x.rolls[c.id])}</small>` : ""}</button>

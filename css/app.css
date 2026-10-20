@@ -739,7 +739,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 
 /* surprise: keuze in het initiative-paneel, badge op de kaart */
 .isur{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px}
-.isur>span{font-weight:700;font-size:.9rem}
+.isur>span{font-weight:700;font-size:.9rem;min-width:4.6em}
 .seg2 button:disabled{opacity:.4}
 /* Gevecht: dode monsters onderaan in een ingeklapt blok */
 .downblk{list-style:none}

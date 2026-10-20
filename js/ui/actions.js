@@ -9,12 +9,13 @@ import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax,
 import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
-import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise } from "../rules/turns.js";
+import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, defMode } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
 import { castInfo, legInfo, rcInfo, pickList, isConc, edFor } from "../rules/spells.js";
 import { rulesEd, setRulesEd } from "./spellrules.js";
+import { initRoll, setInitRoll } from "./initroll.js";
 import { visNow, setVis } from "./playervis.js";
 import { nextAnon } from "../playerview.js";
 import { spellClick as spellInfoClick, spellOpen, closeSpell } from "./spellinfo.js";
@@ -289,7 +290,9 @@ const global = {
     if (!ui.initSkip && !app.S.round && initPcs(app.S.list).length) { openInit(); return false; }
     ui.initSkip = false;
     startFight(app.S, Date.now()); // GV2: duur en wie neer ging; oude samenvatting weg
-    apply(startCombat(app.S)); ui.mode = null; rekeyEdit();
+    // GV5: onaangeroerde monsterworpen opnieuw (keuze in het paneel; zonder spelers de onthouden keuze), zelfde undo-stap
+    const rr = !app.S.round && initRoll() === "roll" ? rerollMonsters(app.S.list) : null;
+    apply(rr ? R.merge(rr, startCombat(app.S)) : startCombat(app.S)); ui.mode = null; rekeyEdit();
   },
   next() { apply(step(app.S, 1)); ui.laPulse = true; },
   "down-tog"() { ui.downOpen = !ui.downOpen; },
@@ -1287,6 +1290,7 @@ function initKey(k, v) {
   if (k === "clear") { x.v[x.act] = ""; x.fresh = false; delete x.rolls[x.act]; }
   if (k === "sel") { x.act = v; x.fresh = true; }
   if (k === "sur") x.sur = v;
+  if (k === "mroll") setInitRoll(v);
   if (k === "next") initNext(x);
   if (k === "roll") {
     const c = app.S.list.find((t) => t.id === v); if (!c) return;
