@@ -134,7 +134,7 @@ function paintMode() {
 const PREP = { pc: "Speler toevoegen", mon: "Monster toevoegen", custom: "Monster toevoegen", enc: "Encounters", party: "Party", data: "Instellingen" };
 const MONTABS = ["mon", "custom", "enc"];
 /** Instellingen → Opslag: "Laatste export: …" (DA1) */
-export const paintExpLast = () => { $("#exp-last").textContent = lastExportText(nudgeState().exp); };
+export const paintExpLast = () => { $("#exp-last").textContent = lastExportText(nudgeState().exp); paintSetStat(); }; // ook de kop van Opslag (AF5)
 export function paintPrep() {
   const el = $("#psheet"), p = PREP[ui.prep] ? ui.prep : null;
   el.hidden = !p;
@@ -144,7 +144,7 @@ export function paintPrep() {
   $("#p-montabs").querySelectorAll("[data-prep]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.prep === p));
   el.querySelectorAll("[data-panel]").forEach((x) => (x.hidden = x.dataset.panel !== p));
   if (p === "mon" && app.S.list.some((c) => c.kind === "lair")) $("#addlair").hidden = true;
-  if (p === "data") { paintExpLast(); paintSetStat(); }
+  if (p === "data") paintExpLast();
   paintEnc();
 }
 

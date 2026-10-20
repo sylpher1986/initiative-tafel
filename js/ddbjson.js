@@ -350,6 +350,13 @@ export function partyUpdate(m, got) {
  * Partylid bij een opgehaalde sheet: eerst op D&D Beyond-id; anders op naam, maar alleen als die naam precies één keer
  * voorkomt en dat lid niet al aan een ánder D&D Beyond-character gekoppeld is.
  */
+/**
+ * SP3: wat "+ Speler" doet als de naam of sheet bij een partylid hoort. add = nieuw lid/losse speler,
+ * seat = aan tafel met de bewaarde stand, updSeat = sheet bijwerken en aan tafel, upd = alleen bijwerken (zit al aan tafel),
+ * none = niets (zit al aan tafel, geen sheet). Nooit een tweede deelnemer voor hetzelfde lid.
+ */
+export const seatPlan = (match, here, sheet) => !match ? "add" : here ? (sheet ? "upd" : "none") : sheet ? "updSeat" : "seat";
+
 export function findMember(party, id, name) {
   const P = arr(party).filter(obj);
   if (id) { const m = P.find((x) => x.ddbId === id); if (m) return m; }

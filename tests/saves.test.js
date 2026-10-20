@@ -97,3 +97,13 @@ test("RE7: ‹ Vorige draait de veroudering terug; daarna weer Volgende vervalt 
   step(S, -1); step(S, -1); // nooit boven TTL
   assert.equal(S.saves[0].ttl, TTL);
 });
+
+test("RE7: Vorige over de rondegrens en langs een verraste deelnemer telt ook terug", () => {
+  const S = { list: [pc(), held(), mon({ id: "x", name: "Goblin", init: 5, sur: 2 })], round: 2, active: "p" };
+  addSave(S, { id: "m", kind: "conc", n: "", ab: "CON", dc: 10 });
+  S.list[1].cond.push("Concentrating"); S.list[1].concSpell = "";
+  S.saves[0].ttl = 1;
+  step(S, -1); // terug naar Goblin in ronde 1
+  assert.equal(S.round, 1);
+  assert.equal(S.saves[0].ttl, TTL);
+});

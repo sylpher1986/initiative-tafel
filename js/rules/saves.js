@@ -33,7 +33,11 @@ export function tickSaves(S) {
   return out;
 }
 
-/** ‹ Vorige: de veroudering van de laatste beurtwissel terugdraaien (max TTL), anders vervalt een save een beurt eerder */
+/**
+ * ‹ Vorige: de veroudering van de laatste beurtwissel terugdraaien (max TTL), anders vervalt een save een beurt eerder.
+ * Bewust begrensd: na meerdere keren Vorige en weer Volgende kan een concentration save één beurt eerder vervallen
+ * (herhaalsaves niet: turnSaves zet ze bij het begin van de beurt opnieuw). Wie verder terug moet, gebruikt ↶.
+ */
 export function untickSaves(S) {
   for (const s of S.saves || []) s.ttl = Math.min(TTL, (s.ttl || 0) + 1);
 }

@@ -18,11 +18,11 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 14. ~~DA2~~ klaar in 1.31.4 (zie Klaar)
 
 **P3: later**
-- Afwerking: ~~AF1–AF3~~ klaar in 1.31.6 (zie Klaar), **AF5**
+- Afwerking: ~~AF1–AF3~~ klaar in 1.31.6, ~~AF5~~ klaar in 1.33.1 (zie Klaar)
 - Nice to have: ~~OB1, OB2~~ klaar in 1.33.0 (zie Klaar)
-- Regels: **RE1–RE7**
+- Regels: **RE1–RE6**, ~~RE7~~ klaar in 1.33.1 (zie Klaar)
 - Encounters: **VB3**
-- Spelers en D&D Beyond: **SP2–SP3**
+- Spelers en D&D Beyond: **SP2**, ~~SP3~~ klaar in 1.33.1 (zie Klaar)
 - Gevecht: ~~IN7~~ klaar in 1.32.0, ~~GV4~~ klaar in 1.32.1 (zie Klaar)
 - Spelersscherm: **SC1**
 - Taal: **TA1**
@@ -48,18 +48,16 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - [ ] **RE4 2024-regels buiten spells** (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen
 - [ ] **RE5 Surprise:** keuze ook zonder spelers aan tafel (paneel opent dan niet)
 - [ ] **RE6 Spell-uitleg:** link vanuit AoE-Spell en Effect-presets; eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie)
-- [ ] **RE7 Open saves:** ‹ Vorige telt de ttl niet terug (vervalt dan een beurt eerder); monster zonder statblock toont "Rol +0" zonder hint
 
 ## Spelers en D&D Beyond
 - [ ] **SP2 Resistances/immunities per speler opslaan** (nu handmatig in het AoE-paneel); kan uit de D&D Beyond-data komen
-- [ ] **SP3 D&D Beyond-randgevallen:** speler die al in de party staat toevoegen zonder Bijwerken zet de opgeslagen HP terug op vol (ook bij de PDF); spells van items tonen ook als het item niet gedragen/geattuned is; een PDF die nog gelezen wordt kan een net opgehaalde link-sheet overschrijven (klein risico)
 
 ## Spelersscherm
 - [ ] **SC1 QR-code bij de kamercode** (alleen als een kleine zelf-gehoste lib past)
 
 ## Afwerking (klein)
 - AF4 is opgegaan in **OB1/OB2** (rondleiding, zie Eerste gebruik)
-- [ ] **AF5** Instellingen is één lange lijst: kopjes inklapbaar of een korte inhoud bovenaan (Weergave · Spells · Spelersscherm · Opslag)
+- Geen open punten (AF5 klaar in 1.33.1, zie Klaar).
 
 ## Eerste gebruik (nice to have)
 - Geen open punten (OB1 en OB2 klaar in 1.33.0, zie Klaar).
@@ -72,7 +70,6 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 
 ## Technische schuld
 - [ ] **TS1** pdf.js zelf hosten (nu via CDN, zonder SRI)
-- Open saves (RE7) en D&D Beyond-randgevallen (SP3) stonden eerder hier en staan nu bij hun onderwerp.
 
 ## Fase 2: sync
 - [ ] Login en sync tussen apparaten (bijv. Supabase), local-first blijft de basis. Eerste collectie: `encounters` (heeft al `id` + `updatedAt`, nieuwste wint); tot dan wisselen via Delen/Importeren per encounter
@@ -167,6 +164,9 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **IN7** (1.32.0) Logboek in Gevecht: het rondeblok in de kop ("Gevecht · Logboek ▸ / Ronde N") opent een paneel met alle regels, reden toevoegen en Kopieer; in Gevecht staat het niet meer onder de lijst. Voorbereiden ongewijzigd. UX-agent koos de kop boven een strook bij de dock (dock vol, dubbel met meldingen).
 - **GV4** (1.32.1) Instellingen → Weergave → "Reaction van spelers: Knop | Spelers zelf": bij Spelers zelf geen Reaction-knop en geen badge op spelerskaarten (Heal wordt breed); monsters houden de knop.
 - **OB1/OB2** (1.33.0) Rondleiding in twee delen: Voorbereiden (na de welkomstkaart, 6 stops) en Gevecht (bij de eerste Start gevecht, 6 stops), met Overslaan/Terug/Volgende; eenmalig per apparaat, bestaande gebruikers niet vanzelf. Opnieuw via Instellingen → Hulp → "Rondleiding opnieuw".
+- **AF5** (1.33.1) Instellingen in inklapbare secties (Weergave · Spells · Spelersscherm · Hulp · Opslag), alle dicht, met een statusregel in de kop ("Gedeeld · K7M 3QX · 2 schermen", "Export: 8 dagen geleden"); ⚙ zet Spelersscherm open bij kamer kwijt/gepauzeerd en Opslag als een export nodig is.
+- **RE7** (1.33.1) Open saves: ‹ Vorige telt de veroudering terug; monster zonder bekende savebonus (geen statblock/ability score) krijgt ✓/✗ "zelf rollen" i.p.v. "Rol +0", en wordt bij Rol alle monsters, AoE en Spell overgeslagen met een melding.
+- **SP3** (1.33.1) + Speler met een bestaand partylid: geen nieuw lid met volle HP meer maar aan tafel met de bewaarde stand (met sheet: eerst bijgewerkt), nooit dubbel aan tafel; item-spells alleen als het item gedragen/geattuned is; een trage PDF overschrijft een net opgehaalde link-sheet niet meer.
 - **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.
 
 ### Functies

@@ -275,3 +275,19 @@ test("SP3: spells van een item alleen als het item gedragen (en geattuned) is; o
   const h = parseDdbJson(d).sheet;
   assert.deepEqual(h.levels.find((l) => l.lvl === 0).spells.map((s) => s.n).sort(), ["Fire Bolt", "Light", "Prestidigitation", "Thaumaturgy"]);
 });
+
+test("SP3: PDF-bijwerken (geen ddbId) houdt de D&D Beyond-koppeling van het lid", () => {
+  const m = { pid: "p1", name: "Ayla", ddbId: "123", ac: 15, max: 30, hp: 20 };
+  mergeSheet(m, { name: "Ayla", ac: 16, max: 30, ddbId: undefined });
+  assert.equal(m.ddbId, "123");
+  assert.equal(m.ac, 16);
+});
+
+test("SP3: seatPlan — nooit een tweede deelnemer voor hetzelfde partylid", async () => {
+  const { seatPlan } = await import("../js/ddbjson.js");
+  assert.equal(seatPlan(false, false, true), "add");
+  assert.equal(seatPlan(true, false, false), "seat");
+  assert.equal(seatPlan(true, false, true), "updSeat");
+  assert.equal(seatPlan(true, true, true), "upd");
+  assert.equal(seatPlan(true, true, false), "none");
+});

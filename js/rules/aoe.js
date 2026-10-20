@@ -81,17 +81,20 @@ export function defMode(x, type) {
 
 /** Is de savebonus bekend? Zonder statblock of ability score (eigen monster: alleen Dex) zou saveBonus +0 gokken */
 export function saveKnown(m, ab) {
-  if (!m) return false;
+  return !!m && (!!svHit(m, ab) || (Array.isArray(m.ab) && ABS.includes(ab)) || (ab === "DEX" && !!m.dexScore));
+}
+
+/** "Saving Throws" uit het statblock: treffer voor deze ability (teken, getal) of null */
+function svHit(m, ab) {
   const sv = ((m.x || []).find((r) => r[0] === "Saving Throws") || [])[1] || "";
-  return new RegExp(`\\b${ab}\\w*\\s*[+−-]\\s*\\d`, "i").test(String(sv)) || (Array.isArray(m.ab) && ABS.includes(ab)) || (ab === "DEX" && !!m.dexScore);
+  return String(sv).match(new RegExp(`\\b${ab}\\w*\\s*([+−-])\\s*(\\d+)`, "i"));
 }
 
 /** Savebonus van een monster: uit "Saving Throws" (Dex +6), anders de ability-modifier */
 export function saveBonus(m, ab) {
   if (!m) return 0;
   const i = ABS.indexOf(ab);
-  const sv = ((m.x || []).find((r) => r[0] === "Saving Throws") || [])[1] || "";
-  const hit = String(sv).match(new RegExp(`\\b${ab}\\w*\\s*([+−-])\\s*(\\d+)`, "i"));
+  const hit = svHit(m, ab);
   if (hit) return (hit[1] === "+" ? 1 : -1) * +hit[2];
   if (Array.isArray(m.ab) && i >= 0) return mod(m.ab[i]);
   if (ab === "DEX" && m.dexScore) return mod(m.dexScore);

@@ -22,7 +22,7 @@ import { nextAnon } from "../playerview.js";
 import { spellClick as spellInfoClick, spellOpen, closeSpell } from "./spellinfo.js";
 import { logText } from "../log.js";
 import { readSheetPdf, fetchDdb, ddbMsg } from "../ddb.js";
-import { parseDdbLink, findMember, mergeSheet, partyUpdate } from "../ddbjson.js";
+import { parseDdbLink, findMember, mergeSheet, partyUpdate, seatPlan } from "../ddbjson.js";
 import { RACE_OPTS, raceKey, pickRace, cleanImg } from "./avatar.js";
 import { buildExport, parseImport } from "../backup.js";
 import { markExported, snoozeNudge } from "../exportnudge.js";
@@ -398,6 +398,7 @@ function openPrep(k) {
   }
   // focus in de dialog, niet op een invoerveld: dat zou op de telefoon meteen het toetsenbord openen
   if (!was) $("#psheet .psheet").focus(); else $("#psheet .psheet").scrollTop = 0;
+  if (k === "pc") showMatch(); // party of tafel kan intussen veranderd zijn
   if (k === "data" && was !== "data") openSettings(); // AF5: sectie waarvoor de DM komt (kamer kwijt, export nodig) open
 }
 
@@ -603,7 +604,7 @@ export function onToggle(e) {
 
 /* ---------- formulieren: speler, monster, eigen monster ---------- */
 // UI-toestand van het spelersformulier (geen data: hoort niet in undo/opslag)
-let pendingSheet = null, pendingCheck = null, pendingImg = null, pendingDdb = null, pendingNew = false, matchPid = null, ddbBusy = null, pdfSeq = 0, selMon = "Goblin";
+let pendingSheet = null, pendingCheck = null, pendingImg = null, pendingDdb = null, pendingNew = false, ddbBusy = null, pdfSeq = 0, selMon = "Goblin";
 
 /** Bijwerken toepassen: partylid én wie aan tafel zit (zelfde pid). Eén undo-stap voor de tafel; geeft de wijzigingen terug */
 function updMember(m, f) {
@@ -627,7 +628,7 @@ function setCheck(check) {
 }
 
 function clearPending() {
-  pendingSheet = pendingCheck = pendingImg = pendingDdb = matchPid = null; pendingNew = false;
+  pendingSheet = pendingCheck = pendingImg = pendingDdb = null; pendingNew = false;
   setCheck(null); showMatch();
 }
 
@@ -647,7 +648,7 @@ function formUpdate() {
   return {
     name: $("#pc-name").value.trim() || sh.name, race: pickRace($("#pc-race").value, sh.race),
     ac: parseInt($("#pc-ac").value) || 0, max: parseInt($("#pc-hp").value) || 0, dex: parseInt($("#pc-dex").value) || 0,
-    initBonus: sh.initBonus, sheet: sh, ddbId: pendingDdb, img: pendingImg, casting: sh.casting || null, res: sh.res || [],
+    initBonus: sh.initBonus, sheet: sh, ddbId: pendingDdb || undefined, img: pendingImg, // PDF: geen id, het bestaande blijft casting: sh.casting || null, res: sh.res || [],
   };
 }
 
@@ -664,12 +665,11 @@ function curMatch() {
  */
 function showMatch() {
   const m = curMatch(), btn = $("#pc-add"), init = $("#pc-init");
-  matchPid = m ? m.pid : null;
-  const here = !!m && app.S.list.some((c) => c.pid === m.pid);
-  btn.disabled = !!m && here && !pendingSheet;
-  btn.textContent = !m ? "Speler toevoegen" : here ? (pendingSheet ? "Bijwerken" : "Zit al aan tafel") : pendingSheet ? "Bijwerken en aan tafel" : "Aan tafel zetten";
+  const here = !!m && app.S.list.some((c) => c.pid === m.pid), plan = seatPlan(!!m, here, !!pendingSheet);
+  btn.disabled = plan === "none";
+  btn.textContent = PLAN_LBL[plan];
   init.required = !here;
-  if (!m) { $("#pc-match").innerHTML = ""; return; }
+  if (!m) { $("#pc-match").innerHTML = dupHint(); return; }
   const nm = `<b>${esc(m.name)}</b>`;
   let txt;
   if (pendingSheet) {
@@ -685,6 +685,15 @@ function showMatch() {
   }
   $("#pc-match").innerHTML = `<div class="confirmbox"><p class="hint" style="margin:0">${txt}</p>
     <div class="bar"><button type="button" class="btn tap" id="pc-new">Als nieuwe speler</button></div></div>`;
+}
+
+const PLAN_LBL = { add: "Speler toevoegen", upd: "Bijwerken", none: "Zit al aan tafel", updSeat: "Bijwerken en aan tafel", seat: "Aan tafel zetten" };
+/** Meerdere partyleden met deze naam: findMember kiest er geen, dan wordt het een nieuw lid; zeg dat */
+function dupHint() {
+  if (pendingNew || !$("#pc-party").checked) return "";
+  const n = ($("#pc-name").value.trim() || (pendingSheet && pendingSheet.name) || "").toLowerCase();
+  if (!n || app.party.filter((x) => String(x.name || "").trim().toLowerCase() === n).length < 2) return "";
+  return `<p class="hint">Meerdere partyleden heten ${esc($("#pc-name").value.trim())}. Dit wordt een nieuw lid; een bestaand lid zet je aan tafel via Party.</p>`;
 }
 
 /** Partylid aan tafel zetten met de bewaarde stand (HP, slots, death saves, lange effecten); gedeeld met "Party aan tafel zetten" */
@@ -734,18 +743,18 @@ export function bindForms() {
     let lvl = cleanLvl($("#pc-lvl").value);
     const ex = curMatch(); // zelfde regel als het vak hierboven
     if (ex) { // SP3: bestaand partylid nooit met volle HP opnieuw aanmaken (dat overschreef de bewaarde stand)
-      const here = app.S.list.some((c) => c.pid === ex.pid);
-      if (here && !sh) return; // knop staat uit: zit al aan tafel
+      const here = app.S.list.some((c) => c.pid === ex.pid), plan = seatPlan(true, here, !!sh);
+      if (plan === "none") return; // knop staat uit: zit al aan tafel
       let ch = [];
       if (sh) ch = updMember(ex, formUpdate()); else because("uit de party aan tafel gezet");
       if (lvl) ex.lvl = lvl;
-      if (!here) { seatMember(ex, init); ui.prepLast = app.S.list[app.S.list.length - 1].id; }
+      if (plan !== "upd") { seatMember(ex, init); ui.prepLast = app.S.list[app.S.list.length - 1].id; }
       app.S.sample = false; saveParty();
       const what = ch.length ? ` (${ch.join(", ")})` : "";
       resetPcForm(); render(); $("#pc-name").focus();
       toast(here ? `${ex.name} zit al aan tafel: bijgewerkt${what}. Initiative blijft.`
         : sh ? `${ex.name} bijgewerkt${what} en aan tafel gezet. Schade en verbruik blijven staan.`
-        : `${ex.name} aan tafel gezet met ${n0(ex.hp)}/${n0(ex.max)} HP.`);
+        : `${ex.name} aan tafel gezet met ${n0(ex.hp)}/${n0(ex.max)} HP${ex.ds && ex.ds.dead ? " (dood)" : ex.max && ex.hp <= 0 ? " (bewusteloos)" : ""}.`);
       return;
     }
     const max = parseInt($("#pc-hp").value) || 0;

@@ -17,7 +17,8 @@ function setStat(key, t, warn = false, dot = false) {
 /** Statusregels in de koppen bijwerken (na elke tik in het paneel, bij openen en als de kamer verandert) */
 export function paintSetStat() {
   if (!$("#data-panel")) return;
-  setStat("look", [pressed("#theme-seg"), pressed("#react-seg")].filter(Boolean).join(" · "));
+  const r = pressed("#react-seg");
+  setStat("look", [pressed("#theme-seg"), r && `Reaction: ${r.toLowerCase()}`].filter(Boolean).join(" · "));
   setStat("spells", pressed("#rules-seg"));
   const k = kamerStat();
   setStat("player", k.t, false, k.warn);
