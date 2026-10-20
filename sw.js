@@ -1,6 +1,6 @@
 // Service worker: maakt de app offline bruikbaar. Verhoog VERSION bij elke release zodat de cache ververst.
 // Gelijk houden aan js/version.js (de test bewaakt dat); dit is ook het nummer dat de app toont.
-const VERSION = "1.30.2";
+const VERSION = "1.31.0";
 const CACHE = "initiative-tafel-" + VERSION;
 const ASSETS = [
   "./",
@@ -37,6 +37,7 @@ const ASSETS = [
   "./js/rules/dice.js",
   "./js/rules/effects.js",
   "./js/rules/encounters.js",
+  "./js/rules/fight.js",
   "./js/rules/legendary.js",
   "./js/rules/saves.js",
   "./js/rules/spellcast.js",
@@ -50,6 +51,7 @@ const ASSETS = [
   "./js/ui/actions.js",
   "./js/ui/avatar.js",
   "./js/ui/encounters.js",
+  "./js/ui/einde.js",
   "./js/ui/render.js",
   "./js/ui/kamer.js",
   "./js/ui/spellinfo.js",

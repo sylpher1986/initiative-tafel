@@ -18,7 +18,8 @@ import { avatar, icon, monType } from "./avatar.js";
 import { SPELLS, SPELL_CONDS, customSpell, spellTargets, spellDefault, condImmune, spellFor, rulesDiffer } from "../rules/spellcast.js";
 import { rulesEd } from "./spellrules.js";
 import { ANON, anonName } from "../playerview.js";
-import { paintEnc, encBanner } from "./encounters.js";
+import { paintEnc, encBanner, encStrip } from "./encounters.js";
+import { paintEnd, endBanner } from "./einde.js";
 import { clsLevel } from "../rules/encounters.js";
 
 /** UI-toestand die niet in de encounter (en dus niet in undo/opslag) hoort */
@@ -58,6 +59,9 @@ export const ui = {
   addOpts: { hp: "avg", init: "each" }, // monsters toevoegen (IN4): HP- en initiativekeuze, gedeeld door Monster-paneel, snel toevoegen en encounter inladen; per sessie
   monAdd: { n: 1, fixOn: false, fix: "" }, // Monster-paneel: aantal en eenmalig ingevulde initiative
   welcome: true,       // welkomstkaart bij een lege start; "Begin leeg" zet hem uit voor deze sessie
+  encOpen: false,      // notitie (tactiek) van de ingeladen encounter opengeklapt (VB2)
+  end: false,          // samenvatting na Gevecht afronden open (GV2, data in app.S.endSum)
+  endFlee: false,      // "Gevlucht of overgegeven?" opengeklapt in de samenvatting
   downOpen: false,     // blok "Neer (N)" onderaan de lijst (Gevecht) opengeklapt
   fromDown: null,      // id van een dood monster dat vanuit dat blok geopend is (blijft dan in het blok)
 };
@@ -82,6 +86,7 @@ export function render() {
   paintInit();
   paintLa();
   paintSv();
+  paintEnd();
   paintParty();
   paintLog();
   syncSB(app.S, openId(), sbChips);
@@ -119,7 +124,7 @@ function paintMode() {
 }
 
 /* ---------- Voorbereiden: één paneel met de bestaande formulieren (statisch in index.html, alleen hidden wisselt) ---------- */
-const PREP = { pc: "Speler toevoegen", mon: "Monster toevoegen", custom: "Monster toevoegen", enc: "Monster toevoegen", party: "Party", data: "Instellingen" };
+const PREP = { pc: "Speler toevoegen", mon: "Monster toevoegen", custom: "Monster toevoegen", enc: "Encounters", party: "Party", data: "Instellingen" };
 const MONTABS = ["mon", "custom", "enc"];
 export function paintPrep() {
   const el = $("#psheet"), p = PREP[ui.prep] ? ui.prep : null;
@@ -493,13 +498,13 @@ function paintEncounter() {
   $("#sum").innerHTML = L.length ? sumHtml(S, true) : "";
   const prep = mode() === "prep", calm = prep && !S.round; // tijdens een gevecht geen Begin leeg en geen moeilijkheid
   $("#order").innerHTML = L.length
-    ? (S.sample && calm ? `<li class="sbanner"><span>Voorbeeld-encounter</span><button type="button" class="btn small" id="sample-clear">Begin leeg</button></li>` : "") + encBanner(S, calm) + listHtml(S, L, prep)
+    ? (S.sample && calm ? `<li class="sbanner"><span>Voorbeeld-encounter</span><button type="button" class="btn small" id="sample-clear">Begin leeg</button></li>` : "") + endBanner(S, calm) + encStrip(S, prep) + encBanner(S, calm) + listHtml(S, L, prep)
     : emptyState(S, prep);
   $("#resetbar").innerHTML = ui.confirmReset
     ? S.list.some((c) => c.kind !== "pc")
       ? `<div class="confirm">Wat wissen?<button class="btn small primary" id="reset-mons">Monsters wissen, spelers houden</button><button class="btn small ghost" id="reset-yes">Alles</button><button class="btn small" id="reset-no">Annuleer</button></div>`
       : `<div class="confirm">Alles wissen?<button class="btn small primary" id="reset-yes">Ja, wis encounter</button><button class="btn small" id="reset-no">Annuleer</button></div>`
-    : `${S.list.length ? `<button class="btn small ghost" id="reset">Encounter wissen</button>` : ""}${S.round ? `<button class="btn small ghost" id="stop">Gevecht stoppen</button>` : ""}`;
+    : `${S.list.length ? `<button class="btn small ghost" id="reset">Encounter wissen</button>` : ""}${S.round ? `<button class="btn small ghost" id="stop">Gevecht afronden</button>` : ""}`;
 }
 
 /**
@@ -530,7 +535,7 @@ function emptyState(S, prep) {
   if (ui.welcome) return `<li class="welcome"><h2>Welkom aan tafel</h2>
     <p>Houd initiative, HP, condities en spell slots bij voor D&amp;D 5e (2014). Alles blijft op dit apparaat en werkt ook offline.</p>
     <div class="wbtns"><button type="button" class="btn primary tap" id="welcome-sample">Start met voorbeeld</button><button type="button" class="btn tap" id="welcome-empty">Begin leeg</button></div>
-    <p class="hint">Voorbeeld: 2 spelers, 2 Goblins en een Hobgoblin. Probeer daarna Start gevecht.</p></li>`;
+    <p class="hint">Voorbeeld: 2 spelers, 2 Goblins en een Hobgoblin. Probeer daarna Start gevecht. Encounters zet je klaar onder + Monster.</p></li>`;
   return `<li class="hint empty">Nog niemand aan tafel. Voeg spelers en monsters toe met de knoppen onderaan.</li>`;
 }
 
@@ -556,7 +561,7 @@ function paintDock() {
   const nxt = nextUp(S, L, S.active); // slaat neer en (ronde 1) verrast over
   const g = act ? groupOf(L, act.id, S.round) : null; // groepsbeurt: "Bugbear 2 · 2/3"
   $("#dock").innerHTML = `<div class="who"><span><span class="l">Aan de beurt</span><br><b>${act ? esc(act.name) : "–"}</b>${g ? ` <span class="gk" title="Groepsbeurt: lid ${g.k} van ${g.live.length}">· ${g.k}/${g.live.length}</span>` : ""}</span><span class="r">${nxt ? `volgende: ${esc(nxt.name)}` : ""}</span></div>
-    ${svBar(S)}${laBar(S, L)}<div class="row">${undoBtn}<button id="prev" aria-label="Vorige beurt">‹</button><button class="aoeb" id="aoe" aria-label="Area of effect: schade of een spell op meerdere doelen" ${spellTargets(app.S.list).length ? "" : "disabled"}>AoE</button><button class="nx" id="next">Volgende<span class="nb"> beurt</span> ›</button></div>`;
+    ${svBar(S)}${allDown(S) ? `<div class="svbar"><div class="svrow endrow"><span>Alle monsters neer</span><button type="button" id="fin">Gevecht afronden</button></div></div>` : ""}${laBar(S, L)}<div class="row">${undoBtn}<button id="prev" aria-label="Vorige beurt">‹</button><button class="aoeb" id="aoe" aria-label="Area of effect: schade of een spell op meerdere doelen" ${spellTargets(app.S.list).length ? "" : "disabled"}>AoE</button><button class="nx" id="next">Volgende<span class="nb"> beurt</span> ›</button></div>`;
 }
 
 /* ---------- open saves: regels in de beurtbalk (max 2) of één knop met paneel ---------- */
@@ -571,6 +576,9 @@ function svRow(S, s) {
     : `<button type="button" class="svok" data-svok="${esc(s.sid)}" data-v="1" aria-label="${esc(c.name)}: ${esc(s.ab)}-save geslaagd">✓</button><button type="button" class="svok bad" data-svok="${esc(s.sid)}" data-v="0" aria-label="${esc(c.name)}: ${esc(s.ab)}-save gefaald">✗</button>`;
   return `<div class="svrow"><span class="svn"><b>${esc(c.name)}</b><small>${esc(`${s.ab} ${s.dc} · ${what}`)}</small></span>${btns}</div>`;
 }
+
+/** GV2: alle monsters op 0 HP (minstens één; lair telt niet): regel in de beurtbalk, de DM rondt zelf af */
+const allDown = (S) => { const M = S.list.filter((c) => c.kind === "monster"); return M.length > 0 && M.every(isOut); };
 
 function svBar(S) {
   const O = openSaves(S);
@@ -1119,11 +1127,13 @@ export function paintInit() {
 }
 
 /* ---------- party en logboek ---------- */
+/** VB2: wie een sessie voorbereidt zoekt bij Party; de encounters staan onder + Monster */
+const ENC_LINK = `<button type="button" class="btn tap enclink" data-prep="enc">Encounters klaarzetten <span aria-hidden="true">▸</span></button>`;
 export function paintParty() {
   const el = $("#party-panel");
   const at = new Set(app.S.list.filter((c) => c.pid).map((c) => c.pid));
   if (!app.party.length) {
-    el.innerHTML = `<p class="hint">Nog geen vaste party. Spelers die je toevoegt met "Ook opslaan in vaste party" komen hier, inclusief geïmporteerde sheets. HP, spell slots en resources lopen dan door van gevecht naar gevecht tot een rust.</p>`;
+    el.innerHTML = `<p class="hint">Nog geen vaste party. Spelers die je toevoegt met "Ook opslaan in vaste party" komen hier, inclusief geïmporteerde sheets. HP, spell slots en resources lopen dan door van gevecht naar gevecht tot een rust.</p>${ENC_LINK}`;
     return;
   }
   el.innerHTML = `<div>${app.party.map((m) => {
@@ -1137,7 +1147,7 @@ export function paintParty() {
   }).join("")}</div>
     <div class="bar"><button type="button" class="btn small" id="p-rollall">Rol voor iedereen</button><button type="button" class="btn primary" id="p-add">Party aan tafel zetten</button></div>
     <div class="bar"><button type="button" class="btn small" id="p-short">Short rest</button><button type="button" class="btn small" id="p-long">Long rest</button></div>
-    <p class="hint">Rust geldt voor de hele party, ook wie aan tafel zit. Long rest: volle HP, slots en resources. Short rest: resources met "per short rest".</p>`;
+    <p class="hint">Rust geldt voor de hele party, ook wie aan tafel zit. Long rest: volle HP, slots en resources. Short rest: resources met "per short rest".</p>${ENC_LINK}`;
 }
 
 export function paintLog() {

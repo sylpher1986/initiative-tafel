@@ -236,6 +236,7 @@ export function stopCombat(state) {
  */
 export function clearMonsters(state) {
   const out = stopCombat(state);
+  delete state.endSum; delete state.enc; // samenvatting en ingeladen encounter horen bij de vorige encounter
   const gone = new Set(state.list.filter((c) => c.kind === "monster" || c.kind === "lair").map((c) => c.id));
   const n = state.list.filter((c) => c.kind === "monster").length;
   state.list = state.list.filter((c) => !gone.has(c.id));

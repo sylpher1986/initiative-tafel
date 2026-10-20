@@ -8,6 +8,7 @@ import { wantSB } from "./statblock.js";
 import { clearMonsters } from "../rules/turns.js";
 import { findMon, allMonsters, filterMonsters, sanitizeOwn } from "../data/monsters.js";
 import * as E from "../rules/encounters.js";
+import { addEnc, encName } from "../rules/fight.js";
 
 const fmt = (n) => Math.round(n).toLocaleString("nl-NL");
 const multTxt = (m) => String(m).replace(".", ",");
@@ -74,6 +75,20 @@ export function encBanner(S, prep) {
     ? `<li class="sbanner encb"><span>Geen monsters</span><button type="button" class="btn small primary" data-prep="enc">Encounter inladen</button></li>` : "";
   const r = diffList();
   return `<li class="dbanner"><button type="button" class="dbtn" data-enc="difftog" aria-expanded="${!!ui.diffOpen}">Moeilijkheid <b class="dchip ${chipCls(r)}">${esc(chipLbl(r))}</b> · ${fmt(r.adj)} XP <span aria-hidden="true">${ui.diffOpen ? "▾" : "▸"}</span></button>${ui.diffOpen ? diffWhy(r, hasLair(S.list)) : ""}</li>`;
+}
+
+/**
+ * VB2: naam van de ingeladen encounter boven de lijst, met de notitie (tactiek) ingeklapt. Voorbereiden: altijd de naam;
+ * Gevecht: alleen als er een notitie is. Nooit op het spelersscherm (S.enc zit niet in de snapshot).
+ */
+export function encStrip(S, prep) {
+  const E2 = S.enc || [], notes = E2.filter((e) => e.notes.trim());
+  if (!E2.length || (!prep && !notes.length)) return "";
+  const name = `<b class="ennm">${esc(encName(S))}</b>`;
+  if (!notes.length) return `<li class="encn"><span class="encnb">${name}</span></li>`;
+  const open = !!ui.encOpen;
+  return `<li class="encn"><button type="button" class="encnb" data-enc="notes" aria-expanded="${open}">${name}<span class="entac">Tactiek <span aria-hidden="true">${open ? "▾" : "▸"}</span></span></button>${open
+    ? `<div class="entxt">${notes.map((e) => `${E2.length > 1 ? `<p class="enh">${esc(e.name)}</p>` : ""}<p>${esc(e.notes.trim())}</p>`).join("")}</div>` : ""}</li>`;
 }
 
 /* ---------- paneel ---------- */
@@ -172,6 +187,7 @@ function loadEnc(enc, mode) {
   const before = S.list.length, hpmode = ui.addOpts.hp;
   for (const a of plan.adds) addMonsters(a.ref, a.n, hpmode, a.init === "group" ? "group" : "each", true, null, a.hidden, a.anon);
   if (lairNew) S.list.push(newLair(plan.lair.key, plan.lair.hidden));
+  addEnc(S, enc, mode === "replace"); // naam boven de lijst, notitie (tactiek) in Gevecht (VB2); zelfde undo-stap
   const added = S.list.slice(before), nMon = added.filter((c) => c.kind === "monster").length;
   const what = `${plural(nMon, "monster", "monsters")}${lairNew ? " + lair" : ""}`;
   logAs(`Encounter "${enc.name}" ingeladen: ${what}${gone ? ` (vervangt ${gone})` : ""}`);
@@ -352,6 +368,7 @@ export function bindEnc() {
   document.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
     if (b.dataset.enc === "difftog") { ui.diffOpen = !ui.diffOpen; render(); if (ui.diffOpen) focusLvl(".dbanner"); return; }
+    if (b.dataset.enc === "notes") { ui.encOpen = !ui.encOpen; render(); return; }
     if (b.id === "toast-encundo" && lastDel) {
       if (!findEnc(lastDel.id)) { app.encounters = [...app.encounters, lastDel]; saveEncounters(); }
       lastDel = null; closeToast(); repaint(); toast("Encounter teruggezet.");

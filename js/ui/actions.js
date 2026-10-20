@@ -24,6 +24,8 @@ import { parseDdbLink, findMember, mergeSheet } from "../ddbjson.js";
 import { RACE_OPTS, raceKey, pickRace, cleanImg } from "./avatar.js";
 import { buildExport, parseImport } from "../backup.js";
 import { cleanLvl } from "../rules/encounters.js";
+import { startFight } from "../rules/fight.js";
+import { finishFight } from "./einde.js";
 
 /** Fx uit de regels: meldingen tonen en oorzaken doorgeven aan het logboek */
 const apply = (fx) => { if (!fx) return; addWhy(fx.why); show(fx); if (fx.saves) fx.saves.forEach((x) => addSave(app.S, x)); };
@@ -285,12 +287,23 @@ const global = {
     // spelers eerst hun initiative (paneel); vanuit het paneel komt start terug met initSkip
     if (!ui.initSkip && !app.S.round && initPcs(app.S.list).length) { openInit(); return false; }
     ui.initSkip = false;
+    startFight(app.S, Date.now()); // GV2: duur en wie neer ging; oude samenvatting weg
     apply(startCombat(app.S)); ui.mode = null; rekeyEdit();
   },
   next() { apply(step(app.S, 1)); ui.laPulse = true; },
   "down-tog"() { ui.downOpen = !ui.downOpen; },
   prev() { apply(step(app.S, -1)); },
-  stop() { apply(stopCombat(app.S)); ui.mode = null; rekeyEdit(); },
+  /** Gevecht afronden (GV2): samenvatting (paneel + logregel) en stoppen in één undo-stap */
+  stop() {
+    const r = app.S.round;
+    finishFight();
+    apply(stopCombat(app.S)); ui.mode = null; rekeyEdit();
+    render();
+    toastHtml(`${esc(`Gevecht afgerond na ronde ${r}.`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+    $("#esheet .esheet")?.focus();
+    return false;
+  },
+  fin() { return global.stop(); }, // knop "Gevecht afronden" in de beurtbalk als alle monsters neer zijn
   /** Volgende encounter: monsters en lair weg, spelers blijven met HP, slots en effecten (één undo-stap) */
   "reset-mons"() {
     const r = clearMonsters(app.S);
@@ -380,6 +393,9 @@ function closePrep() {
   $(`#dock [data-prep="${k}"]`)?.focus({ preventScroll: true });
   if (last) scrollToCard(last, true);
 }
+
+/** Monsters wissen vanuit de samenvatting (zelfde als Encounter wissen → Monsters wissen) */
+export const resetMons = () => global["reset-mons"]();
 
 export function onClick(e) {
   // een veld op de kaart (Voorbereiden) eerst vastleggen: blur stuurt change synchroon, vóór de render van deze tik
@@ -537,6 +553,7 @@ function prepField(c, t) {
 export function onKey(e) {
   if (e.key === "Enter" && e.target.dataset && e.target.dataset.pf) { e.preventDefault(); e.target.blur(); return; } // veld op de kaart: klaar = opslaan
   if (spellOpen()) { if (e.key === "Escape") { e.preventDefault(); closeSpell(); } return; } // ligt boven alle andere panelen: toetsen niet naar het cijferpad eronder
+  if (ui.end && e.key === "Escape") { e.preventDefault(); ui.end = false; render(); return; }
   if (ui.prep && e.key === "Escape") { e.preventDefault(); closePrep(); return; }
   if (ui.qadd && e.key === "Escape") { e.preventDefault(); closeQadd(); return; }
   if (ui.aoe && e.key === "Escape") { e.preventDefault(); closeAoe(); return; }

@@ -5,6 +5,7 @@ import { CONDS } from "./rules/turns.js";
 import { cleanImg } from "./ui/avatar.js";
 import { dedupeAnon } from "./playerview.js";
 import { cleanEncounters, cleanLvl } from "./rules/encounters.js";
+import { cleanEnc } from "./rules/fight.js";
 
 export const FORMAT = "initiative-tafel";
 export const VERSION = 2; // 2 (1.28.0): encounters erbij
@@ -103,6 +104,7 @@ export function parseImport(json) {
   return {
     S: {
       list: dedupeAnon(arr(S.list).map(cleanCombatant)), round: Math.max(0, num(S.round)), active: S.active ? str(S.active, 40) : null, sample: false,
+      ...(cleanEnc(S.enc).length ? { enc: cleanEnc(S.enc) } : {}), // ingeladen encounter (VB2); samenvatting en gevechtsduur gaan niet mee
       log: arr(S.log).slice(-600).map((e) => ({ id: str(e.id, 40), r: num(e.r), turn: str(e.turn, 120), type: ["round", "turn"].includes(e.type) ? e.type : "", msg: str(e.msg, 1000), why: str(e.why, 1000), note: str(e.note, 1000) })),
     },
     party: arr(json.party).map((m) => ({ ...cleanCombatant({ ...m, kind: "pc", id: m.pid }), pid: str(m.pid, 40) })).map(({ id, kind, init, cond, reaction, ...m }) => m),
