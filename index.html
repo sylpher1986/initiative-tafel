@@ -7,7 +7,7 @@
 <meta name="description" content="Initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.">
 <meta name="theme-color" content="#8a1f14" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#13161d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="1.32.0">
+<meta name="it-version" content="1.32.1">
 <script src="js/theme.js"></script>
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
 <script>
@@ -109,6 +109,12 @@
         <button type="button" data-theme-set="light" aria-pressed="false">Licht</button>
         <button type="button" data-theme-set="dark" aria-pressed="false">Donker</button>
       </div>
+      <p class="vlbl" id="react-lbl">Reaction van spelers</p>
+      <div class="seg" role="group" aria-labelledby="react-lbl" id="react-seg">
+        <button type="button" data-react="on" aria-pressed="true">Knop</button>
+        <button type="button" data-react="off" aria-pressed="false">Spelers zelf</button>
+      </div>
+      <p class="hint">Spelers zelf: geen Reaction-knop op spelerskaarten. Monsters houden de knop. Verrast en Shield blijven werken.</p>
       <h2 class="sethead" id="rules-head">Spells</h2>
       <div class="seg" role="group" aria-labelledby="rules-head" id="rules-seg">
         <button type="button" data-rules="2014" aria-pressed="true">2014</button>

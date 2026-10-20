@@ -21,6 +21,7 @@ import { initRoll } from "./initroll.js";
 import { ANON, anonName } from "../playerview.js";
 import { paintEnc, encBanner, encStrip } from "./encounters.js";
 import { paintEnd, endBanner } from "./einde.js";
+import { pcReact } from "./pcreact.js";
 import { clsLevel } from "../rules/encounters.js";
 import { logRound } from "../log.js";
 import { exportDue, nudgeState, lastExportText } from "../exportnudge.js";
@@ -209,7 +210,7 @@ function badges(c, S) {
   (c.rc || []).forEach((r) => out.push(`<span class="bd ${r.ready ? "g" : ""}">${esc(r.n)} ${r.ready ? "klaar" : "op"}</span>`));
   if (c.la) out.push(`<span class="bd r">LA ${n0(c.la.left)}</span>`);
   if (c.lr) out.push(`<span class="bd r">LR ${n0(c.lr.left)}/dag</span>`);
-  if (c.reaction && !isSurprised(c, S)) out.push(`<span class="bd">Reaction gebruikt</span>`);
+  if (c.reaction && !isSurprised(c, S) && (c.kind !== "pc" || pcReact())) out.push(`<span class="bd">Reaction gebruikt</span>`);
   const html = out.join("");
   return html ? `<div class="badges">${html}</div>` : "";
 }
@@ -360,9 +361,10 @@ function effPanel(c) {
 function actionsBlock(c) {
   const sideBtn = c.ref ? `<button data-a="sb">Statblock</button>` : c.sheet ? `<button data-a="sheet">Sheet</button>` : `<button data-a="panel" data-p="more" aria-pressed="${ui.panel === "more"}">⋯</button>`;
   const gone = (c.ds && c.ds.dead) || (c.kind === "monster" && isOut(c));
+  const react = c.kind !== "pc" || pcReact(); // GV4: spelers houden hun reaction zelf bij (instelling); Heal neemt de plek over
   return `<div class="acts">
-    ${c.max ? `<button class="dmg2 wide" data-a="sheet-open" data-kind="dmg">− Schade</button><button class="heal2" data-a="sheet-open" data-kind="heal">+ Heal</button>` : ""}
-    ${isSurprised(c, app.S) ? `<button disabled title="Verrast: geen reaction tot de eigen beurt voorbij is">Verrast</button>` : `<button data-a="react" aria-pressed="${!!c.reaction}">${c.reaction ? "Reaction ✓" : "Reaction"}</button>`}
+    ${c.max ? `<button class="dmg2 wide" data-a="sheet-open" data-kind="dmg">− Schade</button><button class="heal2${react ? "" : " wide"}" data-a="sheet-open" data-kind="heal">+ Heal</button>` : ""}
+    ${!react ? "" : isSurprised(c, app.S) ? `<button disabled title="Verrast: geen reaction tot de eigen beurt voorbij is">Verrast</button>` : `<button data-a="react" aria-pressed="${!!c.reaction}">${c.reaction ? "Reaction ✓" : "Reaction"}</button>`}
     <button data-a="panel" data-p="conds" aria-pressed="${ui.panel === "conds"}">Conditie</button>
     <button data-a="panel" data-p="eff" aria-pressed="${ui.panel === "eff"}" ${gone ? "disabled" : ""}>Effect</button>
     ${sideBtn}

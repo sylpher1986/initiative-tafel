@@ -28,6 +28,7 @@ import { markExported, snoozeNudge } from "../exportnudge.js";
 import { cleanLvl } from "../rules/encounters.js";
 import { startFight } from "../rules/fight.js";
 import { finishFight, closeEnd } from "./einde.js";
+import { pcReact, setPcReact } from "./pcreact.js";
 
 /** Fx uit de regels: meldingen tonen en oorzaken doorgeven aan het logboek */
 const apply = (fx) => { if (!fx) return; addWhy(fx.why); show(fx); if (fx.saves) fx.saves.forEach((x) => addSave(app.S, x)); };
@@ -1487,6 +1488,11 @@ export function bindBackup(afterImport) {
     const b = e.target.closest("[data-theme-set]");
     if (b && window.itTheme) showTheme(window.itTheme.set(b.dataset.themeSet));
   });
+  // GV4: Reaction van spelers als knop of door spelers zelf bijgehouden (alleen weergave)
+  const xseg = $("#react-seg");
+  const showReact = (on) => xseg.querySelectorAll("[data-react]").forEach((b) => b.setAttribute("aria-pressed", (b.dataset.react === "on") === on));
+  showReact(pcReact());
+  xseg.addEventListener("click", (e) => { const b = e.target.closest("[data-react]"); if (b) { showReact(setPcReact(b.dataset.react)); render(); } });
   // Spells 2014 | 2024: regels én uitleg (alleen spells; render volgt meteen: presets en concentratie)
   const rseg = $("#rules-seg");
   const showRules = (ed) => rseg.querySelectorAll("[data-rules]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.rules === ed));
