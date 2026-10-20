@@ -4,7 +4,7 @@ import { findMon } from "../data/monsters.js";
 import { rollExpr, mod, sgn } from "../rules/dice.js";
 import { ORD, legInfo, castInfo } from "../rules/spells.js";
 import { rollDmg, parseAction, monsterActions } from "../rules/attacks.js";
-import { sortOrder } from "../rules/turns.js";
+import { sortOrder, readAhead } from "../rules/turns.js";
 import { effAc, acBreakdown } from "../rules/effects.js";
 import { newDs } from "../rules/combat.js";
 import { spellParts } from "../data/spells.js";
@@ -71,6 +71,8 @@ const sb = {
   drop: false,     // preview beëindigen bij de volgende sync (keuze valt buiten het filter)
   back: null,      // id die vóór de preview getoond werd (terug na sluiten van het paneel)
   args: null,      // laatste syncSB-argumenten (om bij draaien/venster breder direct te vullen)
+  nk: null,        // tablet/desktop, speler zonder sheet: sleutel van het getekende Daarna/Nu-blok (alleen opnieuw tekenen als die verandert)
+  nid: null,       // id van het monster in dat blok
 };
 const PHONE = matchMedia("(max-width:899px)");
 const phone = () => PHONE.matches;
@@ -179,12 +181,41 @@ export function syncSB(S, openCard, chips) {
     t = L.find(hasSB) || L.find(showable) || null;
     if (!t) emptySB();
   }
-  if (t && t.id !== sb.cid) show(t, chips, true);
+  if (t && t.id !== sb.cid) {
+    const keep = sb.pc && t.id === sb.nid ? bodyOff() : null; // DM las al vooruit in het Daarna-blok: leespositie houden
+    show(t, chips, true);
+    if (keep > 0) $("#sb").scrollTop = bodyTop() + keep;
+  }
   const cur = still(find(sb.cid));
-  if (cur && sb.pc) paintLive(cur, chips);
+  if (cur && sb.pc) { paintLive(cur, chips); paintNext(S); }
   else if (cur) nameSB(cur);
   const at = sb.pin && a && a !== sb.cid ? find(a) : null;
   paintTurn(showable(at) ? at : null); // lair of monster zonder statblock: niets om naartoe te springen
+}
+
+/** Bovenkant van het statblock (.sbnb) binnen de scrollende kolom */
+function bodyTop() {
+  const box = $("#sb"), b = box.querySelector(".sbnb");
+  return b ? b.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop : 0;
+}
+const bodyOff = () => ($("#sb .sbnb") ? $("#sb").scrollTop - bodyTop() : null);
+
+/**
+ * GV3, tablet/desktop: onder een speler zonder sheet het statblock van het monster dat nu of hierna aan de beurt is,
+ * om vooruit te lezen (aanvallen klikbaar met het doelpaneel). Niet vastgezet, alleen in een gevecht.
+ * Wordt bij elke sync berekend (gedood, toegevoegd, verborgen) maar alleen opnieuw getekend als het blok verandert.
+ */
+function paintNext(S) {
+  const el = $("#sbnext");
+  if (!el) return;
+  const r = sb.pin ? null : readAhead(S, sortOrder(S.list), hasSB), m = r && hasSB(r.c);
+  const key = m ? [r.now, r.c.id, r.n, r.c.name, m.n].join("|") : ""; // m.n: undo/import kan dezelfde id een ander statblock geven
+  if (key === sb.nk) return;
+  sb.nk = key; sb.nid = m ? r.c.id : null;
+  const sub = r && r.n === 1 && r.c.name !== m.n ? ` · ${esc(r.c.name)}` : "";
+  el.innerHTML = m ? `<hr><p class="sbprev">${r.now ? "Nu aan de beurt" : "Daarna"}</p>
+    <div class="sbhead"><div><h2>${esc(m.n)}${r.n > 1 ? ` ×${r.n}` : ""}</h2><div class="meta">${esc(m.meta || (m.custom ? "Eigen monster" : ""))}${sub}</div></div></div>
+    <hr><div class="sbnb">${sbBody(m, r.c.id)}</div>` : "";
 }
 
 function emptySB() {
@@ -240,7 +271,7 @@ export function showSB(c, follow = false) {
   }
   sb.ref = m.n;
   $("#sb").innerHTML = `<div class="sbhead"><div><h2>${esc(m.n)}</h2><div class="meta">${esc(m.meta || (m.custom ? "Eigen monster" : ""))}<span id="sbcname">${cname && cname !== m.n ? ` · ${esc(cname)}` : ""}</span></div></div>
-    ${headBtns()}</div><hr>${sbBody(m, c.id)}`;
+    ${headBtns()}</div><hr><div class="sbnb">${sbBody(m, c.id)}</div>`;
   $("#sb").scrollTop = 0;
   open();
 }
@@ -278,7 +309,7 @@ function paintLive(c, chips) {
 /** Speler: live-blok bovenaan, daaronder de statische sheet (D&D Beyond-link of PDF) als die er is */
 export function showSheet(c, chips = sb.args && sb.args[2]) {
   const h = c.sheet;
-  sb.cid = c.id; sb.ref = null; sb.pc = true; sb.prev = null;
+  sb.cid = c.id; sb.ref = null; sb.pc = true; sb.prev = null; sb.nk = null; sb.nid = null;
   sb.live = liveHtml(c, chips);
   const dice = (s) => esc(s).replace(/(\d+d\d+(?:[+-]\d+)?)/g, '<button class="dice" data-roll="$1">$1</button>');
   const hitBtn = (b, l) => (/^[+-]\d+$/.test(b) ? `<button class="dice" data-roll="1d20${b}" data-hit="1" data-label="${esc(l)}">${b}</button>` : esc(b || ""));
@@ -299,8 +330,9 @@ export function showSheet(c, chips = sb.args && sb.args[2]) {
       ${h.levels.map((l) => `<p class="entry"><b><i>${l.lvl ? ORD[l.lvl] + " level" + (l.max ? ` (${n0(l.max)} slots)` : "") : "Cantrips"}.</i></b> ${(l.spells || []).map((sp) => `${sp.n ? spellLink(sp.n, sp.n, c.id) : ""}${sp.hit && sp.hit !== "--" ? ` <span class="hint">(${esc(sp.hit)})</span>` : ""}${/concentration/i.test(sp.dur) ? ` <span class="hint">conc.</span>` : ""}`).join(", ")}</p>`).join("")}` : ""}
     ${h.features ? `<h3>Features &amp; Actions</h3><details><summary class="link">Toon alles</summary><p class="entry">${dice(h.features)}</p></details>` : ""}
     <p class="credit">Geïmporteerd uit D&amp;D Beyond character sheet.</p>`
-    : `<p class="hint sbnosheet">Geen sheet: voeg de speler toe via een D&amp;D Beyond-link of -PDF voor abilities, saves en spells.</p>`}`;
+    : `<p class="hint sbnosheet">Geen sheet · voeg toe via D&amp;D Beyond-link of -PDF</p>${phone() ? "" : `<div id="sbnext"></div>`}`}`;
   $("#sb").scrollTop = 0;
+  if (!h && sb.args) paintNext(sb.args[0]);
   open();
 }
 

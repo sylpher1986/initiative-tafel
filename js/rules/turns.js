@@ -86,6 +86,23 @@ export function nextUp(S, L, id, skip = () => false) {
 }
 
 /**
+ * Zijkolom (GV3): welk monster de DM kan voorlezen naast een speler zonder sheet.
+ * Actieve beurt als dat een monster is (now), anders de volgende monsterbeurt (zoals nextUp: neer en verrast in ronde 1 overgeslagen).
+ * ok(c) = heeft een statblock (lair en monsters zonder statblock tellen niet). n = levende leden van de groep (anders 1).
+ * Alleen tijdens een gevecht; geeft null als er geen monster meer aan de beurt komt.
+ */
+export function readAhead(S, L, ok) {
+  if (!S.round || !S.active) return null;
+  const a = L.find((c) => c.id === S.active);
+  const now = !!(a && ok(a) && !skipsTurn(a, S.round));
+  const c = now ? a : nextUp(S, L, S.active, (x) => !ok(x));
+  if (!c) return null;
+  const r = !now && L.indexOf(c) <= L.findIndex((x) => x.id === S.active) ? S.round + 1 : S.round; // na de rondegrens: verrast telt niet meer
+  const g = groupOf(L, c.id, r);
+  return { c, now, n: g ? g.live.length : 1 };
+}
+
+/**
  * Groepsbeurt: monsters die samen met één groepsworp (of ingevulde initiative) zijn toegevoegd (`grp`).
  * Elk lid houdt zijn eigen beurt (beurtgrenzen, recharge, saves per lid); dit is alleen voor de weergave.
  * Groep = aaneengesloten reeks in sortOrder met dezelfde grp én initiative (ander initiative = uit de groep).

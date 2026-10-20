@@ -14,7 +14,7 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 7. ~~IN5, VB2, GV2~~ klaar in 1.31.0 (zie Klaar)
 10. ~~IN6, DA1~~ klaar in 1.31.1 (zie Klaar)
 12. ~~SP1~~ klaar in 1.31.2 (zie Klaar)
-13. **GV3** Tablet: zijkolom bij een speler zonder sheet nuttig vullen
+13. ~~GV3~~ klaar in 1.31.3 (zie Klaar)
 14. **DA2** Undo-geschiedenis na herladen
 
 **P3: later**
@@ -35,7 +35,6 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - [ ] **IN7 Logboek dichter bij de beurtbalk:** eigen tab, of de laatste 2 gebeurtenissen onder de beurtbalk.
 
 ## Gevecht aan tafel
-- [ ] **GV3 Tablet/desktop: zijkolom bij een speler zonder sheet** toont nu alleen vier vakjes. Toon eronder het statblock van het volgende monster ("Daarna: Hobgoblin"), zodat de DM vooruit kan lezen.
 - [ ] **GV4 Reaction-knop bij spelers optioneel** (Instellingen): veel tafels laten spelers dat zelf bijhouden; scheelt een knop op elke spelerskaart.
 - [ ] **GV5 Initiative van monsters opnieuw rollen bij Start** (keuze in het initiative-paneel): nu wordt bij toevoegen gerold, ook als dat uren vóór de sessie was.
 
@@ -164,6 +163,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **IN6** (1.31.1) Monsterkaart in Gevecht: alleen nog de knop "Statblock" in de actiebalk; de link "Volledig statblock" onder de aanvallen is weg ("+N meer" blijft, 44 px).
 - **DA1** (1.31.1) Exportherinnering: strook "Geen recente export" met Exporteer / Later in Voorbereiden (nooit in een gevecht) als een wijziging aan party, encounters, lairs of eigen monsters 14 dagen niet geëxporteerd is; Later = 7 dagen. Instellingen → Opslag toont "Laatste export: …".
 - **SP1** (1.31.2) Party: "↻ Bijwerken" per lid met D&D Beyond-link, inline bevestigvak met de wijzigingen (ook naam); onzekere AC/HP uit de sheet gaan niet over een bestaande waarde.
+- **GV3** (1.31.3) Tablet/desktop: onder een speler zonder sheet staat in een gevecht het statblock van het monster dat nu of hierna aan de beurt is ("Daarna: Goblin ×3"), met klikbare aanvallen; leespositie blijft als dat monster aan de beurt komt.
 - **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.
 
 ### Functies
