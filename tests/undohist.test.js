@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { restoreHist, HIST_MAX, HIST_AGE, app, commit, undo, resetBaseline, historySize } from "../js/state.js";
 
 const NOW = 1_800_000_000_000;
-const row = (n, s, o = {}) => ({ k: "h:" + String(n).padStart(9, "0"), v: "1.0", t: NOW - 60e3, s, ...o });
+const row = (n, s, o = {}) => ({ k: "h:" + String(n).padStart(9, "0"), v: "1.0", t: NOW - 60e3, s, b: [], ...o });
 const opt = (cur = "nu") => ({ version: "1.0", now: NOW, cur });
 
 test("restoreHist: geldige stappen komen terug, op volgorde", () => {

@@ -9,6 +9,7 @@ import { cleanEncounters } from "./rules/encounters.js";
 import { tidy } from "./rules/fight.js";
 import { markDirty } from "./exportnudge.js";
 import { VERSION } from "./version.js";
+import { pack, unpack } from "./histpack.js";
 
 /** Alle data van de app. S = de lopende encounter. */
 export const app = { S: null, party: [], lairs: {}, custom: [], imported: [], encounters: [] }; // encounters: klaargezet, niet in undo
@@ -19,6 +20,15 @@ export const app = { S: null, party: [], lairs: {}, custom: [], imported: [], en
 export const HIST_MAX = 80, HIST_AGE = 6 * 3600e3;
 const HLO = "h:", HHI = "h:\uffff", hk = (n) => HLO + String(n).padStart(9, "0");
 let hkeys = [], seq = 0, stored = null;
+/* TS2: sheets en portretten staan niet in elke stap maar één keer (js/histpack.js), in IndexedDB als "hb:<sleutel>" = { k, s }.
+   blobs: sleutel → { s, n, w }, n = aantal stappen in hist dat ernaar verwijst (0 = weg), w = staat (vermoedelijk) in
+   IndexedDB; na een mislukte batch weet je dat niet meer, dan opnieuw schrijven bij het volgende gebruik. hrefs: per stap de sleutels.
+   cur: sleutel → inhoud van de huidige stand (lastJSON); die komt pas in blobs als de stand een undo-stap wordt. */
+const BLO = "hb:", BHI = "hb:\uffff";
+let blobs = new Map(), hrefs = [], cur = new Map(), storedB = null;
+const known = (k) => { const b = blobs.get(k); return b ? b.s : cur.get(k); };
+const snap = () => pack(app.S, known);
+const full = (j, refs) => unpack(j, (k) => refs.get(k));
 
 let hist = [], lastJSON = null, prevObj = null, pendingWhy = [], pendingSum = null, pendingKey = null, steps = 0;
 let warn = () => {}, warned = false;
@@ -34,6 +44,8 @@ export const addWhy = (arr) => pendingWhy.push(...arr);
 export const logAs = (msg, key) => { pendingSum = msg; pendingKey = key || null; };
 export const canUndo = () => hist.length > 0;
 export const historySize = () => hist.length;
+/** Aantal apart bewaarde sheets/portretten in de geschiedenis (TS2, voor tests) */
+export const histBlobs = () => blobs.size;
 /** Loopt op bij elke vastgelegde stap en elke undo: "is er sindsdien iets gebeurd?" */
 export const stepNo = () => steps;
 
@@ -54,9 +66,9 @@ export function saveLibrary() {
 
 export async function load() {
   let encs;
-  [app.S, app.party, app.lairs, app.custom, app.imported, encs, stored] = await Promise.all([
+  [app.S, app.party, app.lairs, app.custom, app.imported, encs, stored, storedB] = await Promise.all([
     store.get("state", null), store.get("party", []), store.get("lairs", {}), store.get("custom", []), store.get("imported", []), store.get("encounters", []),
-    store.range(HLO, HHI),
+    store.range(HLO, HHI), store.range(BLO, BHI),
   ]);
   app.encounters = cleanEncounters(encs);
   setLibrary({ custom: app.custom, imported: app.imported });
@@ -68,13 +80,16 @@ export async function load() {
  * Alleen de laatste aaneengesloten reeks van deze versie (oudere snapshots passen niet bij nieuwe code), niets als de
  * laatste stap ouder is dan maxAge, geen stappen aan het eind die gelijk zijn aan de huidige stand (half geschreven), max HIST_MAX.
  */
-export function restoreHist(rows, { version, now, cur, maxAge = HIST_AGE }) {
+export function restoreHist(rows, { version, now, cur: curJSON, maxAge = HIST_AGE, has = () => true }) {
   rows = Array.isArray(rows) ? rows : [];
-  const ok = (r) => r && typeof r.k === "string" && r.k.startsWith(HLO) && typeof r.s === "string" && r.v === version && Number.isFinite(r.t);
+  const ok = (r) => r && typeof r.k === "string" && r.k.startsWith(HLO) && typeof r.s === "string" && r.v === version && Number.isFinite(r.t)
+    && Array.isArray(r.b) && r.b.every((k) => typeof k === "string");
   let i = rows.length;
   while (i > 0 && ok(rows[i - 1])) i--;
+  // ontbreekt een sheet (mislukte opslag), dan kan undo niet voorbij die stap: alleen wat erna komt
+  for (let j = rows.length - 1; j >= i; j--) if (!rows[j].b.every(has)) { i = j + 1; break; }
   let keep = rows.slice(i);
-  while (keep.length && keep[keep.length - 1].s === cur) keep.pop();
+  while (keep.length && keep[keep.length - 1].s === curJSON) keep.pop();
   const last = keep[keep.length - 1];
   if (!last || !(now - last.t <= maxAge) || last.t > now + 60e3) keep = []; // klok terug: niet vertrouwen
   keep = keep.slice(-HIST_MAX);
@@ -94,7 +109,7 @@ function persist(ops) {
     ops.unshift(put ? ["delRange", HLO, hk(seq - 1)] : ["delRange", HLO, HHI]);
   }
   ops.push(["put", "state", prevObj]);
-  store.batch(ops).then((ok) => { if (!ok) gap = true; else if (fix) gap = false; if (!ok) save("state", prevObj); }); // prevObj van nu: altijd de nieuwste stand
+  store.batch(ops).then((ok) => { if (!ok) { gap = true; for (const e of blobs.values()) e.w = false; } else if (fix) gap = false; if (!ok) save("state", prevObj); }); // prevObj van nu: altijd de nieuwste stand
 }
 
 /**
@@ -103,19 +118,25 @@ function persist(ops) {
  */
 export function resetBaseline(boot = false) {
   tidy(app.S); // zelfde normalisatie als commit(), anders wordt die de eerste (onuitwisbare) undo-stap
-  lastJSON = JSON.stringify(app.S); prevObj = JSON.parse(lastJSON); pendingWhy = []; pendingSum = pendingKey = null;
+  blobs = new Map(); cur = new Map();
+  const p = snap();
+  lastJSON = p.j; cur = p.refs; prevObj = full(p.j, cur); pendingWhy = []; pendingSum = pendingKey = null;
   let ops;
   if (boot && stored) {
-    const r = restoreHist(stored, { version: VERSION, now: Date.now(), cur: lastJSON });
-    hist = r.keep.map((x) => x.s); hkeys = r.keep.map((x) => x.k);
+    const B = new Map();
+    for (const x of storedB || []) if (x && typeof x.k === "string" && typeof x.s === "string") B.set(x.k, x.s);
+    const r = restoreHist(stored, { version: VERSION, now: Date.now(), cur: lastJSON, has: (k) => B.has(k) });
+    hist = r.keep.map((x) => x.s); hkeys = r.keep.map((x) => x.k); hrefs = r.keep.map((x) => x.b);
+    for (const b of hrefs) for (const k of b) { const e = blobs.get(k); if (e) e.n++; else blobs.set(k, { s: B.get(k), n: 1, w: true }); }
     // boven álle bewaarde sleutels, ook die weg moeten: mislukt het wissen, dan komen nieuwe stappen er toch na
     for (const x of stored) { const n = x && typeof x.k === "string" ? +x.k.slice(HLO.length) : NaN; if (n > seq) seq = n; }
     ops = r.drop.map((k) => ["del", k]);
+    for (const k of B.keys()) if (!blobs.has(k)) ops.push(["del", BLO + k]);
   } else {
-    hist = []; hkeys = [];
-    ops = [["delRange", HLO, HHI]];
+    hist = []; hkeys = []; hrefs = [];
+    ops = [["delRange", HLO, HHI], ["delRange", BLO, BHI]];
   }
-  stored = null;
+  stored = storedB = null;
   persist(ops);
 }
 
@@ -127,18 +148,24 @@ export function commit() {
   // effecten en condities (Hold Person) van een caster die geen concentratie meer heeft (0 HP, nieuwe spell, verwijderd) horen bij deze stap
   pendingWhy.push(...endConcEffects(app.S.list, app.S.active).why, ...endConcConds(app.S.list).why);
   tidy(app.S); // wie neer ging (GV2), ingeladen encounter vergeten zonder monsters (VB2)
-  let j = JSON.stringify(app.S);
-  if (j === lastJSON) { pendingWhy = []; pendingSum = pendingKey = null; return false; }
+  let p = snap();
+  if (p.j === lastJSON) { pendingWhy = []; pendingSum = pendingKey = null; return false; }
   const ops = [];
   if (lastJSON !== null) {
-    const k = hk(++seq);
-    hist.push(lastJSON); hkeys.push(k);
-    ops.push(["put", k, { k, v: VERSION, t: Date.now(), s: lastJSON }]);
-    if (hist.length > HIST_MAX) { hist.shift(); ops.push(["del", hkeys.shift()]); }
-    if (writeLog(prevObj)) j = JSON.stringify(app.S);
+    const k = hk(++seq), b = [...cur.keys()];
+    for (const [x, s] of cur) {
+      const e = blobs.get(x) || { s, n: 0, w: false };
+      if (!e.n) blobs.set(x, e);
+      e.n++;
+      if (!e.w) { e.w = true; ops.push(["put", BLO + x, { k: x, s }]); }
+    }
+    hist.push(lastJSON); hkeys.push(k); hrefs.push(b);
+    ops.push(["put", k, { k, v: VERSION, t: Date.now(), s: lastJSON, b }]);
+    if (hist.length > HIST_MAX) { hist.shift(); ops.push(["del", hkeys.shift()]); unref(hrefs.shift(), ops); }
+    if (writeLog(prevObj)) p = snap();
   }
   pendingWhy = []; pendingSum = pendingKey = null; steps++;
-  lastJSON = j; prevObj = JSON.parse(j);
+  lastJSON = p.j; cur = p.refs; prevObj = full(p.j, cur);
   persist(ops);
   syncParty();
   return true;
@@ -153,12 +180,25 @@ export function relog(key, msg) {
 export function undo() {
   if (!hist.length) return false;
   pendingSum = pendingKey = null;
-  const j = hist.pop(), k = hkeys.pop();
-  app.S = JSON.parse(j);
-  lastJSON = j; prevObj = JSON.parse(j); pendingWhy = []; steps++;
-  persist(k ? [["del", k]] : []);
+  const j = hist.pop(), k = hkeys.pop(), b = hrefs.pop() || [];
+  const refs = new Map(b.map((x) => [x, known(x)]));
+  const S = full(j, refs);
+  if (!S) { hist = []; hkeys = []; hrefs = []; blobs = new Map(); persist([["delRange", HLO, HHI], ["delRange", BLO, BHI]]); return false; } // vangnet, hoort niet te gebeuren
+  app.S = S;
+  lastJSON = j; cur = refs; prevObj = full(j, refs); pendingWhy = []; steps++;
+  const ops = k ? [["del", k]] : [];
+  unref(b, ops);
+  persist(ops);
   syncParty();
   return true;
+}
+
+// stap weg uit hist: sheets waar geen stap meer naar verwijst ook weg (de huidige stand heeft ze zelf in cur)
+function unref(keys, ops) {
+  for (const k of keys) {
+    const e = blobs.get(k);
+    if (e && --e.n <= 0) { blobs.delete(k); ops.push(["del", BLO + k]); }
+  }
 }
 
 function writeLog(prev) {

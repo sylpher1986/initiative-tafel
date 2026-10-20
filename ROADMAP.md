@@ -26,7 +26,7 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - Gevecht: **GV4**, **IN7**
 - Spelersscherm: **SC1**
 - Taal: **TA1**
-- Technische schuld: **TS1–TS2** (oppakken wanneer je die code toch aanraakt)
+- Technische schuld: **TS1** (oppakken wanneer je die code toch aanraakt), ~~TS2~~ klaar in 1.31.7 (zie Klaar)
 - Fase 2 en 3
 
 ---
@@ -72,7 +72,6 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 
 ## Technische schuld
 - [ ] **TS1** pdf.js zelf hosten (nu via CDN, zonder SRI)
-- [ ] **TS2** Character sheets zitten in elke undo-stap; apart opslaan scheelt geheugen
 - Open saves (RE7) en D&D Beyond-randgevallen (SP3) stonden eerder hier en staan nu bij hun onderwerp.
 
 ## Fase 2: sync
@@ -144,6 +143,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [x] Dode monsters: in Gevecht onderaan in een ingeklapt blok "Neer (N)"; net neergegaan en open blijft op zijn plek tot de kaart dicht gaat of de beurt wisselt; dode spelers blijven staan; spelersscherm: één regel "Neer: …" (1.23.0)
 - [x] **GV5** Initiative van monsters opnieuw rollen bij Start: "Monsters: Houden | Opnieuw rollen" in het initiative-paneel, per apparaat onthouden; alleen onaangeroerde worpen, groep één worp (1.31.5)
 - [x] **AF1–AF3** Afwerking voor beginners (1.31.6): eigen knoppen "… importeren…" i.p.v. de Engelse "Choose File" (vier bestandskiezers); logboek en gekopieerde tekst tonen "Voorbereiding" i.p.v. "R–"/"R0"; Vorige in de beurtbalk heeft het bijschrift "Vorige" onder "‹"
+- [x] **TS2** Character sheets en portretten apart van de undo-stappen (1.31.7): één keer per inhoud bewaard (geheugen en IndexedDB `hb:`), de stap verwijst ernaar; scheelt per stap de volle sheet (in de test ± 34 kB → 0,7 kB per stap)
 - [x] Surprise (2014): "Verrast: Niemand | Monsters | Spelers" in het initiative-paneel, per deelnemer via ⋯ in ronde 1; eerste beurt overgeslagen (beurtgrenzen tellen af), geen reaction en geen legendary actions tot die beurt voorbij is (1.23.0)
 - [x] Statblock-paneel op telefoon (vervangen door half/Groot boven de beurtbalk, 1.7.0)
 - [x] Lettertypes zelf meeleveren in plaats van Google Fonts (offline en privacy)
