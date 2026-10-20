@@ -65,11 +65,14 @@ async function boot() {
     $("#order").innerHTML = `<li class="hint" style="padding:20px">De monsterdata kon niet laden (${String(e.message).replace(/</g, "&lt;")}). Ververs de pagina.</li>`;
     return;
   }
+  // tijdens het laden overgenomen (bv. twee tabbladen tegelijk hersteld): niets starten, zeker geen kamer (die zou het
+  // nieuwe tabblad met 4001 afsluiten). Hierna loopt boot synchroon, dus later kan gone niet meer veranderen.
+  if (gone) return;
   document.addEventListener("click", onClick);
   // tik op een melding (niet op een knop) sluit hem
   $("#toast").addEventListener("click", (e) => { if (!e.target.closest("button")) e.target.closest(".tmsg")?.remove(); });
   document.addEventListener("change", onChange);
-  document.addEventListener("keydown", onKey);
+  document.addEventListener("keydown", (e) => { if (!gone) onKey(e); }); // inert ontbreekt op Safari < 15.5: toetsenbord zou anders doorlopen
   document.addEventListener("toggle", onToggle, true);
   // velden op de kaart in Voorbereiden slaan op bij change (zonder render); na het verlaten één render voor de rest van
   // het scherm. Tijdens een tik pas na pointerup, anders vervangt de render de knop vóór zijn click. Naar een ander
@@ -99,11 +102,10 @@ async function boot() {
   setAfterRender(() => { view = null; links.forEach((l) => l.update()); });
   const ch = localChannel();
   if (ch) links.add(dmLink(ch, getView));
-  stopTab = () => { links.clear(); if (ch) ch.close(); try { dropSharing(); } catch { /* delen nooit gestart */ } };
+  stopTab = () => { links.clear(); if (ch) ch.close(); dropSharing(); };
   // los van de rest: een fout bij het delen mag de app niet tegenhouden, en is zichtbaar in Instellingen
   try { bindSharing(getView, (l, on) => (on ? links.add(l) : links.delete(l))); }
   catch (e) { const b = $("#kamer-box"); if (b) b.textContent = `Delen met spelers kon niet starten: ${e && e.message || e}`; }
-  if (gone) stopTab(); // al overgenomen tijdens het laden: ook de net gestarte verbindingen dicht
   start(true);
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {

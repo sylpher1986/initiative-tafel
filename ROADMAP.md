@@ -26,6 +26,7 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - Gevecht: **GV4**, **IN7**
 - Spelersscherm: **SC1**
 - Taal: **TA1**
+- Opslag: ~~DA3~~ klaar in 1.31.8 (zie Klaar)
 - Technische schuld: **TS1** (oppakken wanneer je die code toch aanraakt), ~~TS2~~ klaar in 1.31.7 (zie Klaar)
 - Fase 2 en 3
 
@@ -65,7 +66,7 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - [ ] **OB2 Rondleiding opnieuw starten** vanuit Instellingen (bijv. "Rondleiding opnieuw bekijken"), zodat een DM hem later nog eens kan zien of aan een co-DM kan laten zien. Bouwt op OB1.
 
 ## Opslag en data
-- [ ] **DA3 Twee tabbladen met de DM-app tegelijk:** ze schrijven elkaars stand en (sinds DA2) undo-geschiedenis stil over. Oplossing zoals bij de kamer (4001): via BroadcastChannel wint het nieuwste tabblad, het oude toont "Hier verder werken".
+- Geen open punten (DA3 klaar in 1.31.8, zie Klaar).
 
 ## Taal
 - [ ] **TA1 Taaloptie Nederlands / English** (Instellingen, keuze bewaard op het apparaat). Bij English alle Nederlandse tekst vervangen: knoppen, labels, meldingen, logboek, hints, formulieren, spelersscherm en foutmeldingen (ook van de Worker). D&D-termen zijn al Engels. Aanpak: teksten centraal in een vertaalbestand per taal (`js/i18n/nl.js`, `en.js`) met een `t("sleutel")`-functie; logboekregels als sleutel + waarden opslaan zodat ze na wisselen ook vertaald zijn; test die bewaakt dat elke sleutel in beide talen bestaat
@@ -161,6 +162,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **IN6** (1.31.1) Monsterkaart in Gevecht: alleen nog de knop "Statblock" in de actiebalk; de link "Volledig statblock" onder de aanvallen is weg ("+N meer" blijft, 44 px).
 - **DA1** (1.31.1) Exportherinnering: strook "Geen recente export" met Exporteer / Later in Voorbereiden (nooit in een gevecht) als een wijziging aan party, encounters, lairs of eigen monsters 14 dagen niet geëxporteerd is; Later = 7 dagen. Instellingen → Opslag toont "Laatste export: …".
 - **DA2** (1.31.4) Undo-geschiedenis blijft bewaard na herladen (iOS gooit tabs weg), tot 80 stappen; vervalt stil als de laatste stap ouder is dan 6 uur, na een app-update of na een volledige import.
+- **DA3** (1.31.8) Eén DM-tabblad tegelijk: het nieuwste wint; het oude slaat niets meer op, stuurt niets meer naar spelers en toont "Dit tabblad is gestopt" met **Hier verder werken** (herlaadt met de nieuwste stand en undo).
 - **SP1** (1.31.2) Party: "↻ Bijwerken" per lid met D&D Beyond-link, inline bevestigvak met de wijzigingen (ook naam); onzekere AC/HP uit de sheet gaan niet over een bestaande waarde.
 - **GV3** (1.31.3) Tablet/desktop: onder een speler zonder sheet staat in een gevecht het statblock van het monster dat nu of hierna aan de beurt is ("Daarna: Goblin ×3"), met klikbare aanvallen; leespositie blijft als dat monster aan de beurt komt.
 - **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.

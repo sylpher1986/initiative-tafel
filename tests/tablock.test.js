@@ -94,3 +94,21 @@ test("andere sleutels negeren; geen localStorage = geen bewaking", () => {
   const ok = claimTab(() => assert.fail("mag niet stoppen"), { ls: kapot, ...b.tab(), now: 1 });
   assert.equal(ok(), true);
 });
+
+test("write-guard: een gestopt tabblad schrijft niets en krijgt geen foutmelding", async () => {
+  const m = new Map();
+  globalThis.localStorage = { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) };
+  const store = await import("../js/storage.js"); // Node heeft geen IndexedDB: set valt terug op localStorage
+  try {
+    assert.equal(await store.set("party", [1]), true);
+    assert.equal(m.get("it-party"), "[1]", "eigenaar: schrijft");
+    store.setWriteGuard(() => false);
+    assert.equal(store.canWrite(), false);
+    assert.equal(await store.set("party", [2]), true, "telt als gelukt (geen waarschuwing)");
+    assert.equal(m.get("it-party"), "[1]", "niet overschreven");
+    assert.equal(await store.batch([["put", "state", {}]]), true);
+  } finally {
+    store.setWriteGuard(() => true);
+    delete globalThis.localStorage;
+  }
+});

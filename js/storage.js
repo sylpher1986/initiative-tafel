@@ -30,6 +30,8 @@ const lsKey = (k) => `it-${k}`;
    ook geen opslag die nog onderweg was; dat telt als gelukt (geen waarschuwing "opslaan lukt niet"). */
 let mayWrite = () => true;
 export const setWriteGuard = (fn) => { mayWrite = fn; };
+/** Is dit tabblad (nog) de eigenaar? Ook voor wat niet via deze module gaat (exportherinnering, kamer) */
+export const canWrite = () => mayWrite();
 
 export async function get(key, fallback) {
   try {

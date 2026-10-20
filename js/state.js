@@ -55,7 +55,7 @@ function save(key, value) {
   });
 }
 // Waardevolle data (niet de lopende encounter): telt voor de exportherinnering (DA1)
-const keep = (key, value) => { markDirty(); save(key, value); };
+const keep = (key, value) => { if (!store.canWrite()) return; markDirty(); save(key, value); }; // gestopt tabblad (DA3): ook geen herinnering
 export const saveParty = () => keep("party", app.party);
 export const saveLairs = () => keep("lairs", app.lairs);
 export const saveEncounters = () => keep("encounters", app.encounters);

@@ -3,6 +3,7 @@
 // Alleen UI- en verbindingstoestand: niets hiervan zit in undo, opslag of export.
 import { roomChannel, dmLink, createRoom, normCode, fmtCode } from "../share.js";
 import { $, esc, toast, toastHtml } from "./util.js";
+import { canWrite } from "../storage.js";
 
 const KEY = "it-room";
 const LOST_MS = 10000; // pas na 10 s kwijt: rode stip op ⚙ en één melding
@@ -55,7 +56,7 @@ function disconnect() {
 
 function connect() {
   disconnect();
-  ch = roomChannel(room.code, room.token);
+  ch = roomChannel(room.code, room.token, { allow: canWrite });
   off = ch.on((m) => {
     if (m.t === "n") { n = Math.max(0, m.n | 0); paint(); }
     else if (m.t === "pauze") { if (!paused) { setPaused(true); paint(); } }

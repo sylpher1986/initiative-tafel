@@ -84,11 +84,12 @@ const PING = 25000, DEAD = 60000, PROBE = 5000;
  *   { t: "stop" }    (speler) de DM deelt op dit moment niet; de verbinding blijft open, een nieuwe stand komt vanzelf
  * Bij elke (nieuwe) verbinding: DM-kant meldt { t: "hallo" } (dmLink pusht opnieuw), spelerskant { t: "dm" } (speler zegt hallo).
  * Spelerskant: portretten die apart binnenkomen worden weer in de stand gezet (cleanView controleert ze daarna).
- * opts: { base, WS, timers } voor tests.
+ * opts: { base, WS, timers } voor tests; allow(): false = niet (meer) verbinden (DA3: tabblad niet meer de eigenaar).
  */
 export function roomChannel(code, token, opts = {}) {
   const WS = opts.WS || globalThis.WebSocket;
   const T = opts.timers || globalThis;
+  const allow = opts.allow || (() => true);
   const base = opts.base || (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
   const url = `${base}/api/room/${code}/ws${token ? "?t=" + encodeURIComponent(token) : ""}`;
   const subs = new Set(), sent = new Map(), imgs = new Map();
@@ -99,6 +100,8 @@ export function roomChannel(code, token, opts = {}) {
 
   function connect() {
     if (done || (ws && ws.readyState <= 1)) return;
+    // een tabblad dat terugkomt uit de achtergrond (timer of "online" vóór visibilitychange) pakt de kamer niet af (4001)
+    if (!allow()) return;
     T.clearTimeout(retry); retry = 0;
     net(tries ? "kwijt" : "verbinden");
     let s;

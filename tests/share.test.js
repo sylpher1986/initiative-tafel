@@ -280,3 +280,17 @@ test("speler: 'stop' (pauze) komt door, verbinding blijft open en verbindt niet 
   assert.equal(socks.length, 1);
   assert.equal(T.q.filter((x) => x.f).length, 0);
 });
+
+test("DA3: niet meer de eigenaar (ander tabblad) = niet opnieuw verbinden, ook niet na een herverbind-timer", async () => {
+  socks = [];
+  let mine = true;
+  const T = timers();
+  roomChannel("K7M3QX", "tok", { WS, timers: T, base: "wss://app.test", allow: () => mine });
+  await null;
+  assert.equal(socks.length, 1);
+  socks[0].open();
+  mine = false; // ander tabblad nam het over terwijl dit tabblad bevroren was
+  socks[0].drop();
+  T.run(); // herverbind-timer gaat af vóór visibilitychange
+  assert.equal(socks.length, 1, "geen nieuwe DM-verbinding die de kamer van het nieuwe tabblad afpakt");
+});
