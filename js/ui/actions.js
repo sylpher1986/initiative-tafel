@@ -1428,7 +1428,14 @@ export function bindParty() {
 
 /* ---------- logboek ---------- */
 export function bindLog() {
-  const commitNote = (inp) => { const e = (app.S.log || []).find((x) => x.id === inp.dataset.lognote); if (e) e.note = inp.value.trim(); ui.editLog = null; render(); };
+  // reden opslaan; de render pas na het loslaten van een tik, anders vervangt hij de knop (Sluit, Kopieer, achtergrond)
+  // vóór zijn click binnenkomt (zelfde patroon als de kaartvelden in main.js)
+  let down = false, due = false;
+  const later = () => { if (due && !down) { due = false; setTimeout(render, 0); } };
+  addEventListener("pointerdown", () => { down = true; }, true);
+  addEventListener("pointerup", () => { down = false; later(); }, true);
+  addEventListener("pointercancel", () => { down = false; later(); }, true);
+  const saveNote = (inp) => { const e = (app.S.log || []).find((x) => x.id === inp.dataset.lognote); if (e) e.note = inp.value.trim(); ui.editLog = null; };
   // twee plekken met dezelfde regels: het blok onder de lijst (Voorbereiden) en het paneel (Gevecht, IN7)
   for (const wrap of [$("#logwrap"), $("#gsheet")]) {
     wrap.addEventListener("click", async (e) => {
@@ -1439,10 +1446,10 @@ export function bindLog() {
     });
     wrap.addEventListener("keydown", (e) => {
       if (!e.target.dataset.lognote) return;
-      if (e.key === "Enter") { e.preventDefault(); commitNote(e.target); }
+      if (e.key === "Enter") { e.preventDefault(); saveNote(e.target); render(); $("#gsheet .gsheet")?.focus({ preventScroll: true }); }
       if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); ui.editLog = null; paintLog(); wrap.querySelector(".gsheet")?.focus({ preventScroll: true }); }
     });
-    wrap.addEventListener("focusout", (e) => { if (e.target.dataset.lognote && ui.editLog) commitNote(e.target); });
+    wrap.addEventListener("focusout", (e) => { if (e.target.dataset.lognote && ui.editLog) { saveNote(e.target); due = true; later(); } });
   }
 }
 /** IN7: logboek-paneel openen vanuit het rondeblok in de Gevecht-kop */

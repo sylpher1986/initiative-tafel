@@ -120,7 +120,7 @@ function paintMode() {
   document.body.dataset.mode = m;
   if (S.round) document.body.dataset.run = "1"; else delete document.body.dataset.run;
   $("#modes").innerHTML = m === "fight"
-    ? `<div class="fhead"><button type="button" class="ft" id="logopen" aria-haspopup="dialog" aria-label="Logboek openen, ronde ${n0(S.round)}, ${logCount(S)} gebeurtenissen"><span class="l">Gevecht · <span class="lk">Logboek <span aria-hidden="true">▸</span></span></span><span class="rn">Ronde ${n0(S.round)}</span><span class="fsum">${sumHtml(S, false, " · ")}</span></button>
+    ? `<div class="fhead"><button type="button" class="ft" id="logopen" aria-haspopup="dialog"><span class="l">Gevecht · <span class="lk">Logboek <span aria-hidden="true">▸</span></span></span><span class="rn">Ronde ${n0(S.round)}</span><span class="fsum">${sumHtml(S, false, " · ")}</span></button>
       <button type="button" class="fb" data-setmode="prep" aria-label="Voorbereiden: lijst aanpassen"><span class="fi">${PEN}</span><span class="fl">Voorbereiden</span></button>
       <button type="button" class="fb ic" id="qadd" aria-label="Monster toevoegen aan het gevecht" title="Monster toevoegen aan het gevecht">${PLUS}</button></div>`
     : S.round
@@ -1205,16 +1205,17 @@ export function paintLog() {
   if (!fight) ui.logSheet = false; // gevecht voorbij of naar Voorbereiden: paneel dicht (UI-toestand)
   if (!ui.logSheet) { if (!gs.hidden) { gs.hidden = true; gs.innerHTML = ""; } }
   else {
-    const old = gs.querySelector(".gsheet"), top = old ? old.scrollTop : 0;
+    const old = gs.querySelector(".gsheet"), top = old ? old.scrollTop : 0, h0 = old ? old.scrollHeight : 0, cnt = old ? +old.dataset.n : L.length;
     gs.innerHTML = `<div class="dim" data-log="close"></div>
-      <div class="sheet qsheet gsheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="g-title">
+      <div class="sheet qsheet gsheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="g-title" data-n="${L.length}">
         <div class="grab" aria-hidden="true"></div>
         <div class="shead"><h3 id="g-title">Logboek · ronde ${n0(app.S.round)}</h3><button type="button" class="link" data-log="close">Sluit</button></div>
         ${L.length ? `<p class="hint lg-tip">Tik op een regel voor een reden.</p><ol class="lglist">${logItems(L)}</ol>` : EMPTY_LOG}
         ${L.length ? `<div class="ifoot"><button type="button" class="btn" id="logcopy">Kopieer als tekst</button><button type="button" class="btn" data-log="close">Sluit</button></div>` : ""}
       </div>`;
     gs.hidden = false;
-    gs.querySelector(".gsheet").scrollTop = top;
+    const sh = gs.querySelector(".gsheet");
+    sh.scrollTop = top > 0 && L.length > cnt ? top + sh.scrollHeight - h0 : top; // nieuwe regels komen bovenaan: wie omlaag las, blijft op dezelfde regel
   }
   if (fight || (!L.length && !app.S.list.length)) { el.innerHTML = ""; } // Gevecht: alleen het paneel; lege start: geen leeg logboek
   else el.innerHTML = `<details class="logbox" id="logbox" ${ui.logOpen ? "open" : ""}><summary><span>Logboek</span> <span class="hint">${logCount(app.S)} gebeurtenissen</span></summary>
