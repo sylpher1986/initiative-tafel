@@ -43,6 +43,29 @@ export async function set(key, value) {
   }
 }
 
+/**
+ * Meerdere wijzigingen in één transactie (alles of niets), alleen IndexedDB: geen localStorage-terugval,
+ * want daar past de undo-geschiedenis niet in. ops: ["put", key, value] | ["del", key] | ["delRange", lo, hi].
+ * Geeft false terug als het niet lukte.
+ */
+export async function batch(ops) {
+  try {
+    await tx("readwrite", (s) => {
+      for (const [op, a, b] of ops) {
+        if (op === "put") s.put(b, a);
+        else if (op === "del") s.delete(a);
+        else s.delete(IDBKeyRange.bound(a, b));
+      }
+    });
+    return true;
+  } catch { return false; }
+}
+
+/** Alle waarden met een sleutel van lo t/m hi, op volgorde van sleutel; [] als het niet lukt */
+export async function range(lo, hi) {
+  try { return (await tx("readonly", (s) => s.getAll(IDBKeyRange.bound(lo, hi)))) || []; } catch { return []; }
+}
+
 /** Vraagt de browser om de opslag niet op te ruimen (Safari/Chrome kunnen dat anders doen) */
 export async function persistStorage() {
   try { return navigator.storage && navigator.storage.persist ? await navigator.storage.persist() : false; } catch { return false; }

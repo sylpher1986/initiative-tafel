@@ -12,13 +12,13 @@ import { bindEnc } from "./ui/encounters.js";
 import { bindEnd } from "./ui/einde.js";
 import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, bindAoe, bindAtk, bindInit, normalize, scrollToCard, resetMons } from "./ui/actions.js";
 
-function start() {
+function start(boot = false) {
   ui.mode = null; // ook na een import: de modus volgt weer het gevecht
   Object.assign(ui, { end: false, encDraft: null, encEdit: null, encImp: null, encAsk: null, encMenu: null, encWhy: null }); // na een import: geen verouderd concept
   app.S.list.forEach(normalize);
   bindForms.renderMonList();
   bindForms.impStatus();
-  resetBaseline();
+  resetBaseline(boot); // herladen: undo-geschiedenis terug (DA2); import: nieuw vertrekpunt
   render();
   // lopend gevecht na herladen, app uit de achtergrond of import: wie aan de beurt is in beeld
   if (app.S.round) requestAnimationFrame(() => scrollToCard(app.S.active, true, true));
@@ -72,7 +72,7 @@ async function boot() {
   // los van de rest: een fout bij het delen mag de app niet tegenhouden, en is zichtbaar in Instellingen
   try { bindSharing(getView, (l, on) => (on ? links.add(l) : links.delete(l))); }
   catch (e) { const b = $("#kamer-box"); if (b) b.textContent = `Delen met spelers kon niet starten: ${e && e.message || e}`; }
-  start();
+  start(true);
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     navigator.serviceWorker.register("sw.js").catch(() => {});

@@ -8,9 +8,17 @@ import { endConcConds } from "./rules/spellcast.js";
 import { cleanEncounters } from "./rules/encounters.js";
 import { tidy } from "./rules/fight.js";
 import { markDirty } from "./exportnudge.js";
+import { VERSION } from "./version.js";
 
 /** Alle data van de app. S = de lopende encounter. */
 export const app = { S: null, party: [], lairs: {}, custom: [], imported: [], encounters: [] }; // encounters: klaargezet, niet in undo
+
+/* Undo-geschiedenis (DA2): ook in IndexedDB, één sleutel per stap ("h:000000123"), zodat elke stap één snapshot
+   schrijft. Stand en stap gaan samen in één transactie. Na herladen terug, behalve na een app-update, een
+   volledige import of als de laatste stap ouder is dan HIST_AGE (nieuwe sessie = schone lei, UX-keuze). */
+export const HIST_MAX = 80, HIST_AGE = 6 * 3600e3;
+const HLO = "h:", HHI = "h:\uffff", hk = (n) => HLO + String(n).padStart(9, "0");
+let hkeys = [], seq = 0, stored = null;
 
 let hist = [], lastJSON = null, prevObj = null, pendingWhy = [], pendingSum = null, pendingKey = null, steps = 0;
 let warn = () => {}, warned = false;
@@ -46,19 +54,60 @@ export function saveLibrary() {
 
 export async function load() {
   let encs;
-  [app.S, app.party, app.lairs, app.custom, app.imported, encs] = await Promise.all([
+  [app.S, app.party, app.lairs, app.custom, app.imported, encs, stored] = await Promise.all([
     store.get("state", null), store.get("party", []), store.get("lairs", {}), store.get("custom", []), store.get("imported", []), store.get("encounters", []),
+    store.range(HLO, HHI),
   ]);
   app.encounters = cleanEncounters(encs);
   setLibrary({ custom: app.custom, imported: app.imported });
   store.persistStorage();
 }
 
-/** Na een import of bij opstarten: huidige stand is het nieuwe vertrekpunt (geen undo-stap, geen logregels) */
-export function resetBaseline() {
+/**
+ * Welke bewaarde undo-stappen na herladen terugkomen (puur). rows: op sleutelvolgorde, { k, v, t, s }.
+ * Alleen de laatste aaneengesloten reeks van deze versie (oudere snapshots passen niet bij nieuwe code), niets als de
+ * laatste stap ouder is dan maxAge, geen stappen aan het eind die gelijk zijn aan de huidige stand (half geschreven), max HIST_MAX.
+ */
+export function restoreHist(rows, { version, now, cur, maxAge = HIST_AGE }) {
+  rows = Array.isArray(rows) ? rows : [];
+  const ok = (r) => r && typeof r.k === "string" && r.k.startsWith(HLO) && typeof r.s === "string" && r.v === version && Number.isFinite(r.t);
+  let i = rows.length;
+  while (i > 0 && ok(rows[i - 1])) i--;
+  let keep = rows.slice(i);
+  while (keep.length && keep[keep.length - 1].s === cur) keep.pop();
+  const last = keep[keep.length - 1];
+  if (!last || !(now - last.t <= maxAge) || last.t > now + 60e3) keep = []; // klok terug: niet vertrouwen
+  keep = keep.slice(-HIST_MAX);
+  const kept = new Set(keep.map((r) => r.k));
+  return { keep, drop: rows.filter((r) => !(r && kept.has(r.k))).map((r) => r && r.k).filter((k) => typeof k === "string") };
+}
+
+// stand + wijzigingen aan de geschiedenis in één transactie; lukt IndexedDB niet, dan de stand zoals vroeger (met terugval)
+function persist(ops) {
+  const obj = prevObj;
+  ops.push(["put", "state", obj]);
+  store.batch(ops).then((ok) => { if (!ok) save("state", obj); });
+}
+
+/**
+ * Huidige stand is het nieuwe vertrekpunt (geen undo-stap, geen logregels).
+ * boot: na herladen de bewaarde geschiedenis terugzetten (restoreHist); anders (import) wissen.
+ */
+export function resetBaseline(boot = false) {
   tidy(app.S); // zelfde normalisatie als commit(), anders wordt die de eerste (onuitwisbare) undo-stap
-  lastJSON = JSON.stringify(app.S); prevObj = JSON.parse(lastJSON); hist = []; pendingWhy = []; pendingSum = pendingKey = null;
-  save("state", prevObj);
+  lastJSON = JSON.stringify(app.S); prevObj = JSON.parse(lastJSON); pendingWhy = []; pendingSum = pendingKey = null;
+  let ops;
+  if (boot && stored) {
+    const r = restoreHist(stored, { version: VERSION, now: Date.now(), cur: lastJSON });
+    hist = r.keep.map((x) => x.s); hkeys = r.keep.map((x) => x.k);
+    seq = Math.max(seq, ...hkeys.map((k) => +k.slice(HLO.length)));
+    ops = r.drop.map((k) => ["del", k]);
+  } else {
+    hist = []; hkeys = [];
+    ops = [["delRange", HLO, HHI]];
+  }
+  stored = null;
+  persist(ops);
 }
 
 /**
@@ -71,14 +120,17 @@ export function commit() {
   tidy(app.S); // wie neer ging (GV2), ingeladen encounter vergeten zonder monsters (VB2)
   let j = JSON.stringify(app.S);
   if (j === lastJSON) { pendingWhy = []; pendingSum = pendingKey = null; return false; }
+  const ops = [];
   if (lastJSON !== null) {
-    hist.push(lastJSON);
-    if (hist.length > 80) hist.shift();
+    const k = hk(++seq);
+    hist.push(lastJSON); hkeys.push(k);
+    ops.push(["put", k, { k, v: VERSION, t: Date.now(), s: lastJSON }]);
+    if (hist.length > HIST_MAX) { hist.shift(); ops.push(["del", hkeys.shift()]); }
     if (writeLog(prevObj)) j = JSON.stringify(app.S);
   }
   pendingWhy = []; pendingSum = pendingKey = null; steps++;
   lastJSON = j; prevObj = JSON.parse(j);
-  save("state", prevObj);
+  persist(ops);
   syncParty();
   return true;
 }
@@ -92,10 +144,10 @@ export function relog(key, msg) {
 export function undo() {
   if (!hist.length) return false;
   pendingSum = pendingKey = null;
-  const j = hist.pop();
+  const j = hist.pop(), k = hkeys.pop();
   app.S = JSON.parse(j);
   lastJSON = j; prevObj = JSON.parse(j); pendingWhy = []; steps++;
-  save("state", prevObj);
+  persist(k ? [["del", k]] : []);
   syncParty();
   return true;
 }
