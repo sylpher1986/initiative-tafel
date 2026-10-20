@@ -22,6 +22,7 @@ import { ANON, anonName } from "../playerview.js";
 import { paintEnc, encBanner, encStrip } from "./encounters.js";
 import { paintEnd, endBanner } from "./einde.js";
 import { clsLevel } from "../rules/encounters.js";
+import { logRound } from "../log.js";
 import { exportDue, nudgeState, lastExportText } from "../exportnudge.js";
 
 /** UI-toestand die niet in de encounter (en dus niet in undo/opslag) hoort */
@@ -571,7 +572,7 @@ function paintDock() {
   const nxt = nextUp(S, L, S.active); // slaat neer en (ronde 1) verrast over
   const g = act ? groupOf(L, act.id, S.round) : null; // groepsbeurt: "Bugbear 2 · 2/3"
   $("#dock").innerHTML = `<div class="who"><span><span class="l">Aan de beurt</span><br><b>${act ? esc(act.name) : "–"}</b>${g ? ` <span class="gk" title="Groepsbeurt: lid ${g.k} van ${g.live.length}">· ${g.k}/${g.live.length}</span>` : ""}</span><span class="r">${nxt ? `volgende: ${esc(nxt.name)}` : ""}</span></div>
-    ${svBar(S)}${allDown(S) ? `<div class="svbar"><div class="svrow endrow"><span>Alle monsters neer</span><button type="button" id="fin">Gevecht afronden</button></div></div>` : ""}${laBar(S, L)}<div class="row">${undoBtn}<button id="prev" aria-label="Vorige beurt">‹</button><button class="aoeb" id="aoe" aria-label="Area of effect: schade of een spell op meerdere doelen" ${spellTargets(app.S.list).length ? "" : "disabled"}>AoE</button><button class="nx" id="next">Volgende<span class="nb"> beurt</span> ›</button></div>`;
+    ${svBar(S)}${allDown(S) ? `<div class="svbar"><div class="svrow endrow"><span>Alle monsters neer</span><button type="button" id="fin">Gevecht afronden</button></div></div>` : ""}${laBar(S, L)}<div class="row">${undoBtn}<button id="prev" class="pv" aria-label="Vorige beurt"><span aria-hidden="true">‹</span><span class="pvl" aria-hidden="true">Vorige</span></button><button class="aoeb" id="aoe" aria-label="Area of effect: schade of een spell op meerdere doelen" ${spellTargets(app.S.list).length ? "" : "disabled"}>AoE</button><button class="nx" id="next">Volgende<span class="nb"> beurt</span> ›</button></div>`;
 }
 
 /* ---------- open saves: regels in de beurtbalk (max 2) of één knop met paneel ---------- */
@@ -1183,7 +1184,7 @@ export function paintLog() {
   const items = !ui.logOpen ? "" : [...L].reverse().map((e) => {
     if (e.type === "round") return `<li class="lg-round">${esc(e.msg)}</li>`;
     if (e.type === "turn") return `<li class="lg-turn">${esc(e.msg)}</li>`;
-    return `<li class="lg"><span class="lg-meta">R${n0(e.r) || "–"}${e.turn ? ` · beurt ${esc(e.turn)}` : ""}</span>
+    return `<li class="lg"><span class="lg-meta">${logRound(e.r)}${e.turn ? ` · beurt ${esc(e.turn)}` : ""}</span>
       <button type="button" class="lg-msg" data-logedit="${esc(e.id)}" aria-label="${esc(`Reden bij: ${e.msg}`)}">${esc(e.msg)}</button>
       ${e.why ? `<span class="lg-why">${esc(e.why)}</span>` : ""}
       ${ui.editLog === e.id ? `<input class="lg-in" data-lognote="${esc(e.id)}" value="${esc(e.note || "")}" placeholder="Waarom? bijv. Fireball van Wolfim" aria-label="Reden">`

@@ -413,6 +413,8 @@ export function onClick(e) {
   // (levelvelden in het Encounters-paneel doet dat paneel zelf: zijn klik komt eerder en zet soms net de focus)
   if (pf && pf.dataset && (pf.dataset.pf || ("dlvl" in pf.dataset && !pf.closest("#enc-panel"))) && !pf.contains(e.target)) pf.blur();
   if (spellInfoClick(e)) return; // spell-uitleg: tikbare naam of het paneel sluiten
+  const pick = e.target.closest("[data-file]"); // eigen knop voor een verborgen bestandskiezer (geen Engelse "Choose File")
+  if (pick) { document.getElementById(pick.dataset.file)?.click(); return; }
   const sk = e.target.closest("[data-sk]");
   if (sk) {
     const res = sheetKey(sk.dataset.sk, sk.dataset.v);
@@ -735,14 +737,14 @@ export function bindForms() {
   });
   $("#pc-pdf").addEventListener("change", async (e) => {
     const f = e.target.files[0]; if (!f) return;
+    e.target.value = ""; // zelfde bestand opnieuw kiezen moet weer werken, ook na een fout
     stopDdb();
-    $("#pc-sheetinfo").textContent = "Sheet wordt gelezen…";
+    $("#pc-sheetinfo").textContent = `${f.name} wordt gelezen…`;
     try {
       const got = await readSheetPdf(f), h = got && got.sheet;
       if (!h) { $("#pc-sheetinfo").textContent = "Geen D&D Beyond-formuliervelden gevonden. Is dit een PDF-export van D&D Beyond?"; return; }
       clearPending(); fillSheet(h, got.img);
     } catch { $("#pc-sheetinfo").textContent = "De PDF-lezer kon niet laden of het bestand niet openen. Controleer je verbinding en probeer het opnieuw."; }
-    e.target.value = "";
   });
 
   // bedieningsblok (IN4, zelfde als snel toevoegen): opnieuw tekenen, behalve tijdens typen in het getalveld (focus)
@@ -815,6 +817,7 @@ export function bindForms() {
   $("#imp-status").addEventListener("click", (e) => { if (e.target.id === "imp-clear") { app.imported = []; saveLibrary(); renderMonList(); impStatus(); } });
   $("#imp-file").addEventListener("change", async (e) => {
     const f = e.target.files[0]; if (!f) return;
+    e.target.value = ""; // ook na een fout opnieuw te kiezen
     let j;
     try { j = JSON.parse(await f.text()); } catch { toast("Dit bestand is geen geldige JSON. Kies het .json-bestand met monsters."); return; }
     const conv = parseMonsterFile(j);
@@ -824,7 +827,6 @@ export function bindForms() {
     conv.forEach((m) => map.set(m.n.toLowerCase(), m));
     app.imported = [...map.values()]; saveLibrary(); renderMonList(); impStatus();
     toast(`${conv.length} monsters ingelezen, ${app.imported.length - before} nieuw.`);
-    e.target.value = "";
   });
 }
 

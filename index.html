@@ -7,7 +7,7 @@
 <meta name="description" content="Initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.">
 <meta name="theme-color" content="#8a1f14" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#13161d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="1.31.5">
+<meta name="it-version" content="1.31.6">
 <script src="js/theme.js"></script>
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
 <script>
@@ -64,7 +64,7 @@
     <form class="form" id="f-pc" data-panel="pc">
       <label>D&amp;D Beyond-link<span class="ddbrow"><input id="pc-ddb" type="text" inputmode="url" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="dndbeyond.com/characters/…"><button type="button" class="btn tap" id="pc-ddbgo">Ophalen</button></span></label>
       <p class="hint">Sheet moet op Public staan: Character Settings → Character Privacy → Public.</p>
-      <label class="sub">Of PDF-export van D&amp;D Beyond<input id="pc-pdf" type="file" accept="application/pdf,.pdf"></label>
+      <div class="bar"><button type="button" class="btn tap" data-file="pc-pdf">Of PDF-export van D&amp;D Beyond…</button><input id="pc-pdf" type="file" accept="application/pdf,.pdf" hidden></div>
       <p class="hint" id="pc-sheetinfo" aria-live="polite"></p>
       <div id="pc-match"></div>
       <div class="f2">
@@ -137,7 +137,7 @@
       <p class="hint">Alles staat op dit apparaat. Maak af en toe een export: als backup, om naar een ander apparaat te gaan, of om je party met een co-DM te delen.</p>
       <div class="bar"><button type="button" class="btn primary" id="exp-file">Exporteer als bestand</button><button type="button" class="btn small" id="exp-copy">Kopieer als tekst</button></div>
       <p class="hint" id="exp-last"></p>
-      <label>Export importeren (bestand)<input id="imp-backup" type="file" accept=".json,application/json"></label>
+      <div class="bar"><button type="button" class="btn tap" data-file="imp-backup">Export importeren…</button><input id="imp-backup" type="file" accept=".json,application/json" hidden></div>
       <details class="cast"><summary class="link">Of plak de tekst van een export (bijv. uit de Claude-versie)</summary>
         <div class="form" style="margin-top:8px"><textarea id="imp-text" placeholder='{"format":"initiative-tafel", …}'></textarea>
         <button type="button" class="btn small" id="imp-text-go">Importeren</button></div></details>
@@ -160,9 +160,9 @@
       <p class="hint">Dobbelstenen als (2d6 + 3) en "+4 to hit" worden in het statblock klikbaar.</p>
       <button class="btn primary" type="submit">Monster opslaan</button>
       <hr style="border:0;border-top:1px solid var(--line);margin:6px 0">
-      <label>Monsterbestand importeren (JSON)<input id="imp-file" type="file" accept=".json,application/json"></label>
+      <div class="bar"><button type="button" class="btn tap" data-file="imp-file">Monsterbestand importeren (JSON)…</button><input id="imp-file" type="file" accept=".json,application/json" hidden></div>
       <p class="hint">Werkt met <b>5e-SRD-Monsters.json</b> uit de 5e-database van 5e-bits op GitHub (map src/2014/en) en met een Open5e-export. Je eigen JSON-lijst in hetzelfde formaat mag ook. Meerdere bestanden na elkaar importeren mag; ze worden samengevoegd.</p>
-      <p class="hint" id="imp-status"></p>
+      <p class="hint" id="imp-status" aria-live="polite"></p>
     </form>
     <button type="button" class="link plair" id="addlair" data-panel="mon">+ Lair actions (init 20)</button>
   </div>

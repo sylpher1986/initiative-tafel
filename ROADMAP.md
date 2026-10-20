@@ -18,7 +18,7 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 14. ~~DA2~~ klaar in 1.31.4 (zie Klaar)
 
 **P3: later**
-- Afwerking: **AF1–AF3**, **AF5**
+- Afwerking: ~~AF1–AF3~~ klaar in 1.31.6 (zie Klaar), **AF5**
 - Nice to have: **OB1** rondleiding bij eerste gebruik, daarna **OB2** opnieuw starten
 - Regels: **RE1–RE7**
 - Encounters: **VB3**
@@ -57,9 +57,6 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - [ ] **SC1 QR-code bij de kamercode** (alleen als een kleine zelf-gehoste lib past)
 
 ## Afwerking (klein)
-- [ ] **AF1** Bestandskiezers tonen de Engelse browserknop "Choose File" (encounter-import, backup, monsterbestand): eigen knop "Kies bestand…"
-- [ ] **AF2** Logboek vóór het gevecht toont "R–": vervangen door "Voorbereiding"
-- [ ] **AF3** Knop "‹" in de beurtbalk zonder tekst: "‹ Vorige" of een duidelijk aria-label + tooltip
 - AF4 is opgegaan in **OB1/OB2** (rondleiding, zie Eerste gebruik)
 - [ ] **AF5** Instellingen is één lange lijst: kopjes inklapbaar of een korte inhoud bovenaan (Weergave · Spells · Spelersscherm · Opslag)
 
@@ -146,6 +143,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [x] Spelersscherm op tv: liggend ≥ 900 px schaalt de letter met de hoogte en vanaf 7 regels twee kolommen; 11 deelnemers + "Neer" passen op 720p (1.24.3)
 - [x] Dode monsters: in Gevecht onderaan in een ingeklapt blok "Neer (N)"; net neergegaan en open blijft op zijn plek tot de kaart dicht gaat of de beurt wisselt; dode spelers blijven staan; spelersscherm: één regel "Neer: …" (1.23.0)
 - [x] **GV5** Initiative van monsters opnieuw rollen bij Start: "Monsters: Houden | Opnieuw rollen" in het initiative-paneel, per apparaat onthouden; alleen onaangeroerde worpen, groep één worp (1.31.5)
+- [x] **AF1–AF3** Afwerking voor beginners (1.31.6): eigen knoppen "… importeren…" i.p.v. de Engelse "Choose File" (vier bestandskiezers); logboek en gekopieerde tekst tonen "Voorbereiding" i.p.v. "R–"/"R0"; Vorige in de beurtbalk heeft het bijschrift "Vorige" onder "‹"
 - [x] Surprise (2014): "Verrast: Niemand | Monsters | Spelers" in het initiative-paneel, per deelnemer via ⋯ in ronde 1; eerste beurt overgeslagen (beurtgrenzen tellen af), geen reaction en geen legendary actions tot die beurt voorbij is (1.23.0)
 - [x] Statblock-paneel op telefoon (vervangen door half/Groot boven de beurtbalk, 1.7.0)
 - [x] Lettertypes zelf meeleveren in plaats van Google Fonts (offline en privacy)

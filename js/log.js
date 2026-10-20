@@ -70,7 +70,13 @@ export function diffLog(prev, cur) {
   return out;
 }
 
+/** Ronde-label van een logregel: "R3", of "Voorbereiding" vóór het gevecht (ronde 0, leeg of onzin uit oude data). */
+export function logRound(r) {
+  const n = Math.floor(Number(r));
+  return Number.isFinite(n) && n > 0 ? `R${n}` : "Voorbereiding";
+}
+
 export function logText(log) {
   return (log || []).map((e) => e.type === "round" ? `\n== ${e.msg} ==` : e.type === "turn" ? `-- ${e.msg} --`
-    : `R${e.r}${e.turn ? ` [${e.turn}]` : ""} ${e.msg}${e.why ? ` (${e.why})` : ""}${e.note ? ` | ${e.note}` : ""}`).join("\n").trim();
+    : `${logRound(e.r)}${e.turn ? ` [${e.turn}]` : ""} ${e.msg}${e.why ? ` (${e.why})` : ""}${e.note ? ` | ${e.note}` : ""}`).join("\n").trim();
 }

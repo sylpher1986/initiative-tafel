@@ -118,7 +118,7 @@ function listHtml() {
   })() : "";
   const rows = E.sorted(app.encounters).map(rowHtml).join("");
   return `${save}${imp}<div class="enclist">${rows || `<p class="hint">Nog geen encounters. Zet monsters in de lijst en tik op "Huidige lijst opslaan".</p>`}</div>
-    <label class="sub encimp">Encounter-bestand importeren<input id="enc-file" type="file" accept=".json,application/json"></label>
+    <div class="bar encimp"><button type="button" class="btn tap" data-file="enc-file">Encounterbestand importeren…</button><input id="enc-file" type="file" accept=".json,application/json" hidden></div>
     <p class="hint">Delen maakt een bestand met de encounter en de eigen monsters erin, voor een ander apparaat of een co-DM.</p>`;
 }
 
