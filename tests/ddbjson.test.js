@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseDdbJson, parseDdbLink, mergeSheet, findMember } from "../js/ddbjson.js";
+import { parseDdbJson, parseDdbLink, mergeSheet, findMember, partyUpdate } from "../js/ddbjson.js";
 import { cleanCombatant, parseImport } from "../js/backup.js";
 
 // Verzonnen characters in het formaat van character-service v5 (alleen de velden die de parser leest)
@@ -188,7 +188,7 @@ test("bijwerken: verbruik blijft, nieuwe maxima, wijzigingen terug", () => {
   const f = { name: "Testa Vonk", ac: 14, max: 33, dex: 4, initBonus: 4, ddbId: "5", img: "data:image/jpeg;base64,AA==", sheet: { cls: "Wizard 6" },
     casting: { slots: [{ lvl: 1, max: 4, left: 4 }, { lvl: 2, max: 3, left: 3 }, { lvl: 3, max: 3, left: 3 }], daily: [] }, res: [{ n: "arcane recovery", max: 1, left: 1, rest: "Long Rest" }] };
   const ch = mergeSheet(t, f);
-  assert.deepEqual(ch, ["Wizard 5 → Wizard 6", "AC 13 → 14", "max HP 27 → 33", "spell slots"]);
+  assert.deepEqual(ch, ["naam Testa → Testa Vonk", "Wizard 5 → Wizard 6", "AC 13 → 14", "max HP 27 → 33", "spell slots"]);
   assert.equal(t.hp, 26, "7 schade blijft"); assert.equal(t.temp, 3); assert.deepEqual(t.cond, ["Poisoned"]);
   assert.deepEqual(t.casting.slots.map((s) => [s.lvl, s.max, s.left]), [[1, 4, 1], [2, 3, 3], [3, 3, 3]]);
   assert.equal(t.res[0].left, 0); assert.equal(t.ddbId, "5"); assert.equal(t.name, "Testa Vonk");
@@ -232,4 +232,34 @@ test("review: Remarkable Athlete, Tortle zonder Dex, Mage Armor-hint, spell DC-b
   assert.equal(ma.sheet.ac, 12); assert.ok(ma.check.ac.some((r) => /Mage Armor/.test(r)));
   const wl = parseDdbJson({ ...b, classes: [cls("Warlock", 5, { def: { spellCastingAbilityId: 6 } })], modifiers: { item: [mod("bonus", "spell-save-dc", 1, { componentId: 8 }), mod("bonus", "spell-attacks", 1, { componentId: 8 })] }, inventory: [item(8, { name: "Rod", canAttune: true }, { isAttuned: true })] }).sheet;
   assert.equal(wl.spellDC, String(8 + 3 + 3 + 1)); assert.equal(wl.spellAtk, "+7");
+});
+
+test("SP1 bijwerken vanuit de Party: alleen de sheet, onzekere AC/HP niet over een bestaande waarde", () => {
+  const sheet = { name: "Ayla", cls: "Cleric 5", ac: 18, max: 40, dex: 1, initBonus: 1, race: "Hill Dwarf", casting: null, res: [] };
+  const m = { pid: "p1", name: "Ayla", race: "Dwarf", ac: 16, max: 33, hp: 20, ddbId: "7", sheet: { cls: "Cleric 4" } };
+  // zeker: alles over, ras blijft, id blijft
+  let r = partyUpdate(m, { sheet, id: "7", img: null, check: { ac: [], hp: [] } });
+  assert.deepEqual([r.f.ac, r.f.max, r.f.ddbId, "race" in r.f, r.kept], [18, 40, "7", false, []]);
+  assert.deepEqual(mergeSheet(structuredClone(m), r.f), ["Cleric 4 → Cleric 5", "AC 16 → 18", "max HP 33 → 40"]);
+  // onzeker: oude waarde blijft, met uitleg
+  r = partyUpdate(m, { sheet, id: "7", check: { ac: ["Unarmored Defense"], hp: ["Tough"] } });
+  assert.deepEqual([r.f.ac, r.f.max], [0, 0]);
+  assert.deepEqual(r.kept, ["AC onzeker (sheet: 18), blijft 16", "max HP onzeker (sheet: 40), blijft 33"]);
+  const t = structuredClone(m); assert.deepEqual(mergeSheet(t, r.f), ["Cleric 4 → Cleric 5"]);
+  assert.deepEqual([t.ac, t.max, t.hp], [16, 33, 20], "AC, max en schade ongewijzigd");
+  // onzeker maar gelijk: geen uitleg; lid zonder waarde: toch overnemen
+  assert.deepEqual(partyUpdate({ ...m, ac: 18 }, { sheet, check: { ac: ["x"] } }).kept, []);
+  r = partyUpdate({ pid: "p2", name: "Ayla", ddbId: "7" }, { sheet, check: { ac: ["x"], hp: ["y"] } });
+  assert.deepEqual([r.f.ac, r.f.max, r.f.ddbId, r.kept], [18, 40, "7", []]);
+  // zonder check of met 0 uit de sheet: niets onzeker, 0 wordt niet overgenomen
+  assert.deepEqual(partyUpdate(m, { sheet }).kept, []);
+  r = partyUpdate(m, { sheet: { ...sheet, ac: 0, max: 0 }, check: { ac: ["x"], hp: ["y"] } });
+  assert.deepEqual([r.f.ac, r.f.max, r.kept], [0, 0, []]);
+  // max HP met effect (Aid): vergelijking met de basis
+  assert.deepEqual(partyUpdate({ ...m, max: 38, eff: [{ id: "e", n: "Aid", hpd: 5 }] }, { sheet: { ...sheet, max: 33 }, check: { hp: ["x"] } }).kept, []);
+});
+
+test("bijwerken: naamswijziging staat in de wijzigingen", () => {
+  assert.deepEqual(mergeSheet({ name: "Ayla" }, { name: "Ayla Steen" }), ["naam Ayla → Ayla Steen"]);
+  assert.deepEqual(mergeSheet({ name: "Ayla" }, { name: "Ayla" }), []);
 });

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseDdbFields } from "../js/ddb.js";
+import { parseDdbFields, ddbMsg } from "../js/ddb.js";
 
 // Verzonnen sheet in het veldformaat van een D&D Beyond PDF-export
 const f = (page, fieldName, fieldValue, y = 0, x = 40) => ({ page, fieldName, fieldValue, rect: [x, y, x + 100, y + 10] });
@@ -30,4 +30,14 @@ test("D&D Beyond-sheet: basis, slots, spells en resources", () => {
 
 test("geen D&D Beyond-velden → null", () => {
   assert.equal(parseDdbFields([f(1, "Foo", "bar")]), null);
+});
+
+test("foutteksten: staart per plek (formulier vs Party), onbekende code = private", () => {
+  assert.match(ddbMsg("notfound"), /PDF-upload hieronder\.$/);
+  assert.match(ddbMsg("notfound", true), /\+ Speler met de PDF-upload\.$/);
+  assert.doesNotMatch(ddbMsg("upstream", true), /hieronder/);
+  assert.equal(ddbMsg("offline", true), "Geen internet. Bijwerken werkt alleen online.");
+  assert.equal(ddbMsg("offline"), "Geen internet. Ophalen werkt alleen online.");
+  assert.equal(ddbMsg("raar", true), ddbMsg("private", true));
+  assert.ok(!/PDF/.test(ddbMsg("bad")));
 });

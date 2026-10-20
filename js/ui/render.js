@@ -30,6 +30,7 @@ export const ui = {
   sheet: null,         // { id, kind: "dmg"|"heal"|"thp", val: "", mode: 1|0.5|2 }
   condOpt: {}, openCast: new Set(), castPick: null, confirmReset: false, confirmDel: null,
   logOpen: false, editLog: null, partyInit: {},
+  pUpd: null,          // SP1: Bijwerken per partylid ({ pid, st: "busy"|"ask"|"err", f, ch, kept, msg })
   mode: null,          // "prep" | "fight"; null = volg het gevecht (loopt → Gevecht, anders Voorbereiden)
   qadd: null,          // { q, sel, n, init: "roll"|"fixed", fix, full } = snel-toevoegen-paneel open (full = statblock in de preview)
   monFull: false,      // Monster-paneel: volledig statblock in de preview (telefoon); terug naar kort bij een andere keuze
@@ -1149,9 +1150,16 @@ export function paintParty() {
     const rs = (m.res || []).map((r) => ` · ${esc(r.n)} ${n0(r.left)}/${n0(r.max)}`).join("");
     // level voor de moeilijkheid: uit de klasse-string van de sheet, anders zelf invullen
     const lv = m.sheet && clsLevel(m.sheet.cls) ? "" : `<label class="plvl">Level <input data-plvl="${esc(m.pid)}" type="number" min="1" max="20" inputmode="numeric" value="${esc(m.lvl ?? "")}" aria-label="Level ${esc(m.name)}"></label>`;
-    return `<div class="pm">${avatar({ ...m, kind: "pc" })}<div><div class="pn">${esc(m.name)}</div><div class="pi">${m.sheet && m.sheet.cls ? esc(m.sheet.cls) + " · " : ""}${m.ac ? `AC ${n0(m.ac)} · ` : ""}${m.max ? `HP ${n0(m.hp)}/${n0(m.max)}${m.temp ? ` +${n0(m.temp)}` : ""}` : ""}${sl}${rs}</div>${lv}</div>
+    // SP1: Bijwerken alleen met D&D Beyond-link; in de middenkolom, ver van "Uit party"
+    const u = ui.pUpd && ui.pUpd.pid === m.pid ? ui.pUpd : null, busy = ui.pUpd && ui.pUpd.st === "busy";
+    const upd = m.ddbId ? `<button type="button" class="link pupd" data-pupd="${esc(m.pid)}" aria-label="${esc(m.name)} bijwerken van D&amp;D Beyond"${busy ? ` aria-disabled="true"` : ""}${u && u.st === "busy" ? ` aria-busy="true"` : ""}>${u && u.st === "busy" ? "Ophalen…" : u && u.st === "err" ? "↻ Opnieuw" : "↻ Bijwerken"}</button>` : "";
+    const box = !u || u.st === "busy" ? "" : u.st === "err" ? `<p class="hint warnline pupdbox"${u.said ? "" : ` role="alert"`}>${esc(u.msg)}</p>`
+      : `<div class="confirmbox pupdbox"><p style="margin:0"><b>${esc(m.name)}</b> bijwerken van D&amp;D Beyond${at.has(m.pid) ? " (zit aan tafel)" : ""}.</p>
+        <p class="hint">${esc([...u.ch, ...u.kept].join(" · "))}. Schade en verbruik blijven staan.</p>
+        <div class="bar"><button type="button" class="btn primary tap" data-pupdok="${esc(m.pid)}">Bijwerken</button><button type="button" class="btn tap" data-pupdno="${esc(m.pid)}">Annuleer</button></div></div>`;
+    return `<div class="pm">${avatar({ ...m, kind: "pc" })}<div><div class="pn">${esc(m.name)}</div><div class="pi">${m.sheet && m.sheet.cls ? esc(m.sheet.cls) + " · " : ""}${m.ac ? `AC ${n0(m.ac)} · ` : ""}${m.max ? `HP ${n0(m.hp)}/${n0(m.max)}${m.temp ? ` +${n0(m.temp)}` : ""}` : ""}${sl}${rs}</div>${lv}${upd}</div>
       <div class="pc">${at.has(m.pid) ? `<span class="here">aan tafel</span>` : `<input data-pinit="${esc(m.pid)}" type="number" inputmode="numeric" placeholder="init" aria-label="Initiative ${esc(m.name)}" value="${esc(ui.partyInit[m.pid] ?? "")}"><button type="button" class="btn small" data-proll="${esc(m.pid)}">Rol</button>`}
-        <button type="button" class="link" data-pdel="${esc(m.pid)}">Uit party</button></div></div>`;
+        <button type="button" class="link" data-pdel="${esc(m.pid)}">Uit party</button></div>${box}</div>`;
   }).join("")}</div>
     <div class="bar"><button type="button" class="btn small" id="p-rollall">Rol voor iedereen</button><button type="button" class="btn primary" id="p-add">Party aan tafel zetten</button></div>
     <div class="bar"><button type="button" class="btn small" id="p-short">Short rest</button><button type="button" class="btn small" id="p-long">Long rest</button></div>

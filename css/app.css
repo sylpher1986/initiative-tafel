@@ -834,6 +834,9 @@ button.dchip{min-height:36px;cursor:pointer}
 .erow .step .btn{min-width:44px;min-height:44px;padding:0;font-size:1.2rem}
 .erow .step b{min-width:2ch;text-align:center;font-variant-numeric:tabular-nums}
 .pm .plvl{display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--muted);margin-top:4px}
+.pm .pupd{display:block;min-height:44px;padding:0 8px;margin-left:-8px;text-align:left}
+.pm .pupd[aria-disabled="true"]:not([aria-busy]){opacity:.55;cursor:default}
+.pm .pupdbox{grid-column:1/-1;margin:0}
 .pm .plvl input{width:64px;min-height:40px;padding:4px;text-align:center;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
 
 /* VB2: ingeladen encounter boven de lijst, notitie (tactiek) ingeklapt */

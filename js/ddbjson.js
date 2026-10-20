@@ -295,6 +295,7 @@ export function parseDdbJson(json) {
 export function mergeSheet(t, f) {
   const ch = [];
   const keep = (oMax, oLeft, nMax) => clamp(nMax - Math.max(0, (oMax || 0) - (oLeft ?? oMax ?? 0)), 0, nMax);
+  if (f.name && t.name && f.name !== t.name) ch.push(`naam ${t.name} → ${f.name}`); // anders stil hernoemd (SP1)
   const oc = t.sheet && t.sheet.cls, nc = f.sheet && f.sheet.cls;
   if (oc && nc && oc !== nc) ch.push(`${oc} → ${nc}`);
   if (f.ac && t.ac !== f.ac) ch.push(`AC ${t.ac || "?"} → ${f.ac}`);
@@ -319,6 +320,24 @@ export function mergeSheet(t, f) {
     t.res = f.res.map((r) => { const o = old.find((x) => x.n.toLowerCase() === r.n.toLowerCase()); return { ...r, left: o ? keep(o.max, o.left, r.max) : r.max }; });
   }
   return ch;
+}
+
+/**
+ * SP1: Bijwerken vanuit de Party (zonder formulier om te corrigeren). Neemt alleen de sheet over; ras blijft (de DM kan
+ * het zelf gekozen hebben). Onzekere AC/max HP (`check`) gaan niet over een bestaande waarde heen: die is eerder al
+ * gecontroleerd. Geeft `{ f, kept }`: `f` voor mergeSheet, `kept` korte teksten voor het bevestigvak.
+ */
+export function partyUpdate(m, got) {
+  const sh = got.sheet, ck = got.check || {}, kept = [];
+  const f = { name: sh.name, ac: int(sh.ac) || 0, max: int(sh.max) || 0, dex: sh.dex, initBonus: sh.initBonus, sheet: sh,
+    ddbId: got.id || m.ddbId, img: got.img || null, casting: sh.casting || null, res: sh.res || [] };
+  const old = { ac: int(m.ac) || 0, max: baseMax(m) || 0 };
+  for (const [k, ckk, lbl] of [["ac", "ac", "AC"], ["max", "hp", "max HP"]]) {
+    if (!f[k] || !arr(ck[ckk]).length || !old[k]) continue; // zeker, of nog geen waarde: gewoon overnemen
+    if (f[k] !== old[k]) kept.push(`${lbl} onzeker (sheet: ${f[k]}), blijft ${old[k]}`);
+    f[k] = 0; // mergeSheet slaat 0 over
+  }
+  return { f, kept };
 }
 
 /**

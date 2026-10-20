@@ -19,8 +19,8 @@ import { visNow, setVis } from "./playervis.js";
 import { nextAnon } from "../playerview.js";
 import { spellClick as spellInfoClick, spellOpen, closeSpell } from "./spellinfo.js";
 import { logText } from "../log.js";
-import { readSheetPdf, fetchDdb } from "../ddb.js";
-import { parseDdbLink, findMember, mergeSheet } from "../ddbjson.js";
+import { readSheetPdf, fetchDdb, ddbMsg } from "../ddb.js";
+import { parseDdbLink, findMember, mergeSheet, partyUpdate } from "../ddbjson.js";
 import { RACE_OPTS, raceKey, pickRace, cleanImg } from "./avatar.js";
 import { buildExport, parseImport } from "../backup.js";
 import { markExported, snoozeNudge } from "../exportnudge.js";
@@ -378,6 +378,7 @@ export function loadSample() {
 /** Paneel in Voorbereiden openen of wisselen (Monster/Speler/Party/Instellingen); andere panelen gaan dicht */
 function openPrep(k) {
   const was = ui.prep;
+  if (k !== "party" || was !== "party") stopPUpd(); // heropenen begint schoon
   Object.assign(ui, { prep: k, sheet: null, qadd: null, aoe: null, atk: null, la: null, sv: false, confirmReset: false });
   if (!was) ui.prepLast = null;
   render();
@@ -392,6 +393,7 @@ function openPrep(k) {
 /** Paneel dicht: focus terug op de knop, en wat er net bijkwam in beeld */
 function closePrep() {
   const k = ui.prep === "custom" || ui.prep === "enc" ? "mon" : ui.prep, last = ui.prepLast;
+  stopPUpd();
   ui.prep = null; ui.prepLast = null;
   render();
   $(`#dock [data-prep="${k}"]`)?.focus({ preventScroll: true });
@@ -588,14 +590,14 @@ export function onToggle(e) {
 // UI-toestand van het spelersformulier (geen data: hoort niet in undo/opslag)
 let pendingSheet = null, pendingImg = null, pendingDdb = null, pendingNew = false, matchPid = null, ddbBusy = null, selMon = "Goblin";
 
-const DDB_MSG = {
-  bad: "Geen D&D Beyond-link. Plak de link van de sheet of alleen het nummer.",
-  offline: "Geen internet. Ophalen werkt alleen online.",
-  format: "D&D Beyond gaf onverwachte gegevens terug. Gebruik de PDF-upload hieronder.",
-  notfound: "Niet gevonden op D&D Beyond. Controleer de link en of de sheet op Public staat (Character Settings → Character Privacy → Public). Of gebruik de PDF-upload hieronder.",
-  upstream: "D&D Beyond gaf een fout. Waarschijnlijk staat de sheet niet op Public (Character Settings → Character Privacy → Public). Anders: probeer het zo opnieuw of gebruik de PDF-upload hieronder.",
-  private: "Ophalen lukte niet. Waarschijnlijk staat de sheet niet op Public (Character Settings → Character Privacy → Public). Of gebruik de PDF-upload hieronder.",
-};
+/** Bijwerken toepassen: partylid én wie aan tafel zit (zelfde pid). Eén undo-stap voor de tafel; geeft de wijzigingen terug */
+function updMember(m, f) {
+  for (const c of app.S.list) if (c.pid === m.pid) mergeSheet(c, structuredClone(f));
+  const ch = mergeSheet(m, structuredClone(f));
+  because(`${f.name} bijgewerkt via D&D Beyond`);
+  saveParty();
+  return ch;
+}
 
 /** Onzekere AC/HP markeren (verdwijnt zodra de DM het veld aanpast) */
 function setCheck(check) {
@@ -649,7 +651,7 @@ function showMatch(check) {
 
 async function ddbFetch() {
   const id = parseDdbLink($("#pc-ddb").value), info = $("#pc-sheetinfo"), btn = $("#pc-ddbgo");
-  if (!id) { info.textContent = DDB_MSG.bad; return; }
+  if (!id) { info.textContent = ddbMsg("bad"); return; }
   if (ddbBusy) ddbBusy.abort(); // laatste verzoek wint
   const ctl = ddbBusy = new AbortController();
   btn.disabled = true; btn.setAttribute("aria-busy", "true"); info.textContent = "Sheet ophalen…";
@@ -661,7 +663,7 @@ async function ddbFetch() {
     fillSheet(got.sheet, got.img); setCheck(got.check); showMatch(got.check);
   } catch (e) {
     if (ctl !== ddbBusy || e.name === "AbortError") return;
-    info.textContent = DDB_MSG[e.code] || DDB_MSG.private;
+    info.textContent = ddbMsg(e.code);
   } finally {
     if (ctl === ddbBusy) { ddbBusy = null; btn.disabled = false; btn.removeAttribute("aria-busy"); }
   }
@@ -723,11 +725,8 @@ export function bindForms() {
     if (b.id !== "pc-upd") return;
     const m = app.party.find((x) => x.pid === matchPid);
     if (!m) { $("#pc-match").innerHTML = ""; return; }
-    const f = formUpdate();
-    for (const c of app.S.list) if (c.pid === m.pid) mergeSheet(c, structuredClone(f)); // ook wie aan tafel zit
-    const ch = mergeSheet(m, structuredClone(f));
-    because(`${f.name} bijgewerkt via D&D Beyond`);
-    saveParty(); resetPcForm(); render();
+    const ch = updMember(m, formUpdate());
+    resetPcForm(); render();
     toast(`${m.name} bijgewerkt${ch.length ? ": " + ch.join(", ") : ""}.`);
   });
   $("#pc-pdf").addEventListener("change", async (e) => {
@@ -1308,6 +1307,49 @@ export function bindInit() {
 }
 
 /* ---------- party-tab ---------- */
+// SP1: Bijwerken per partylid met D&D Beyond-link. Toestand in ui.pUpd ({ pid, st: "busy"|"ask"|"err", f, ch, kept, msg }),
+// want render() tekent het paneel opnieuw. Eén ophaalactie tegelijk.
+let pUpdCtl = null;
+function stopPUpd() { if (pUpdCtl) pUpdCtl.abort(); pUpdCtl = null; ui.pUpd = null; }
+/** Paneel opnieuw tekenen; focus alleen als het Party-paneel open is (een late ophaal steelt geen focus elders) */
+/** Focus alleen meenemen als die nog bij Bijwerken of nergens stond (niet uit een init-veld trekken) */
+function pFocus(sel, was) {
+  if (!sel || ui.prep !== "party") return;
+  if (!was || was === document.body || !document.contains(was) || was.matches?.("[data-pupd],[data-pupdok],[data-pupdno]")) $("#party-panel " + sel)?.focus();
+}
+function pPaint(sel) {
+  const was = document.activeElement; paintParty(); pFocus(sel, was);
+  if (ui.pUpd && ui.pUpd.st === "err") ui.pUpd.said = true; // role="alert" één keer, niet bij elke repaint
+}
+const pLink = (pid) => `[data-pupd="${CSS.escape(pid)}"]`;
+
+async function partyFetch(pid) {
+  const m = app.party.find((x) => x.pid === pid); if (!m || !m.ddbId) return;
+  stopPUpd();
+  if (navigator.onLine === false) { ui.pUpd = { pid, st: "err", msg: ddbMsg("offline", true) }; return pPaint(pLink(pid)); }
+  const ctl = pUpdCtl = new AbortController();
+  ui.pUpd = { pid, st: "busy" }; pPaint(pLink(pid));
+  try {
+    const got = await fetchDdb(m.ddbId, ctl.signal);
+    if (ctl !== pUpdCtl) return;
+    if (ui.prep !== "party") { stopPUpd(); return; } // paneel ging dicht zonder closePrep (modus, encounter inladen): niets toepassen
+    pUpdCtl = null;
+    const cur = app.party.find((x) => x.pid === pid);
+    if (!cur) { ui.pUpd = null; return pPaint(); } // intussen uit de party
+    const { f, kept } = partyUpdate(cur, got);
+    const ch = mergeSheet(structuredClone(cur), structuredClone(f)); // voorproefje op een kopie
+    if (!ch.length && !kept.length) { // niets te bevestigen: sheet-details (spells, portret) stil verversen
+      const was = document.activeElement; updMember(cur, f); ui.pUpd = null; render(); pFocus(pLink(pid), was); toast(`${cur.name}: sheet ververst, verder niets veranderd.`); return;
+    }
+    ui.pUpd = { pid, st: "ask", f, ch, kept }; pPaint("[data-pupdok]");
+  } catch (e) {
+    if (ctl !== pUpdCtl || e.name === "AbortError") return;
+    if (ui.prep !== "party") { stopPUpd(); return; }
+    pUpdCtl = null;
+    ui.pUpd = { pid, st: "err", msg: ddbMsg(e.code, true) }; pPaint(pLink(pid));
+  }
+}
+
 export function bindParty() {
   const panel = $("#party-panel");
   panel.addEventListener("input", (e) => { if (e.target.dataset.pinit) ui.partyInit[e.target.dataset.pinit] = e.target.value; });
@@ -1324,10 +1366,21 @@ export function bindParty() {
     const b = e.target.closest("button"); if (!b) return;
     const rollFor = (m) => { const r = d(20), bo = m.initBonus ?? m.dex ?? 0; ui.partyInit[m.pid] = r + bo; return `${esc(m.name)}: d20 [${r}] ${sgn(bo)} = <b>${r + bo}</b>`; };
     const at = new Set(app.S.list.filter((c) => c.pid).map((c) => c.pid));
+    if (b.dataset.pupd) { if (ui.pUpd?.st !== "busy") partyFetch(b.dataset.pupd); return; }
+    if (b.dataset.pupdno) { ui.pUpd = null; pPaint(pLink(b.dataset.pupdno)); return; }
+    if (b.dataset.pupdok) {
+      const u = ui.pUpd, m = u && u.st === "ask" && app.party.find((x) => x.pid === u.pid);
+      ui.pUpd = null;
+      if (!m) { pPaint(); return; }
+      const ch = updMember(m, u.f);
+      render(); pFocus(pLink(m.pid), b);
+      toast(`${m.name} bijgewerkt${ch.length ? ": " + ch.join(", ") : ""}.`);
+      return;
+    }
     if (b.dataset.proll) { toastHtml(rollFor(app.party.find((x) => x.pid === b.dataset.proll))); paintParty(); return; }
     if (b.dataset.pdel) {
       const m = app.party.find((x) => x.pid === b.dataset.pdel);
-      if (b.dataset.sure) { app.party = app.party.filter((x) => x !== m); app.S.list.forEach((c) => { if (c.pid === m.pid) c.pid = null; }); saveParty(); render(); }
+      if (b.dataset.sure) { if (ui.pUpd?.pid === m.pid) stopPUpd(); app.party = app.party.filter((x) => x !== m); app.S.list.forEach((c) => { if (c.pid === m.pid) c.pid = null; }); saveParty(); render(); }
       else { b.dataset.sure = "1"; b.textContent = "Zeker? Tik nogmaals"; }
       return;
     }

@@ -177,3 +177,18 @@ async function shrink(blob) {
     return cleanImg(cv.toDataURL("image/jpeg", 0.8));
   } finally { close(); cv.width = cv.height = 0; }
 }
+
+// Foutteksten bij ophalen; de staart verschilt per plek (Speler-formulier heeft de PDF-upload eronder, de Party niet)
+const DDB_MSG = {
+  bad: "Geen D&D Beyond-link. Plak de link van de sheet of alleen het nummer.",
+  format: "D&D Beyond gaf onverwachte gegevens terug.",
+  notfound: "Niet gevonden op D&D Beyond. Controleer de link en of de sheet op Public staat (Character Settings → Character Privacy → Public).",
+  upstream: "D&D Beyond gaf een fout. Waarschijnlijk staat de sheet niet op Public (Character Settings → Character Privacy → Public). Anders: probeer het zo opnieuw.",
+  private: "Ophalen lukte niet. Waarschijnlijk staat de sheet niet op Public (Character Settings → Character Privacy → Public).",
+};
+/** `party`: Bijwerken in het Party-paneel (SP1) */
+export function ddbMsg(code, party) {
+  if (code === "offline") return party ? "Geen internet. Bijwerken werkt alleen online." : "Geen internet. Ophalen werkt alleen online.";
+  if (code === "bad") return DDB_MSG.bad;
+  return (DDB_MSG[code] || DDB_MSG.private) + (party ? " Werk anders bij via + Speler met de PDF-upload." : " Gebruik anders de PDF-upload hieronder.");
+}
