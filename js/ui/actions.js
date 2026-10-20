@@ -1,7 +1,7 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, closeToast, show } from "./util.js";
 import { app, because, addWhy, commit, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
-import { render, ui, openId, mode, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview, editKeys, curSpell, spellPick } from "./render.js";
+import { render, ui, openId, mode, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview, editKeys, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick } from "./render.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
@@ -51,7 +51,7 @@ export function addMonsters(name, n, hpmode, initmode, silent, fixed = null, hid
     const label = n > 1 || nums.length ? `${m.n} ${next + i}` : m.n;
     const c = { id: uid(), name: label, kind: "monster", ref: m.n, ...(grp ? { grp } : {}), ...(hidden ? { hidden: true } : {}), ...(anon ? { anon: nextAnon(S.list) } : {}), init: set ? fixed : r + dx, roll: r, dex: dx, ac: parseInt(m.ac) || 10, hp, max: hp, cond: [], ...legInfo(m), rc: rcInfo(m), casting: castInfo(m) };
     S.list.push(c); out.push(c);
-    because(`${set ? "initiative ingevuld" : `d20 [${r}] ${sgn(dx)}`}${group !== null && n > 1 ? ", groepsworp" : ""}${hpmode === "roll" ? `, HP gerold (${m.hd})` : ""}`, c.id);
+    because(`${set ? "initiative ingevuld" : `d20 [${r}] ${sgn(dx)}`}${group !== null && n > 1 ? ", groepsworp" : ""}${hpmode === "roll" && m.hd ? `, HP gerold (${m.hd})` : ""}`, c.id);
   }
   if (!silent) {
     S.sample = false;
@@ -288,7 +288,7 @@ const global = {
     toastHtml(`${esc(`${r.n ? `${r.n} monster${r.n === 1 ? "" : "s"}` : ""}${r.n && r.lairs ? " en " : ""}${r.lairs ? "lair" : ""} gewist. Spelers blijven; hun initiative vul je in bij Start gevecht.`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
     return false;
   },
-  qadd() { ui.qadd = { q: "", sel: null, n: 1, init: "roll", fix: "", hid: false, anon: false }; },
+  qadd() { ui.qadd = { q: "", sel: null, n: 1, fixOn: false, fix: "", hid: false, anon: false }; },
   aoe() {
     ui.sheet = null; ui.qadd = null; ui.atk = null;
     const act = app.S.list.find((x) => x.id === app.S.active && x.kind !== "lair");
@@ -692,11 +692,12 @@ export function bindForms() {
     e.target.value = "";
   });
 
-  const monN = () => Math.min(20, Math.max(1, parseInt($("#mon-n").value) || 1));
-  const monBtn = () => {
-    const btn = $("#mon-add"), n = monN();
-    btn.disabled = !selMon;
-    btn.textContent = selMon ? addLabel(n, selMon, $("#mon-hid").checked, $("#mon-anon").checked) : "Kies een monster";
+  // bedieningsblok (IN4, zelfde als snel toevoegen): opnieuw tekenen, behalve tijdens typen in het getalveld (focus)
+  const monBtn = (typing) => {
+    const btn = $("#mon-add"), st = ui.monAdd, m = selMon && findMon(selMon);
+    if (typing) $("#mon-addh").textContent = addHint(st, m); else $("#mon-blk").innerHTML = addBlockHtml("mon", st, m);
+    btn.disabled = !selMon || (st.fixOn && parseInit(st.fix) === null);
+    btn.textContent = selMon ? addLabel(st.n, selMon, $("#mon-hid").checked, $("#mon-anon").checked) : "Kies een monster";
     $("#mon-hidh").hidden = !$("#mon-hid").checked;
     $("#mon-anonh").hidden = !$("#mon-anon").checked;
   };
@@ -713,18 +714,26 @@ export function bindForms() {
   };
   bindForms.renderMonList = renderMonList;
   $("#mon-q").addEventListener("input", renderMonList);
-  $("#mon-n").addEventListener("input", monBtn);
+  $("#mon-blk").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-ab]"); if (!b) return;
+    const f = addBlockTap(ui.monAdd, b); monBtn();
+    if (f) $("#mon-fix")?.focus();
+  });
+  $("#mon-blk").addEventListener("input", (e) => { if (e.target.dataset.ab === "fix") { ui.monAdd.fix = e.target.value; monBtn(true); } });
   $("#mon-hidh").textContent = HID_HINT; // één tekst voor Monster-tab en snel toevoegen
   $("#mon-anonh").textContent = ANON_HINT;
-  $("#mon-hid").addEventListener("change", monBtn);
-  $("#mon-anon").addEventListener("change", monBtn);
+  $("#mon-hid").addEventListener("change", () => monBtn());
+  $("#mon-anon").addEventListener("change", () => monBtn());
   $("#mon-list").addEventListener("click", (e) => { const b = e.target.closest("[data-pick]"); if (!b) return; if (selMon !== b.dataset.pick) ui.monFull = false; selMon = b.dataset.pick; renderMonList(); });
   $("#mon-prev").addEventListener("click", (e) => { if (!e.target.closest("[data-mpfull]")) return; ui.monFull = !ui.monFull; renderMonList(); });
   $("#f-mon").addEventListener("submit", (e) => {
     e.preventDefault();
     if (!selMon) { toast("Tik eerst een monster in de lijst aan."); return; }
+    const st = ui.monAdd, fix = parseInit(st.fix);
+    if (st.fixOn && fix === null) { toast("Vul de initiative in."); $("#mon-fix")?.focus(); return; }
     $("#mon-q").blur();
-    addMonsters(selMon, monN(), $("#mon-hpmode").value, $("#mon-initmode").value, false, null, $("#mon-hid").checked, $("#mon-anon").checked);
+    addMonsters(selMon, st.n, addHp(findMon(selMon)), addInit(st), false, fix, $("#mon-hid").checked, $("#mon-anon").checked);
+    Object.assign(st, { n: 1, fixOn: false, fix: "" }); // aantal en ingevulde initiative gelden één keer; HP en Per monster/Groep blijven
     $("#mon-hid").checked = $("#mon-anon").checked = false; monBtn(); // elke keer opnieuw kiezen: nooit per ongeluk verborgen toevoegen
     ui.prepLast = app.S.list.at(-1)?.id ?? null;
     render();
@@ -777,26 +786,23 @@ export function bindQadd() {
   // invoer: alleen het paneel bijwerken (geen volledige render), zodat het zoekveld focus houdt
   el.addEventListener("input", (e) => {
     const q = ui.qadd; if (!q) return;
-    if (e.target.id === "q-q") q.q = e.target.value;
-    else if (e.target.id === "q-fix") q.fix = e.target.value;
-    else return;
-    paintQadd();
+    if (e.target.id === "q-q") { q.q = e.target.value; paintQadd(); }
+    else if (e.target.dataset.ab === "fix") { q.fix = e.target.value; q.typing = true; paintQadd(); q.typing = false; }
   });
   el.addEventListener("click", (e) => {
     const q = ui.qadd; if (!q) return;
     const p = e.target.closest("[data-qpick]");
     if (p) { if (q.sel !== p.dataset.qpick) q.full = false; q.sel = p.dataset.qpick; paintQadd(); return; }
     if (e.target.closest("[data-mpfull]")) { q.full = !q.full; paintQadd(); return; }
+    const ab = e.target.closest("button[data-ab]");
+    if (ab) { const f = addBlockTap(q, ab); paintQadd(); if (f) $("#q-fix")?.focus(); return; }
     const b = e.target.closest("[data-q]"); if (!b) return;
     const k = b.dataset.q;
     if (k === "close") { closeQadd(); return; }
-    if (k === "n") q.n = Math.min(20, Math.max(1, q.n + +b.dataset.v));
-    if (k === "init") q.init = b.dataset.v;
     if (k === "hid") q.hid = b.checked;
     if (k === "anon") q.anon = b.checked;
     if (k === "go") { qGo(); return; }
     paintQadd();
-    if (k === "init" && q.init === "fixed") $("#q-fix").focus();
   });
   // Enter (zoekknop van het toetsenbord) voegt toe zodra er een monster gekozen is
   el.addEventListener("keydown", (e) => {
@@ -807,9 +813,9 @@ export function bindQadd() {
 function qGo() {
   const q = ui.qadd; if (!q || !q.sel) return;
   const fix = parseInit(q.fix);
-  if (q.init === "fixed" && fix === null) { $("#q-fix").focus(); return; }
+  if (q.fixOn && fix === null) { $("#q-fix")?.focus(); return; }
   because("tijdens het gevecht toegevoegd");
-  addMonsters(q.sel, q.n, "avg", q.init === "fixed" ? "fixed" : "each", false, fix, q.hid, q.anon);
+  addMonsters(q.sel, q.n, addHp(findMon(q.sel)), addInit(q), false, fix, q.hid, q.anon);
   ui.qadd = null;
   render();
   $("#qadd")?.focus();

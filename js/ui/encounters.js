@@ -144,8 +144,9 @@ function loadEnc(enc, mode) {
     Object.assign(ui, CLEAR_UI);
   }
   if (S.round) because("tijdens het gevecht toegevoegd");
-  const before = S.list.length, hpmode = $("#mon-hpmode")?.value || "avg", initmode = $("#mon-initmode")?.value || "each";
-  for (const a of plan.adds) addMonsters(a.ref, a.n, hpmode, a.init === "group" ? "group" : initmode, true, null, a.hidden, a.anon);
+  // HP volgt de keuze bij monsters toevoegen (ui.addOpts); initiative volgt de encounter zelf: groep per regel, anders per monster
+  const before = S.list.length, hpmode = ui.addOpts.hp;
+  for (const a of plan.adds) addMonsters(a.ref, a.n, hpmode, a.init === "group" ? "group" : "each", true, null, a.hidden, a.anon);
   if (lairNew) S.list.push(newLair(plan.lair.key, plan.lair.hidden));
   const added = S.list.slice(before), nMon = added.filter((c) => c.kind === "monster").length;
   const what = `${plural(nMon, "monster", "monsters")}${lairNew ? " + lair" : ""}`;

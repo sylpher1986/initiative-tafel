@@ -55,6 +55,8 @@ export const ui = {
   encImp: null,        // { enc, monsters, lairs } = import met bestaande id wacht op Vervangen | Als kopie
   diffOpen: false,     // uitleg bij de live moeilijkheid boven de lijst
   prepLast: null,      // id van de laatst toegevoegde deelnemer terwijl dat paneel open was (bij Sluit in beeld)
+  addOpts: { hp: "avg", init: "each" }, // monsters toevoegen (IN4): HP- en initiativekeuze, gedeeld door Monster-paneel, snel toevoegen en encounter inladen; per sessie
+  monAdd: { n: 1, fixOn: false, fix: "" }, // Monster-paneel: aantal en eenmalig ingevulde initiative
   welcome: true,       // welkomstkaart bij een lege start; "Begin leeg" zet hem uit voor deze sessie
   downOpen: false,     // blok "Neer (N)" onderaan de lijst (Gevecht) opengeklapt
   fromDown: null,      // id van een dood monster dat vanuit dat blok geopend is (blijft dan in het blok)
@@ -718,6 +720,47 @@ export const addLabel = (n, name, hid, anon) => `${n > 1 ? `${n}× ` : ""}${name
 export const HID_HINT = "Spelers zien ze niet, ook hun beurt niet. Later tonen via ⋯ → Tonen aan spelers.";
 export const ANON_HINT = `Spelers zien "${ANON}" met een algemeen icoon. Later tonen via ⋯ → Naam tonen aan spelers.`;
 
+/* ---------- één bedieningsblok voor monsters toevoegen (IN4): Monster-paneel en snel toevoegen ---------- */
+/**
+ * st = { n, fixOn, fix } per paneel; HP en Per monster/Groep komen uit ui.addOpts (onthouden), Invullen geldt één keer.
+ * Rollen staat uit zonder hit dice. pre = id-voorvoegsel ("mon" of "q"). Knoppen dragen data-ab, het getalveld data-ab="fix".
+ */
+export const INIT_OPTS = [["each", "Per monster"], ["group", "Groep"], ["fixed", "Invullen"]];
+export const addInit = (st) => (st.fixOn ? "fixed" : ui.addOpts.init);
+export const addHp = (m) => (ui.addOpts.hp === "roll" && m && m.hd ? "roll" : "avg");
+export function addHint(st, m) {
+  const n = st.n, v = parseInit(st.fix), init = addInit(st);
+  const t = init === "fixed" ? (n > 1 ? `Alle ${n} op ${v ?? "dit getal"} · één groepsbeurt.` : `Initiative ${v ?? "invullen"}.`)
+    : init === "group" ? (n > 1 ? `Eén d20 voor alle ${n} · één groepsbeurt.` : "Eén d20 (een groep vanaf 2 monsters).")
+    : n > 1 ? "Elk monster een eigen d20." : "d20 + Dex.";
+  const hd = ui.addOpts.hp === "roll" && m && !m.hd ? " Geen hit dice: HP gemiddeld." : "";
+  const late = app.S.round ? " Zit dat vóór wie nu aan de beurt is, dan doen ze pas volgende ronde mee." : "";
+  return t + hd + late;
+}
+export function addBlockHtml(pre, st, m) {
+  const init = addInit(st), seg = (k, opts, cur, dis) => opts.map(([v, l]) => `<button type="button" data-ab="${k}" data-v="${v}" aria-pressed="${cur === v}"${dis && dis(v) ? " disabled" : ""}>${l}</button>`).join("");
+  return `<div class="qrow">
+      <div class="qcol"><span class="qlbl" id="${pre}-nl">Aantal</span>
+        <div class="stepper" role="group" aria-labelledby="${pre}-nl"><button type="button" data-ab="n" data-v="-1" aria-label="Minder" ${st.n <= 1 ? "disabled" : ""}>−</button><output aria-live="polite">${st.n}</output><button type="button" data-ab="n" data-v="1" aria-label="Meer" ${st.n >= 20 ? "disabled" : ""}>+</button></div></div>
+      <div class="qcol"><span class="qlbl" id="${pre}-hl">HP</span>
+        <div class="seg2" role="group" aria-labelledby="${pre}-hl">${seg("hp", [["avg", "Gemiddeld"], ["roll", "Rollen"]], m && !m.hd ? "avg" : ui.addOpts.hp, (v) => v === "roll" && m && !m.hd)}</div></div>
+    </div>
+    <div class="qcol"><span class="qlbl" id="${pre}-il">Initiative</span>
+      <div class="seg2 init3" role="group" aria-labelledby="${pre}-il">${seg("init", INIT_OPTS, init)}</div></div>
+    ${init === "fixed" ? `<label>Initiative${st.n > 1 ? ` voor alle ${st.n}` : ""}<input id="${pre}-fix" data-ab="fix" type="number" inputmode="numeric" enterkeyhint="done" placeholder="bijv. 14" value="${esc(st.fix)}"></label>` : ""}
+    <p class="hint addh" id="${pre}-addh">${esc(addHint(st, m))}</p>`;
+}
+/** Tik in het blok: past st of ui.addOpts aan; geeft "fix" terug als het getalveld de focus moet krijgen */
+export function addBlockTap(st, b) {
+  const k = b.dataset.ab, v = b.dataset.v;
+  if (k === "n") st.n = Math.min(20, Math.max(1, st.n + +v));
+  else if (k === "hp") ui.addOpts.hp = v;
+  else if (k === "init") {
+    if (v === "fixed") { st.fixOn = true; return "fix"; }
+    st.fixOn = false; ui.addOpts.init = v;
+  }
+}
+
 /* ---------- snel toevoegen tijdens het gevecht ---------- */
 /** Bouwt het paneel één keer per opening en werkt daarna alleen de delen bij, zodat het zoekveld focus houdt */
 export function paintQadd() {
@@ -732,14 +775,7 @@ export function paintQadd() {
       <p class="mlbl" id="q-lbl" aria-live="polite" hidden></p>
       <div class="mlist qlist" id="q-list"></div>
       <div id="q-prev"></div>
-      <div class="qrow">
-        <div class="qcol"><span class="qlbl" id="q-nl">Aantal</span>
-          <div class="stepper" role="group" aria-labelledby="q-nl"><button type="button" data-q="n" data-v="-1" aria-label="Minder">−</button><output id="q-n" aria-live="polite"></output><button type="button" data-q="n" data-v="1" aria-label="Meer">+</button></div></div>
-        <div class="qcol"><span class="qlbl" id="q-il">Initiative</span>
-          <div class="seg2" role="group" aria-labelledby="q-il"><button type="button" data-q="init" data-v="roll">Rollen</button><button type="button" data-q="init" data-v="fixed">Invullen</button></div></div>
-      </div>
-      <label id="q-fixw">Initiative<input id="q-fix" type="number" inputmode="numeric" placeholder="bijv. 14"></label>
-      <p class="hint">Ze komen op hun initiative in de volgorde. Zit dat vóór wie nu aan de beurt is, dan doen ze pas volgende ronde mee.</p>
+      <div class="addblk" id="q-blk"></div>
       <label class="chk tall"><input type="checkbox" data-q="hid" id="q-hid"> Verborgen voor spelers</label>
       <p class="hint" id="q-hidh" hidden>${HID_HINT}</p>
       <label class="chk tall"><input type="checkbox" data-q="anon" id="q-anon"> Naam onbekend voor spelers</label>
@@ -755,11 +791,10 @@ export function paintQadd() {
   $("#q-lbl").hidden = !lbl; $("#q-lbl").textContent = lbl;
   $("#q-list").innerHTML = monListHtml(f, q.sel, "data-qpick", "Niets gevonden. Eigen monsters maak je onder Voorbereiden.");
   $("#q-prev").innerHTML = monPrev(q.sel && findMon(q.sel), q.full, false); // snel toevoegen: geen zijkolom (die volgt de beurt)
-  $("#q-n").textContent = q.n;
-  el.querySelectorAll('[data-q="init"]').forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === q.init));
-  $("#q-fixw").hidden = q.init !== "fixed";
+  if (!q.typing) $("#q-blk").innerHTML = addBlockHtml("q", q, q.sel && findMon(q.sel)); // tijdens typen in het getalveld niet vervangen (focus)
+  else $("#q-addh").textContent = addHint(q, q.sel && findMon(q.sel));
   const go = el.querySelector(".qgo");
-  go.disabled = !q.sel || (q.init === "fixed" && parseInit(q.fix) === null);
+  go.disabled = !q.sel || (q.fixOn && parseInit(q.fix) === null);
   go.textContent = q.sel ? addLabel(q.n, q.sel, q.hid, q.anon) : "Kies een monster";
   $("#q-anon").checked = q.anon; $("#q-anonh").hidden = !q.anon;
   $("#q-hid").checked = q.hid; $("#q-hidh").hidden = !q.hid;

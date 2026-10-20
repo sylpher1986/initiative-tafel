@@ -6,8 +6,7 @@ Geordend op soort wijziging. Elk open punt heeft een code (bijv. **IN1**); de **
 Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zie "DM-review 2" onderaan). Leidraad: eerst wat elke sessie verwarring of tikken kost, dan voorbereiding, dan uitbreidingen.
 
 **P1: nu (indeling, elke sessie)**
-1. ~~IN1–IN3~~ klaar in 1.29.0 (zie Klaar)
-2. **IN4** Eén manier van monsters toevoegen (Monster-paneel = snel toevoegen)
+1. ~~IN1–IN4~~ klaar in 1.29.0 en 1.30.0 (zie Klaar)
 3. **VB1** "level onbekend" tikbaar maken + levels in het voorbeeld
 
 **P2: volgende (tempo en voorbereiding)**
@@ -36,7 +35,6 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 ---
 
 ## Indeling en navigatie
-- [ ] **IN4 Eén manier van monsters toevoegen.** Monster-paneel (invoerveld Aantal, selects HP en Initiative) en snel toevoegen (stepper −/+, seg Rollen/Invullen) verschillen. Het snel-toevoegen-patroon is beter op de telefoon: gebruik het in beide; HP-modus als seg.
 - [ ] **IN5 Voorbereiden tijdens een gevecht:** grotendeels opgelost in 1.29.0 (geen beurtbalk meer in die stand, één knop "Terug naar gevecht"). Nog controleren op 360 × 740 aan tafel; daarna sluiten.
 - [ ] **IN6 Statblock dubbel op de monsterkaart:** knop "Statblock" én link "Volledig statblock" onder de aanvallen. Eén van beide weg.
 - [ ] **IN7 Logboek dichter bij de beurtbalk:** eigen tab, of de laatste 2 gebeurtenissen onder de beurtbalk.
@@ -168,6 +166,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 ### Modi (1.29.0, uit DM-review 2)
 - **IN1** Modus volgt de toestand: vóór Start altijd Voorbereiden (fase-aanduiding 1 → 2), Gevecht met eigen kop (grote ronde, ✎ Voorbereiden, +), tussendoor Voorbereiden met een amberkleurige balk en "Terug naar gevecht". Seg-knop weg. UX-agent koos dit boven tabs met een donkere kop (optie B).
 - **IN2** Kaart in Voorbereiden = inrichten: monster Init en Max HP direct (AC onder ⋯), Verbergen, Conditie, Effect, Statblock; speler huidige HP, AC en Level (als de sheet het mist), Conditie, Effect, Sheet. Geen Schade/Heal/Reaction. Velden slaan op bij verlaten.
+- **IN4** (1.30.0) Eén blok voor monsters toevoegen in het Monster-paneel én bij snel toevoegen: Aantal-stepper, HP Gemiddeld | Rollen, Initiative Per monster | Groep | Invullen. Encounter inladen volgt de groepen uit de encounter en alleen de HP-keuze.
 - **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.
 
 ### Functies
