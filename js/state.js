@@ -53,6 +53,7 @@ export async function load() {
 
 /** Na een import of bij opstarten: huidige stand is het nieuwe vertrekpunt (geen undo-stap, geen logregels) */
 export function resetBaseline() {
+  tidy(app.S); // zelfde normalisatie als commit(), anders wordt die de eerste (onuitwisbare) undo-stap
   lastJSON = JSON.stringify(app.S); prevObj = JSON.parse(lastJSON); hist = []; pendingWhy = []; pendingSum = pendingKey = null;
   save("state", prevObj);
 }
@@ -81,8 +82,8 @@ export function commit() {
 
 /** Logregel van deze stap of een eerdere met deze key bijwerken (de laatste); hoort bij de volgende commit */
 export function relog(key, msg) {
-  const e = (app.S.log || []).findLast((x) => x.key === key);
-  if (e) e.msg = msg;
+  const L = app.S.log || [];
+  for (let i = L.length - 1; i >= 0; i--) if (L[i].key === key) { L[i].msg = msg; return; } // geen findLast: oudere iPads
 }
 
 export function undo() {

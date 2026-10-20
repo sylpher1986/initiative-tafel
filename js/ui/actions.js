@@ -25,7 +25,7 @@ import { RACE_OPTS, raceKey, pickRace, cleanImg } from "./avatar.js";
 import { buildExport, parseImport } from "../backup.js";
 import { cleanLvl } from "../rules/encounters.js";
 import { startFight } from "../rules/fight.js";
-import { finishFight } from "./einde.js";
+import { finishFight, closeEnd } from "./einde.js";
 
 /** Fx uit de regels: meldingen tonen en oorzaken doorgeven aan het logboek */
 const apply = (fx) => { if (!fx) return; addWhy(fx.why); show(fx); if (fx.saves) fx.saves.forEach((x) => addSave(app.S, x)); };
@@ -553,7 +553,7 @@ function prepField(c, t) {
 export function onKey(e) {
   if (e.key === "Enter" && e.target.dataset && e.target.dataset.pf) { e.preventDefault(); e.target.blur(); return; } // veld op de kaart: klaar = opslaan
   if (spellOpen()) { if (e.key === "Escape") { e.preventDefault(); closeSpell(); } return; } // ligt boven alle andere panelen: toetsen niet naar het cijferpad eronder
-  if (ui.end && e.key === "Escape") { e.preventDefault(); ui.end = false; render(); return; }
+  if (ui.end && e.key === "Escape") { e.preventDefault(); closeEnd(); return; }
   if (ui.prep && e.key === "Escape") { e.preventDefault(); closePrep(); return; }
   if (ui.qadd && e.key === "Escape") { e.preventDefault(); closeQadd(); return; }
   if (ui.aoe && e.key === "Escape") { e.preventDefault(); closeAoe(); return; }

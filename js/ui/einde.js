@@ -27,13 +27,12 @@ const chip = (id, on, label) => `<button type="button" class="echip" data-end="f
 
 export function paintEnd() {
   const el = $("#esheet"), es = app.S.endSum;
-  if (!ui.end || !es || app.S.round) { ui.end = false; el.hidden = true; el.innerHTML = ""; return; }
+  // na Ongedaan van het afronden (gevecht loopt weer) of monsters wissen: paneel dicht (ui is UI-toestand, geen data)
+  if (!ui.end || !es || app.S.round) { ui.end = false; if (!el.hidden) { el.hidden = true; el.innerHTML = ""; } return; }
   const k = endCalc(es), fl = new Set(es.flip || []);
-  const won = es.mons.filter((m) => m.out), alive = es.mons.filter((m) => !m.out);
-  const counted = (m) => m.out !== fl.has(m.id);
+  const alive = es.mons.filter((m) => !m.out), counted = (m) => fl.has(m.id);
   const old = el.querySelector(".esheet"), top = old ? old.scrollTop : 0;
   const line = (lbl, v) => (v ? `<p class="eln"><span>${lbl}</span> ${v}</p>` : "");
-  const flipOff = won.filter((m) => !counted(m)); // op 0 HP maar niet meegeteld (bijv. bewusteloos geslagen en vrijgelaten)
   el.innerHTML = `<div class="dim" data-end="close"></div>
     <div class="sheet qsheet esheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="e-title">
       <div class="grab" aria-hidden="true"></div>
@@ -41,9 +40,9 @@ export function paintEnd() {
       <p class="esub">${es.enc ? `${esc(es.enc)} · ` : ""}${es.r} ${es.r === 1 ? "ronde" : "rondes"}${es.min ? ` · ± ${es.min} min` : ""}</p>
       <div class="etiles"><div><b>${fmt(k.xp)}</b><span>XP totaal</span></div><div><b>${k.per == null ? "–" : fmt(k.per)}</b><span>${k.share.length ? `per speler (${k.share.length})` : "niemand deelt"}</span></div></div>
       ${line("Verslagen:", k.by.length ? esc(byText(k.by)) : "niets")}
-      ${k.noXp.length ? `<p class="hint">Zonder CR niet geteld: ${esc(k.noXp.join(", "))}</p>` : ""}
-      ${alive.length || flipOff.length ? `<details class="eflee" ${ui.endFlee || alive.some(counted) || flipOff.length ? "open" : ""}><summary>Gevlucht of overgegeven? Tel mee</summary>
-        <div class="echips">${[...alive, ...won.filter((m) => fl.has(m.id))].map((m) => chip(m.id, counted(m), nm(m))).join("")}</div></details>` : ""}
+      ${k.noXp.length ? `<p class="hint">Zonder CR of statblock niet geteld: ${esc(k.noXp.join(", "))}</p>` : ""}
+      ${alive.length ? `<details class="eflee" ${ui.endFlee ? "open" : ""}><summary>Gevlucht of overgegeven? Tel mee <span aria-hidden="true">${ui.endFlee ? "▾" : "▸"}</span></summary>
+        <div class="echips">${alive.map((m) => chip(m.id, counted(m), m.label || m.name)).join("")}</div></details>` : ""}
       ${es.pcs.length ? `<p class="elbl">Delen</p><div class="echips">${es.pcs.map((p) => chip(p.id, k.share.includes(p), `${p.name}${p.dead ? " (dood)" : ""}`)).join("")}</div>` : ""}
       ${line("Neer geweest:", esc(k.down.map((x) => `${x.name}${x.up ? " (stond weer op)" : ""}`).join(", ")))}
       ${k.dead.length ? line("Gestorven:", esc(k.dead.join(", "))) : ""}
@@ -53,8 +52,6 @@ export function paintEnd() {
   el.hidden = false;
   el.querySelector(".esheet").scrollTop = top;
 }
-/** Naam op de chip: de echte naam (Goblin 3), niet de soort */
-const nm = (m) => (app.S.list.find((c) => c.id === m.id) || {}).name || m.name;
 
 async function copy() {
   const t = endText(app.S.endSum);
@@ -62,16 +59,22 @@ async function copy() {
   catch { toast("Kopiëren lukt niet in deze browser. De samenvatting staat ook in het logboek."); }
 }
 
+/** Sluit, Escape, achtergrond: focus terug naar de strook "Laatste gevecht", anders Start gevecht */
+export function closeEnd() {
+  ui.end = false; render();
+  ($('[data-end="open"]') || $("#start"))?.focus({ preventScroll: true });
+}
+
 export function bindEnd(resetMons) {
   document.addEventListener("click", (e) => {
-    if (e.target.closest(".eflee summary")) { ui.endFlee = !e.target.closest("details").open; return; }
+    if (e.target.closest(".eflee summary")) { e.preventDefault(); ui.endFlee = !ui.endFlee; render(); return; }
     const b = e.target.closest("[data-end]"); if (!b) return;
     const a = b.dataset.end, es = app.S.endSum;
     if (a === "open") { ui.end = true; render(); $("#esheet .esheet")?.focus(); return; }
-    if (a === "close") { ui.end = false; render(); return; }
+    if (a === "close") { closeEnd(); return; }
     if (!es) return;
     if (a === "flip") { toggleFlip(es, b.dataset.id); relog("end", endText(es)); render(); $("#esheet .esheet")?.focus({ preventScroll: true }); return; }
     if (a === "copy") { copy(); return; }
-    if (a === "clear") { ui.end = false; resetMons(); }
+    if (a === "clear") { ui.end = false; resetMons(); ($("#start") || document.body).focus?.(); }
   });
 }

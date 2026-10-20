@@ -26,14 +26,17 @@ export const cleanEnc = (a) => (Array.isArray(a) ? a : []).filter((e) => e && ty
 export function tidy(S) {
   if (S.round && !S.fight) S.fight = { t0: 0, down: [] }; // gevecht van vóór 1.31.0 of uit een import: zonder duur
   if (S.round && S.fight) for (const c of S.list) {
-    if (c.kind === "pc" && c.max && c.hp <= 0 && !S.fight.down.some((x) => x.id === c.id)) S.fight.down.push({ id: c.id, name: c.name });
+    if (c.kind !== "pc" || !c.max) continue;
+    const pre = S.fight.pre || [], i = pre.indexOf(c.id);
+    if (i >= 0) { if (c.hp > 0) pre.splice(i, 1); continue; } // begon al op 0 HP: telt pas als hij opstaat en opnieuw neergaat
+    if (c.hp <= 0 && !S.fight.down.some((x) => x.id === c.id)) S.fight.down.push({ id: c.id, name: c.name });
   }
   if (S.enc && !S.list.some((c) => c.kind === "monster" || c.kind === "lair")) delete S.enc;
 }
 
 /** Bij Start gevecht: nieuw gevecht, oude samenvatting weg */
 export function startFight(S, now) {
-  S.fight = { t0: now, down: [] };
+  S.fight = { t0: now, down: [], pre: S.list.filter((c) => c.kind === "pc" && c.max && c.hp <= 0).map((c) => c.id) };
   delete S.endSum;
 }
 
@@ -46,7 +49,7 @@ export function endSummary(S, find, now) {
   const f = S.fight;
   const mons = S.list.filter((c) => c.kind === "monster" && (isOut(c) || !c.hidden)).map((c) => {
     const s = c.ref && find(c.ref), x = s ? crXp(s.cr) ?? (Number.isFinite(s.xp) && s.xp > 0 ? s.xp : null) : null;
-    return { id: c.id, name: c.ref || c.name, xp: x, out: isOut(c) };
+    return { id: c.id, name: c.ref || c.name, label: c.name, xp: x, out: isOut(c) };
   });
   const pcs = S.list.filter((c) => c.kind === "pc").map((c) => ({ id: c.id, name: c.name, dead: !!(c.ds && c.ds.dead), up: !!c.max && c.hp > 0 }));
   const min = f && f.t0 ? Math.round((now - f.t0) / 60000) : 0;
@@ -77,7 +80,7 @@ export function endText(es) {
   const parts = [`${es.enc ? `${es.enc}: ` : "Gevecht afgerond: "}${es.r} ${es.r === 1 ? "ronde" : "rondes"}${es.min ? ` (± ${es.min} min)` : ""}`];
   parts.push(k.by.length ? `Verslagen: ${byText(k.by)}` : "Niets verslagen");
   parts.push(`${fmt(k.xp)} XP${k.share.length ? `, ${fmt(k.per)} per speler (${k.share.map((p) => p.name).join(", ")})` : ", niemand deelt"}`);
-  if (k.noXp.length) parts.push(`Zonder CR niet geteld: ${k.noXp.join(", ")}`);
+  if (k.noXp.length) parts.push(`Zonder CR of statblock niet geteld: ${k.noXp.join(", ")}`);
   if (k.down.length) parts.push(`Neer geweest: ${k.down.map((x) => `${x.name}${x.up ? " (stond weer op)" : ""}`).join(", ")}`);
   if (k.dead.length) parts.push(`Gestorven: ${k.dead.join(", ")}`);
   return parts.join(". ") + ".";

@@ -77,7 +77,7 @@ test("endSummary/endCalc: verslagen = 0 HP, gevlucht meetellen, delen zonder dod
   assert.equal(k.xp, 150); assert.equal(k.per, 50);
   toggleFlip(es, "Goblin 3"); assert.equal(endCalc(es).xp, 100);
   const t = endText(es);
-  assert.match(t, /^Brug: 4 rondes \(± 23 min\)\. Verslagen: 2× Goblin, Thing\. 100 XP, 33 per speler \(Ayla, Brom, Cas\)\. Zonder CR niet geteld: Thing\. Neer geweest: Cas \(stond weer op\)\. Gestorven: Brom\.$/);
+  assert.match(t, /^Brug: 4 rondes \(± 23 min\)\. Verslagen: 2× Goblin, Thing\. 100 XP, 33 per speler \(Ayla, Brom, Cas\)\. Zonder CR of statblock niet geteld: Thing\. Neer geweest: Cas \(stond weer op\)\. Gestorven: Brom\.$/);
 });
 
 test("endText: niets verslagen, niemand deelt, geen duur", () => {
@@ -104,4 +104,36 @@ test("backup-import houdt de ingeladen encounter (opgeschoond), niet de samenvat
   const r = parseImport(({ format: "initiative-tafel", version: 2, state: { list: [], round: 0, enc: [{ name: "Brug", notes: "x", evil: 1 }], endSum: { r: 1 }, fight: {} } }));
   assert.deepEqual(r.S.enc, [{ name: "Brug", notes: "x" }]);
   assert.equal(r.S.endSum, undefined); assert.equal(r.S.fight, undefined);
+});
+
+test("resetBaseline normaliseert ook (tidy): geen onuitwisbare undo-stap na herladen of import", async () => {
+  const { historySize } = await import("../js/state.js");
+  app.S = { list: [pc("A", 0)], round: 2, active: null, log: [], enc: [{ name: "x", notes: "" }] }; // oud gevecht zonder fight, enc zonder monsters
+  resetBaseline();
+  assert.equal(commit(), false);
+  assert.equal(historySize(), 0);
+  assert.equal(app.S.enc, undefined);
+});
+
+test("speler die al op 0 HP begon is niet 'neer geweest', tenzij hij opstaat en weer neergaat", () => {
+  const S = { list: [pc("A", 0), pc("B")], round: 1 };
+  startFight(S, 1); tidy(S);
+  assert.deepEqual(S.fight.down, []);
+  S.list[0].hp = 3; tidy(S); S.list[0].hp = 0; tidy(S);
+  assert.deepEqual(S.fight.down.map((x) => x.id), ["A"]);
+});
+
+test("XP-randgevallen: verborgen monster op 0 HP telt, eigen xp zonder CR, CR 0 = 10, speler zonder max HP deelt", () => {
+  const lib = { Rat: { cr: "0" }, Eigen: { cr: "", xp: 75 } };
+  const S = { round: 1, list: [mon("r", "Rat", 0, { hidden: true }), mon("e", "Eigen", 0), mon("weg", "Verdwenen", 0), { id: "p", name: "P", kind: "pc", cond: [], hp: 0, max: 0 }] };
+  const k = endCalc(endSummary(S, (r) => lib[r], 0));
+  assert.equal(k.xp, 85); assert.deepEqual(k.noXp, ["Verdwenen"]);
+  assert.deepEqual(k.share.map((p) => p.id), ["p"]); assert.deepEqual(k.down, []);
+  assert.match(endText(endSummary(S, (r) => lib[r], 0)), /Zonder CR of statblock niet geteld: Verdwenen/);
+});
+
+test("dezelfde encounter tweemaal inladen: naam één keer", () => {
+  const S = { list: [] };
+  addEnc(S, { name: "Brug", notes: "" }, false); addEnc(S, { name: "Brug", notes: "" }, false);
+  assert.equal(encName(S), "Brug");
 });

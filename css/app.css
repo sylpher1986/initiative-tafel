@@ -855,10 +855,11 @@ button.dchip{min-height:36px;cursor:pointer}
 .etiles span{font-size:.8rem;color:var(--muted)}
 .eln{overflow-wrap:anywhere}
 .eln span,.elbl{color:var(--muted);font-size:.85rem}
-.eflee summary{min-height:44px;display:flex;align-items:center;cursor:pointer;color:var(--muted);font-size:.9rem}
+.eflee summary{list-style:none;min-height:44px;display:flex;gap:6px;align-items:center;cursor:pointer;color:var(--muted);font-size:.9rem}
 .echips{display:flex;flex-wrap:wrap;gap:6px}
 .echip{min-height:44px;padding:0 12px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:inherit;font-size:.9rem}
 .echip[aria-pressed="true"]{border-color:var(--good);color:var(--fg);font-weight:700}
 .endrow{border-color:var(--line)}
 .endrow span{flex:1 1 auto;font-size:.9rem}
 .dock .endrow button{color:var(--fg)}
+.eflee summary::-webkit-details-marker{display:none}

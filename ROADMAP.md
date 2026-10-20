@@ -11,9 +11,7 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 
 **P2: volgende (tempo en voorbereiding)**
 6. ~~GV1~~ klaar in 1.30.2 (zie Klaar)
-7. **IN5** Voorbereiden tijdens een gevecht: beurtbalk niet twee rijen hoog
-8. **VB2** Encounters vindbaar + notitie van de ingeladen encounter tijdens het gevecht
-9. **GV2** Einde-gevecht-samenvatting met XP
+7. ~~IN5, VB2, GV2~~ klaar in 1.31.0 (zie Klaar)
 10. **IN6** Dubbele statblock-knop op de monsterkaart
 11. **DA1** Herinnering om een export te maken
 12. **SP1** Knop "Bijwerken" per lid in de Party
@@ -35,18 +33,15 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 ---
 
 ## Indeling en navigatie
-- [ ] **IN5 Voorbereiden tijdens een gevecht:** grotendeels opgelost in 1.29.0 (geen beurtbalk meer in die stand, één knop "Terug naar gevecht"). Nog controleren op 360 × 740 aan tafel; daarna sluiten.
 - [ ] **IN6 Statblock dubbel op de monsterkaart:** knop "Statblock" én link "Volledig statblock" onder de aanvallen. Eén van beide weg.
 - [ ] **IN7 Logboek dichter bij de beurtbalk:** eigen tab, of de laatste 2 gebeurtenissen onder de beurtbalk.
 
 ## Gevecht aan tafel
-- [ ] **GV2 Einde-gevecht-samenvatting** bij Gevecht stoppen: rondes, totale XP en XP per speler (uit `difficulty`), wie neer ging; kopieerbaar voor de sessienotities.
 - [ ] **GV3 Tablet/desktop: zijkolom bij een speler zonder sheet** toont nu alleen vier vakjes. Toon eronder het statblock van het volgende monster ("Daarna: Hobgoblin"), zodat de DM vooruit kan lezen.
 - [ ] **GV4 Reaction-knop bij spelers optioneel** (Instellingen): veel tafels laten spelers dat zelf bijhouden; scheelt een knop op elke spelerskaart.
 - [ ] **GV5 Initiative van monsters opnieuw rollen bij Start** (keuze in het initiative-paneel): nu wordt bij toevoegen gerold, ook als dat uren vóór de sessie was.
 
 ## Voorbereiding en encounters
-- [ ] **VB2 Encounters vindbaar:** paneeltitel wordt "Encounters" op die tab (nu "Monster toevoegen"); na inladen staat de naam van de encounter boven de lijst en de notitie ingeklapt in Gevecht.
 - [ ] **VB3 Encounters:** level ook via ⋯ Bewerken voor spelers buiten de party; DMG-regel "monsters met veel lagere CR niet meetellen" (nu telt alles mee).
 
 ## Spelregels
@@ -167,6 +162,9 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **IN4** (1.30.0) Eén blok voor monsters toevoegen in het Monster-paneel én bij snel toevoegen: Aantal-stepper, HP Gemiddeld | Rollen, Initiative Per monster | Groep | Invullen. Encounter inladen volgt de groepen uit de encounter en alleen de HP-keuze.
 - **VB1** (1.30.1) "level onbekend" tikbaar: de uitleg bij de moeilijkheid (strook en encounter-rij) heeft per speler zonder level een invulveld; de tik zet de focus erop. Voorbeeldspelers hebben level 3 (voorbeeld = Hard).
 - **GV1** (1.30.2) Tik op de HP-rij (balk + getal) in Gevecht opent direct het schadepaneel: eigen knop onder de kop, 44 px hoog, ook bij dichte kaarten en spelers. Voorbereiden ongewijzigd.
+- **IN5** (1.31.0) Gecontroleerd op 360 × 740: Voorbereiden tijdens een gevecht heeft geen beurtbalk; dock = prep-rij + [↶][Terug naar gevecht] (129 px), 611 px blijft over voor de lijst. Gesloten.
+- **VB2** (1.31.0) Encounters vindbaar: paneeltitel "Encounters", knop "Encounters klaarzetten ▸" in Party, hint in de welkomstkaart. Naam van de ingeladen encounter boven de lijst, notitie ("Tactiek ▸") ingeklapt, ook in Gevecht; niet op het spelersscherm.
+- **GV2** (1.31.0) Gevecht afronden: paneel met rondes, duur, totale XP, XP per speler, verslagen, gevlucht meetellen, wie deelt, neer geweest, gestorven; Kopieer en Monsters wissen; ook als logregel. "Alle monsters neer · Gevecht afronden" in de beurtbalk.
 - **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.
 
 ### Functies
