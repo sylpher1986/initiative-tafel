@@ -7,6 +7,7 @@ import { rollDmg, parseAction, monsterActions } from "../rules/attacks.js";
 import { sortOrder, readAhead } from "../rules/turns.js";
 import { effAc, acBreakdown } from "../rules/effects.js";
 import { newDs } from "../rules/combat.js";
+import { drText } from "../rules/aoe.js";
 import { spellParts } from "../data/spells.js";
 
 /**
@@ -293,6 +294,7 @@ function liveHtml(c, chips) {
       <div><span class="lk">Dex</span><b>${sgn(n0(c.dex))}</b></div>
     </div>
     ${br ? `<p class="hint">AC: ${esc(br)}</p>` : ""}
+    ${c.dr ? `<p class="cnts"><span class="k">Resistances</span> ${esc(drText(c.dr))}</p>` : ""}
     ${tags ? `<div class="badges">${tags}</div>` : ""}
     ${slots.length ? `<p class="cnts"><span class="k">Slots</span> ${slots.join("")}</p>` : ""}
     ${res.length ? `<p class="cnts"><span class="k">Resources</span> ${res.join("")}</p>` : ""}`;

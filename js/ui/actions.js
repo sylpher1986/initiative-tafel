@@ -12,7 +12,7 @@ import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
 import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
-import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, defMode } from "../rules/aoe.js";
+import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, targetMode, drToggle, drKind, DR_LBL, cleanDr } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
 import { castInfo, legInfo, rcInfo, pickList, isConc, edFor } from "../rules/spells.js";
 import { rulesEd, setRulesEd } from "./spellrules.js";
@@ -133,7 +133,7 @@ const row = {
     const isOpen = openId() === c.id;
     ui.open = isOpen ? "" : c.id;
     ui.fromDown = !isOpen && li && li.dataset.down ? c.id : null; // uit het blok "Neer" geopend: blijft daar staan
-    ui.panel = null; ui.confirmDel = null; ui.castPick = null; ui.edit = null; ui.effWho = null; ui.effCustom = false; ui.effForm = {};
+    ui.panel = null; ui.confirmDel = null; ui.castPick = null; ui.edit = null; ui.effWho = null; ui.effCustom = false; ui.effForm = {}; ui.drOpen = null;
     return "scroll";
   },
   panel(c, b) {
@@ -190,6 +190,16 @@ const row = {
   "sheet-open"(c, b) { ui.sheet = { id: c.id, kind: b.dataset.kind, val: "", mode: 1, from: b.classList.contains("khp") ? "khp" : b.dataset.kind }; },
   react(c) { c.reaction = !c.reaction; },
   hide(c) { if (c.hidden) delete c.hidden; else c.hidden = true; },
+  /* ---- resistances van een speler (SP2, in ⋯) ---- */
+  "dr-open"(c) { ui.drOpen = ui.drOpen === c.id ? null : c.id; },
+  "dr-kind"(c, b) { if (DR_LBL[b.dataset.v]) ui.drKind = b.dataset.v; },
+  "dr-t"(c, b) {
+    const t = b.dataset.t, k = ui.drKind;
+    if (!DTYPES.includes(t) || !DR_LBL[k]) return false;
+    const was = drKind(c.dr, t), dr = drToggle(c.dr, k, t);
+    if (dr) c.dr = dr; else delete c.dr;
+    because(was === k ? `${DR_LBL[k]} ${t} weg` : `${DR_LBL[k]} ${t}${was ? ` (was ${DR_LBL[was]})` : ""}`, c.id);
+  },
   anon(c) { if (c.anon) delete c.anon; else c.anon = nextAnon(app.S.list); },
   sur(c) { const r = toggleSurprise(c, app.S); if (!r) return false; apply(r); },
   dropconc(c) { apply(R.dropConc(c, "beëindigd")); },
@@ -770,6 +780,7 @@ export function bindForms() {
       casting: manual || (sh && sh.casting ? structuredClone(sh.casting) : null), res: sh ? structuredClone(sh.res || []) : [], sheet: sh || null, initBonus: sh ? sh.initBonus : dex,
       ...(pendingDdb && !pendingNew ? { ddbId: pendingDdb } : {}), // "Als nieuwe speler": geen tweede koppeling aan hetzelfde character
       ...(lvl ? { lvl } : {}), // voor de moeilijkheid (anders uit de klasse-string van de sheet)
+      ...(sh && cleanDr(sh.dr) ? { dr: cleanDr(sh.dr) } : {}), // resistances uit de D&D Beyond-link (SP2)
     });
     app.S.sample = false; ui.prepLast = app.S.list[app.S.list.length - 1].id;
     resetPcForm(); render(); $("#pc-name").focus();
@@ -1248,10 +1259,10 @@ function atkTarget(x, id) {
   x.tid = id;
   if (!x.r) { x.r = rollAttack(x.bo); x.parts = x.key ? rollDmgCrit(x.key, (e) => rollExpr(e)) || [] : []; }
   x.force = {};
-  // resistance/immuniteit van een monster uit het statblock (onvoorwaardelijk); spelers normaal
+  // resistance/immuniteit: monster uit het statblock (onvoorwaardelijk), speler uit zijn opgeslagen resistances (SP2)
   const m = c.ref ? findMon(c.ref) : null;
   x.modes = {};
-  for (const p of x.parts) if (!(p.type in x.modes)) x.modes[p.type] = m ? defMode(m.x, p.type).mode : 1;
+  for (const p of x.parts) if (!(p.type in x.modes)) x.modes[p.type] = targetMode(c, m, p.type).mode;
 }
 
 function atkGo() {

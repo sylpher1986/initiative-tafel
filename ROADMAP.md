@@ -21,8 +21,8 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - Afwerking: ~~AF1–AF3~~ klaar in 1.31.6, ~~AF5~~ klaar in 1.33.1 (zie Klaar)
 - Nice to have: ~~OB1, OB2~~ klaar in 1.33.0 (zie Klaar)
 - Regels: **RE1–RE6**, ~~RE7~~ klaar in 1.33.1 (zie Klaar)
-- Encounters: **VB3**
-- Spelers en D&D Beyond: **SP2**, ~~SP3~~ klaar in 1.33.1 (zie Klaar)
+- Encounters: ~~VB3~~ klaar in 1.34.0 (zie Klaar)
+- Spelers en D&D Beyond: ~~SP2~~ klaar in 1.34.0, ~~SP3~~ klaar in 1.33.1 (zie Klaar)
 - Gevecht: ~~IN7~~ klaar in 1.32.0, ~~GV4~~ klaar in 1.32.1 (zie Klaar)
 - Spelersscherm: **SC1**
 - Taal: **TA1**
@@ -39,7 +39,7 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - Geen open punten (GV4 klaar in 1.32.1, zie Klaar).
 
 ## Voorbereiding en encounters
-- [ ] **VB3 Encounters:** level ook via ⋯ Bewerken voor spelers buiten de party; DMG-regel "monsters met veel lagere CR niet meetellen" (nu telt alles mee).
+- Geen open punten (VB3 klaar in 1.34.0, zie Klaar).
 
 ## Spelregels
 - [ ] **RE1 Slots en effecten:** Bless via Effect verbruikt geen slot. Voorstel: niet koppelen maar spelers-slots optioneel maken (spelers houden die vaak zelf bij)
@@ -50,7 +50,8 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - [ ] **RE6 Spell-uitleg:** link vanuit AoE-Spell en Effect-presets; eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie)
 
 ## Spelers en D&D Beyond
-- [ ] **SP2 Resistances/immunities per speler opslaan** (nu handmatig in het AoE-paneel); kan uit de D&D Beyond-data komen
+- Geen open punten (SP2 klaar in 1.34.0, zie Klaar).
+- Later, als het nodig blijkt: handmatige "Defenses" op de D&D Beyond-sheet (`customDefenseAdjustments`) inlezen; tijdelijke resistances (Rage, Absorb Elements, Protection from Energy) als effect-preset.
 
 ## Spelersscherm
 - [ ] **SC1 QR-code bij de kamercode** (alleen als een kleine zelf-gehoste lib past)
@@ -167,6 +168,8 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **AF5** (1.33.1) Instellingen in inklapbare secties (Weergave · Spells · Spelersscherm · Hulp · Opslag), alle dicht, met een statusregel in de kop ("Gedeeld · K7M 3QX · 2 schermen", "Export: 8 dagen geleden"); ⚙ zet Spelersscherm open bij kamer kwijt/gepauzeerd en Opslag als een export nodig is.
 - **RE7** (1.33.1) Open saves: ‹ Vorige telt de veroudering terug; monster zonder bekende savebonus (geen statblock/ability score) krijgt ✓/✗ "zelf rollen" i.p.v. "Rol +0", en wordt bij Rol alle monsters, AoE en Spell overgeslagen met een melding.
 - **SP3** (1.33.1) + Speler met een bestaand partylid: geen nieuw lid met volle HP meer maar aan tafel met de bewaarde stand (met sheet: eerst bijgewerkt), nooit dubbel aan tafel; item-spells alleen als het item gedragen/geattuned is; een trage PDF overschrijft een net opgehaalde link-sheet niet meer.
+- **VB3** (1.34.0) Monsters met een veel lagere CR (XP < 1/10 van het sterkste monster, DMG 2014) tellen niet mee voor de multiplier, hun XP wel; uitleg noemt ze, met **Toch meetellen** (lijst: één undo-stap; per encounter in de bibliotheek, gaat mee bij opslaan/inladen). Level via ⋯ niet gebouwd: al afgedekt door het levelveld op de kaart (IN2) en in de uitleg (VB1).
+- **SP2** (1.34.0) Resistances per speler: ⋯ → "Resistances · Wijzig ▸" met Resist | Immuun | Kwetsb. en 13 type-knoppen (in beide modi, ook buiten de party); uit de D&D Beyond-link (bijwerken houdt eigen toevoegingen en meldt "Resist +fire −cold"). Automatisch in AoE ("resistant (opgeslagen)") en het aanvalspaneel; hint in het schadepaneel en het live-blok.
 - **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.
 
 ### Functies

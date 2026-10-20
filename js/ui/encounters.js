@@ -1,7 +1,7 @@
 // Encounters klaarzetten (tab in het Monster-paneel) en XP-moeilijkheid. Regels puur in js/rules/encounters.js.
 // UI-toestand (concept, menu, uitleg) staat in `ui` (render.js); de encounters zelf in app.encounters (IndexedDB, niet in undo).
 import { $, esc, toast, toastHtml, closeToast } from "./util.js";
-import { app, because, addWhy, logAs, saveEncounters, saveLairs, saveLibrary } from "../state.js";
+import { app, because, addWhy, logAs, commit, saveEncounters, saveLairs, saveLibrary } from "../state.js";
 import { render, ui, monListHtml } from "./render.js";
 import { addMonsters, scrollToCard, newLair, CLEAR_UI } from "./actions.js";
 import { wantSB } from "./statblock.js";
@@ -19,24 +19,36 @@ const hasLair = (L) => L.some((c) => c.kind === "lair");
 
 /* ---------- moeilijkheid ---------- */
 const partyNow = () => E.partyFor(app.S.list, app.party);
-export const diffList = () => E.difficulty(E.listMons(app.S.list, findMon), partyNow().who);
-const diffEnc = (enc) => E.difficulty(E.encMons(enc, findMon), partyNow().who);
+export const diffList = () => E.difficulty(E.listMons(app.S.list, findMon), partyNow().who, !!app.S.allMon);
+const diffEnc = (enc) => E.difficulty(E.encMons(enc, findMon), partyNow().who, !!enc.all);
 
 /** Korte tekst voor de chip: "Hard", "level onbekend", "geen party" */
 const chipLbl = (r) => E.ratingName(r.rating) || E.noRating(r);
 const chipCls = (r) => (r.rating == null ? "unk" : `r${r.rating + 1}`);
 
 /** Uitleg: ruwe XP × multiplier = aangepaste XP, party, drempels */
-function diffWhy(r, lair) {
+function diffWhy(r, lair, tog) {
   const P = partyNow();
-  const lines = [`${fmt(r.xp)} XP × ${multTxt(r.mult)} (${plural(r.n, "monster", "monsters")}${r.pcs ? `, ${plural(r.pcs, "speler", "spelers")}` : ""}) = <b>${fmt(r.adj)} XP</b>`];
+  const cnt = r.nm < r.n ? `${r.nm} van ${r.n} monsters tellen` : plural(r.n, "monster", "monsters");
+  const lines = [`${fmt(r.xp)} XP × ${multTxt(r.mult)} (${cnt}${r.pcs ? `, ${plural(r.pcs, "speler", "spelers")}` : ""}) = <b>${fmt(r.adj)} XP</b>`];
   if (!r.pcs) lines.push("Geen spelers: zet de party aan tafel of voeg partyleden toe.");
   else lines.push(`${P.src === "list" ? "Aan tafel" : "Vaste party"}: level ${P.who.map((p) => p.lvl || "?").join(", ")}`);
   if (r.th) lines.push(E.RATINGS.map((k, i) => `${k} ${fmt(r.th[i])}`).join(" · "));
   if (r.noXp.length) lines.push(`Zonder CR (telt niet mee): ${esc(r.noXp.join(", "))}`);
   if (r.pcs && (r.pcs < 3 || r.pcs >= 6)) lines.push(r.pcs < 3 ? "Kleine party: multiplier een stap hoger." : "Grote party: multiplier een stap lager.");
   if (lair) lines.push("Lair telt niet mee.");
-  return `<div class="dwhy">${lvlRows(P.who)}${lines.map((l) => `<p>${l}</p>`).join("")}</div>`;
+  return `<div class="dwhy">${lvlRows(P.who)}${lines.map((l) => `<p>${l}</p>`).join("")}${weakRow(r, tog)}</div>`;
+}
+
+/**
+ * DMG 2014: monsters met een veel lagere CR tellen niet mee voor de multiplier (hun XP wel), tenzij ze flink bijdragen.
+ * Regel met wie het zijn en de schakelaar "Toch meetellen" (lijst: S.allMon, encounter: e.all). Zonder lage CR: niets.
+ */
+function weakRow(r, tog) {
+  if (!r.weak.length) return "";
+  const who = esc(r.weak.map((w) => `${w.n}× ${w.name}`).join(", "));
+  return `<p>${r.all ? `Telt mee voor ×, ook met veel lagere CR: ${who}` : `Niet meegeteld voor ×: ${who} (veel lagere CR, DMG)`}</p>
+    ${tog ? `<button type="button" class="btn small dall" ${tog} aria-pressed="${r.all}">${r.all ? "✓ " : ""}Toch meetellen</button>` : ""}`;
 }
 
 /**
@@ -74,7 +86,7 @@ export function encBanner(S, prep) {
   if (!n) return S.list.length && !hasLair(S.list) && app.encounters.length
     ? `<li class="sbanner encb"><span>Geen monsters</span><button type="button" class="btn small primary" data-prep="enc">Encounter inladen</button></li>` : "";
   const r = diffList();
-  return `<li class="dbanner"><button type="button" class="dbtn" data-enc="difftog" aria-expanded="${!!ui.diffOpen}">Moeilijkheid <b class="dchip ${chipCls(r)}">${esc(chipLbl(r))}</b> · ${fmt(r.adj)} XP <span aria-hidden="true">${ui.diffOpen ? "▾" : "▸"}</span></button>${ui.diffOpen ? diffWhy(r, hasLair(S.list)) : ""}</li>`;
+  return `<li class="dbanner"><button type="button" class="dbtn" data-enc="difftog" aria-expanded="${!!ui.diffOpen}">Moeilijkheid <b class="dchip ${chipCls(r)}">${esc(chipLbl(r))}</b> · ${fmt(r.adj)} XP <span aria-hidden="true">${ui.diffOpen ? "▾" : "▸"}</span></button>${ui.diffOpen ? diffWhy(r, hasLair(S.list), `data-enc="allmon"`) : ""}</li>`;
 }
 
 /**
@@ -132,14 +144,14 @@ function rowHtml(e) {
   return `<div class="encrow">
     <div class="ehead"><div class="einfo"><b>${esc(e.name)}</b><small>${esc(encSummary(e))} · ${esc(dateTxt(e.updatedAt))}</small>${e.notes ? `<small class="enote">${esc(e.notes)}</small>` : ""}</div>
       ${e.monsters.length ? `<button type="button" class="dchip ${chipCls(r)}" data-enc="why" data-id="${id}" aria-expanded="${ui.encWhy === e.id}" aria-label="Moeilijkheid ${esc(chipLbl(r))}, ${fmt(r.adj)} XP: uitleg">${esc(chipLbl(r))}</button>` : ""}</div>
-    ${ui.encWhy === e.id ? diffWhy(r, !!e.lair) : ""}${ask}
+    ${ui.encWhy === e.id ? diffWhy(r, !!e.lair, `data-enc="encall" data-id="${id}"`) : ""}${ask}
     <div class="ebtns"><button type="button" class="btn primary" data-enc="load" data-id="${id}">Inladen</button><button type="button" class="btn emore" data-enc="menu" data-id="${id}" aria-expanded="${ui.encMenu === e.id}" aria-label="Meer acties voor ${esc(e.name)}">⋯</button></div>
     ${menu}</div>`;
 }
 
 function editHtml() {
   const x = ui.encEdit;
-  const r = E.difficulty(E.encMons(x, findMon), partyNow().who);
+  const r = E.difficulty(E.encMons(x, findMon), partyNow().who, !!x.all);
   const rows = x.monsters.map((m, i) => {
     const s = findMon(m.ref);
     const tags = [m.hidden && "verborgen", m.anon && "onbekend", m.grp && "groep", !s && "niet op dit apparaat"].filter(Boolean).join(" · ");
@@ -187,6 +199,7 @@ function loadEnc(enc, mode) {
   const before = S.list.length, hpmode = ui.addOpts.hp;
   for (const a of plan.adds) addMonsters(a.ref, a.n, hpmode, a.init === "group" ? "group" : "each", true, null, a.hidden, a.anon);
   if (lairNew) S.list.push(newLair(plan.lair.key, plan.lair.hidden));
+  if (mode === "replace" ? !!enc.all !== !!S.allMon : enc.all && !S.allMon) { if (enc.all) S.allMon = true; else delete S.allMon; } // lage CR toch meetellen volgt de encounter
   addEnc(S, enc, mode === "replace"); // naam boven de lijst, notitie (tactiek) in Gevecht (VB2); zelfde undo-stap
   const added = S.list.slice(before), nMon = added.filter((c) => c.kind === "monster").length;
   const what = `${plural(nMon, "monster", "monsters")}${lairNew ? " + lair" : ""}`;
@@ -205,7 +218,7 @@ function loadEnc(enc, mode) {
 function saveNew() {
   const d = ui.encDraft, name = (d.name || "").trim();
   if (!name) { toast("Geef de encounter een naam."); $("#enc-name")?.focus(); return; }
-  const e = E.fromList(app.S.list, { id: E.newId(), name, notes: d.notes, now: Date.now() });
+  const e = E.fromList(app.S.list, { id: E.newId(), name, notes: d.notes, now: Date.now(), all: !!app.S.allMon });
   if (!e) { toast("Er staan geen monsters of lair in de lijst."); return; }
   app.encounters = [...app.encounters, e]; saveEncounters();
   ui.encDraft = null; repaint();
@@ -214,14 +227,14 @@ function saveNew() {
 }
 
 function startEdit(e) {
-  ui.encEdit = { id: e.id, name: e.name, notes: e.notes, monsters: structuredClone(e.monsters), lair: e.lair ? { ...e.lair } : null, lairKey: e.lair ? e.lair.key : "", lairHidden: !!(e.lair && e.lair.hidden), q: "" };
+  ui.encEdit = { id: e.id, name: e.name, notes: e.notes, monsters: structuredClone(e.monsters), lair: e.lair ? { ...e.lair } : null, lairKey: e.lair ? e.lair.key : "", lairHidden: !!(e.lair && e.lair.hidden), all: !!e.all, q: "" };
   ui.encMenu = null; repaint();
   $("#enc-panel").closest(".psheet").scrollTop = 0;
 }
 function saveEdit() {
   const x = ui.encEdit, old = findEnc(x.id);
   if (!x.name.trim()) { toast("Geef de encounter een naam."); $("#ee-name")?.focus(); return; }
-  const e = E.cleanEncounter({ id: x.id, name: x.name, notes: x.notes, monsters: x.monsters, lair: x.lair, updatedAt: Date.now() });
+  const e = E.cleanEncounter({ id: x.id, name: x.name, notes: x.notes, monsters: x.monsters, lair: x.lair, all: x.all, updatedAt: Date.now() });
   if (!e) { toast("Een encounter heeft minstens één monster of een lair."); return; }
   app.encounters = old ? app.encounters.map((y) => (y.id === x.id ? e : y)) : [...app.encounters, e];
   saveEncounters(); ui.encEdit = null; repaint();
@@ -304,6 +317,12 @@ const ACT = {
   share(id) { const e = findEnc(id); if (e) shareEnc(e); },
   del(id) { const e = findEnc(id); if (e) delEnc(e); },
   "edit-no"() { ui.encEdit = null; repaint(); },
+  encall(id) { // lage CR toch meetellen voor deze encounter (bewaard in de bibliotheek, geen undo)
+    const e = findEnc(id); if (!e) return;
+    const n = { ...e, updatedAt: Date.now() };
+    if (e.all) delete n.all; else n.all = true;
+    app.encounters = app.encounters.map((y) => (y.id === e.id ? n : y)); saveEncounters(); repaint();
+  },
   "edit-go": saveEdit,
   n(_, b) {
     const x = ui.encEdit, i = +b.dataset.i, m = x && x.monsters[i]; if (!m) return;
@@ -367,6 +386,7 @@ export function bindEnc() {
   // buiten het paneel: uitleg bij de live moeilijkheid, Ongedaan na verwijderen
   document.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.enc === "allmon") { if (app.S.allMon) delete app.S.allMon; else app.S.allMon = true; commit(); render(); return; } // undo-stap, geen logregel
     if (b.dataset.enc === "difftog") { ui.diffOpen = !ui.diffOpen; render(); if (ui.diffOpen) focusLvl(".dbanner"); return; }
     if (b.dataset.enc === "notes") { ui.encOpen = !ui.encOpen; render(); return; }
     if (b.id === "toast-encundo" && lastDel) {

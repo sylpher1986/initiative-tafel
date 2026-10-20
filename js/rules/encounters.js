@@ -62,23 +62,35 @@ export function partyFor(list, party) {
   return { src: "party", who: (party || []).map((m) => ({ name: m.name || "?", lvl: pcLevel(m), pid: m.pid })) };
 }
 
+/** "Veel lagere CR" (DMG p. 82): XP onder 1/10 van het sterkste monster */
+export const WEAK = 10;
+
 /**
- * Moeilijkheid. mons = [{ cr, n, name }], who = [{ name, lvl }].
- * → { n, xp, mult, adj, th: [e,m,h,d] | null, rating: -1..3 | null, noLvl: [namen], noXp: [namen], pcs }
+ * Moeilijkheid. mons = [{ cr, n, name }], who = [{ name, lvl }], all = toch alle monsters meetellen.
+ * → { n, nm, weak: [{ name, n }], all, xp, mult, adj, th: [e,m,h,d] | null, rating: -1..3 | null, noLvl: [namen], noXp: [namen], pcs }
  * rating -1 = Trivial (onder Easy); null = niet te bepalen (geen party of level onbekend).
+ * DMG 2014: monsters met een veel lagere CR tellen niet mee voor de multiplier (nm = aantal dat wel telt), hun XP wel.
+ * Vergeleken met het sterkste monster, niet met het gemiddelde: dat verwatert bij veel zwakke monsters. De DM kan
+ * ze toch laten meetellen (all: "dragen flink bij"). Zonder XP (geen CR) telt een monster gewoon mee.
  */
-export function difficulty(mons, who) {
-  let n = 0, xp = 0;
-  const noXp = [];
+export function difficulty(mons, who, all = false) {
+  let n = 0, xp = 0, top = 0;
+  const noXp = [], rows = [];
   for (const m of mons || []) {
     const k = Math.max(0, Math.trunc(m.n || 0));
     if (!k) continue;
     n += k;
     const x = crXp(m.cr) ?? (Number.isFinite(m.xp) && m.xp > 0 ? m.xp : null);
-    if (x == null) { if (!noXp.includes(m.name)) noXp.push(m.name); } else xp += x * k;
+    if (x == null) { if (!noXp.includes(m.name)) noXp.push(m.name); } else { xp += x * k; top = Math.max(top, x); rows.push({ name: m.name, k, x }); }
   }
+  const weak = [];
+  for (const r of rows) if (r.x * WEAK < top) {
+    const w = weak.find((o) => o.name === r.name);
+    if (w) w.n += r.k; else weak.push({ name: r.name, n: r.k });
+  }
+  const nm = all ? n : n - weak.reduce((a, w) => a + w.n, 0);
   const pcs = (who || []).length;
-  const mult = multiplier(n, pcs), adj = Math.round(xp * mult);
+  const mult = multiplier(nm, pcs), adj = Math.round(xp * mult);
   const noLvl = (who || []).filter((p) => !cleanLvl(p.lvl)).map((p) => p.name);
   let th = null, rating = null;
   if (pcs && !noLvl.length && !(n && !xp && noXp.length)) { // alleen monsters zonder CR: geen oordeel ("Trivial" zou misleiden)
@@ -87,7 +99,7 @@ export function difficulty(mons, who) {
     rating = -1;
     th.forEach((v, i) => { if (adj >= v) rating = i; });
   }
-  return { n, xp, mult, adj, th, rating, noLvl, noXp, pcs };
+  return { n, nm, weak, all: !!all && weak.length > 0, xp, mult, adj, th, rating, noLvl, noXp, pcs };
 }
 export const ratingName = (r) => (r == null ? null : r < 0 ? "Trivial" : RATINGS[r]);
 /** Waarom er geen oordeel is: "level onbekend", "geen party", "CR onbekend"; null = er is een oordeel */
@@ -107,7 +119,7 @@ export const total = (enc) => (enc.monsters || []).reduce((a, m) => a + m.n, 0);
  * Encounter uit de huidige lijst: monsters (op volgorde van toevoegen) samengevoegd per ref + verborgen + onbekend + groep;
  * lair met sleutel. Spelers gaan niet mee. Monsters zonder ref (zou niet moeten) worden overgeslagen.
  */
-export function fromList(list, { id, name, notes = "", now }) {
+export function fromList(list, { id, name, notes = "", now, all = false }) {
   const monsters = [];
   let lair = null;
   for (const c of list || []) {
@@ -119,7 +131,7 @@ export function fromList(list, { id, name, notes = "", now }) {
     monsters.push({ ref: c.ref, n: 1, ...(k.hidden ? { hidden: true } : {}), ...(k.anon ? { anon: true } : {}), ...(k.g ? { grp: true, _g: k.g } : {}) });
   }
   monsters.forEach((m) => { delete m._g; if (m.grp && m.n < 2) delete m.grp; });
-  return cleanEncounter({ id, updatedAt: now, name, notes, monsters, ...(lair ? { lair } : {}) }, now);
+  return cleanEncounter({ id, updatedAt: now, name, notes, monsters, ...(lair ? { lair } : {}), all }, now);
 }
 
 /**
@@ -148,7 +160,7 @@ export function cleanEncounter(o, now = Date.now()) {
   return {
     id: typeof o.id === "string" && ID_RE.test(o.id) ? o.id : newId(),
     updatedAt: Number.isFinite(t) && t > 0 && t <= now + 864e5 ? Math.trunc(t) : now,
-    name, notes: str(o.notes, 2000), monsters, ...(lair ? { lair } : {}),
+    name, notes: str(o.notes, 2000), monsters, ...(lair ? { lair } : {}), ...(o.all === true ? { all: true } : {}), // all: lage CR toch meetellen
   };
 }
 export const newId = () => "e" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);

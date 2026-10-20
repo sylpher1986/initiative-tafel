@@ -13,9 +13,56 @@ export const clampDmg = (v) => Math.max(0, Math.min(999, parseInt(v, 10) || 0));
 /** Keuze per doelwit; mode null = volg het statblock. roll = { r, r2, bo, tot } of null */
 export const newPick = () => ({ sel: false, save: "fail", mode: null, roll: null, lr: false });
 
-/** Effectieve keuze: mode uit het statblock tenzij de DM zelf koos */
+/**
+ * Weerstanden van een speler (SP2): { r: [types], i: [types], v: [types] } (resist, immuun, kwetsbaar), alleen de
+ * 13 SRD damage types. Leeg = undefined, zodat oude data en spelers zonder weerstand gelijk blijven.
+ */
+export const DR = [["r", 0.5], ["i", 0], ["v", 2]];
+export function cleanDr(o) {
+  if (!o || typeof o !== "object" || Array.isArray(o)) return undefined;
+  const out = {}, seen = new Set();
+  for (const k of ["i", "r", "v"]) { // immuun wint van resist, resist van kwetsbaar (een type staat maar één keer)
+    const a = (Array.isArray(o[k]) ? o[k] : []).map((t) => String(t).toLowerCase()).filter((t) => DTYPES.includes(t) && !seen.has(t));
+    a.forEach((t) => seen.add(t));
+    if (a.length) out[k] = [...new Set(a)].sort();
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+/** Standaard-modus voor een damage type uit de weerstanden van een speler (zelfde vorm als defMode) */
+export function drMode(dr, type) {
+  const t = String(type || "").toLowerCase();
+  if (t && dr) for (const [k, m] of DR) if ((dr[k] || []).includes(t)) return { mode: m, cond: "" };
+  return { mode: 1, cond: "" };
+}
+/** Tik op een type in soort k: staat het daar al → uit; anders daarheen (weg uit de andere soorten). → nieuwe dr of undefined */
+export function drToggle(dr, k, t) {
+  const o = { r: [...((dr && dr.r) || [])], i: [...((dr && dr.i) || [])], v: [...((dr && dr.v) || [])] };
+  const on = o[k] && o[k].includes(t);
+  for (const x of ["r", "i", "v"]) o[x] = o[x].filter((y) => y !== t);
+  if (!on && o[k]) o[k].push(t);
+  return cleanDr(o);
+}
+/** Wat er veranderde: "Resist +fire −cold, Immuun +poison"; leeg als gelijk */
+export function drDiff(a, b) {
+  const out = [];
+  for (const [k, l] of Object.entries(DR_LBL)) {
+    const x = (a && a[k]) || [], y = (b && b[k]) || [];
+    const d = [...y.filter((t) => !x.includes(t)).map((t) => "+" + t), ...x.filter((t) => !y.includes(t)).map((t) => "−" + t)];
+    if (d.length) out.push(`${l} ${d.join(" ")}`);
+  }
+  return out.join(", ");
+}
+/** In welke soort een type staat ("r" | "i" | "v" | null) */
+export const drKind = (dr, t) => (dr ? ["r", "i", "v"].find((k) => (dr[k] || []).includes(t)) || null : null);
+export const DR_LBL = { r: "Resist", i: "Immuun", v: "Kwetsb." };
+/** Korte tekst: "Resist fire, cold · Immuun poison"; leeg zonder weerstanden */
+export const drText = (dr) => (!dr ? "" : [["r", "Resist"], ["i", "Immuun"], ["v", "Kwetsb."]].filter(([k]) => (dr[k] || []).length).map(([k, l]) => `${l} ${dr[k].join(", ")}`).join(" · "));
+/** Modus voor een doelwit: monster uit het statblock (m.x), speler uit zijn weerstanden */
+export const targetMode = (c, m, type) => (c && c.kind === "pc" ? drMode(c.dr, type) : defMode(m && m.x, type));
+
+/** Effectieve keuze: mode uit het statblock tenzij de DM zelf koos. def = targetMode(...) of een statblock (x) */
 export function pickFor(t, x, type) {
-  const def = defMode(x, type);
+  const def = x && typeof x === "object" && "mode" in x ? x : defMode(x, type);
   return { ...(t || newPick()), auto: !t || t.mode === null, mode: t && t.mode !== null ? t.mode : def.mode, def };
 }
 

@@ -8,7 +8,7 @@ import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, g
 import { PRESETS as PRESETS_14, presetsFor, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn } from "../rules/effects.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList, splitSpells, edFor, sheetEd } from "../rules/spells.js";
-import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus, saveKnown } from "../rules/aoe.js";
+import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus, saveKnown, targetMode, drText, drKind, DR_LBL } from "../rules/aoe.js";
 import { spellItem } from "../data/spells.js";
 import { diceify, syncSB, monCard, isPhone } from "./statblock.js";
 import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv } from "../rules/attacks.js";
@@ -71,6 +71,8 @@ export const ui = {
   downOpen: false,     // blok "Neer (N)" onderaan de lijst (Gevecht) opengeklapt
   fromDown: null,      // id van een dood monster dat vanuit dat blok geopend is (blijft dan in het blok)
   logSheet: false,     // logboek als paneel (IN7, alleen in Gevecht; geopend via het rondeblok in de kop)
+  drOpen: null,        // id van de speler waarvan de resistances in ⋯ open staan (SP2)
+  drKind: "r",         // gekozen soort bij het wijzigen: "r" resist | "i" immuun | "v" kwetsbaar
 };
 export const openId = () => (ui.open === null ? app.S.active : ui.open);
 /** Modus volgt het gevecht: zonder gevecht altijd Voorbereiden; tijdens een gevecht kan de DM tussendoor naar Voorbereiden (✎) */
@@ -319,12 +321,26 @@ function morePanel(c, prep) {
       ${keys.length > 1 ? `<div class="ed3">${keys.slice(1).map((k) => fld[k]).join("")}</div>` : ""}
       <p class="hint edprev" aria-live="polite">${editPreview(c)}</p>
       <div class="bar"><button class="btn tap" data-a="ed-cancel">Annuleer</button><button class="btn primary tap" data-a="ed-save">Opslaan</button></div>
-    </div>
+    </div>${c.kind === "pc" ? drBox(c) : ""}
     <div class="bar">${c.kind === "pc" && !c.pid ? `<button class="btn small" data-a="topty">Naar vaste party</button>` : ""}
     ${canToggleSurprise(c, app.S) ? `<button class="btn small" data-a="sur" aria-pressed="${c.sur === true}">${c.sur === true ? "Verrast ✓" : "Verrast"}</button>` : ""}
     ${c.kind === "monster" ? `${prep ? "" : `<button class="btn small" data-a="hide" aria-pressed="${!!c.hidden}">${c.hidden ? "Tonen aan spelers" : "Verbergen voor spelers"}</button>`}
       <button class="btn small" data-a="anon" aria-pressed="${!!c.anon}">${c.anon ? "Naam tonen aan spelers" : "Naam verbergen voor spelers"}</button>` : ""}
     <button class="btn small danger" data-a="del">${del ? "Zeker? Tik nogmaals" : "Verwijder uit gevecht"}</button></div></div>`;
+}
+
+/**
+ * SP2: resistances van een speler in ⋯ (beide modi). Samenvatting met "Wijzig ▸"; open: soort (Resist | Immuun | Kwetsb.)
+ * en 13 type-knoppen. Tik = direct vastgelegd (undo-stap), zoals de velden op de kaart; een type staat in één soort.
+ */
+function drBox(c) {
+  const open = ui.drOpen === c.id, k = ui.drKind;
+  const sum = drText(c.dr);
+  const body = !open ? "" : `<div class="seg2 sm" role="group" aria-label="Soort">${Object.entries(DR_LBL).map(([v, l]) => `<button type="button" data-a="dr-kind" data-v="${v}" aria-pressed="${k === v}">${l}</button>`).join("")}</div>
+    <div class="drgrid">${DTYPES.map((t) => { const at = drKind(c.dr, t); return `<button type="button" class="drt${at && at !== k ? " other" : ""}" data-a="dr-t" data-t="${t}" aria-pressed="${at === k}"${at && at !== k ? ` aria-label="${t}, nu ${DR_LBL[at]}"` : ""}>${t}${at && at !== k ? `<small aria-hidden="true">${{ r: "R", i: "I", v: "V" }[at]}</small>` : ""}</button>`; }).join("")}</div>
+    <p class="hint">Tik zet het type bij ${DR_LBL[k]}; nog een tik zet het uit.${c.sheet && c.sheet.dr ? " Bijwerken via D&D Beyond houdt wat je hier toevoegt." : ""}${c.pid ? " Geldt ook in de vaste party." : ""}</p>`;
+  return `<div class="drbox"><div class="drhead"><span><span class="qlbl">Resistances</span> ${sum ? esc(sum) : "geen"}</span>
+    <button type="button" class="link tap" data-a="dr-open" aria-expanded="${open}">${open ? "Klaar ▾" : "Wijzig ▸"}</button></div>${body}</div>`;
 }
 
 /** Effectpaneel: presets (1 tik), "Wie cast?" voor concentratie zonder beurt, of een eigen effect */
@@ -727,7 +743,7 @@ function paintSheet() {
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3>${esc(c.name)}</h3><button class="link" data-sk="close">Annuleer</button></div>
       <div class="seg2">${kinds.map(([k, l]) => `<button data-sk="kind" data-v="${k}" aria-pressed="${s.kind === k}">${l}</button>`).join("")}</div>
-      ${s.kind === "dmg" ? `<div class="seg2 sm">${[[1, "Normaal"], [0.5, "Resist ½"], [2, "Kwetsb. ×2"], [0, "Immuun"]].map(([m, l]) => `<button data-sk="mode" data-v="${m}" aria-pressed="${s.mode === m}">${l}</button>`).join("")}</div>` : ""}
+      ${s.kind === "dmg" ? `<div class="seg2 sm">${[[1, "Normaal"], [0.5, "Resist ½"], [2, "Kwetsb. ×2"], [0, "Immuun"]].map(([m, l]) => `<button data-sk="mode" data-v="${m}" aria-pressed="${s.mode === m}">${l}</button>`).join("")}</div>${c.kind === "pc" && c.dr ? `<p class="hint drhint">${esc(drText(c.dr))}</p>` : ""}` : ""}
       <div class="disp" aria-live="polite">${esc(s.val || "0")}</div>
       <div class="preview">${preview}</div>
       <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-sk="d" data-v="${n}">${n}</button>`).join("")}<button data-sk="back" aria-label="Wissen">⌫</button><button data-sk="d" data-v="0">0</button><button data-sk="clear" aria-label="Alles wissen">C</button>
@@ -840,7 +856,7 @@ export const aoeTargets = (ex = null) => sortOrder(app.S.list).filter((c) => c.k
 /** Effectieve keuze per doelwit (mode null = volg het statblock voor het gekozen damage type) */
 export function aoePick(a, c) {
   const m = c.ref ? findMon(c.ref) : null;
-  return pickFor(a.t[c.id], m && m.x, a.type);
+  return pickFor(a.t[c.id], targetMode(c, m, a.type), a.type);
 }
 
 const MODES = [[1, "Normaal"], [0.5, "Resist"], [2, "×2"], [0, "Immuun"]];
@@ -855,7 +871,7 @@ function aoeRow(a, c, p, o, n) {
   const mods = p.roll ? [] : saveMods(c, a.ab);
   const info = [
     p.roll ? `${esc(a.ab)} save ${esc(rollText(p.roll, dc))}` : mods.length ? `Bij de save: ${esc(modsText(mods))}` : "",
-    p.auto && p.mode !== 1 && a.type ? `${MODE_LBL[p.mode]} (statblock)` : "",
+    p.auto && p.mode !== 1 && a.type ? `${MODE_LBL[p.mode]} (${c.kind === "pc" ? "opgeslagen" : "statblock"})` : "",
     p.auto && p.def.cond ? `let op: ${esc(p.def.cond)}` : "",
   ].filter(Boolean).join(" · ");
   const lrLeft = c.lr ? n0(c.lr.left) : 0;
@@ -1094,7 +1110,7 @@ function atkRes(x, c, by) {
       : was > 0 && sim.hp <= 0 ? ` · <b class="bad">${c.kind === "pc" ? "bewusteloos" : "neer"}</b>`
       : c.kind === "pc" && was <= 0 && res.dealt ? ` · <b class="bad">${res.crit ? "twee failures" : "death save failure"}</b>` : "";
     body = `${x.parts.length ? `<div class="xdmg">${x.parts.map((p) => esc(partText(p, res.crit))).join("<br>")}</div>` : `<p class="hint">Geen schade-worp in deze aanval.</p>`}
-      ${res.types.map((t) => `<div class="xmode"><span class="qlbl">${esc(t.type || "schade")}</span><div class="seg2 sm" role="group" aria-label="Weerstand ${esc(t.type)}">${XMODES.map(([v, l]) => `<button type="button" data-xa="mode" data-t="${esc(t.type)}" data-v="${v}" aria-pressed="${t.mode === v}">${l}</button>`).join("")}</div></div>`).join("")}
+      ${res.types.map((t) => `<div class="xmode"><span class="qlbl">${esc(t.type || "schade")}${c.kind === "pc" && t.mode !== 1 && t.mode === targetMode(c, null, t.type).mode ? " · opgeslagen" : ""}</span><div class="seg2 sm" role="group" aria-label="Weerstand ${esc(t.type)}">${XMODES.map(([v, l]) => `<button type="button" data-xa="mode" data-t="${esc(t.type)}" data-v="${v}" aria-pressed="${t.mode === v}">${l}</button>`).join("")}</div></div>`).join("")}
       <div class="xrow"><button type="button" class="btn small" data-xa="crit" aria-pressed="${res.crit}">Kritiek</button>
       <span class="acalc">${c.max ? `${n0(c.hp)} → ${n0(sim.hp)} HP${end}` : "HP onbekend"}</span></div>`;
     foot = `${shieldOk(c, x, r, res) ? `<button type="button" class="btn" data-xa="shield">Shield +5</button>` : "<span></span>"}

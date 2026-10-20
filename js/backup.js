@@ -6,6 +6,7 @@ import { cleanImg } from "./ui/avatar.js";
 import { dedupeAnon } from "./playerview.js";
 import { cleanEncounters, cleanLvl } from "./rules/encounters.js";
 import { cleanEnc } from "./rules/fight.js";
+import { cleanDr } from "./rules/aoe.js";
 
 export const FORMAT = "initiative-tafel";
 export const VERSION = 2; // 2 (1.28.0): encounters erbij
@@ -43,6 +44,7 @@ function cleanSheet(h) {
     levels: arr(h.levels).map((l) => ({ lvl: num(l.lvl), max: num(l.max), spells: arr(l.spells).map((s) => ({ n: str(s.n, 120), src: str(s.src, 120), hit: str(s.hit, 20), time: str(s.time, 20), range: str(s.range, 60), dur: str(s.dur, 80), notes: str(s.notes, 200), ...(s.ed === "2014" || s.ed === "2024" ? { ed: s.ed } : {}) })) })),
     spellDC: str(h.spellDC, 10), spellAtk: str(h.spellAtk, 10), spellAbility: str(h.spellAbility, 10), features: str(h.features, 20000),
     casting: cleanCasting(h.casting), res: cleanRes(h.res),
+    ...(obj(h.dr) ? { dr: cleanDr(h.dr) || {} } : {}), // alleen link-sheets hebben dr ({} = geen weerstanden)
   };
 }
 const cleanRes = (r) => arr(r).map((x) => ({ n: str(x.n, 80), max: num(x.max), left: num(x.left), rest: x.rest === "Short Rest" ? "Short Rest" : "Long Rest" }));
@@ -81,6 +83,7 @@ export function cleanCombatant(c) {
     ds: cleanDs(c.ds), la: counter(c.la), lr: counter(c.lr),
     rc: c.rc === undefined ? undefined : arr(c.rc).map((r) => ({ n: str(r.n, 120), min: r.min == null ? null : num(r.min), rest: !!r.rest, ready: !!r.ready })),
     casting: c.casting === undefined ? undefined : cleanCasting(c.casting), res: cleanRes(c.res), sheet: cleanSheet(c.sheet),
+    dr: kind === "pc" ? cleanDr(c.dr) : undefined, // weerstanden van een speler (SP2)
   });
   if (obj(c.cd)) {
     out.cd = {};
@@ -104,7 +107,7 @@ export function parseImport(json) {
   return {
     S: {
       list: dedupeAnon(arr(S.list).map(cleanCombatant)), round: Math.max(0, num(S.round)), active: S.active ? str(S.active, 40) : null, sample: false,
-      ...(cleanEnc(S.enc).length ? { enc: cleanEnc(S.enc) } : {}), // ingeladen encounter (VB2); samenvatting en gevechtsduur gaan niet mee
+      ...(cleanEnc(S.enc).length ? { enc: cleanEnc(S.enc) } : {}), ...(S.allMon === true ? { allMon: true } : {}), // ingeladen encounter (VB2); samenvatting en gevechtsduur gaan niet mee
       log: arr(S.log).slice(-600).map((e) => ({ id: str(e.id, 40), r: num(e.r), turn: str(e.turn, 120), type: ["round", "turn"].includes(e.type) ? e.type : "", msg: str(e.msg, 1000), why: str(e.why, 1000), note: str(e.note, 1000) })),
     },
     party: arr(json.party).map((m) => ({ ...cleanCombatant({ ...m, kind: "pc", id: m.pid }), pid: str(m.pid, 40) })).map(({ id, kind, init, cond, reaction, ...m }) => m),

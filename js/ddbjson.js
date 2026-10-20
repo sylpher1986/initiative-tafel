@@ -5,6 +5,7 @@
 
 import { setMax } from "./rules/combat.js";
 import { baseMax } from "./rules/effects.js";
+import { cleanDr, drDiff, DTYPES } from "./rules/aoe.js";
 
 const AB = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
 const SHORT = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
@@ -95,6 +96,31 @@ function spellRow(s) {
  * Character-JSON → { sheet, id, hasAvatar, check: { ac: [redenen], hp: [redenen] } }, of null als het geen character is.
  * Accepteert zowel het volledige antwoord ({ success, data }) als alleen data.
  */
+/**
+ * SP2: weerstanden uit de modifiers (ras, klasse, feats, gedragen items): type resistance/immunity/vulnerability met
+ * een damage type als subType. Voorwaardelijke ("…-from-nonmagical-attacks") en conditie-immuniteiten tellen niet.
+ * Handmatige "Defenses" op de sheet (customDefenseAdjustments) leest de app niet: die vult de DM zelf aan.
+ */
+function drOf(mods) {
+  const o = { r: [], i: [], v: [] };
+  for (const m of mods) {
+    const k = { resistance: "r", immunity: "i", vulnerability: "v" }[m.type], t = m.sub.toLowerCase();
+    if (k && DTYPES.includes(t)) o[k].push(t);
+  }
+  return cleanDr(o) || {};
+}
+
+/**
+ * Weerstanden na het bijwerken van de sheet: wat de DM zelf toevoegde (staat bij de speler, niet op de oude sheet)
+ * blijft; de rest volgt de nieuwe sheet. Zonder weerstanden op de nieuwe sheet (PDF): niets veranderen.
+ */
+export function drMerge(cur, oldSh, newSh) {
+  if (!newSh || !newSh.dr) return cleanDr(cur);
+  const was = (oldSh && oldSh.dr) || {}, out = { r: [], i: [], v: [] };
+  for (const k of ["r", "i", "v"]) out[k] = [...(newSh.dr[k] || []), ...((cur && cur[k]) || []).filter((t) => !(was[k] || []).includes(t))];
+  return cleanDr(out);
+}
+
 export function parseDdbJson(json) {
   const d = obj(json) && obj(json.data) ? json.data : json;
   if (!obj(d) || !str(d.name)) return null;
@@ -288,6 +314,7 @@ export function parseDdbJson(json) {
     attacks, levels, spellDC: spellMod == null ? "" : String(8 + prof + spellMod + dcPlus), spellAtk: spellMod == null ? "" : sg(prof + spellMod + atkPlus), spellAbility: castAb ? SHORT[castAb - 1] : "",
     features: [sub.length ? `Subclass: ${sub.join(", ")}` : "", feats, pact ? "Pact Magic: slots komen terug na een short rest (hier bij de gewone slots opgeteld)." : ""].filter(Boolean).join("\n"),
     casting: slots.length ? { slots, daily: [] } : null, res,
+    dr: drOf(mods), // SP2: altijd aanwezig bij een link-sheet ({} = geen), een PDF-sheet heeft het niet
   };
   const id = int(d.id);
   return { sheet, id: id > 0 ? String(id) : null, hasAvatar, check };
@@ -310,6 +337,9 @@ export function mergeSheet(t, f) {
   if (f.max && oMax !== f.max) ch.push(`max HP ${oMax || "?"} → ${f.max}`);
   if (f.max) { if (t.hp == null) t.hp = t.max; setMax(t, f.max + extra); }
   if (f.ac) t.ac = f.ac;
+  const dr = drMerge(t.dr, t.sheet, f.sheet); // vóór de sheet wisselt (eigen toevoegingen blijven)
+  const dd = drDiff(t.dr, dr);
+  if (dd) { ch.push(dd); if (dr) t.dr = dr; else delete t.dr; }
   for (const k of ["name", "race", "dex", "initBonus", "sheet", "ddbId"]) if (f[k] !== undefined) t[k] = f[k];
   if (f.img) t.img = f.img;
   if (f.casting) {

@@ -560,6 +560,18 @@ label.warn input{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
 .effform,.edit{display:grid;gap:8px;margin-top:8px}
 .ed3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .ed3 label small{text-transform:none;letter-spacing:0}
+/* resistances van een speler in ⋯ (SP2) */
+.drbox{flex-basis:100%;display:grid;gap:8px;border-top:1px solid var(--line);padding-top:8px}
+.drhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.drhead>span{min-width:0;overflow-wrap:anywhere}
+.drhead .link{min-height:44px;flex:0 0 auto;padding:0 8px}
+.drgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.drt{position:relative;min-height:44px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--fg);font:inherit;font-size:.9rem;padding:4px}
+.drt[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.drt.other{border-style:dashed}
+.drt small{position:absolute;top:2px;right:6px;font-size:.68rem;font-weight:700;color:var(--muted)}
+.drhint{margin:2px 0 0}
+.dall{min-height:44px;justify-self:start}
 .kpanel .bar .btn.tap{flex:1 1 120px}
 
 /* Verborgen voor spelers (DM-kaart) */

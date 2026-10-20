@@ -32,6 +32,7 @@ export function tidy(S) {
     if (c.hp <= 0 && !S.fight.down.some((x) => x.id === c.id)) S.fight.down.push({ id: c.id, name: c.name });
   }
   if (S.enc && !S.list.some((c) => c.kind === "monster" || c.kind === "lair")) delete S.enc;
+  if (S.allMon && !S.list.some((c) => c.kind === "monster")) delete S.allMon; // "toch meetellen" hoort bij de monsters in de lijst
 }
 
 /** Bij Start gevecht: nieuw gevecht, oude samenvatting weg */
