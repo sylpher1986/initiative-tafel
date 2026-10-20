@@ -882,3 +882,21 @@ button.dchip{min-height:36px;cursor:pointer}
 .tabstop h2{margin:0;font-family:var(--display);font-size:1.4rem;color:var(--accent)}
 .tabstop p{margin:0}
 .tabstop .btn{min-height:48px;width:100%}
+
+/* OB1: rondleiding (js/ui/tour.js). Spot = gat in de dim (box-shadow), vak met uitleg erboven of eronder. */
+:root{--tour-dim:rgba(0,0,0,.55)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--tour-dim:rgba(0,0,0,.7)}}
+:root[data-theme="dark"]{--tour-dim:rgba(0,0,0,.7)}
+.tour{position:fixed;inset:0;z-index:60}
+.tour[hidden]{display:none}
+.tspot{position:fixed;border-radius:12px;box-shadow:0 0 0 200vmax var(--tour-dim);outline:2px solid var(--active);pointer-events:none}
+.tbox{position:fixed;width:min(320px,calc(100vw - 32px));background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:14px;padding:14px 16px 10px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.tbox .thead{margin:0 0 4px;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.tbox .thead b{font-family:var(--display);font-size:1.1rem}
+.tbox .tprog{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.tbox #tour-x{margin:0 0 10px;line-height:1.4}
+.tbtns{display:flex;align-items:center;gap:8px}
+.tbtns .link{margin-right:auto;min-height:44px}
+.tbtns .btn{min-height:44px}
+.tbtns .btn[hidden]{display:none}
+@media (prefers-reduced-motion:no-preference){.tspot,.tbox{transition:top .2s ease,left .2s ease,width .2s ease,height .2s ease}}

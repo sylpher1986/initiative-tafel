@@ -1,7 +1,8 @@
 // Opstarten: data laden, events koppelen, eerste render, service worker.
 import { app, load, resetBaseline, setWarn } from "./state.js";
 import { loadSrd, findMon } from "./data/monsters.js";
-import { render, ui, setAfterRender } from "./ui/render.js";
+import { render, ui, setAfterRender, mode } from "./ui/render.js";
+import { initTour, tourTick, tourKey, killTour } from "./ui/tour.js";
 import { toPlayerView } from "./playerview.js";
 import { visNow } from "./ui/playervis.js";
 import { localChannel, dmLink } from "./share.js";
@@ -33,6 +34,7 @@ function start(boot = false) {
 let stopTab = () => {}, gone = false;
 function tabLost() {
   gone = true;
+  killTour();
   stopTab();
   for (const el of document.body.children) el.inert = true;
   const d = document.createElement("div");
@@ -72,7 +74,7 @@ async function boot() {
   // tik op een melding (niet op een knop) sluit hem
   $("#toast").addEventListener("click", (e) => { if (!e.target.closest("button")) e.target.closest(".tmsg")?.remove(); });
   document.addEventListener("change", onChange);
-  document.addEventListener("keydown", (e) => { if (!gone) onKey(e); }); // inert ontbreekt op Safari < 15.5: toetsenbord zou anders doorlopen
+  document.addEventListener("keydown", (e) => { if (!gone && !tourKey(e)) onKey(e); }); // inert ontbreekt op Safari < 15.5: toetsenbord zou anders doorlopen
   document.addEventListener("toggle", onToggle, true);
   // velden op de kaart in Voorbereiden slaan op bij change (zonder render); na het verlaten één render voor de rest van
   // het scherm. Tijdens een tik pas na pointerup, anders vervangt de render de knop vóór zijn click. Naar een ander
@@ -93,13 +95,16 @@ async function boot() {
   // echte hoogte van de beurtbalk: het statblock op de telefoon staat er precies boven
   if ("ResizeObserver" in window) new ResizeObserver(([e]) => document.documentElement.style.setProperty("--dock-h", Math.ceil(e.target.getBoundingClientRect().height) + "px")).observe($("#dock"));
 
+  // OB1: bestaande gebruikers (al data op dit apparaat) krijgen de rondleiding niet vanzelf
+  let exported = false; try { exported = localStorage.getItem("it-exp") != null; } catch { /* privémodus */ }
+  initTour(mode, !!(app.S && app.S.list.length) || app.party.length > 0 || app.encounters.length > 0 || app.custom.length > 0 || exported);
   if (!app.S) app.S = { list: [], round: 0, active: null, sample: false }; // eerste keer: welkomstkaart met "Start met voorbeeld"
   // spelersscherm: krijgt alleen de gefilterde snapshot. Twee wegen: een ander venster op dit apparaat (lokaal)
   // en andere apparaten via een kamer (Instellingen → Delen met spelers). Eén snapshot per render, ook met beide.
   const links = new Set();
   let view = null;
   const getView = () => (view ||= toPlayerView(app.S, (c) => (c.ref ? findMon(c.ref)?.meta : ""), visNow()));
-  setAfterRender(() => { view = null; links.forEach((l) => l.update()); });
+  setAfterRender(() => { view = null; links.forEach((l) => l.update()); tourTick(); });
   const ch = localChannel();
   if (ch) links.add(dmLink(ch, getView));
   stopTab = () => { links.clear(); if (ch) ch.close(); dropSharing(); };

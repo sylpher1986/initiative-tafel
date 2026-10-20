@@ -29,6 +29,7 @@ import { cleanLvl } from "../rules/encounters.js";
 import { startFight } from "../rules/fight.js";
 import { finishFight, closeEnd } from "./einde.js";
 import { pcReact, setPcReact } from "./pcreact.js";
+import { armTour, restartTour } from "./tour.js";
 
 /** Fx uit de regels: meldingen tonen en oorzaken doorgeven aan het logboek */
 const apply = (fx) => { if (!fx) return; addWhy(fx.why); show(fx); if (fx.saves) fx.saves.forEach((x) => addSave(app.S, x)); };
@@ -295,6 +296,7 @@ const global = {
     // !round is een vangnet (#start bestaat alleen vóór het gevecht)
     const rr = !app.S.round && initRoll() === "roll" ? rerollMonsters(app.S.list) : null;
     apply(rr ? R.merge(rr, startCombat(app.S)) : startCombat(app.S)); ui.mode = null; rekeyEdit();
+    armTour("f"); // OB1: tweede deel van de rondleiding bij de eerste keer Gevecht (alleen als deel f nog niet gezien is)
   },
   next() { apply(step(app.S, 1)); ui.laPulse = true; },
   "down-tog"() { ui.downOpen = !ui.downOpen; },
@@ -335,8 +337,10 @@ const global = {
     render(); scrollToCard(id, true);
     return false;
   },
-  "welcome-sample"() { loadSample(); ui.welcome = false; },
-  "welcome-empty"() { ui.welcome = false; },
+  "welcome-sample"() { loadSample(); ui.welcome = false; armTour("p"); },
+  "welcome-empty"() { ui.welcome = false; armTour("p"); },
+  // OB2: rondleiding opnieuw (Instellingen → Hulp): paneel dicht, het deel van de huidige modus start na de render
+  "tour-again"() { stopPUpd(); ui.prep = null; ui.prepLast = null; ui.mode = null; restartTour(); },
   /** DA1: strook "Geen recente export" in Voorbereiden */
   "exp-now"() { exportFile().then((ok) => { if (ok) { render(); focusAfterStrip(); } }); return false; },
   "exp-later"() { snoozeNudge(); render(); focusAfterStrip(); toast("Herinnering over 7 dagen weer."); return false; },
