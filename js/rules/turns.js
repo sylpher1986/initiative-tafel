@@ -266,8 +266,8 @@ export function clearMonsters(state) {
   return Object.assign(out, { n, lairs: gone.size - n });
 }
 
-/** Monster met een worp die niemand heeft aangeraakt (niet ingevuld, niet via ⋯ of de kaart aangepast) */
-export const freshRoll = (c) => c.kind === "monster" && Number.isFinite(c.roll) && Number.isFinite(c.dex) && c.init === c.roll + c.dex;
+/** Levend monster met een worp die niemand heeft aangeraakt (niet ingevuld, niet via ⋯ of de kaart aangepast) */
+export const freshRoll = (c) => c.kind === "monster" && !isOut(c) && Number.isFinite(c.roll) && Number.isFinite(c.dex) && c.init === c.roll + c.dex;
 
 /**
  * GV5: initiative van monsters opnieuw rollen bij Start gevecht. Alleen onaangeroerde worpen (freshRoll), ook verborgen

@@ -290,7 +290,8 @@ const global = {
     if (!ui.initSkip && !app.S.round && initPcs(app.S.list).length) { openInit(); return false; }
     ui.initSkip = false;
     startFight(app.S, Date.now()); // GV2: duur en wie neer ging; oude samenvatting weg
-    // GV5: onaangeroerde monsterworpen opnieuw (keuze in het paneel; zonder spelers de onthouden keuze), zelfde undo-stap
+    // GV5: onaangeroerde monsterworpen opnieuw (keuze in het paneel; zonder spelers de onthouden keuze), zelfde undo-stap;
+    // !round is een vangnet (#start bestaat alleen vóór het gevecht)
     const rr = !app.S.round && initRoll() === "roll" ? rerollMonsters(app.S.list) : null;
     apply(rr ? R.merge(rr, startCombat(app.S)) : startCombat(app.S)); ui.mode = null; rekeyEdit();
   },
@@ -1300,7 +1301,9 @@ function initKey(k, v) {
   }
   paintInit();
   const b = $("#isheet .ir.act .irn"); if (b) b.scrollIntoView({ block: "nearest" });
-  $("#isheet .isheet")?.focus({ preventScroll: true });
+  // seg-knoppen (Verrast, Monsters): focus blijft op de gekozen knop (toetsenbord); anders het paneel (cijferpad)
+  const seg = (k === "sur" || k === "mroll") && $(`#isheet [data-ia="${k}"][data-v="${v}"]`);
+  (seg || $("#isheet .isheet"))?.focus({ preventScroll: true });
 }
 
 export function bindInit() {

@@ -11,6 +11,7 @@ test("freshRoll: alleen onaangeroerde monsterworpen", () => {
   assert.equal(freshRoll(mon("b", 5, 2, { init: 14 })), false, "via ⋯ of de kaart aangepast");
   assert.equal(freshRoll(mon("c", undefined, 2)), false, "ingevuld");
   assert.equal(freshRoll(pc("p", 12)), false);
+  assert.equal(freshRoll(mon("d", 5, 2, { hp: 0 })), false, "dood monster: geen loze worp of logregel");
   assert.equal(freshRoll({ id: "l", kind: "lair", init: 20, dex: -99 }), false);
 });
 

@@ -23,7 +23,7 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - Regels: **RE1–RE7**
 - Encounters: **VB3**
 - Spelers en D&D Beyond: **SP2–SP3**
-- Gevecht: **GV4–GV5**, **IN7**
+- Gevecht: **GV4**, **IN7**
 - Spelersscherm: **SC1**
 - Taal: **TA1**
 - Technische schuld: **TS1–TS2** (oppakken wanneer je die code toch aanraakt)
@@ -36,7 +36,6 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 
 ## Gevecht aan tafel
 - [ ] **GV4 Reaction-knop bij spelers optioneel** (Instellingen): veel tafels laten spelers dat zelf bijhouden; scheelt een knop op elke spelerskaart.
-- [ ] **GV5 Initiative van monsters opnieuw rollen bij Start** (keuze in het initiative-paneel): nu wordt bij toevoegen gerold, ook als dat uren vóór de sessie was.
 
 ## Voorbereiding en encounters
 - [ ] **VB3 Encounters:** level ook via ⋯ Bewerken voor spelers buiten de party; DMG-regel "monsters met veel lagere CR niet meetellen" (nu telt alles mee).
@@ -146,6 +145,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [x] Monster-tab: knoptekst met aantal (1.6.4)
 - [x] Spelersscherm op tv: liggend ≥ 900 px schaalt de letter met de hoogte en vanaf 7 regels twee kolommen; 11 deelnemers + "Neer" passen op 720p (1.24.3)
 - [x] Dode monsters: in Gevecht onderaan in een ingeklapt blok "Neer (N)"; net neergegaan en open blijft op zijn plek tot de kaart dicht gaat of de beurt wisselt; dode spelers blijven staan; spelersscherm: één regel "Neer: …" (1.23.0)
+- [x] **GV5** Initiative van monsters opnieuw rollen bij Start: "Monsters: Houden | Opnieuw rollen" in het initiative-paneel, per apparaat onthouden; alleen onaangeroerde worpen, groep één worp (1.31.5)
 - [x] Surprise (2014): "Verrast: Niemand | Monsters | Spelers" in het initiative-paneel, per deelnemer via ⋯ in ronde 1; eerste beurt overgeslagen (beurtgrenzen tellen af), geen reaction en geen legendary actions tot die beurt voorbij is (1.23.0)
 - [x] Statblock-paneel op telefoon (vervangen door half/Groot boven de beurtbalk, 1.7.0)
 - [x] Lettertypes zelf meeleveren in plaats van Google Fonts (offline en privacy)
