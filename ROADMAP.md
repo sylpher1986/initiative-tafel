@@ -7,7 +7,7 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 
 **P1: nu (indeling, elke sessie)**
 1. ~~IN1–IN4~~ klaar in 1.29.0 en 1.30.0 (zie Klaar)
-3. **VB1** "level onbekend" tikbaar maken + levels in het voorbeeld
+3. ~~VB1~~ klaar in 1.30.1 (zie Klaar)
 
 **P2: volgende (tempo en voorbereiding)**
 6. **GV1** Tik op HP-balk = schadepaneel
@@ -47,7 +47,6 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - [ ] **GV5 Initiative van monsters opnieuw rollen bij Start** (keuze in het initiative-paneel): nu wordt bij toevoegen gerold, ook als dat uren vóór de sessie was.
 
 ## Voorbereiding en encounters
-- [ ] **VB1 "level onbekend" tikbaar:** de chip opent direct de levels van de party om in te vullen; voorbeeldspelers krijgen een level (nu toont het voorbeeld meteen "level onbekend"). Sinds 1.29.0 staat het levelveld ook op de spelerskaart in Voorbereiden als de sheet geen level geeft.
 - [ ] **VB2 Encounters vindbaar:** paneeltitel wordt "Encounters" op die tab (nu "Monster toevoegen"); na inladen staat de naam van de encounter boven de lijst en de notitie ingeklapt in Gevecht.
 - [ ] **VB3 Encounters:** level ook via ⋯ Bewerken voor spelers buiten de party; DMG-regel "monsters met veel lagere CR niet meetellen" (nu telt alles mee).
 
@@ -167,6 +166,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **IN1** Modus volgt de toestand: vóór Start altijd Voorbereiden (fase-aanduiding 1 → 2), Gevecht met eigen kop (grote ronde, ✎ Voorbereiden, +), tussendoor Voorbereiden met een amberkleurige balk en "Terug naar gevecht". Seg-knop weg. UX-agent koos dit boven tabs met een donkere kop (optie B).
 - **IN2** Kaart in Voorbereiden = inrichten: monster Init en Max HP direct (AC onder ⋯), Verbergen, Conditie, Effect, Statblock; speler huidige HP, AC en Level (als de sheet het mist), Conditie, Effect, Sheet. Geen Schade/Heal/Reaction. Velden slaan op bij verlaten.
 - **IN4** (1.30.0) Eén blok voor monsters toevoegen in het Monster-paneel én bij snel toevoegen: Aantal-stepper, HP Gemiddeld | Rollen, Initiative Per monster | Groep | Invullen. Encounter inladen volgt de groepen uit de encounter en alleen de HP-keuze.
+- **VB1** (1.30.1) "level onbekend" tikbaar: de uitleg bij de moeilijkheid (strook en encounter-rij) heeft per speler zonder level een invulveld; de tik zet de focus erop. Voorbeeldspelers hebben level 3 (voorbeeld = Hard).
 - **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.
 
 ### Functies

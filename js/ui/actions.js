@@ -372,7 +372,8 @@ function closePrep() {
 export function onClick(e) {
   // een veld op de kaart (Voorbereiden) eerst vastleggen: blur stuurt change synchroon, vóór de render van deze tik
   const pf = document.activeElement;
-  if (pf && pf.dataset && (pf.dataset.pf || "dlvl" in pf.dataset) && !pf.contains(e.target)) pf.blur();
+  // (levelvelden in het Encounters-paneel doet dat paneel zelf: zijn klik komt eerder en zet soms net de focus)
+  if (pf && pf.dataset && (pf.dataset.pf || ("dlvl" in pf.dataset && !pf.closest("#enc-panel"))) && !pf.contains(e.target)) pf.blur();
   if (spellInfoClick(e)) return; // spell-uitleg: tikbare naam of het paneel sluiten
   const sk = e.target.closest("[data-sk]");
   if (sk) {
@@ -478,6 +479,7 @@ function rekeyEdit() {
 export function saveLevel({ cid, pid }, raw) {
   const c = cid && app.S.list.find((x) => x.id === cid), p = pid || (c && c.pid);
   const m = p && app.party.find((x) => x.pid === p);
+  if (!c && !m) return true; // intussen weg
   const v = cleanLvl(raw);
   if (raw !== "" && !v) { toast("Level is 1 t/m 20."); return false; }
   if (m) { if ((m.lvl ?? null) !== v) { m.lvl = v; saveParty(); } return true; }

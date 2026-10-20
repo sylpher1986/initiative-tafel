@@ -43,24 +43,24 @@ function diffWhy(r, lair) {
  * main.js). Partylid → in de party, anders bij de speler. Leeg als iedereen een level heeft.
  */
 function lvlRows(who) {
+  const lost = who.filter((p) => !p.lvl && !p.cid && !p.pid); // oude/rare data zonder verwijzing: dan in elk geval de naam
+  const note = lost.length ? `<p>Level onbekend: ${esc(lost.map((p) => p.name).join(", "))} (vul in onder Party).</p>` : "";
   const miss = who.filter((p) => !p.lvl && (p.cid || p.pid));
-  if (!miss.length) return "";
+  if (!miss.length) return note;
   const inParty = miss.filter((p) => p.pid).length;
   const where = inParty === miss.length ? "Bewaard in de party." : inParty ? "Partyleden: bewaard in de party." : "Bewaard bij de speler.";
-  return `<p class="dlvlh"><b>Vul het level in.</b> ${where}</p><div class="dlvls">${miss.map((p, i) => `<label class="dlvl"><span>${esc(p.name)}</span><input data-dlvl type="number" min="1" max="20" inputmode="numeric" placeholder="?" enterkeyhint="${i < miss.length - 1 ? "next" : "done"}"${p.cid ? ` data-cid="${esc(p.cid)}"` : ""}${p.pid ? ` data-pid="${esc(p.pid)}"` : ""} aria-label="${esc(`Level ${p.name}`)}"></label>`).join("")}</div>`;
+  return `<p class="dlvlh"><b>Vul het level in.</b> ${where}</p><div class="dlvls">${miss.map((p, i) => `<label class="dlvl"><span>${esc(p.name)}</span><input data-dlvl type="number" min="1" max="20" inputmode="numeric" placeholder="?" enterkeyhint="${i < miss.length - 1 ? "next" : "done"}"${p.cid ? ` data-cid="${esc(p.cid)}"` : ""}${p.pid ? ` data-pid="${esc(p.pid)}"` : ""} aria-label="${esc(`Level ${p.name}`)}"></label>`).join("")}</div>${note}`;
 }
 
 /**
  * Na het openklappen van de uitleg: focus op het eerste levelveld (de tik op "level onbekend" is om dat in te vullen).
- * Na de klik-afhandeling (setTimeout): de algemene onClick rendert in dezelfde tik nog en vervangt het paneel dan.
+ * Direct in de tik, niet uitgesteld: iOS opent het toetsenbord alleen bij focus binnen de tik zelf.
  */
 function focusLvl(sel, center) {
-  setTimeout(() => {
-    const f = document.querySelector(`${sel} [data-dlvl]`);
-    if (!f) return;
-    f.focus({ preventScroll: true });
-    f.scrollIntoView({ block: center ? "center" : "nearest" });
-  }, 0);
+  const f = document.querySelector(`${sel} [data-dlvl]`);
+  if (!f) return;
+  f.focus({ preventScroll: true });
+  f.scrollIntoView({ block: center ? "center" : "nearest" });
 }
 
 /**
@@ -305,6 +305,9 @@ const ACT = {
 export function bindEnc() {
   const el = $("#enc-panel");
   el.addEventListener("click", (e) => {
+    // open levelveld eerst vastleggen (blur → change), vóór een repaint van dit paneel; de algemene onClick slaat dit paneel over
+    const a = document.activeElement;
+    if (a && a.dataset && "dlvl" in a.dataset && !a.contains(e.target)) a.blur();
     const p = e.target.closest("[data-eepick]");
     if (p && ui.encEdit) {
       const x = ui.encEdit, ref = p.dataset.eepick;
@@ -337,7 +340,8 @@ export function bindEnc() {
     if (e.target.id === "enc-name") { e.preventDefault(); saveNew(); }
     if (e.target.id === "ee-q") { e.preventDefault(); const f = $("#ee-list [data-eepick]"); if (f) f.click(); }
   });
-  // levelvelden in de uitleg: Enter = volgende veld, op het laatste klaar (blur → opslaan → render)
+  // levelvelden in de uitleg: Enter = volgende veld, op het laatste klaar (blur → opslaan → render).
+  // iPhone: het cijferblok heeft geen Enter; Gereed doet blur en slaat dus ook op.
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Enter" || !e.target.matches("[data-dlvl]")) return;
     e.preventDefault();
