@@ -13,7 +13,7 @@ test("tour: gezien-delen lezen en bijwerken", () => {
 
 test("tour: bestaande gebruiker met data krijgt hem niet vanzelf", () => {
   assert.equal(silenceFor(null, true), "pf");
-  assert.equal(silenceFor(null, false), null); // nieuw apparaat: gewoon tonen
+  assert.equal(silenceFor(null, false), ""); // nieuw apparaat: vastleggen dat er nog niets gezien is (herladen zet hem dan niet stil)
   assert.equal(silenceFor("p", true), null);   // al eerder gezien: niets veranderen
   assert.equal(silenceFor("", true), null);
 });

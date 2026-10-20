@@ -13,7 +13,7 @@ export const STOPS = {
     { sel: ['#dock [data-prep="mon"]'], t: "Monsters toevoegen", x: "SRD-monsters zoeken op naam, type of CR. Je klaargezette encounters staan hier ook." },
     { sel: ['#dock [data-prep="pc"]', '#dock [data-prep="party"]'], t: "Spelers en party", x: "Via een D&D Beyond-link of met de hand. Je vaste party zet je in één tik aan tafel." },
     { sel: ['#dock [data-prep="data"]'], t: "Instellingen", x: "Thema, spelersscherm en export als backup. Ook deze rondleiding vind je hier." },
-    { sel: ["#start"], t: "Start gevecht", x: "Vraagt eerst de initiative van de spelers. Monsters zijn al gerold." },
+    { sel: ["#start"], t: "Start gevecht", x: "Vraagt eerst de initiative van de spelers. Monsters: houden of opnieuw rollen." },
   ],
   f: [
     { sel: ["#dock .who"], t: "Aan de beurt", x: "Wie nu speelt en wie daarna. Zijn kaart staat open." },
@@ -30,10 +30,11 @@ export const seen = (raw) => new Set(String(raw || "").split("").filter((k) => k
 /** Nieuwe waarde voor `it-tour` met dit deel erbij (vaste volgorde) */
 export const withSeen = (raw, part) => { const s = seen(raw); s.add(part); return ["p", "f"].filter((k) => s.has(k)).join(""); };
 /**
- * Bestaande gebruiker na de update: wie al data heeft, krijgt de rondleiding niet vanzelf (wel via Instellingen).
- * Geeft de waarde om stil op te slaan, of null als er niets hoeft.
+ * Eerste opstart met deze versie (`it-tour` ontbreekt): wie al data heeft, krijgt de rondleiding niet vanzelf (wel via
+ * Instellingen) → "pf"; wie nog niets heeft → "" (zodat een herlaadbeurt midden in de tour, met het voorbeeld in de
+ * lijst, hem niet alsnog stilzet). Geeft de waarde om op te slaan, of null als er al een waarde is.
  */
-export const silenceFor = (raw, hasData) => (raw == null && hasData ? "pf" : null);
+export const silenceFor = (raw, hasData) => (raw != null ? null : hasData ? "pf" : "");
 
 /**
  * Plaats van het uitlegvak bij een doel (`r` = rect met top/bottom/left/right, viewport vw × vh, vak w × h).

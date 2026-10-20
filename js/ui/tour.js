@@ -6,7 +6,6 @@ import { STOPS, seen, withSeen, silenceFor, placeTip, unionRect } from "../tour.
 
 const KEY = "it-tour";
 let armed = null;  // deel dat wacht op het juiste moment (alleen in het geheugen)
-let forced = false; // OB2: ook als het deel al gezien is
 let t = null;      // lopende tour: { part, stops, i, root, spot, box, inert }
 let modeNow = () => "prep";
 
@@ -17,16 +16,16 @@ const markSeen = (part) => { try { localStorage.setItem(KEY, withSeen(raw(), par
 export function initTour(getMode, hasData) {
   modeNow = getMode;
   const v = silenceFor(raw(), hasData);
-  if (v) try { localStorage.setItem(KEY, v); } catch { /* privémodus */ }
+  if (v != null) try { localStorage.setItem(KEY, v); } catch { /* privémodus */ }
 }
 /** Na "Start met voorbeeld"/"Begin leeg" (deel p) of na Start gevecht (deel f); toont pas bij de volgende render */
 export function armTour(part) {
   const r = raw();
   if (r === undefined || seen(r).has(part)) return; // geen opslag: niet tonen (anders elke keer opnieuw)
-  armed = part; forced = false;
+  armed = part;
 }
 /** OB2: opnieuw bekijken; het deel dat bij de huidige modus hoort */
-export function restartTour() { armed = modeNow() === "fight" ? "f" : "p"; forced = true; }
+export function restartTour() { if (!t) armed = modeNow() === "fight" ? "f" : "p"; }
 export const tourActive = () => !!t && !t.root.hidden;
 
 const visible = (el) => { if (!el || !el.isConnected) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
@@ -62,6 +61,7 @@ function begin(part) {
   root.addEventListener("click", (e) => {
     e.stopPropagation(); // niets doorgeven aan de app eronder (tik op de dim doet bewust niets)
     const a = e.target.closest("[data-tour]")?.dataset.tour;
+    if (!e.target.closest(".tbox")) { t.box.querySelector('[data-tour="next"]').focus({ preventScroll: true }); return; } // focus niet kwijt
     if (a === "skip") end(true);
     else if (a === "back") go(t.i - 1, -1);
     else if (a === "next") go(t.i + 1, 1);
@@ -122,19 +122,21 @@ function hide(on) {
   t.inert.forEach((el) => (el.inert = !on));
 }
 
-/** Klaar, Overslaan, Escape of moduswissel: dit deel geldt als gezien */
+/** Klaar, Overslaan, Escape of moduswissel: dit deel geldt als gezien; focus naar de volgende logische knop */
 function end(done) {
   if (!t) return;
-  if (done) markSeen(t.part);
+  const part = t.part;
+  if (done) markSeen(part);
   removeEventListener("scroll", t.sc, { capture: true });
   removeEventListener("resize", t.sc);
   window.visualViewport?.removeEventListener("resize", t.sc);
   t.inert.forEach((el) => (el.inert = false));
   t.root.remove();
-  t = null;
+  t = null; armed = null;
+  if (done) document.querySelector(part === "f" ? "#next" : "#start:not([disabled])")?.focus({ preventScroll: true });
 }
-/** DA3: tabblad overgenomen; de tour weg zonder iets op te slaan (het stopscherm zet zelf alles inert) */
-export function killTour() { if (t) { t.root.remove(); t = null; } armed = null; }
+/** DA3: tabblad overgenomen; de tour weg zonder iets op te slaan (het stopscherm zet daarna zelf alles inert) */
+export function killTour() { end(false); }
 
 /** Toetsen tijdens de tour: Escape = Overslaan, Tab blijft in het vak; de rest gaat niet naar de app. Geeft true als de tour ze afhandelt. */
 export function tourKey(e) {
