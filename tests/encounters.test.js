@@ -39,9 +39,9 @@ test("level uit de klasse-string, ook multiclass; sheet wint van het eigen veld 
 
 test("party: spelers in de lijst (dood telt niet, level ook uit de party), anders de vaste party", () => {
   const party = [{ pid: "p1", name: "Ayla", lvl: 5 }, { pid: "p2", name: "Brom", sheet: { cls: "Cleric 4" } }];
-  const list = [{ kind: "pc", name: "Ayla", pid: "p1" }, { kind: "pc", name: "X", ds: { dead: true } }, mon("g", "Goblin")];
-  assert.deepEqual(partyFor(list, party), { src: "list", who: [{ name: "Ayla", lvl: 5 }] });
-  assert.deepEqual(partyFor([mon("g", "Goblin")], party), { src: "party", who: [{ name: "Ayla", lvl: 5 }, { name: "Brom", lvl: 4 }] });
+  const list = [{ id: "a", kind: "pc", name: "Ayla", pid: "p1" }, { id: "x", kind: "pc", name: "X", ds: { dead: true } }, mon("g", "Goblin")];
+  assert.deepEqual(partyFor(list, party), { src: "list", who: [{ name: "Ayla", lvl: 5, cid: "a", pid: "p1" }] });
+  assert.deepEqual(partyFor([mon("g", "Goblin")], party), { src: "party", who: [{ name: "Ayla", lvl: 5, pid: "p1" }, { name: "Brom", lvl: 4, pid: "p2" }] });
 });
 
 test("moeilijkheid: 4 spelers level 5 tegen 5 goblins + bugbear (×2)", () => {
@@ -178,6 +178,12 @@ test("party aan tafel: level van het partylid is de bron, de speler zelf als ter
   const party = [{ pid: "p1", name: "Ayla", lvl: 6 }];
   const r = partyFor([{ kind: "pc", name: "Ayla", pid: "p1", lvl: 2 }, { kind: "pc", name: "Los", lvl: 3 }], party);
   assert.deepEqual(r.who.map((p) => p.lvl), [6, 3]);
+});
+
+test("party: verwijzing waar een ontbrekend level heen gaat (VB1)", () => {
+  const party = [{ pid: "p1", name: "Ayla" }];
+  const r = partyFor([{ id: "c1", kind: "pc", name: "Ayla", pid: "p1" }, { id: "c2", kind: "pc", name: "Los" }, { id: "c3", kind: "pc", name: "Weg", pid: "p9" }], party);
+  assert.deepEqual(r.who.map(({ cid, pid }) => ({ cid, pid })), [{ cid: "c1", pid: "p1" }, { cid: "c2", pid: undefined }, { cid: "c3", pid: undefined }], "pid alleen als het partylid bestaat");
 });
 
 test("geen oordeel: level buiten 1–20 telt als onbekend (geen crash), alleen monsters zonder CR = CR onbekend", () => {

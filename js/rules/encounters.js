@@ -49,16 +49,17 @@ export const pcLevel = (p) => clsLevel(p && p.sheet && p.sheet.cls) ?? cleanLvl(
 
 /**
  * Wie telt als party: levende spelers in de lijst; zonder spelers in de lijst de vaste party.
- * Geeft { who: [{ name, lvl }], src: "list"|"party" }.
+ * Geeft { who: [{ name, lvl, cid?, pid? }], src: "list"|"party" }: cid = deelnemer in de lijst, pid = partylid
+ * (waar een ontbrekend level opgeslagen wordt).
  */
 export function partyFor(list, party) {
   const pcs = (list || []).filter((c) => c.kind === "pc" && !(c.ds && c.ds.dead));
   if (pcs.length) {
     const byPid = new Map((party || []).map((m) => [m.pid, m]));
     // partylid: de party is de bron (levelveld in het Party-paneel), anders de speler zelf
-    return { src: "list", who: pcs.map((c) => { const m = c.pid && byPid.get(c.pid); return { name: c.name, lvl: pcLevel(m) ?? pcLevel(c) }; }) };
+    return { src: "list", who: pcs.map((c) => { const m = c.pid && byPid.get(c.pid); return { name: c.name, lvl: pcLevel(m) ?? pcLevel(c), cid: c.id, ...(m ? { pid: m.pid } : {}) }; }) };
   }
-  return { src: "party", who: (party || []).map((m) => ({ name: m.name || "?", lvl: pcLevel(m) })) };
+  return { src: "party", who: (party || []).map((m) => ({ name: m.name || "?", lvl: pcLevel(m), pid: m.pid })) };
 }
 
 /**

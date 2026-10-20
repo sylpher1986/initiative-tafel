@@ -335,11 +335,11 @@ export function scrollToCard(id, onlyIfHidden, instant) {
   window.scrollBy({ top: r.top - 64, behavior: reduce || instant ? "auto" : "smooth" });
 }
 
-/** Voorbeeld-encounter: twee spelers, twee Goblins en een Hobgoblin (één undo-stap) */
+/** Voorbeeld-encounter: twee spelers (level 3, zodat de moeilijkheid meteen een oordeel geeft: Hard), twee Goblins en een Hobgoblin (één undo-stap) */
 export function loadSample() {
   app.S.list.push(
-    { id: uid(), name: "Thalia (voorbeeld)", kind: "pc", race: "Elf", init: 17, dex: 3, ac: 15, hp: 24, max: 24, cond: [] },
-    { id: uid(), name: "Brom (voorbeeld)", kind: "pc", race: "Dwarf", init: 9, dex: 0, ac: 18, hp: 31, max: 31, cond: [] },
+    { id: uid(), name: "Thalia (voorbeeld)", kind: "pc", race: "Elf", lvl: 3, init: 17, dex: 3, ac: 15, hp: 24, max: 24, cond: [] },
+    { id: uid(), name: "Brom (voorbeeld)", kind: "pc", race: "Dwarf", lvl: 3, init: 9, dex: 0, ac: 18, hp: 31, max: 31, cond: [] },
   );
   addMonsters("Goblin", 2, "avg", "each", true);
   addMonsters("Hobgoblin", 1, "avg", "each", true);
@@ -372,7 +372,7 @@ function closePrep() {
 export function onClick(e) {
   // een veld op de kaart (Voorbereiden) eerst vastleggen: blur stuurt change synchroon, vóór de render van deze tik
   const pf = document.activeElement;
-  if (pf && pf.dataset && pf.dataset.pf && !pf.contains(e.target)) pf.blur();
+  if (pf && pf.dataset && (pf.dataset.pf || "dlvl" in pf.dataset) && !pf.contains(e.target)) pf.blur();
   if (spellInfoClick(e)) return; // spell-uitleg: tikbare naam of het paneel sluiten
   const sk = e.target.closest("[data-sk]");
   if (sk) {
@@ -439,6 +439,7 @@ export function onClick(e) {
 
 export function onChange(e) {
   const t = e.target, f = t.dataset.f;
+  if ("dlvl" in t.dataset) { if (!saveLevel(t.dataset, t.value.trim())) t.value = ""; return; } // level in de uitleg bij de moeilijkheid
   const li = t.closest(".c");
   if (["cdur", "cab", "cdc"].includes(f)) {
     const o = (ui.condOpt[li.dataset.id] = ui.condOpt[li.dataset.id] || {});
@@ -470,20 +471,29 @@ function rekeyEdit() {
 }
 
 /**
+ * Level invullen (kaartveld in Voorbereiden of de uitleg bij de moeilijkheid, VB1). Partylid (via pid of de pid van de
+ * deelnemer) → in de party, zonder undo-stap (hoort niet bij de encounter, zoals in het Party-paneel); anders bij de
+ * speler zelf met een undo-stap. Leeg = level weg. Geen render (zie prepField). → false bij ongeldige invoer (melding gegeven).
+ */
+export function saveLevel({ cid, pid }, raw) {
+  const c = cid && app.S.list.find((x) => x.id === cid), p = pid || (c && c.pid);
+  const m = p && app.party.find((x) => x.pid === p);
+  const v = cleanLvl(raw);
+  if (raw !== "" && !v) { toast("Level is 1 t/m 20."); return false; }
+  if (m) { if ((m.lvl ?? null) !== v) { m.lvl = v; saveParty(); } return true; }
+  if (c && (c.lvl ?? null) !== v) { c.lvl = v ?? undefined; because("level", c.id); commit(); }
+  return true;
+}
+
+/**
  * Kaart in Voorbereiden (IN2): een veld slaat op zodra het de focus verliest. Direct vastleggen (commit: undo-stap,
  * logboek, opslag) maar niet renderen: dan zou de tik op het volgende veld of een knop verloren gaan. main.js
  * rendert na het verlaten van de velden (focusout). Ongeldig: oude waarde terug en een melding.
  */
 function prepField(c, t) {
   const k = t.dataset.pf, raw = t.value.trim();
-  const m = c.pid && app.party.find((x) => x.pid === c.pid);
-  const back = (msg) => { toast(msg); t.value = { init: c.init, max: baseMax(c) || "", hp: c.hp, ac: c.ac || "", lvl: (m ? m.lvl : c.lvl) ?? "" }[k] ?? t.value; };
-  if (k === "lvl") {
-    const v = cleanLvl(raw);
-    if (raw !== "" && !v) return back("Level is 1 t/m 20.");
-    if (m) { m.lvl = v; saveParty(); return; } // level hoort bij de party (geen undo-stap), zoals in het Party-paneel
-    c.lvl = v ?? undefined; because("level", c.id); commit(); return;
-  }
+  const back = (msg) => { toast(msg); t.value = { init: c.init, max: baseMax(c) || "", hp: c.hp, ac: c.ac || "" }[k] ?? t.value; };
+  if (k === "lvl") { if (!saveLevel({ cid: c.id }, raw)) { const m = c.pid && app.party.find((x) => x.pid === c.pid); t.value = (m ? m.lvl : c.lvl) ?? ""; } return; }
   const n = parseInt(raw);
   if (k === "init") {
     const v = parseInit(raw);

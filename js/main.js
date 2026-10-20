@@ -49,7 +49,7 @@ async function boot() {
   addEventListener("pointerup", () => { down = false; resync(); }, true);
   addEventListener("pointercancel", () => { down = false; resync(); }, true);
   document.addEventListener("focusout", (e) => {
-    if (!e.target.dataset || !e.target.dataset.pf) return;
+    if (!e.target.dataset || !(e.target.dataset.pf || "dlvl" in e.target.dataset)) return;
     if (e.relatedTarget && e.relatedTarget.matches("input, select, textarea")) return;
     sync = true;
     if (!down) resync();
