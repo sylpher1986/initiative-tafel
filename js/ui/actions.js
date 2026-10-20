@@ -601,7 +601,7 @@ export function onToggle(e) {
 
 /* ---------- formulieren: speler, monster, eigen monster ---------- */
 // UI-toestand van het spelersformulier (geen data: hoort niet in undo/opslag)
-let pendingSheet = null, pendingImg = null, pendingDdb = null, pendingNew = false, matchPid = null, ddbBusy = null, selMon = "Goblin";
+let pendingSheet = null, pendingImg = null, pendingDdb = null, pendingNew = false, matchPid = null, ddbBusy = null, pdfSeq = 0, selMon = "Goblin";
 
 /** Bijwerken toepassen: partylid én wie aan tafel zit (zelfde pid). Eén undo-stap voor de tafel; geeft de wijzigingen terug */
 function updMember(m, f) {
@@ -666,6 +666,7 @@ async function ddbFetch() {
   const id = parseDdbLink($("#pc-ddb").value), info = $("#pc-sheetinfo"), btn = $("#pc-ddbgo");
   if (!id) { info.textContent = ddbMsg("bad"); return; }
   if (ddbBusy) ddbBusy.abort(); // laatste verzoek wint
+  pdfSeq++; // een PDF die nog gelezen wordt, overschrijft deze sheet niet meer
   const ctl = ddbBusy = new AbortController();
   btn.disabled = true; btn.setAttribute("aria-busy", "true"); info.textContent = "Sheet ophalen…";
   try {
@@ -690,7 +691,7 @@ function stopDdb() {
 }
 
 function resetPcForm() {
-  stopDdb(); clearPending(); $("#f-pc").reset(); $("#pc-dex").value = 0; $("#pc-sheetinfo").textContent = "";
+  stopDdb(); pdfSeq++; clearPending(); $("#f-pc").reset(); $("#pc-dex").value = 0; $("#pc-sheetinfo").textContent = "";
 }
 
 export function bindForms() {
@@ -746,12 +747,14 @@ export function bindForms() {
     const f = e.target.files[0]; if (!f) return;
     e.target.value = ""; // zelfde bestand opnieuw kiezen moet weer werken, ook na een fout
     stopDdb();
+    const seq = ++pdfSeq; // laatste keuze wint (link ophalen, andere PDF, formulier verstuurd)
     $("#pc-sheetinfo").textContent = `${f.name} wordt gelezen…`;
     try {
       const got = await readSheetPdf(f), h = got && got.sheet;
+      if (seq !== pdfSeq) return;
       if (!h) { $("#pc-sheetinfo").textContent = "Geen D&D Beyond-formuliervelden gevonden. Is dit een PDF-export van D&D Beyond?"; return; }
       clearPending(); fillSheet(h, got.img);
-    } catch { $("#pc-sheetinfo").textContent = "De PDF-lezer kon niet laden of het bestand niet openen. Controleer je verbinding en probeer het opnieuw."; }
+    } catch { if (seq === pdfSeq) $("#pc-sheetinfo").textContent = "De PDF-lezer kon niet laden of het bestand niet openen. Controleer je verbinding en probeer het opnieuw."; }
   });
 
   // bedieningsblok (IN4, zelfde als snel toevoegen): opnieuw tekenen, behalve tijdens typen in het getalveld (focus)

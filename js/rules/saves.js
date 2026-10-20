@@ -33,6 +33,11 @@ export function tickSaves(S) {
   return out;
 }
 
+/** ‹ Vorige: de veroudering van de laatste beurtwissel terugdraaien (max TTL), anders vervalt een save een beurt eerder */
+export function untickSaves(S) {
+  for (const s of S.saves || []) s.ttl = Math.min(TTL, (s.ttl || 0) + 1);
+}
+
 /** Hoort de vraag nog? (deelnemer bestaat, doet mee, conditie of dezelfde concentratie is er nog) */
 export function isValid(S, s) {
   const c = S.list.find((x) => x.id === s.id);

@@ -85,3 +85,15 @@ test("start gevecht: open saves van eerder blijven bruikbaar", () => {
   startCombat(S);
   assert.equal(openSaves(S).length, 1);
 });
+
+test("RE7: ‹ Vorige draait de veroudering terug; daarna weer Volgende vervalt de save niet te vroeg", () => {
+  const S = { list: [pc(), held(), mon({ id: "x", name: "Goblin", init: 5 })], round: 1, active: "p" };
+  step(S, 1); // m: vraag open (ttl 2)
+  step(S, 1); // Goblin: ttl 1
+  step(S, -1); // terug naar m: ttl weer 2
+  assert.equal(S.saves[0].ttl, TTL);
+  step(S, 1); // Goblin opnieuw: staat er nog
+  assert.equal(openSaves(S).length, 1);
+  step(S, -1); step(S, -1); // nooit boven TTL
+  assert.equal(S.saves[0].ttl, TTL);
+});

@@ -51,7 +51,14 @@ function collectMods(d) {
       else out.push(x);
     }
   }
-  return { mods: out, orphans };
+  return { mods: out, orphans, live, known };
+}
+
+/** Spell-lijsten (klasse, ras, feat, item, …). Item-spells alleen als het item gedragen wordt (en geattuned als dat moet); onbekend item: tonen */
+function spellLists(d, live, known) {
+  const sp = obj(d.spells) ? d.spells : {};
+  const ok = (k) => (x) => k !== "item" || !obj(x) || x.componentId == null || live.has(x.componentId) || !known.has(x.componentId);
+  return [...arr(d.classSpells).map((cs) => arr(obj(cs) ? cs.spells : null)), ...Object.entries(sp).map(([k, l]) => arr(l).filter(ok(k)))];
 }
 
 function computeUses(lu, M, prof) {
@@ -92,7 +99,8 @@ export function parseDdbJson(json) {
   const d = obj(json) && obj(json.data) ? json.data : json;
   if (!obj(d) || !str(d.name)) return null;
   const check = { ac: [], hp: [] };
-  const { mods, orphans } = collectMods(d);
+  const { mods, orphans, live, known: kn } = collectMods(d);
+  const lists = spellLists(d, live, kn);
   const of = (t, s) => mods.filter((m) => m.type === t && m.sub === s);
   const has = (t, s) => of(t, s).length > 0;
 
@@ -154,8 +162,7 @@ export function parseDdbJson(json) {
     }
     if (natural) check.ac.push("natuurlijk harnas (vaste basis-AC)");
     // Mage Armor is een spell, geen modifier: als de character het kent en geen harnas draagt, even nagaan
-    const spellNames = [...arr(d.classSpells).flatMap((cs) => arr(obj(cs) ? cs.spells : null)), ...Object.values(obj(d.spells) ? d.spells : {}).flatMap(arr)]
-      .map((x) => (obj(x) && obj(x.definition) ? str(x.definition.name) : ""));
+    const spellNames = lists.flat().map((x) => (obj(x) && obj(x.definition) ? str(x.definition.name) : ""));
     if (spellNames.some((n) => /^mage armor$/i.test(n))) check.ac.push("Mage Armor niet meegeteld");
   }
   let ac = base + (shield ? int(shield.definition.armorClass) ?? 2 : 0) + sum("bonus", "armor-class") + (body.length ? sum("bonus", "armored-armor-class") : shield ? 0 : sum("bonus", "unarmored-armor-class")); // bv. Bracers of Defense: geen harnas én geen schild
@@ -212,7 +219,6 @@ export function parseDdbJson(json) {
   if (pact) slotMax[Math.min(5, Math.ceil(pact / 2))] += pact >= 17 ? 4 : pact >= 11 ? 3 : pact >= 2 ? 2 : 1;
 
   // spells per level
-  const lists = [...arr(d.classSpells).map((cs) => arr(obj(cs) ? cs.spells : null)), ...Object.values(obj(d.spells) ? d.spells : {}).map(arr)];
   const rows = [];
   for (const list of lists) {
     const r = list.map(spellRow).filter(Boolean);

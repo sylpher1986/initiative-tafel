@@ -263,3 +263,15 @@ test("bijwerken: naamswijziging staat in de wijzigingen", () => {
   assert.deepEqual(mergeSheet({ name: "Ayla" }, { name: "Ayla Steen" }), ["naam Ayla → Ayla Steen"]);
   assert.deepEqual(mergeSheet({ name: "Ayla" }, { name: "Ayla" }), []);
 });
+
+test("SP3: spells van een item alleen als het item gedragen (en geattuned) is; onbekend item wel tonen", () => {
+  const d = structuredClone(wizard);
+  d.spells.item = [
+    { componentId: 501, definition: { name: "Light", level: 0 } }, // Ring of Protection: geattuned
+    { componentId: 502, definition: { name: "Message", level: 0 } }, // Cloak: niet geattuned
+    { componentId: 5040, definition: { name: "Mending", level: 0 } }, // Quarterstaff (inventory-id): niet gedragen
+    { componentId: 999, definition: { name: "Thaumaturgy", level: 0 } }, // item niet te koppelen: tonen
+  ];
+  const h = parseDdbJson(d).sheet;
+  assert.deepEqual(h.levels.find((l) => l.lvl === 0).spells.map((s) => s.n).sort(), ["Fire Bolt", "Light", "Prestidigitation", "Thaumaturgy"]);
+});

@@ -79,6 +79,13 @@ export function defMode(x, type) {
   return out;
 }
 
+/** Is de savebonus bekend? Zonder statblock of ability score (eigen monster: alleen Dex) zou saveBonus +0 gokken */
+export function saveKnown(m, ab) {
+  if (!m) return false;
+  const sv = ((m.x || []).find((r) => r[0] === "Saving Throws") || [])[1] || "";
+  return new RegExp(`\\b${ab}\\w*\\s*[+−-]\\s*\\d`, "i").test(String(sv)) || (Array.isArray(m.ab) && ABS.includes(ab)) || (ab === "DEX" && !!m.dexScore);
+}
+
 /** Savebonus van een monster: uit "Saving Throws" (Dex +6), anders de ability-modifier */
 export function saveBonus(m, ab) {
   if (!m) return 0;

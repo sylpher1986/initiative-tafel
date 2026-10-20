@@ -2,7 +2,7 @@
 import { d, sgn } from "./dice.js";
 import { fx } from "./combat.js";
 import { tickEffects, endFightEffects } from "./effects.js";
-import { tickSaves, turnSaves } from "./saves.js";
+import { tickSaves, turnSaves, untickSaves } from "./saves.js";
 
 export const CONDS = ["Blinded", "Charmed", "Deafened", "Frightened", "Grappled", "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned", "Prone", "Restrained", "Stunned", "Unconscious", "Concentrating"];
 
@@ -203,7 +203,7 @@ export function step(state, dir, rng = Math.random) {
   }
   const cur = L[i];
   state.active = cur.id;
-  if (dir < 0) return out;
+  if (dir < 0) { untickSaves(state); return out; }
 
   passed.push(["start", cur.id]);
   out.why.push(...tickSaves(state).why);
