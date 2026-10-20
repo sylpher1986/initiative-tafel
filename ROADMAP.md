@@ -19,11 +19,11 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 
 **P3: later**
 - Afwerking: ~~AF1–AF3~~ klaar in 1.31.6 (zie Klaar), **AF5**
-- Nice to have: **OB1** rondleiding bij eerste gebruik, daarna **OB2** opnieuw starten
+- Nice to have: ~~OB1, OB2~~ klaar in 1.33.0 (zie Klaar)
 - Regels: **RE1–RE7**
 - Encounters: **VB3**
 - Spelers en D&D Beyond: **SP2–SP3**
-- Gevecht: **GV4**, **IN7**
+- Gevecht: ~~IN7~~ klaar in 1.32.0, ~~GV4~~ klaar in 1.32.1 (zie Klaar)
 - Spelersscherm: **SC1**
 - Taal: **TA1**
 - Opslag: ~~DA3~~ klaar in 1.31.8 (zie Klaar)
@@ -33,10 +33,10 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 ---
 
 ## Indeling en navigatie
-- [ ] **IN7 Logboek dichter bij de beurtbalk:** eigen tab, of de laatste 2 gebeurtenissen onder de beurtbalk.
+- Geen open punten (IN7 klaar in 1.32.0, zie Klaar).
 
 ## Gevecht aan tafel
-- [ ] **GV4 Reaction-knop bij spelers optioneel** (Instellingen): veel tafels laten spelers dat zelf bijhouden; scheelt een knop op elke spelerskaart.
+- Geen open punten (GV4 klaar in 1.32.1, zie Klaar).
 
 ## Voorbereiding en encounters
 - [ ] **VB3 Encounters:** level ook via ⋯ Bewerken voor spelers buiten de party; DMG-regel "monsters met veel lagere CR niet meetellen" (nu telt alles mee).
@@ -62,8 +62,7 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - [ ] **AF5** Instellingen is één lange lijst: kopjes inklapbaar of een korte inhoud bovenaan (Weergave · Spells · Spelersscherm · Opslag)
 
 ## Eerste gebruik (nice to have)
-- [ ] **OB1 Visuele rondleiding bij de eerste keer openen.** Elementen één voor één uitlichten (rest van het scherm gedimd) met een korte uitleg en Volgende / Overslaan, zoals veel apps dat doen. Stops bijvoorbeeld: modus Voorbereiden/Gevecht, + Monster / + Speler / Party / ⚙, een kaart (tik = openen), Start gevecht, en in Gevecht de beurtbalk (Volgende, ‹ Vorige, ↶ Ongedaan, AoE). Eenmalig per apparaat (`localStorage`), niet in undo of export; nooit over een open paneel heen. Zelf bouwen (geen tour-library: geen dependencies). Pas bouwen na IN1–IN4, anders wijzen de stops naar een indeling die nog verandert. UX-agent: rondleiding vs losse hints op de plek zelf naast elkaar zetten.
-- [ ] **OB2 Rondleiding opnieuw starten** vanuit Instellingen (bijv. "Rondleiding opnieuw bekijken"), zodat een DM hem later nog eens kan zien of aan een co-DM kan laten zien. Bouwt op OB1.
+- Geen open punten (OB1 en OB2 klaar in 1.33.0, zie Klaar).
 
 ## Opslag en data
 - Geen open punten (DA3 klaar in 1.31.8, zie Klaar).
@@ -165,6 +164,9 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **DA3** (1.31.8) Eén DM-tabblad tegelijk: het nieuwste wint; het oude slaat niets meer op, stuurt niets meer naar spelers en toont "Dit tabblad is gestopt" met **Hier verder werken** (herlaadt met de nieuwste stand en undo).
 - **SP1** (1.31.2) Party: "↻ Bijwerken" per lid met D&D Beyond-link, inline bevestigvak met de wijzigingen (ook naam); onzekere AC/HP uit de sheet gaan niet over een bestaande waarde.
 - **GV3** (1.31.3) Tablet/desktop: onder een speler zonder sheet staat in een gevecht het statblock van het monster dat nu of hierna aan de beurt is ("Daarna: Goblin ×3"), met klikbare aanvallen; leespositie blijft als dat monster aan de beurt komt.
+- **IN7** (1.32.0) Logboek in Gevecht: het rondeblok in de kop ("Gevecht · Logboek ▸ / Ronde N") opent een paneel met alle regels, reden toevoegen en Kopieer; in Gevecht staat het niet meer onder de lijst. Voorbereiden ongewijzigd. UX-agent koos de kop boven een strook bij de dock (dock vol, dubbel met meldingen).
+- **GV4** (1.32.1) Instellingen → Weergave → "Reaction van spelers: Knop | Spelers zelf": bij Spelers zelf geen Reaction-knop en geen badge op spelerskaarten (Heal wordt breed); monsters houden de knop.
+- **OB1/OB2** (1.33.0) Rondleiding in twee delen: Voorbereiden (na de welkomstkaart, 6 stops) en Gevecht (bij de eerste Start gevecht, 6 stops), met Overslaan/Terug/Volgende; eenmalig per apparaat, bestaande gebruikers niet vanzelf. Opnieuw via Instellingen → Hulp → "Rondleiding opnieuw".
 - **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.
 
 ### Functies
