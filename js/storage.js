@@ -26,6 +26,11 @@ function tx(mode, fn) {
 
 const lsKey = (k) => `it-${k}`;
 
+/* DA3: schrijven alleen zolang dit tabblad de eigenaar is (js/tablock.js). Een gestopt tabblad schrijft niets meer,
+   ook geen opslag die nog onderweg was; dat telt als gelukt (geen waarschuwing "opslaan lukt niet"). */
+let mayWrite = () => true;
+export const setWriteGuard = (fn) => { mayWrite = fn; };
+
 export async function get(key, fallback) {
   try {
     const v = await tx("readonly", (s) => s.get(key));
@@ -37,6 +42,7 @@ export async function get(key, fallback) {
 
 /** Slaat een waarde op; geeft false terug als opslaan nergens lukt */
 export async function set(key, value) {
+  if (!mayWrite()) return true;
   try { await tx("readwrite", (s) => s.put(value, key)); return true; }
   catch {
     try { localStorage.setItem(lsKey(key), JSON.stringify(value)); return true; } catch { return false; }
@@ -49,6 +55,7 @@ export async function set(key, value) {
  * Geeft false terug als het niet lukte.
  */
 export async function batch(ops) {
+  if (!mayWrite()) return true;
   try {
     await tx("readwrite", (s) => {
       for (const [op, a, b] of ops) {

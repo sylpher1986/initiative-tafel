@@ -5,7 +5,9 @@ import { render, ui, setAfterRender } from "./ui/render.js";
 import { toPlayerView } from "./playerview.js";
 import { visNow } from "./ui/playervis.js";
 import { localChannel, dmLink } from "./share.js";
-import { bindSharing } from "./ui/kamer.js";
+import { bindSharing, dropSharing } from "./ui/kamer.js";
+import { setWriteGuard } from "./storage.js";
+import { claimTab } from "./tablock.js";
 import { $, toast } from "./ui/util.js";
 import { VERSION } from "./version.js";
 import { bindEnc } from "./ui/encounters.js";
@@ -24,7 +26,35 @@ function start(boot = false) {
   if (app.S.round) requestAnimationFrame(() => scrollToCard(app.S.active, true, true));
 }
 
+/* DA3: een ander tabblad nam het over. Niets meer opslaan of naar spelers sturen; de app eronder is onbruikbaar
+   (inert), zodat er geen werk verloren gaat dat toch niet bewaard wordt. "Hier verder werken" herlaadt: dan de
+   nieuwste stand uit IndexedDB en dit tabblad claimt weer (het andere stopt). UX-agent koos dit scherm boven een
+   strook met een alleen-lezen lijst (die veroudert en lijkt te werken). Geen melding in het nieuwe tabblad. */
+let stopTab = () => {}, gone = false;
+function tabLost() {
+  gone = true;
+  stopTab();
+  for (const el of document.body.children) el.inert = true;
+  const d = document.createElement("div");
+  d.className = "tabstop";
+  d.setAttribute("role", "alertdialog");
+  d.setAttribute("aria-modal", "true");
+  d.setAttribute("aria-labelledby", "ts-t");
+  d.setAttribute("aria-describedby", "ts-d");
+  d.innerHTML = `<div class="tabstop-card">
+    <h2 id="ts-t">Dit tabblad is gestopt</h2>
+    <p id="ts-d">Initiative Tafel staat ook in een ander tabblad of venster open. Daar wordt nu opgeslagen, hier niet meer, zodat er niets overschreven wordt.</p>
+    <button type="button" class="btn primary tap">Hier verder werken</button>
+    <p class="hint">Laadt de nieuwste stand. Het andere tabblad stopt dan.</p>
+  </div>`;
+  d.querySelector("button").addEventListener("click", () => location.reload());
+  document.body.append(d);
+  d.querySelector("button").focus();
+}
+
 async function boot() {
+  // vóór het laden: het vorige tabblad stopt met opslaan voordat dit tabblad de stand leest
+  setWriteGuard(claimTab(tabLost));
   setWarn(toast);
   // pagina (index.html) en scripts moeten van dezelfde versie zijn; anders zichtbaar maken
   const pv = document.querySelector('meta[name="it-version"]')?.content;
@@ -69,9 +99,11 @@ async function boot() {
   setAfterRender(() => { view = null; links.forEach((l) => l.update()); });
   const ch = localChannel();
   if (ch) links.add(dmLink(ch, getView));
+  stopTab = () => { links.clear(); if (ch) ch.close(); try { dropSharing(); } catch { /* delen nooit gestart */ } };
   // los van de rest: een fout bij het delen mag de app niet tegenhouden, en is zichtbaar in Instellingen
   try { bindSharing(getView, (l, on) => (on ? links.add(l) : links.delete(l))); }
   catch (e) { const b = $("#kamer-box"); if (b) b.textContent = `Delen met spelers kon niet starten: ${e && e.message || e}`; }
+  if (gone) stopTab(); // al overgenomen tijdens het laden: ook de net gestarte verbindingen dicht
   start(true);
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {

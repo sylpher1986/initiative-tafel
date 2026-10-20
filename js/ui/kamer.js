@@ -136,6 +136,9 @@ function paint() {
       <button type="button" class="btn tap" data-kamer="stop">Stop met delen</button></div>`;
 }
 
+/** Tabblad gestopt (DA3): verbinding dicht zonder de kamer te vergeten; het andere tabblad deelt verder met dezelfde code */
+export function dropSharing() { disconnect(); }
+
 /**
  * Koppelen bij het opstarten. view(): snapshot (toPlayerView); links(link, aan): dmLink in- of uitschakelen bij
  * de render-updates. Een bewaarde kamer gaat direct weer open.
