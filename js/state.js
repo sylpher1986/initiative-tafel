@@ -7,6 +7,7 @@ import { endConcEffects } from "./rules/effects.js";
 import { endConcConds } from "./rules/spellcast.js";
 import { cleanEncounters } from "./rules/encounters.js";
 import { tidy } from "./rules/fight.js";
+import { markDirty } from "./exportnudge.js";
 
 /** Alle data van de app. S = de lopende encounter. */
 export const app = { S: null, party: [], lairs: {}, custom: [], imported: [], encounters: [] }; // encounters: klaargezet, niet in undo
@@ -33,11 +34,13 @@ function save(key, value) {
     if (!ok && !warned) { warned = true; warn("Opslaan in deze browser lukt niet (vol of geblokkeerd). Maak een export als je je data wilt bewaren."); }
   });
 }
-export const saveParty = () => save("party", app.party);
-export const saveLairs = () => save("lairs", app.lairs);
-export const saveEncounters = () => save("encounters", app.encounters);
+// Waardevolle data (niet de lopende encounter): telt voor de exportherinnering (DA1)
+const keep = (key, value) => { markDirty(); save(key, value); };
+export const saveParty = () => keep("party", app.party);
+export const saveLairs = () => keep("lairs", app.lairs);
+export const saveEncounters = () => keep("encounters", app.encounters);
 export function saveLibrary() {
-  save("custom", app.custom); save("imported", app.imported);
+  keep("custom", app.custom); keep("imported", app.imported);
   setLibrary({ custom: app.custom, imported: app.imported });
 }
 

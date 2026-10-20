@@ -7,7 +7,7 @@
 <meta name="description" content="Initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.">
 <meta name="theme-color" content="#8a1f14" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#13161d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="1.31.0">
+<meta name="it-version" content="1.31.1">
 <script src="js/theme.js"></script>
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
 <script>
@@ -136,6 +136,7 @@
       <h2 class="sethead">Opslag</h2>
       <p class="hint">Alles staat op dit apparaat. Maak af en toe een export: als backup, om naar een ander apparaat te gaan, of om je party met een co-DM te delen.</p>
       <div class="bar"><button type="button" class="btn primary" id="exp-file">Exporteer als bestand</button><button type="button" class="btn small" id="exp-copy">Kopieer als tekst</button></div>
+      <p class="hint" id="exp-last"></p>
       <label>Export importeren (bestand)<input id="imp-backup" type="file" accept=".json,application/json"></label>
       <details class="cast"><summary class="link">Of plak de tekst van een export (bijv. uit de Claude-versie)</summary>
         <div class="form" style="margin-top:8px"><textarea id="imp-text" placeholder='{"format":"initiative-tafel", …}'></textarea>

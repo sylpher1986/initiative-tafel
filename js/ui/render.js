@@ -21,6 +21,7 @@ import { ANON, anonName } from "../playerview.js";
 import { paintEnc, encBanner, encStrip } from "./encounters.js";
 import { paintEnd, endBanner } from "./einde.js";
 import { clsLevel } from "../rules/encounters.js";
+import { exportDue, nudgeState, lastExportText } from "../exportnudge.js";
 
 /** UI-toestand die niet in de encounter (en dus niet in undo/opslag) hoort */
 export const ui = {
@@ -126,6 +127,8 @@ function paintMode() {
 /* ---------- Voorbereiden: één paneel met de bestaande formulieren (statisch in index.html, alleen hidden wisselt) ---------- */
 const PREP = { pc: "Speler toevoegen", mon: "Monster toevoegen", custom: "Monster toevoegen", enc: "Encounters", party: "Party", data: "Instellingen" };
 const MONTABS = ["mon", "custom", "enc"];
+/** Instellingen → Opslag: "Laatste export: …" (DA1) */
+export const paintExpLast = () => { $("#exp-last").textContent = lastExportText(nudgeState().exp); };
 export function paintPrep() {
   const el = $("#psheet"), p = PREP[ui.prep] ? ui.prep : null;
   el.hidden = !p;
@@ -135,6 +138,7 @@ export function paintPrep() {
   $("#p-montabs").querySelectorAll("[data-prep]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.prep === p));
   el.querySelectorAll("[data-panel]").forEach((x) => (x.hidden = x.dataset.panel !== p));
   if (p === "mon" && app.S.list.some((c) => c.kind === "lair")) $("#addlair").hidden = true;
+  if (p === "data") paintExpLast();
   paintEnc();
 }
 
@@ -439,7 +443,7 @@ function atkBlock(c, S) {
   return `<div class="atk">
     ${!turn ? `<button class="atkfold" data-a="atk-close" aria-expanded="true">Aanvallen <span aria-hidden="true">▾</span></button>` : ""}
     ${multi}${main.slice(0, room).map(row).join("")}
-    <div class="atkmore">${hidden > 0 ? `<button class="link" data-a="atk-open">+${hidden} meer</button>` : "<span></span>"}<button class="link" data-a="sb">Volledig statblock</button></div>
+    ${hidden > 0 ? `<div class="atkmore"><button class="link" data-a="atk-open">+${hidden} meer</button></div>` : ""}
     ${other}</div>`;
 }
 
@@ -492,14 +496,18 @@ function row(c, S, down = false) {
   </li>`;
 }
 
+/** DA1: alleen in Voorbereiden zonder gevecht; nooit aan tafel tijdens een gevecht. Geen melding of stip (stip op ⚙ = kamer) */
+const expBanner = (calm) => calm && exportDue(nudgeState())
+  ? `<li class="sbanner expb"><span>Geen recente export · je data staat alleen op dit apparaat</span><span class="sbtns"><button type="button" class="btn small primary" id="exp-now">Exporteer</button><button type="button" class="btn small" id="exp-later">Later</button></span></li>` : "";
+
 function paintEncounter() {
   const S = app.S;
   const L = sortOrder(S.list);
   $("#sum").innerHTML = L.length ? sumHtml(S, true) : "";
   const prep = mode() === "prep", calm = prep && !S.round; // tijdens een gevecht geen Begin leeg en geen moeilijkheid
   $("#order").innerHTML = L.length
-    ? (S.sample && calm ? `<li class="sbanner"><span>Voorbeeld-encounter</span><button type="button" class="btn small" id="sample-clear">Begin leeg</button></li>` : "") + endBanner(S, calm) + encStrip(S, prep) + encBanner(S, calm) + listHtml(S, L, prep)
-    : emptyState(S, prep);
+    ? (S.sample && calm ? `<li class="sbanner"><span>Voorbeeld-encounter</span><button type="button" class="btn small" id="sample-clear">Begin leeg</button></li>` : "") + endBanner(S, calm) + encStrip(S, prep) + encBanner(S, calm) + expBanner(calm) + listHtml(S, L, prep)
+    : expBanner(calm) + emptyState(S, prep);
   $("#resetbar").innerHTML = ui.confirmReset
     ? S.list.some((c) => c.kind !== "pc")
       ? `<div class="confirm">Wat wissen?<button class="btn small primary" id="reset-mons">Monsters wissen, spelers houden</button><button class="btn small ghost" id="reset-yes">Alles</button><button class="btn small" id="reset-no">Annuleer</button></div>`

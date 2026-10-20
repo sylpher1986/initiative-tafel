@@ -12,8 +12,7 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 **P2: volgende (tempo en voorbereiding)**
 6. ~~GV1~~ klaar in 1.30.2 (zie Klaar)
 7. ~~IN5, VB2, GV2~~ klaar in 1.31.0 (zie Klaar)
-10. **IN6** Dubbele statblock-knop op de monsterkaart
-11. **DA1** Herinnering om een export te maken
+10. ~~IN6, DA1~~ klaar in 1.31.1 (zie Klaar)
 12. **SP1** Knop "Bijwerken" per lid in de Party
 13. **GV3** Tablet: zijkolom bij een speler zonder sheet nuttig vullen
 14. **DA2** Undo-geschiedenis na herladen
@@ -33,7 +32,6 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 ---
 
 ## Indeling en navigatie
-- [ ] **IN6 Statblock dubbel op de monsterkaart:** knop "Statblock" én link "Volledig statblock" onder de aanvallen. Eén van beide weg.
 - [ ] **IN7 Logboek dichter bij de beurtbalk:** eigen tab, of de laatste 2 gebeurtenissen onder de beurtbalk.
 
 ## Gevecht aan tafel
@@ -73,7 +71,6 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - [ ] **OB2 Rondleiding opnieuw starten** vanuit Instellingen (bijv. "Rondleiding opnieuw bekijken"), zodat een DM hem later nog eens kan zien of aan een co-DM kan laten zien. Bouwt op OB1.
 
 ## Opslag en data
-- [ ] **DA1 Herinnering om af en toe een export te maken**
 - [ ] **DA2 Undo-geschiedenis is weg na herladen**
 
 ## Taal
@@ -165,6 +162,8 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **IN5** (1.31.0) Gecontroleerd op 360 × 740: Voorbereiden tijdens een gevecht heeft geen beurtbalk; dock = prep-rij + [↶][Terug naar gevecht] (129 px), 611 px blijft over voor de lijst. Gesloten.
 - **VB2** (1.31.0) Encounters vindbaar: paneeltitel "Encounters", knop "Encounters klaarzetten ▸" in Party, hint in de welkomstkaart. Naam van de ingeladen encounter boven de lijst, notitie ("Tactiek ▸") ingeklapt, ook in Gevecht; niet op het spelersscherm.
 - **GV2** (1.31.0) Gevecht afronden: paneel met rondes, duur, totale XP, XP per speler, verslagen, gevlucht meetellen, wie deelt, neer geweest, gestorven; Kopieer en Monsters wissen; ook als logregel. "Alle monsters neer · Gevecht afronden" in de beurtbalk.
+- **IN6** (1.31.1) Monsterkaart in Gevecht: alleen nog de knop "Statblock" in de actiebalk; de link "Volledig statblock" onder de aanvallen is weg ("+N meer" blijft, 44 px).
+- **DA1** (1.31.1) Exportherinnering: strook "Geen recente export" met Exporteer / Later in Voorbereiden (nooit in een gevecht) als een wijziging aan party, encounters, lairs of eigen monsters 14 dagen niet geëxporteerd is; Later = 7 dagen. Instellingen → Opslag toont "Laatste export: …".
 - **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.
 
 ### Functies

@@ -1,7 +1,7 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { $, esc, n0, toast, toastHtml, closeToast, show } from "./util.js";
 import { app, because, addWhy, commit, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
-import { render, ui, openId, mode, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview, editKeys, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick } from "./render.js";
+import { render, ui, openId, mode, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, aoeTargets, aoePick, okSave, editPreview, editKeys, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
@@ -23,6 +23,7 @@ import { readSheetPdf, fetchDdb } from "../ddb.js";
 import { parseDdbLink, findMember, mergeSheet } from "../ddbjson.js";
 import { RACE_OPTS, raceKey, pickRace, cleanImg } from "./avatar.js";
 import { buildExport, parseImport } from "../backup.js";
+import { markExported, snoozeNudge } from "../exportnudge.js";
 import { cleanLvl } from "../rules/encounters.js";
 import { startFight } from "../rules/fight.js";
 import { finishFight, closeEnd } from "./einde.js";
@@ -331,6 +332,9 @@ const global = {
   },
   "welcome-sample"() { loadSample(); ui.welcome = false; },
   "welcome-empty"() { ui.welcome = false; },
+  /** DA1: strook "Geen recente export" in Voorbereiden */
+  "exp-now"() { exportFile().then((ok) => { if (ok) { render(); focusAfterStrip(); } }); return false; },
+  "exp-later"() { snoozeNudge(); render(); focusAfterStrip(); toast("Herinnering over 7 dagen weer."); return false; },
   /** Voorbeeld weg: zelfde als "Alles wissen", met Ongedaan */
   "sample-clear"() {
     app.S = { list: [], round: 0, active: null, sample: false }; Object.assign(ui, { welcome: false, open: null, panel: null, mode: null, confirmReset: false });
@@ -1370,17 +1374,40 @@ export function bindLog() {
   wrap.addEventListener("focusout", (e) => { if (e.target.dataset.lognote && ui.editLog) commitNote(e.target); });
 }
 
+/** true als het klembord het heeft; anders staat de tekst geselecteerd in `box` */
 async function copyText(t, okMsg, box) {
-  try { await navigator.clipboard.writeText(t); toast(okMsg); }
+  try { await navigator.clipboard.writeText(t); toast(okMsg); return true; }
   catch {
     const ta = document.createElement("textarea");
     ta.value = t; ta.readOnly = true; ta.style.cssText = "width:100%;min-height:200px;margin-top:8px";
     box.appendChild(ta); ta.select();
     toast("Kopiëren lukte niet automatisch; de tekst staat geselecteerd.");
+    return false;
   }
 }
 
 /* ---------- opslag-tab: export en import ---------- */
+/** Strook weg: focus naar Start gevecht, bij een lege lijst (Start uit) naar de eerste knop in de lijst */
+const focusAfterStrip = () => ($("#start:not([disabled])") || $("#order button") || $("#order"))?.focus({ preventScroll: true });
+const exportJson = () => JSON.stringify(buildExport(app));
+/**
+ * Exporteer als bestand (Instellingen en de herinneringsstrook, DA1). Telefoon: deelmenu (Opslaan in Bestanden), en pas
+ * na een gelukte share telt het als export; geannuleerd = niets. Anders downloaden (best effort: telt meteen).
+ * Geeft true als het als geëxporteerd telt.
+ */
+async function exportFile() {
+  const json = exportJson(), name = `initiative-tafel-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.json`;
+  try {
+    const f = new File([json], name, { type: "application/json" });
+    if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: "Initiative Tafel export" }); return done(); }
+  } catch (err) { if (err && err.name === "AbortError") return false; } // geannuleerd; andere fout: downloaden
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([json], { type: "application/json" })); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  return done();
+  function done() { markExported(); paintExpLast(); toast("Export gemaakt."); return true; }
+}
 export function bindBackup(afterImport) {
   const seg = $("#theme-seg");
   const showTheme = (mode) => seg.querySelectorAll("[data-theme-set]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.themeSet === mode));
@@ -1403,17 +1430,8 @@ export function bindBackup(afterImport) {
     const b = e.target.closest("[data-v]"), g = b && b.closest("[data-vis]");
     if (g) { showVis(setVis(g.dataset.vis, val(b.dataset.v))); render(); }
   });
-  const json = () => JSON.stringify(buildExport(app));
-  const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
-  $("#exp-file").addEventListener("click", () => {
-    const blob = new Blob([json()], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob); a.download = `initiative-tafel-${stamp()}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    toast("Export gemaakt.");
-  });
-  $("#exp-copy").addEventListener("click", () => copyText(json(), "Export gekopieerd als tekst.", $("#data-panel")));
+  $("#exp-file").addEventListener("click", () => exportFile());
+  $("#exp-copy").addEventListener("click", async () => { if (await copyText(exportJson(), "Export gekopieerd als tekst.", $("#data-panel"))) { markExported(); paintExpLast(); } });
 
   let pending = null;
   const ask = (data) => {
@@ -1434,6 +1452,7 @@ export function bindBackup(afterImport) {
     if (e.target.id === "imp-yes" && pending) {
       Object.assign(app, { S: pending.S, party: pending.party, lairs: pending.lairs, custom: pending.custom, imported: pending.imported, encounters: pending.encounters });
       saveParty(); saveLairs(); saveLibrary(); saveEncounters(); // ook opslaan (en de monsterbibliotheek bijwerken), niet alleen de lopende encounter
+      markExported(); paintExpLast(); // de data komt uit een export: die bestaat dus al ergens
       pending = null; $("#imp-confirm").innerHTML = ""; $("#imp-text").value = "";
       afterImport();
       toast("Import klaar.");
