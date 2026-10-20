@@ -10,7 +10,7 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 3. ~~VB1~~ klaar in 1.30.1 (zie Klaar)
 
 **P2: volgende (tempo en voorbereiding)**
-6. **GV1** Tik op HP-balk = schadepaneel
+6. ~~GV1~~ klaar in 1.30.2 (zie Klaar)
 7. **IN5** Voorbereiden tijdens een gevecht: beurtbalk niet twee rijen hoog
 8. **VB2** Encounters vindbaar + notitie van de ingeladen encounter tijdens het gevecht
 9. **GV2** Einde-gevecht-samenvatting met XP
@@ -40,7 +40,6 @@ Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zi
 - [ ] **IN7 Logboek dichter bij de beurtbalk:** eigen tab, of de laatste 2 gebeurtenissen onder de beurtbalk.
 
 ## Gevecht aan tafel
-- [ ] **GV1 Tik op de HP-balk of het HP-getal opent direct het schadepaneel** (nu: kaart openen, dan − Schade). Scheelt een tik per treffer bij monsters die niet aan de beurt zijn.
 - [ ] **GV2 Einde-gevecht-samenvatting** bij Gevecht stoppen: rondes, totale XP en XP per speler (uit `difficulty`), wie neer ging; kopieerbaar voor de sessienotities.
 - [ ] **GV3 Tablet/desktop: zijkolom bij een speler zonder sheet** toont nu alleen vier vakjes. Toon eronder het statblock van het volgende monster ("Daarna: Hobgoblin"), zodat de DM vooruit kan lezen.
 - [ ] **GV4 Reaction-knop bij spelers optioneel** (Instellingen): veel tafels laten spelers dat zelf bijhouden; scheelt een knop op elke spelerskaart.
@@ -167,6 +166,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **IN2** Kaart in Voorbereiden = inrichten: monster Init en Max HP direct (AC onder ⋯), Verbergen, Conditie, Effect, Statblock; speler huidige HP, AC en Level (als de sheet het mist), Conditie, Effect, Sheet. Geen Schade/Heal/Reaction. Velden slaan op bij verlaten.
 - **IN4** (1.30.0) Eén blok voor monsters toevoegen in het Monster-paneel én bij snel toevoegen: Aantal-stepper, HP Gemiddeld | Rollen, Initiative Per monster | Groep | Invullen. Encounter inladen volgt de groepen uit de encounter en alleen de HP-keuze.
 - **VB1** (1.30.1) "level onbekend" tikbaar: de uitleg bij de moeilijkheid (strook en encounter-rij) heeft per speler zonder level een invulveld; de tik zet de focus erop. Voorbeeldspelers hebben level 3 (voorbeeld = Hard).
+- **GV1** (1.30.2) Tik op de HP-rij (balk + getal) in Gevecht opent direct het schadepaneel: eigen knop onder de kop, 44 px hoog, ook bij dichte kaarten en spelers. Voorbereiden ongewijzigd.
 - **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.
 
 ### Functies

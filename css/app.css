@@ -324,10 +324,16 @@ ol.order{gap:6px}
 .c.k .meta{font-size:.82rem;color:var(--muted);white-space:nowrap}
 .c.k .meta b{color:var(--fg)}
 .hpw{grid-column:2/4;display:flex;align-items:center;gap:8px}
-.hpw .bar{flex:1;height:6px;border-radius:3px;background:var(--sunk);overflow:hidden}
+.hpw .bar{display:block;flex:1;height:6px;border-radius:3px;background:var(--sunk);overflow:hidden}
 .hpw .bar i{display:block;height:100%;background:var(--good)}
 .hpw .bar i.mid{background:var(--warn)}.hpw .bar i.low{background:var(--bad)}
 .hpn{font-size:.85rem;font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+/* Gevecht (GV1): HP-rij als eigen knop onder de kop, tik = schadepaneel; links uitgelijnd onder de naam (4 + 44 + 10) */
+.c.k.fhp .khead{padding-bottom:0;min-height:44px}
+.khp{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 12px 0 58px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.khp .hpn{color:var(--fg)}
+.khp:active{background:var(--sunk)}
+.khp:focus-visible{outline:2px solid var(--active);outline-offset:-2px;border-radius:var(--r)}
 /* Avatar: portret of icoon (ras / creature type) */
 .av{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:inline-grid;place-items:center;overflow:hidden;background:var(--accent-soft);color:var(--accent)}
 .pm .av,.c.k.pc .av{background:var(--active-soft);color:var(--active)}

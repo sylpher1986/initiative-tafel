@@ -180,7 +180,7 @@ const row = {
     return applyEff(c, { ...spec, dur: f.dur || "inf", conc: !!by }, by);
   },
   effdel(c, b) { apply(removeEffect(c, b.dataset.e, "handmatig", { active: app.S.active })); },
-  "sheet-open"(c, b) { ui.sheet = { id: c.id, kind: b.dataset.kind, val: "", mode: 1 }; },
+  "sheet-open"(c, b) { ui.sheet = { id: c.id, kind: b.dataset.kind, val: "", mode: 1, from: b.classList.contains("khp") ? "khp" : b.dataset.kind }; },
   react(c) { c.reaction = !c.reaction; },
   hide(c) { if (c.hidden) delete c.hidden; else c.hidden = true; },
   anon(c) { if (c.anon) delete c.anon; else c.anon = nextAnon(app.S.list); },
@@ -207,7 +207,7 @@ const row = {
 function sheetKey(k, v) {
   const s = ui.sheet;
   if (!s) return;
-  if (k === "close") { ui.sheet = null; return; }
+  if (k === "close") { ui.sheet = null; return { back: s }; }
   if (k === "d") { if (s.val.length < 4) s.val = (s.val + v).replace(/^0+/, ""); return; }
   if (k === "back") { s.val = s.val.slice(0, -1); return; }
   if (k === "clear") { s.val = ""; return; }
@@ -219,8 +219,20 @@ function sheetKey(k, v) {
     apply(s.kind === "dmg" ? R.applyDamage(c, n, s.mode) : s.kind === "heal" ? R.heal(c, n) : R.giveTemp(c, n));
     const before = { dmg: `−${Math.floor(n * s.mode)}`, heal: `+${n}`, thp: `+${n} temp` }[s.kind];
     ui.sheet = null;
-    return { undoToast: `${c.name} ${before} HP → ${c.hp}/${c.max}${c.temp ? ` (+${c.temp} temp)` : ""}` };
+    return { back: s, undoToast: `${c.name} ${before} HP → ${c.hp}/${c.max}${c.temp ? ` (+${c.temp} temp)` : ""}` };
   }
+}
+
+/** Na een schadepaneel-toets: melding, en bij sluiten de focus terug naar wat het paneel opende (toetsenbord) */
+function sheetDone(res) {
+  if (!res) return;
+  if (res.undoToast) toastHtml(`${esc(res.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  const s = res.back;
+  if (!s) return;
+  const li = document.querySelector(`.c[data-id="${CSS.escape(s.id)}"]`);
+  // HP-knop (GV1), anders de knop op de open kaart; monster intussen in het blok Neer: dat blok; anders de kop
+  const el = li && li.querySelector(s.from === "khp" ? ".khp" : `.kbody [data-a="sheet-open"][data-kind="${s.from}"]`) || (!li && $("#down-tog")) || li?.querySelector(".khead");
+  el?.focus({ preventScroll: true });
 }
 
 /** Klikken op bolletjes, condities en spell-keuzes (herkend aan data-attributen) */
@@ -379,7 +391,8 @@ export function onClick(e) {
   if (sk) {
     const res = sheetKey(sk.dataset.sk, sk.dataset.v);
     render();
-    if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+    if (ui.sheet && e.detail === 0) $("#sheet .sheet")?.focus({ preventScroll: true }); // toetsenbord: focus blijft in het opnieuw getekende paneel
+    sheetDone(res);
     return;
   }
   if (e.target.closest('.dim[data-lsh="close"]')) { closeLa(); return; } // achtergrond van het legendary-paneel
@@ -434,6 +447,7 @@ export function onClick(e) {
   if (res === false) return;
   if (fn === row.sb || fn === row.sheet) return;
   render();
+  if (fn === row["sheet-open"]) $("#sheet .sheet")?.focus({ preventScroll: true }); // cijfers en Enter werken via onKey
   if (res === "scroll") scrollToCard(openId(), true);
   if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} ${res.extra || ""}<button class="tundo" id="toast-undo">Ongedaan</button>`);
 }
@@ -538,8 +552,8 @@ export function onKey(e) {
   if (ui.sv && e.key === "Escape") { e.preventDefault(); ui.sv = false; paintSv(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); ui.qadd = null; ui.aoe = null; ui.atk = null; ui.initDraft = null; global.undo(); render(); return; }
   if (ui.sheet && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
-    const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" ? ["apply"] : null;
-    if (k) { e.preventDefault(); const res = sheetKey(...k); render(); if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`); }
+    const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" && !e.target.closest?.("#sheet button") ? ["apply"] : null;
+    if (k) { e.preventDefault(); const res = sheetKey(...k); render(); if (ui.sheet) $("#sheet .sheet")?.focus({ preventScroll: true }); sheetDone(res); }
   }
 }
 

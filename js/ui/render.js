@@ -134,12 +134,16 @@ export function paintPrep() {
 }
 
 /* ---------- onderdelen van een kaart ---------- */
-const hpBar = (c) => {
+/** Balk + "12/30 +5": in de kop (Voorbereiden) of als eigen knop onder de kop (Gevecht, GV1) */
+const hpIn = (c) => {
   const pct = c.max ? Math.max(0, c.hp) / c.max : 1;
   const cls = pct <= 0.25 ? "low" : pct <= 0.5 ? "mid" : "";
-  return `<div class="hpw"><div class="bar" aria-hidden="true"><i class="${cls}" style="width:${pct * 100}%"></i></div>
-    <span class="hpn">${n0(c.hp)}/${n0(c.max)}${c.temp ? ` <span class="thp">+${n0(c.temp)}</span>` : ""}</span></div>`;
+  return `<span class="bar" aria-hidden="true"><i class="${cls}" style="width:${pct * 100}%"></i></span>
+    <span class="hpn">${n0(c.hp)}/${n0(c.max)}${c.temp ? ` <span class="thp">+${n0(c.temp)}</span>` : ""}</span>`;
 };
+const hpBar = (c) => `<div class="hpw">${hpIn(c)}</div>`;
+/** Gevecht: tik op de HP-rij = direct het schadepaneel (eigen knop, 44 px hoog, naast de kop die de kaart opent) */
+const hpBtn = (c) => `<button type="button" class="khp hpw" data-a="sheet-open" data-kind="dmg" aria-label="${esc(c.name)}: ${n0(c.hp)} van ${n0(c.max)} HP${c.temp ? `, +${n0(c.temp)} temp` : ""}. Schade invoeren">${hpIn(c)}</button>`;
 
 function condChips(c, S, interactive) {
   return c.cond.map((x) => {
@@ -460,14 +464,14 @@ function lairRow(c, S) {
 function row(c, S, down = false) {
   if (c.kind === "lair") return lairRow(c, S);
   const open = openId() === c.id, prep = mode() === "prep";
-  const turn = c.id === S.active;
-  return `<li class="c k ${c.kind === "pc" ? "pc" : "mon"} ${open ? "open" : ""} ${turn ? "turn" : ""} ${isOut(c) ? "out" : ""}${down ? " down" : ""}" data-id="${esc(c.id)}"${down ? ` data-down="1"` : ""}>
+  const turn = c.id === S.active, hp = c.max && !down, fhp = hp && !prep;
+  return `<li class="c k ${c.kind === "pc" ? "pc" : "mon"} ${open ? "open" : ""} ${turn ? "turn" : ""} ${isOut(c) ? "out" : ""}${down ? " down" : ""}${fhp ? " fhp" : ""}" data-id="${esc(c.id)}"${down ? ` data-down="1"` : ""}>
     <button class="khead" data-a="open" aria-expanded="${open}" aria-label="${esc(c.name)}${open ? ", sluiten" : ", openen"}">
       <span class="i">${n0(c.init)}${turn ? `<span class="tri" aria-hidden="true">▶</span>` : ""}</span>
       <span class="n">${avatar(c, c.ref ? findMon(c.ref)?.meta : "")}<span class="nm">${esc(c.name)}</span></span>
       <span class="meta">${isOut(c) && c.kind === "monster" ? "neer" : acMeta(c)}</span>
-      ${c.max && !down ? hpBar(c) : ""}
-    </button>
+      ${hp && prep ? hpBar(c) : ""}
+    </button>${fhp ? hpBtn(c) : ""}
     ${open ? `<div class="kbody">
       ${c.hidden || c.anon || c.cond.length || (c.eff || []).length || isSurprised(c, S) ? `<div class="badges">${surBadge(c, S)}${hidBadge(c)}${condChips(c, S, true)}${effChips(c, S, true)}</div>` : ""}
       ${acBreakdown(c) ? `<p class="hint acb">AC ${n0(effAc(c))} = ${esc(acBreakdown(c))}</p>` : ""}
@@ -690,7 +694,7 @@ function paintSheet() {
   const label = { dmg: `${v || ""} schade toepassen`, heal: `${v || ""} HP genezen`, thp: `${v || ""} temp HP geven` }[s.kind];
   el.hidden = false;
   el.innerHTML = `<div class="dim" data-sk="close"></div>
-    <div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(c.name)}: ${kinds.find((k) => k[0] === s.kind)[1]}">
+    <div class="sheet" tabindex="-1" role="dialog" aria-modal="true" aria-label="${esc(c.name)}: ${kinds.find((k) => k[0] === s.kind)[1]}">
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3>${esc(c.name)}</h3><button class="link" data-sk="close">Annuleer</button></div>
       <div class="seg2">${kinds.map(([k, l]) => `<button data-sk="kind" data-v="${k}" aria-pressed="${s.kind === k}">${l}</button>`).join("")}</div>
