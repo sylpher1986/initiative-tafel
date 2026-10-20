@@ -130,7 +130,7 @@ function paintEditList() {
 const findEnc = (id) => app.encounters.find((e) => e.id === id);
 const repaint = () => paintEnc();
 
-/** Inladen: monsters via addMonsters (hp-modus en initiative uit het Monster-tabblad), lair erbij; één undo-stap en één logregel */
+/** Inladen: monsters via addMonsters (HP-keuze uit ui.addOpts, initiative uit de encounter: groep per regel, anders per monster), lair erbij; één undo-stap en één logregel */
 function loadEnc(enc, mode) {
   const S = app.S, plan = E.loadPlan(enc, (r) => !!findMon(r));
   const lairNew = plan.lair && (mode === "replace" || !hasLair(S.list));

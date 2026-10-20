@@ -463,7 +463,7 @@ body[data-mode="fight"] #resetbar{display:none}
 /* Monsters toevoegen (IN4): één blok in het Monster-paneel en bij snel toevoegen */
 .addblk{display:grid;gap:10px}
 .addblk .addh{margin:0}
-.addblk .seg2 button:disabled,.stepper button:disabled{opacity:.4}
+.stepper button:disabled{opacity:.4}
 .seg2.init3 button{padding-inline:4px}
 .qcol{display:grid;gap:3px;min-width:0}
 .qlbl{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}

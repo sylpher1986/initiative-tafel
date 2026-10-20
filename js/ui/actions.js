@@ -352,7 +352,10 @@ function openPrep(k) {
   Object.assign(ui, { prep: k, sheet: null, qadd: null, aoe: null, atk: null, la: null, sv: false, confirmReset: false });
   if (!was) ui.prepLast = null;
   render();
-  if (k === "mon" && was !== "mon") bindForms.renderMonList(); // eigen monsters van elders staan er ook in
+  if (k === "mon" && was !== "mon") { // eigen monsters van elders staan er ook in; aantal en Invullen beginnen schoon (zoals snel toevoegen)
+    Object.assign(ui.monAdd, { n: 1, fixOn: false, fix: "" });
+    bindForms.renderMonList();
+  }
   // focus in de dialog, niet op een invoerveld: dat zou op de telefoon meteen het toetsenbord openen
   if (!was) $("#psheet .psheet").focus(); else $("#psheet .psheet").scrollTop = 0;
 }
@@ -716,8 +719,8 @@ export function bindForms() {
   $("#mon-q").addEventListener("input", renderMonList);
   $("#mon-blk").addEventListener("click", (e) => {
     const b = e.target.closest("button[data-ab]"); if (!b) return;
-    const f = addBlockTap(ui.monAdd, b); monBtn();
-    if (f) $("#mon-fix")?.focus();
+    const f = addBlockTap(ui.monAdd, b), had = document.activeElement === b; monBtn();
+    if (f) $("#mon-fix")?.focus(); else if (had) refocusAb($("#mon-blk"), b);
   });
   $("#mon-blk").addEventListener("input", (e) => { if (e.target.dataset.ab === "fix") { ui.monAdd.fix = e.target.value; monBtn(true); } });
   $("#mon-hidh").textContent = HID_HINT; // één tekst voor Monster-tab en snel toevoegen
@@ -775,6 +778,12 @@ export function bindForms() {
   });
 }
 
+/** Na hertekenen van het toevoegblok: focus terug op dezelfde knop (toetsenbord/screenreader), anders de buurknop van de stepper */
+function refocusAb(box, b) {
+  const sel = `[data-ab="${b.dataset.ab}"]`, same = box.querySelector(`${sel}[data-v="${b.dataset.v}"]`);
+  (same && !same.disabled ? same : box.querySelector(`${sel}:not(:disabled)`))?.focus();
+}
+
 /* ---------- snel toevoegen tijdens het gevecht (+ in Gevecht-modus) ---------- */
 function closeQadd() {
   ui.qadd = null; paintQadd();
@@ -795,7 +804,7 @@ export function bindQadd() {
     if (p) { if (q.sel !== p.dataset.qpick) q.full = false; q.sel = p.dataset.qpick; paintQadd(); return; }
     if (e.target.closest("[data-mpfull]")) { q.full = !q.full; paintQadd(); return; }
     const ab = e.target.closest("button[data-ab]");
-    if (ab) { const f = addBlockTap(q, ab); paintQadd(); if (f) $("#q-fix")?.focus(); return; }
+    if (ab) { const f = addBlockTap(q, ab), had = document.activeElement === ab; paintQadd(); if (f) $("#q-fix")?.focus(); else if (had) refocusAb($("#q-blk"), ab); return; }
     const b = e.target.closest("[data-q]"); if (!b) return;
     const k = b.dataset.q;
     if (k === "close") { closeQadd(); return; }

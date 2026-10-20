@@ -747,7 +747,7 @@ export function addBlockHtml(pre, st, m) {
     </div>
     <div class="qcol"><span class="qlbl" id="${pre}-il">Initiative</span>
       <div class="seg2 init3" role="group" aria-labelledby="${pre}-il">${seg("init", INIT_OPTS, init)}</div></div>
-    ${init === "fixed" ? `<label>Initiative${st.n > 1 ? ` voor alle ${st.n}` : ""}<input id="${pre}-fix" data-ab="fix" type="number" inputmode="numeric" enterkeyhint="done" placeholder="bijv. 14" value="${esc(st.fix)}"></label>` : ""}
+    ${init === "fixed" ? `<label>${st.n > 1 ? `Getal voor alle ${st.n}` : "Getal"}<input id="${pre}-fix" data-ab="fix" type="number" inputmode="numeric" enterkeyhint="done" placeholder="bijv. 14" value="${esc(st.fix)}"></label>` : ""}
     <p class="hint addh" id="${pre}-addh">${esc(addHint(st, m))}</p>`;
 }
 /** Tik in het blok: past st of ui.addOpts aan; geeft "fix" terug als het getalveld de focus moet krijgen */
