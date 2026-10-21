@@ -2,63 +2,102 @@
 
 Geordend op soort wijziging. Elk open punt heeft een code (bijv. **IN1**); de **priolijst** hieronder verwijst daarnaar. Afgevinkte punten staan onderaan onder "Klaar".
 
-## Priolijst (19-10-2026)
-Opgesteld na de DM-review met drie persona's (beginner, ervaren DM, oude rot; zie "DM-review 2" onderaan). Leidraad: eerst wat elke sessie verwarring of tikken kost, dan voorbereiding, dan uitbreidingen.
+## Priolijst (21-10-2026)
+Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, versie 1.34.0; zie "Persona-test 3" onderaan en projectdoc `claude/persona-test-3.md`). Leidraad: eerst wat spelers iets verraadt of het gevecht verkeerd laat lopen, dan tempo en leesbaarheid aan tafel, dan uitbreidingen. De priolijst van 19-10 is af, op RE1–RE6, SC1, TA1 en TS1 na (die staan hieronder ingedeeld).
 
-**P1: nu (indeling, elke sessie)**
-1. ~~IN1–IN4~~ klaar in 1.29.0 en 1.30.0 (zie Klaar)
-3. ~~VB1~~ klaar in 1.30.1 (zie Klaar)
+**P1: nu (fouten en spoilers)**
+1. **GV6** Beurt springt naar boven na verwijderen van wie aan de beurt is (bug, nagelopen in de code)
+2. **SC2** Spelersscherm verraadt monsters: vóór Start de hele encounter, en "…" bij de beurt van een verborgen monster
+3. **SC3** Verbinding kwijt pas na 25–60 s zichtbaar op het spelersscherm
+4. **RE8** Hold Person vinkt alle humanoïden aan; caster wisselen zet de selectie terug
+5. **AF6** Tapdoelen onder 44 px (conditiechips, death saves, slots, LA, Sluit, Uit party)
 
-**P2: volgende (tempo en voorbereiding)**
-6. ~~GV1~~ klaar in 1.30.2 (zie Klaar)
-7. ~~IN5, VB2, GV2~~ klaar in 1.31.0 (zie Klaar)
-10. ~~IN6, DA1~~ klaar in 1.31.1 (zie Klaar)
-12. ~~SP1~~ klaar in 1.31.2 (zie Klaar)
-13. ~~GV3~~ klaar in 1.31.3 (zie Klaar)
-14. ~~DA2~~ klaar in 1.31.4 (zie Klaar)
+**P2: volgende (tempo en leesbaarheid aan tafel)**
+6. **IN8** Lijst verspringt bij openen van een lagere kaart (tik komt op het verkeerde monster)
+7. **GV7** Gevecht afronden: restanten (oude monsters, Prone) in het volgende gevecht
+8. **SP4** + Speler: initiative-bonus i.p.v. verplichte worp, eigen validatie · **AF7** minteken op iOS
+9. **GV8** Undo: ⌘⇧Z draait nog een stap terug; melding noemt niet wat er terugging
+10. **SC4** Sticky "Aan de beurt / Daarna" op de telefoon · **SC5** "Dit ben ik" op het spelersscherm
+11. **SC6** Tv-weergave: HP en condities op 3 m leesbaar
+12. **SC7** Zelfde code na Stop met delen · **SC1** QR-code (omhoog uit P3)
+13. **RE10** Uitleg bij een tik op een conditie (DM én spelersscherm), met duur en DC
+14. **RE9** Initiative verlagen na de eigen beurt: waarschuwing (Delay later)
+15. **IN9** Hoofdknop van panelen onder de vouw; dock over de actieve kaart op iPad
+16. **RE12** Open save die stil vervalt bij Volgende; ✓/✗ zonder tekst
+17. **RE1/RE2** Spell slots verbruiken bij Shield, AoE en Spell (omhoog uit P3)
+18. **RE11** Exhaustion (2014, niveau 1–6)
+19. **SP5** Passive Perception / Insight / Investigation per speler
+20. **RE13** Hints voor monsterregels die je vergeet (Undead Fortitude, Prone bij Wolf Bite, Parry)
 
 **P3: later**
-- Afwerking: ~~AF1–AF3~~ klaar in 1.31.6, ~~AF5~~ klaar in 1.33.1 (zie Klaar)
-- Nice to have: ~~OB1, OB2~~ klaar in 1.33.0 (zie Klaar)
-- Regels: **RE1–RE6**, ~~RE7~~ klaar in 1.33.1 (zie Klaar)
-- Encounters: ~~VB3~~ klaar in 1.34.0 (zie Klaar)
-- Spelers en D&D Beyond: ~~SP2~~ klaar in 1.34.0, ~~SP3~~ klaar in 1.33.1 (zie Klaar)
-- Gevecht: ~~IN7~~ klaar in 1.32.0, ~~GV4~~ klaar in 1.32.1 (zie Klaar)
-- Spelersscherm: **SC1**
+- Spelersscherm: **SC8** (teksten), **SC9** (mini-log)
+- Afwerking: **AF8–AF12**
+- Regels: **RE3–RE6**, **RE14** (eigen monster beter inlezen), **RE15** (eigen death save-worp)
+- Voorbereiding: **VB4** (zoeken NL/typfouten), **VB5** (lege encounter maken)
+- Gevecht: **GV10** (sneltoetsen), **GV11** (minder klikken na een misser)
 - Taal: **TA1**
-- Opslag: ~~DA3~~ klaar in 1.31.8 (zie Klaar)
-- Technische schuld: **TS1** (oppakken wanneer je die code toch aanraakt), ~~TS2~~ klaar in 1.31.7 (zie Klaar)
+- Technische schuld: **TS1** (oppakken wanneer je die code toch aanraakt)
 - Fase 2 en 3
+- Bewust niet: zie "Persona-test 3 → Niet overgenomen"
 
 ---
 
 ## Indeling en navigatie
-- Geen open punten (IN7 klaar in 1.32.0, zie Klaar).
+- [ ] **IN8 Lijst verspringt bij openen van een lagere kaart** (P2): de kaart erboven klapt dicht, de lijst schuift ±160 px en de volgende tik raakt het verkeerde monster (Goblin 2 i.p.v. 3). Na het openen de aangetikte kaart op dezelfde schermpositie houden (scrollpositie corrigeren met het hoogteverschil), niet het automatisch dichtklappen loslaten (één kaart open is een vaste keuze).
+- [ ] **IN9 Hoofdknop onder de vouw** (P2): op de iPhone staan "3× Goblin toevoegen" en "Volgende / Start gevecht" (initiative-paneel) onder de vouw van hun paneel; op iPad liggend bedekt de dock (≥ 130 px) de death saves van de actieve kaart. Hoofdknop sticky onderaan het paneel; `scroll-padding-bottom` = `--dock-h` bij scrollen naar de actieve kaart.
 
 ## Gevecht aan tafel
-- Geen open punten (GV4 klaar in 1.32.1, zie Klaar).
+- [ ] **GV6 Bug: verwijderen van wie aan de beurt is** (P1): verwijderen zet `S.active = null` (`js/ui/actions.js`); `step` begint dan bij index −1, dus Volgende geeft de beurt aan de **eerste** in de volgorde, zonder ronde erbij. In de test (laatste in de volgorde vlucht): ronde blijft staan, effectduren en de samenvatting lopen een ronde achter, "Aan de beurt: –". Breder dan gemeld: staat het actieve wezen in het midden, dan spelen wie vóór hem stonden deze ronde nog een keer. Oplossing: vóór het verwijderen doorschuiven naar de volgende (gewone `step`, met beurtgrenzen) of de positie onthouden; test erbij. Geldt ook voor Encounter wissen/Vervangen tijdens een gevecht als de actieve weggaat.
+- [ ] **GV7 Gevecht afronden laat restanten achter** (P2): sluit de DM de samenvatting zonder Monsters wissen, dan gaan oude monsters (draak 83/178) mee het volgende gevecht in; Prone e.d. blijven op spelers. Voorstel: bij Start gevecht waarschuwen als er beschadigde monsters uit het vorige gevecht staan (er is al `S.endSum`); in de samenvatting "Condities van spelers wissen?" (Prone/Grappled/Restrained standaard aan, Concentrating niet: kan doorlopen). Vindbaarheid: "Alle monsters neer · Gevecht afronden" in de beurtbalk bestaat al (GV2); een knop in de Gevecht-kop alleen als de UX-agent hem op 320 px kwijt kan.
+- [ ] **GV8 Undo** (P2): (a) bug: ⌘⇧Z/Ctrl+Shift+Z (redo op Mac) doet nóg een undo, Shift uitsluiten in `onKey`; (b) melding noemt wat er terugging ("Ongedaan: Goblin 2 −50 HP", uit de logregel van die stap); (c) Opnieuw (redo) alleen als het eenvoudig blijkt: geschiedenis + IndexedDB (DA2/TS2) krijgen dan een tweede stapel.
+- [ ] **GV10 Sneltoetsen** (P3): spatie/N = Volgende, Shift+N = Vorige, "?" = overzicht. Alleen buiten invoervelden en panelen.
+- [ ] **GV11 Minder klikken na een misser** (P3): misser sluit vanzelf of biedt "Volgende aanval" (multiattack); "+ meer doelen" bij concentratie-effecten. UX-agent kiest.
 
 ## Voorbereiding en encounters
-- Geen open punten (VB3 klaar in 1.34.0, zie Klaar).
+- [ ] **VB4 Monsters zoeken** (P3): "bandiet"/"gobin" vinden niets. Typfouttolerantie (afstand 1–2 op naam) en een kleine NL-synoniemenlijst (bandiet, skelet, draak, rat…). Meteen meenemen (klein): de lege-lijsttekst zegt "Eigen monster" terwijl de tab "Eigen" heet.
+- [ ] **VB5 Lege encounter maken** (P3): opslaan kan nu alleen vanuit de lijst. "+ Nieuwe encounter" in de tab opent het bestaande Bewerken-subscherm leeg; aantal ook typbaar. Na typen van een exacte naam die naam selecteren (bleef op Bandit Captain staan).
 
 ## Spelregels
-- [ ] **RE1 Slots en effecten:** Bless via Effect verbruikt geen slot. Voorstel: niet koppelen maar spelers-slots optioneel maken (spelers houden die vaak zelf bij)
+- [ ] **RE1 Slots en effecten** (P2, samen met RE2; persona-test 3: Shield, Fireball en Hold Person schrijven geen slot af; voorstel daar: "Slot gebruiken? 1st / 2nd …" bij een spell van een speler, overslaan mogelijk): Bless via Effect verbruikt geen slot. Voorstel: niet koppelen maar spelers-slots optioneel maken (spelers houden die vaak zelf bij)
 - [ ] **RE2 Spell op doelen:** slots verbruiken en maximaal aantal doelen
 - [ ] **RE3 Pact Magic-slots apart bijhouden** (komen terug na een short rest); nu opgeteld bij de gewone slots
 - [ ] **RE4 2024-regels buiten spells** (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen
 - [ ] **RE5 Surprise:** keuze ook zonder spelers aan tafel (paneel opent dan niet)
+- [ ] **RE8 Hold Person: doelen en selectie** (P1): Spell → Hold Person vinkt alle humanoïde vijanden aan; 2014 = één humanoid (+1 per slot boven 2nd). Caster wisselen zet de eigen selectie terug op alle (2× gereproduceerd). Spells met één doel zonder voorselectie (`spellDefault`, veld `max` op de preset), selectie bewaren bij caster-wissel (alleen ongeschikte doelen uitzetten).
+- [ ] **RE9 Initiative verlagen na de eigen beurt** (P2): Bram van 12 naar 4 tijdens de beurt van Noor (5) → Bram is deze ronde nog een keer aan de beurt. Eerst een waarschuwing in ⋯/de kaart ("Al geweest deze ronde: speelt pas volgende ronde op 4") en de volgorde zo dat hij deze ronde niet nog eens komt. Een echte Delay/Ready-knop pas als blijkt dat het nodig is.
+- [ ] **RE10 Uitleg bij een conditie** (P2): tik op een conditiechip/badge opent een kort paneel met 2–3 regels Nederlandse uitleg (eigen samenvatting van de SRD, de naam blijft Engels), plus duur en herhaalsave met DC. Op het DM-scherm én het spelersscherm (spelers: duur en DC volgen de zichtbaarheidsinstelling Condities). Vervangt de wens van Fatima (duur en DC).
+- [ ] **RE11 Exhaustion (2014)** (P2): conditie met niveau 1–6 en de effecten per niveau (dis op checks, speed ½, dis op attacks en saves, max HP ½, speed 0, dood); weg met één niveau per long rest. Raakt RE4 (2024-exhaustion) en de effecten in het aanvalspaneel.
+- [ ] **RE12 Open save die stil vervalt** (P2): Lotte klikte Volgende zonder te kiezen; de save verdween en de conditie bleef. Nalopen of de bestaande logoorzaak ("vervallen zonder gevolg") er echt komt; ✓/✗ met tekst ("gelukt/mislukt"). Laten staan tot beantwoord botst met de bewuste ttl (RE7/saves): UX-agent beslist.
+- [ ] **RE13 Monsterregels die je vergeet** (P2): prompt zoals de concentration save: Undead Fortitude ("CON DC 5 + schade"), save-riders na een treffer (Wolf Bite "STR DC 11 of Prone?"), Parry als reaction met +AC. Herkenning in `js/rules/attacks.js` uit de statblocktekst, alleen de bekende SRD-patronen.
+- [ ] **RE14 Eigen monster beter inlezen** (P3): geplakt statblock krijgt geen aanvalsknoppen, geen LA en geen resistances; losse "+6 to hit" zonder crit-knop. Zelfde parser als voor SRD-monsters.
+- [ ] **RE15 Eigen death save-worp invoeren** (P3): getal typen (nat 20 = 1 HP, nat 1 = twee fails), zoals het cijferpad bij initiative.
 - [ ] **RE6 Spell-uitleg:** link vanuit AoE-Spell en Effect-presets; eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie)
 
 ## Spelers en D&D Beyond
-- Geen open punten (SP2 klaar in 1.34.0, zie Klaar).
+- [ ] **SP4 + Speler: initiative** (P2): het veld "Initiative (worp + mod)" is verplicht, ook bij het klaarzetten van de vaste party; Lotte vulde de modifier in en die telde als worp. Sinds het initiative-paneel bij Start (1.13.0) is een worp hier overbodig: veld wordt "Initiative-bonus" (optioneel, standaard Dex-mod), worp bij Start. Eigen Nederlandse validatie i.p.v. "Please fill out this field"; grenzen op AC (1–30) en HP (1–999).
+- [ ] **SP5 Passives** (P2): passive Perception, Insight en Investigation per speler (uit de D&D Beyond-link, anders invulbaar), zichtbaar op de spelerskaart in Voorbereiden en in het live-blok.
 - Later, als het nodig blijkt: handmatige "Defenses" op de D&D Beyond-sheet (`customDefenseAdjustments`) inlezen; tijdelijke resistances (Rage, Absorb Elements, Protection from Energy) als effect-preset.
 
 ## Spelersscherm
-- [ ] **SC1 QR-code bij de kamercode** (alleen als een kleine zelf-gehoste lib past)
+- [ ] **SC1 QR-code bij de kamercode** (P2, samen met SC7; alleen als een kleine zelf-gehoste lib past). Persona-test 3: op een con de iPad omdraaien en laten scannen.
+- [ ] **SC2 Spelersscherm verraadt monsters** (P1): (a) vóór Start gevecht staan alle klaargezette monsters al op tv en telefoons ("Nog geen gevecht · Rol initiative" met 4 Bandits, Captain, Mastiffs): hinderlaag verraden. Vóór Start alleen spelers tonen, monsters vanaf Start; eventueel instelbaar onder "Wat spelers zien". (b) Is een verborgen monster aan de beurt, dan toont het spelersscherm "Aan de beurt: …" (`speler.js`: `active` is dan leeg); de vorige zichtbare actieve laten staan. Allebei in `toPlayerView`/`speler.js`, met test.
+- [ ] **SC3 Verbinding kwijt sneller zichtbaar** (P1): `roomChannel` pingt elke 25 s en verklaart de verbinding dood na 60 s; daarom kwam de melding na 6–35 s of niet. Op het spelersscherm: `offline`-event direct tonen, kortere heartbeat (bijv. 10/20 s), en de lijst gedimd met "Stand van 21:14". Kamer meldt spelers als de DM-verbinding wegvalt ("De DM is even weg"), na een korte grace.
+- [ ] **SC4 Sticky kop op de telefoon** (P2): "Aan de beurt / Daarna" scrolt weg bij landscape en groot lettertype; kop compact en vast bovenaan, kaarten compacter onder 500 px.
+- [ ] **SC5 "Dit ben ik"** (P2): speler kiest op zijn eigen toestel een personage (per apparaat, `localStorage`, geen account): eigen kaart bovenaan met HP en slots, balk "Jij bent hierna / aan de beurt", trillen waar de browser dat kan (niet iOS Safari). Slots van spelers gaan dan mee in de snapshot (geen geheim).
+- [ ] **SC6 Tv-weergave** (P2): op 1920×1080 zijn HP-getallen (22 px, grijs) en condities (19 px) op 3 m niet leesbaar en blijft ±35 % leeg; kolommen lezen van boven naar beneden. Schalen tot de hoogte gevuld is, HP groter en met meer contrast; UX-agent kiest tussen één kolom en rij-voor-rij nummering.
+- [ ] **SC7 Zelfde code na Stop met delen** (P2): opnieuw delen geeft nu een nieuwe code, dus tv en telefoons moeten opnieuw koppelen. Code en token in `it-room` laten staan na Stop en de kamer hervatten zolang die nog bestaat (12 u); vaste code per campagne blijft fase 2.
+- [ ] **SC8 Teksten op het spelersscherm** (P3): na het gevecht staat er weer "Nog geen gevecht · Rol initiative" (eigen status "Gevecht voorbij"); 0 HP toont "Bewusteloos" én de conditie "Unconscious" (één label); "Death saves ✓0 ✗0" zonder uitleg; "Rol initiative" zegt niet hoe ("d20 + Dex-mod"); lange namen afgekapt.
+- [ ] **SC9 Mini-log voor spelers op afstand** (P3): optioneel een paar regels "wat gebeurde er net", alleen wat de DM vrijgeeft en altijd via `toPlayerView` (verborgen monsters en Onbekend wezen mogen niet lekken).
 
 ## Afwerking (klein)
 - AF4 is opgegaan in **OB1/OB2** (rondleiding, zie Eerste gebruik)
-- Geen open punten (AF5 klaar in 1.33.1, zie Klaar).
+- [ ] **AF6 Tapdoelen ≥ 44 px** (P1, vaste regel uit CLAUDE.md): gemeten conditiechips 23 px, death save-bolletjes 22×22, slots 20×20, LA/LR 22–26 px, Sluit 32×23, Uit party 54×23; op de iPhone valt de onderste rij condities half achter de dock. Tikvlak vergroten met padding/`::after` (uiterlijk blijft), panelen scrollen boven de dock. Test die het minimum bewaakt waar dat kan.
+- [ ] **AF7 Minteken op iOS** (P2): `inputmode="numeric"` geeft op iOS geen minteken (Dex-mod −1, initiative-bonus, eigen monster). `inputmode="text"` met `pattern="-?[0-9]*"` of een ±-knop. Nog te bevestigen op een echte iPhone.
+- [ ] **AF8 Uitleg bij Deadly en Verrast** (P3): één zin Nederlandse uitleg met advies ("haal 1 monster weg voor Hard"); bij Verrast wanneer iemand verrast is.
+- [ ] **AF9 Bevestiging bij toevoegen en verwijderen** (P3): na Speler toevoegen een melding "Sanne toegevoegd (4 aan tafel)"; bij verwijderen een melding met Ongedaan. "Ook opslaan in vaste party": laatste keuze onthouden i.p.v. altijd aan (con-tafels).
+- [ ] **AF10 Kleine haperingen** (P3): focus in het naamveld bij + Speler; rondleiding pas tikbaar na de animatie; "Zeker?" bij Stop met delen; tik op een open Instellingen-sectie klapt hem dicht (nalopen of dat bedoeld is); import ook op de welkomstkaart; hint "(bijv. uit de Claude-versie)" weg.
+- [ ] **AF11 Kleine fouten** (P3): exportbestandsnaam gebruikt UTC (`toISOString` in `js/ui/actions.js`) → lokale tijd; dode wezens uit de lijst "concentratie van"; nalopen of verborgen monsters in de XP-lijst komen (vermoeden, volgens GV2 tellen ze mee).
+- [ ] **AF12 Toegankelijkheid** (P3): slots als "1st level slot 1 van 4, beschikbaar"; `aria-current` op wie aan de beurt is; monster/speler niet alleen via kleur.
 
 ## Eerste gebruik (nice to have)
 - Geen open punten (OB1 en OB2 klaar in 1.33.0, zie Klaar).
@@ -89,6 +128,15 @@ Op 360/390 px en 1024 px, met het voorbeeld, alle panelen en een paar beurten. V
 - **Sanne** (beginner, eerste campagne, telefoon): weet niet waarom ze naar Gevecht zou gaan als Start gevecht ook in Voorbereiden staat; schrikt van "level onbekend" in het voorbeeld; vindt Encounters niet onder "Monster toevoegen"; "‹" en "AoE" zeggen haar niets.
 - **Joost** (ervaren, homebrew, tablet + tv): wil in Voorbereiden geen Schade/Reaction maar inrichten; mist XP na het gevecht; zijkolom bij een speler zonder sheet is leeg.
 - **Gerard** (oude rot, 30 jaar DM): elke tik telt: HP-balk moet direct schade openen; twee verschillende toevoegschermen; initiative bij Start rollen, niet bij toevoegen; Reaction bij spelers overbodig.
+
+## Persona-test 3 (21-10-2026): drie DM's en negen spelers
+Op 1.34.0, in Playwright/Chromium met de schermmaat en touch van elk apparaat, spelers op eigen browsers via de kamer. Rapport: artifact "Initiative Tafel persona-test"; beoordeling: projectdoc `claude/persona-test-3.md`.
+- **Lotte** (beginner, iPhone, één hand) met Sem (nooit gespeeld), Noor (landscape) en een laatkomer.
+- **Daan** (ervaren, MacBook + tv) met tv-publiek, Jesse (wizard) en Fatima (rules lawyer).
+- **Marieke** (veteraan, iPad Pro, 18 deelnemers) met Kees (groot lettertype), Ilse (Discord) en Ravi (wifi kwijt).
+- Goed bevonden: snelheid en geheimhouding van het spelersscherm, de regels (massive damage, temp HP, concentratie, AoE, DMG-XP), aanval op een doel, 0 HP/death saves, opslag en undo, cijferpad.
+- 38 punten beoordeeld; in de code nagelopen: GV6 (breder dan gemeld), SC2b, SC3 (heartbeat 25/60 s), GV8a, AF7, AF11 (UTC). Omgezet naar de codes hierboven.
+- **Niet overgenomen:** groepsbeurt op het DM-scherm (bewuste keuze: alleen weergave, elk lid eigen beurt voor recharge/saves/condities); "Groep blijft hangen" (bewust onthouden per sessie in `ui.addOpts`, gedeeld met encounter inladen). Hoofdprioriteit van Delay (P1 in het rapport) en conditie-uitleg/Exhaustion (P1) verlaagd naar P2: geen fout in de lopende regels, wel uitbreiding. "Resistances uit het statblock niet vanzelf": klopt niet voor AoE en het aanvalspaneel (`defMode`), alleen het losse schadepaneel kent geen damage type.
 
 ## Klaar
 
