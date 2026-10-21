@@ -6,7 +6,7 @@ Geordend op soort wijziging. Elk open punt heeft een code (bijv. **IN1**); de **
 Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, versie 1.34.0; zie "Persona-test 3" onderaan en projectdoc `claude/persona-test-3.md`). Leidraad: eerst wat spelers iets verraadt of het gevecht verkeerd laat lopen, dan tempo en leesbaarheid aan tafel, dan uitbreidingen. De priolijst van 19-10 is af, op RE1–RE6, SC1, TA1 en TS1 na (die staan hieronder ingedeeld).
 
 **P1: nu (fouten en spoilers)**
-1. **GV6** Beurt springt naar boven na verwijderen van wie aan de beurt is (bug, nagelopen in de code)
+1. ~~GV6~~ klaar in 1.34.1 (zie Klaar)
 2. **SC2** Spelersscherm verraadt monsters: vóór Start de hele encounter, en "…" bij de beurt van een verborgen monster
 3. **SC3** Verbinding kwijt pas na 25–60 s zichtbaar op het spelersscherm
 4. **RE8** Hold Person vinkt alle humanoïden aan; caster wisselen zet de selectie terug
@@ -47,7 +47,6 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 - [ ] **IN9 Hoofdknop onder de vouw** (P2): op de iPhone staan "3× Goblin toevoegen" en "Volgende / Start gevecht" (initiative-paneel) onder de vouw van hun paneel; op iPad liggend bedekt de dock (≥ 130 px) de death saves van de actieve kaart. Hoofdknop sticky onderaan het paneel; `scroll-padding-bottom` = `--dock-h` bij scrollen naar de actieve kaart.
 
 ## Gevecht aan tafel
-- [ ] **GV6 Bug: verwijderen van wie aan de beurt is** (P1): verwijderen zet `S.active = null` (`js/ui/actions.js`); `step` begint dan bij index −1, dus Volgende geeft de beurt aan de **eerste** in de volgorde, zonder ronde erbij. In de test (laatste in de volgorde vlucht): ronde blijft staan, effectduren en de samenvatting lopen een ronde achter, "Aan de beurt: –". Breder dan gemeld: staat het actieve wezen in het midden, dan spelen wie vóór hem stonden deze ronde nog een keer. Oplossing: vóór het verwijderen doorschuiven naar de volgende (gewone `step`, met beurtgrenzen) of de positie onthouden; test erbij. Geldt ook voor Encounter wissen/Vervangen tijdens een gevecht als de actieve weggaat.
 - [ ] **GV7 Gevecht afronden laat restanten achter** (P2): sluit de DM de samenvatting zonder Monsters wissen, dan gaan oude monsters (draak 83/178) mee het volgende gevecht in; Prone e.d. blijven op spelers. Voorstel: bij Start gevecht waarschuwen als er beschadigde monsters uit het vorige gevecht staan (er is al `S.endSum`); in de samenvatting "Condities van spelers wissen?" (Prone/Grappled/Restrained standaard aan, Concentrating niet: kan doorlopen). Vindbaarheid: "Alle monsters neer · Gevecht afronden" in de beurtbalk bestaat al (GV2); een knop in de Gevecht-kop alleen als de UX-agent hem op 320 px kwijt kan.
 - [ ] **GV8 Undo** (P2): (a) bug: ⌘⇧Z/Ctrl+Shift+Z (redo op Mac) doet nóg een undo, Shift uitsluiten in `onKey`; (b) melding noemt wat er terugging ("Ongedaan: Goblin 2 −50 HP", uit de logregel van die stap); (c) Opnieuw (redo) alleen als het eenvoudig blijkt: geschiedenis + IndexedDB (DA2/TS2) krijgen dan een tweede stapel.
 - [ ] **GV10 Sneltoetsen** (P3): spatie/N = Volgende, Shift+N = Vorige, "?" = overzicht. Alleen buiten invoervelden en panelen.
@@ -218,6 +217,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **SP3** (1.33.1) + Speler met een bestaand partylid: geen nieuw lid met volle HP meer maar aan tafel met de bewaarde stand (met sheet: eerst bijgewerkt), nooit dubbel aan tafel; item-spells alleen als het item gedragen/geattuned is; een trage PDF overschrijft een net opgehaalde link-sheet niet meer.
 - **VB3** (1.34.0) Monsters met een veel lagere CR (XP < 1/10 van het sterkste monster, DMG 2014) tellen niet mee voor de multiplier, hun XP wel; uitleg noemt ze, met **Toch meetellen** (lijst: één undo-stap; per encounter in de bibliotheek, gaat mee bij opslaan/inladen). Level via ⋯ niet gebouwd: al afgedekt door het levelveld op de kaart (IN2) en in de uitleg (VB1).
 - **SP2** (1.34.0) Resistances per speler: ⋯ → "Resistances · Wijzig ▸" met Resist | Immuun | Kwetsb. en 13 type-knoppen (in beide modi, ook buiten de party); uit de D&D Beyond-link (bijwerken houdt eigen toevoegingen en meldt "Resist +fire −cold"). Automatisch in AoE ("resistant (opgeslagen)") en het aanvalspaneel; hint in het schadepaneel en het live-blok.
+- **GV6** (1.34.1) Verwijderen van wie aan de beurt is (⋯ → Verwijder tijdens een gevecht) beëindigt zijn beurt: eerst door naar de volgende (beurtgrenzen, ronde erbij als de volgorde rondgaat), dan weg (`removeCombatant` in `js/rules/turns.js`). Eerder ging de beurt naar de eerste in de volgorde zonder nieuwe ronde.
 - **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.
 
 ### Functies

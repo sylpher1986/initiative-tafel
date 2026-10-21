@@ -227,6 +227,19 @@ export function step(state, dir, rng = Math.random) {
   return out;
 }
 
+/**
+ * Deelnemer weghalen (⋯ → Verwijder). Is hij tijdens een gevecht aan de beurt, dan is zijn beurt voorbij:
+ * eerst gewoon door naar de volgende (beurtgrenzen, ronde erbij als de volgorde rondgaat), dan weg.
+ * Zonder dit begon Volgende bij index −1: beurt naar de eerste in de volgorde, ronde bleef staan (GV6).
+ */
+export function removeCombatant(state, id, rng = Math.random) {
+  let out = fx();
+  if (state.round && state.active === id && state.list.some((c) => c.id !== id && !isOut(c))) out = step(state, 1, rng);
+  state.list = state.list.filter((c) => c.id !== id);
+  if (state.active === id) state.active = null;
+  return out;
+}
+
 /** Gevecht starten: ronde 1, eerste deelnemer die niet neer is, met start-van-beurt-effecten */
 export function startCombat(state, rng = Math.random) {
   for (const c of state.list) {

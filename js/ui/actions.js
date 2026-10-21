@@ -10,7 +10,7 @@ import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax,
 import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
-import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters } from "../rules/turns.js";
+import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, targetMode, drToggle, drKind, DR_LBL, cleanDr } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
@@ -127,7 +127,7 @@ const row = {
   "atk-rx"(c) { ui.atkRx = ui.atkRx === c.id ? null : c.id; },
   del(c) {
     if (c.kind !== "lair" && ui.confirmDel !== c.id) { ui.confirmDel = c.id; return; }
-    const S = app.S; S.list = S.list.filter((x) => x !== c); if (S.active === c.id) S.active = null; ui.confirmDel = null; ui.panel = null;
+    apply(removeCombatant(app.S, c.id)); ui.confirmDel = null; ui.panel = null;
   },
   open(c, b, li) {
     const isOpen = openId() === c.id;
