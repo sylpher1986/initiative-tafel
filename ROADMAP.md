@@ -40,6 +40,25 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 - Fase 2 en 3
 - Bewust niet: zie "Persona-test 3 → Niet overgenomen"
 
+## Werkpakketten (21-10-2026)
+De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en te reviewen zijn (zelfde bestanden of zelfde vraag aan de UX-agent). Volgorde = uitvoervolgorde. Details per pakket: projectdoc `claude/werkpakketten.md`.
+
+| WP | Inhoud | Codes | Versie |
+|---|---|---|---|
+| **WP1** | Spelersscherm: niets verraden, verbinding kwijt zichtbaar | SC2, SC3 | 1.35.0 |
+| **WP2** | Tikken op de telefoon: tikdoelen, verspringen, hoofdknop, minteken | AF6, IN8, IN9, AF7 | 1.35.x |
+| **WP3** | Regels in het gevecht: Hold Person, initiative na eigen beurt, open saves | RE8, RE9, RE12 | 1.36.0 |
+| **WP4** | Speler toevoegen en gevecht afronden | SP4, GV7, AF9 | 1.37.0 |
+| **WP5** | Undo en toetsenbord | GV8, GV10 | 1.37.x |
+| **WP6** | Spelersscherm op de telefoon: sticky kop, "Dit ben ik", teksten | SC4, SC5, SC8 | 1.38.0 |
+| **WP7** | Tv en koppelen: leesbaarheid, zelfde code, QR | SC6, SC7, SC1 | 1.39.0 |
+| **WP8** | Uitleg aan tafel: condities, Exhaustion, Deadly/Verrast | RE10, RE11, AF8 | 1.40.0 |
+| **WP9** | Spell slots verbruiken (incl. Pact Magic) | RE1, RE2, RE3 | 1.41.0 |
+| **WP10** | Monsterregels en minder klikken | RE13, RE14, GV11 | 1.42.0 |
+| **WP11** | Voorbereiding: passives, zoeken, lege encounter | SP5, VB4, VB5 | 1.43.0 |
+| **WP12** | Afwerking: haperingen, kleine fouten, toegankelijkheid, death save-worp, mini-log | AF10, AF11, AF12, RE15, SC9 | 1.43.x |
+| Backlog | Niet ingepland | RE4, RE5, RE6, TA1, TS1, fase 2 en 3 | |
+
 ---
 
 ## Indeling en navigatie
