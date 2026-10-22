@@ -29,6 +29,14 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 19. **SP5** Passive Perception / Insight / Investigation per speler
 20. **RE13** Hints voor monsterregels die je vergeet (Undead Fortitude, Prone bij Wolf Bite, Parry)
 
+**Eigen test Michiel (21-10-2026, aan tafel)**, ingedeeld in P2 en verdeeld over de werkpakketten:
+- **RE18** Schade-spells (Fireball) in AoE: spell kiezen, schade rollen, upcasten (hoog binnen P2)
+- **RE17** Concentration save meteen afhandelen vanuit de schade
+- **RE16** Rage (barbarian) als status met alle voordelen
+- **GV12** Reaction gebruikt zichtbaar in de overzichten tot hij terug is
+- **AF13** AC groter op de kaarten van het DM-scherm
+- **SC10** HP-balken op het spelersscherm even lang
+
 **P3: later**
 - Spelersscherm: **SC8** (teksten), **SC9** (mini-log)
 - Afwerking: **AF8–AF12**
@@ -46,14 +54,14 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | WP | Inhoud | Codes | Versie |
 |---|---|---|---|
 | ~~**WP1**~~ | Spelersscherm: niets verraden, verbinding kwijt zichtbaar (klaar) | SC2, SC3 | 1.35.0 |
-| **WP2** | Tikken op de telefoon: tikdoelen, verspringen, hoofdknop, minteken | AF6, IN8, IN9, AF7 | 1.35.x |
-| **WP3** | Regels in het gevecht: Hold Person, initiative na eigen beurt, open saves | RE8, RE9, RE12 | 1.36.0 |
+| **WP2** | Tikken en lezen op de telefoon: tikdoelen, verspringen, hoofdknop, minteken, AC groter, HP-balken gelijk | AF6, IN8, IN9, AF7, AF13, SC10 | 1.35.x |
+| **WP3** | Regels in het gevecht: Hold Person, initiative na eigen beurt, open saves, concentration save vanuit de schade | RE8, RE9, RE12, RE17 | 1.36.0 |
 | **WP4** | Speler toevoegen en gevecht afronden | SP4, GV7, AF9 | 1.37.0 |
 | **WP5** | Undo en toetsenbord | GV8, GV10 | 1.37.x |
-| **WP6** | Spelersscherm op de telefoon: sticky kop, "Dit ben ik", teksten | SC4, SC5, SC8 | 1.38.0 |
+| **WP6** | Spelersscherm op de telefoon: sticky kop, "Dit ben ik", teksten, reaction zichtbaar | SC4, SC5, SC8, GV12 | 1.38.0 |
 | **WP7** | Tv en koppelen: leesbaarheid, zelfde code, QR | SC6, SC7, SC1 | 1.39.0 |
-| **WP8** | Uitleg aan tafel: condities, Exhaustion, Deadly/Verrast | RE10, RE11, AF8 | 1.40.0 |
-| **WP9** | Spell slots verbruiken (incl. Pact Magic) | RE1, RE2, RE3 | 1.41.0 |
+| **WP8** | Condities en statussen aan tafel: uitleg, Exhaustion, Rage, Deadly/Verrast | RE10, RE11, RE16, AF8 | 1.40.0 |
+| **WP9** | Spells van spelers: schade-spells in AoE (Fireball), slots verbruiken, Pact Magic | RE18, RE1, RE2, RE3 | 1.41.0 |
 | **WP10** | Monsterregels en minder klikken | RE13, RE14, GV11 | 1.42.0 |
 | **WP11** | Voorbereiding: passives, zoeken, lege encounter | SP5, VB4, VB5 | 1.43.0 |
 | **WP12** | Afwerking: haperingen, kleine fouten, toegankelijkheid, death save-worp, mini-log | AF10, AF11, AF12, RE15, SC9 | 1.43.x |
@@ -68,6 +76,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 ## Gevecht aan tafel
 - [ ] **GV7 Gevecht afronden laat restanten achter** (P2): sluit de DM de samenvatting zonder Monsters wissen, dan gaan oude monsters (draak 83/178) mee het volgende gevecht in; Prone e.d. blijven op spelers. Voorstel: bij Start gevecht waarschuwen als er beschadigde monsters uit het vorige gevecht staan (er is al `S.endSum`); in de samenvatting "Condities van spelers wissen?" (Prone/Grappled/Restrained standaard aan, Concentrating niet: kan doorlopen). Vindbaarheid: "Alle monsters neer · Gevecht afronden" in de beurtbalk bestaat al (GV2); een knop in de Gevecht-kop alleen als de UX-agent hem op 320 px kwijt kan.
 - [ ] **GV8 Undo** (P2): (a) bug: ⌘⇧Z/Ctrl+Shift+Z (redo op Mac) doet nóg een undo, Shift uitsluiten in `onKey`; (b) melding noemt wat er terugging ("Ongedaan: Goblin 2 −50 HP", uit de logregel van die stap); (c) Opnieuw (redo) alleen als het eenvoudig blijkt: geschiedenis + IndexedDB (DA2/TS2) krijgen dan een tweede stapel.
+- [ ] **GV12 Reaction gebruikt zichtbaar** (P2, eigen test Michiel): nu alleen een badge op een dichte kaart; open kaart, live-blok (tablet), beurtbalk en spelersscherm tonen niets. Tonen tot de reaction terug is (begin van de eigen beurt, bestaande regel in `step`). Spelersscherm via `toPlayerView` (alleen zichtbare deelnemers; monsters volgens de instelling Condities). Met GV4 "Spelers zelf" niet bij spelers. UX-agent kiest de vorm (chip, icoon bij de naam) en of het op de tv mag.
 - [ ] **GV10 Sneltoetsen** (P3): spatie/N = Volgende, Shift+N = Vorige, "?" = overzicht. Alleen buiten invoervelden en panelen.
 - [ ] **GV11 Minder klikken na een misser** (P3): misser sluit vanzelf of biedt "Volgende aanval" (multiattack); "+ meer doelen" bij concentratie-effecten. UX-agent kiest.
 
@@ -89,6 +98,9 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - [ ] **RE13 Monsterregels die je vergeet** (P2): prompt zoals de concentration save: Undead Fortitude ("CON DC 5 + schade"), save-riders na een treffer (Wolf Bite "STR DC 11 of Prone?"), Parry als reaction met +AC. Herkenning in `js/rules/attacks.js` uit de statblocktekst, alleen de bekende SRD-patronen.
 - [ ] **RE14 Eigen monster beter inlezen** (P3): geplakt statblock krijgt geen aanvalsknoppen, geen LA en geen resistances; losse "+6 to hit" zonder crit-knop. Zelfde parser als voor SRD-monsters.
 - [ ] **RE15 Eigen death save-worp invoeren** (P3): getal typen (nat 20 = 1 HP, nat 1 = twee fails), zoals het cijferpad bij initiative.
+- [ ] **RE16 Rage (2014)** (P2, eigen test Michiel): effect-preset op een speler met alle voordelen: resistance tegen bludgeoning/piercing/slashing (tijdelijk, naast SP2-resistances; automatisch in AoE, aanvalspaneel en hint in het schadepaneel), advantage op STR-checks en STR-saves (AoE/Spell-saves), +2/+3/+4 rage damage op melee STR-aanvallen (hint, uit level), geen spells casten en geen concentratie (lopende concentratie stopt bij starten). Duur 10 rondes; eindigt eerder als hij bewusteloos raakt of zijn beurt eindigt zonder aanval of schade sinds zijn vorige beurt (vraag aan het einde van de beurt: "Rage loopt door?", schade sinds de vorige beurt vanzelf ja). Gebruik telt af op de resource "Rage" uit de D&D Beyond-sheet (`c.res`) als die er is. Bear Totem (resistance tegen alles behalve psychic) en Frenzy (exhaustion, RE11) als optie. Regels puur in `js/rules/effects.js`, met test.
+- [ ] **RE17 Concentration save meteen vanuit de schade** (P2, eigen test Michiel): na schade op iemand met Concentrating komt de save nu als open save in de beurtbalk (alleen in Gevecht, bij 3+ achter "Saves · N open", vervalt na één beurtwissel); de melding en het schadepaneel noemen alleen de DC. Voorstel: in de melding na toepassen direct [Rol +N] (monster) of [✓][✗] (speler), en in het aanvalspaneel bij de uitslag. Eerst reproduceren waar Michiel hem miste (schadepaneel, AoE, aanvalspaneel). Samen met RE12 (open saves die stil vervallen); UX-agent kiest.
+- [ ] **RE18 Schade-spells in AoE (Fireball)** (P2, hoog; eigen test Michiel): de tab Spell kent alleen condities en effecten (Bless … Web) en de tab Schade alleen een getal. Gevonden: ± 50 SRD-spells in `data/spells.json` hebben schadedobbelstenen + save in de tekst (Fireball "8d6 fire … dexterity saving throw … half", upcast "+1d6 per slot level above 3rd"). Voorstel: (a) in Schade een veld "Spell" dat zoekt in die spells en type, save, half/geen schade en dobbelstenen invult, met caster (spell save DC uit de sheet of statblock), slotlevel (upcast) en **Rol 8d6** (uitkomst aanpasbaar, worp in het logboek); (b) los daarvan altijd een dobbelsteenveld "Rol XdY+Z" voor homebrew en niet-SRD. Parser puur in `js/rules/`, tabel vooraf gegenereerd en getest (niet bij elke tik parsen). UX-agent kiest of damage-spells ook in de tab Spell verschijnen (Michiel zocht daar) en hoe het samengaat met slots verbruiken (RE1/RE2, zelfde pakket).
 - [ ] **RE6 Spell-uitleg:** link vanuit AoE-Spell en Effect-presets; eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie)
 
 ## Spelers en D&D Beyond
@@ -103,6 +115,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - [ ] **SC6 Tv-weergave** (P2): op 1920×1080 zijn HP-getallen (22 px, grijs) en condities (19 px) op 3 m niet leesbaar en blijft ±35 % leeg; kolommen lezen van boven naar beneden. Schalen tot de hoogte gevuld is, HP groter en met meer contrast; UX-agent kiest tussen één kolom en rij-voor-rij nummering.
 - [ ] **SC7 Zelfde code na Stop met delen** (P2): opnieuw delen geeft nu een nieuwe code, dus tv en telefoons moeten opnieuw koppelen. Code en token in `it-room` laten staan na Stop en de kamer hervatten zolang die nog bestaat (12 u); vaste code per campagne blijft fase 2.
 - [ ] **SC8 Teksten op het spelersscherm** (P3): 0 HP toont "Bewusteloos" én de conditie "Unconscious" (één label); "Death saves ✓0 ✗0" zonder uitleg; lange namen afgekapt. ("Gevecht voorbij" en geen "Rol initiative" meer: klaar in WP1.)
+- [ ] **SC10 HP-balken even lang** (P2, eigen test Michiel): de balk deelt de rij met het getal (`.hpw` flex), dus "8/12" geeft een langere balk dan "112/130 +5". Getal een vaste breedte geven (tabular-nums, rechts uitgelijnd, ±7ch; temp HP eronder of in die ruimte) zodat alle balken in een kolom gelijk zijn, ook op de tv (SC6). Klein, CSS.
 - [ ] **SC9 Mini-log voor spelers op afstand** (P3): optioneel een paar regels "wat gebeurde er net", alleen wat de DM vrijgeeft en altijd via `toPlayerView` (verborgen monsters en Onbekend wezen mogen niet lekken).
 
 ## Afwerking (klein)
@@ -111,6 +124,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - [ ] **AF7 Minteken op iOS** (P2): `inputmode="numeric"` geeft op iOS geen minteken (Dex-mod −1, initiative-bonus, eigen monster). `inputmode="text"` met `pattern="-?[0-9]*"` of een ±-knop. Nog te bevestigen op een echte iPhone.
 - [ ] **AF8 Uitleg bij Deadly en Verrast** (P3): één zin Nederlandse uitleg met advies ("haal 1 monster weg voor Hard"); bij Verrast wanneer iemand verrast is.
 - [ ] **AF9 Bevestiging bij toevoegen en verwijderen** (P3): na Speler toevoegen een melding "Sanne toegevoegd (4 aan tafel)"; bij verwijderen een melding met Ongedaan. "Ook opslaan in vaste party": laatste keuze onthouden i.p.v. altijd aan (con-tafels).
+- [ ] **AF13 AC groter op het DM-scherm** (P2, eigen test Michiel): AC staat in de kaartkop als "AC 15" in 0,82 rem, grijs (`.c.k .meta`). Groter en sneller te vinden (bijv. schildje met het getal vet, ±1,1 rem), ook bij monsters; effect-AC in accentkleur blijft. Controleren op 320 px met lange namen en "neer".
 - [ ] **AF10 Kleine haperingen** (P3): focus in het naamveld bij + Speler; rondleiding pas tikbaar na de animatie; "Zeker?" bij Stop met delen; tik op een open Instellingen-sectie klapt hem dicht (nalopen of dat bedoeld is); import ook op de welkomstkaart; hint "(bijv. uit de Claude-versie)" weg.
 - [ ] **AF11 Kleine fouten** (P3): exportbestandsnaam gebruikt UTC (`toISOString` in `js/ui/actions.js`) → lokale tijd; dode wezens uit de lijst "concentratie van"; nalopen of verborgen monsters in de XP-lijst komen (vermoeden, volgens GV2 tellen ze mee).
 - [ ] **AF12 Toegankelijkheid** (P3): slots als "1st level slot 1 van 4, beschikbaar"; `aria-current` op wie aan de beurt is; monster/speler niet alleen via kleur.
