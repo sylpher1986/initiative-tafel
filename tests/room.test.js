@@ -73,6 +73,8 @@ async function refused(code, token) {
   return server.closed;
 }
 
+const V1 = { v: 1, list: [{ id: "a" }] }, V2 = { v: 1, list: [{ id: "a" }, { id: "b" }] };
+
 test("code: 6 tekens zonder verwarrende tekens", () => {
   assert.equal(CODE_ABC.length, 30);
   assert.doesNotMatch(CODE_ABC, /[01OILU]/);
@@ -233,11 +235,39 @@ test("dubbele DM-tabs: de nieuwste wint, de oude krijgt 4001", async () => {
   assert.equal(b.ws.closed, null);
 });
 
-test("stoppen: spelers krijgen einde, kamer is weg", async () => {
+test("SC7 stoppen = pauze: spelers krijgen stop en blijven verbonden, code en token blijven; DM-socket dicht", async () => {
+  const { code, token } = await make();
+  const room = rooms[code], st = room.storage;
+  const dm = await open(code, token), p = await open(code);
+  await dm.say({ t: "stand", d: V1 });
+  await dm.say({ t: "stop" });
+  assert.deepEqual(p.ws.msgs().at(-1), { t: "stop" });
+  assert.equal(p.ws.closed, null);
+  assert.equal(dm.ws.closed, 1000);
+  assert.ok(!dm.ws.msgs().some((m) => m.t === "pauze"), "de stoppende DM krijgt geen pauze terug");
+  assert.equal(st.m.get("paused"), true);
+  assert.ok(st.m.get("owner") && st.m.get("stand"));
+  await room.alarm(); // het eerdere pauze-alarm plant zichzelf door naar het opruimmoment
+  assert.ok(Math.abs(st.alarm - (st.m.get("at") + IDLE_MS)) < 5, "opruimen 12 u na stoppen");
+  // al gepauzeerd: niet nog een keer stop naar spelers
+  const dm1 = await open(code, token), n0 = p.ws.sent.length;
+  await dm1.say({ t: "stop" });
+  assert.equal(p.ws.sent.length, n0);
+  // opnieuw delen met dezelfde code en hetzelfde token
+  const dm2 = await open(code, token);
+  assert.deepEqual(dm2.ws.msgs()[0], { t: "pauze" });
+  await dm2.say({ t: "hervat" });
+  await dm2.say({ t: "stand", d: V1 });
+  assert.deepEqual(p.ws.msgs().at(-1), { t: "stand", d: V1 });
+});
+
+test("SC7 wis (Nieuwe code): spelers krijgen einde, kamer is weg; speler kan niet wissen", async () => {
   const { code, token } = await make();
   const dm = await open(code, token), p = await open(code);
   await dm.say({ t: "stand", d: { v: 1, list: [] } });
-  await dm.say({ t: "stop" });
+  await p.say({ t: "wis" });
+  assert.ok(rooms[code].storage.m.get("owner"));
+  await dm.say({ t: "wis" });
   assert.deepEqual(p.ws.msgs().at(-1), { t: "einde" });
   assert.equal(p.ws.closed, 4004);
   assert.equal(rooms[code].storage.m.size, 0);
@@ -277,7 +307,6 @@ test("review: hallo hooguit één keer per 2 s per scherm", async () => {
 });
 
 /* ---------- pauze na 30 min zonder gewijzigde stand ---------- */
-const V1 = { v: 1, list: [{ id: "a" }] }, V2 = { v: 1, list: [{ id: "a" }, { id: "b" }] };
 
 test("pauze: alleen een inhoudelijk gewijzigde stand is activiteit (identieke herpush en img niet)", async () => {
   const { code, token } = await make();

@@ -180,6 +180,12 @@ test("review: stop wacht kort op de verbinding; zonder verbinding false", async 
   assert.deepEqual(socks[0].msgs(), [{ t: "stop" }]);
   assert.equal(socks[0].readyState, 3);
 
+  // SC7: Nieuwe code = "wis"
+  c = await chan("tok");
+  socks[0].open();
+  assert.equal(await c.ch.stop(5000, "wis"), true);
+  assert.deepEqual(socks[0].msgs(), [{ t: "wis" }]);
+
   c = await chan("tok");
   socks[0].open(); socks[0].drop();
   const pr = c.ch.stop();

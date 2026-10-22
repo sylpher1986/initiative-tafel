@@ -202,12 +202,13 @@ export function roomChannel(code, token, opts = {}) {
       if (s) try { s.close(1000); } catch { /* al dicht */ }
     },
     /**
-     * Stoppen met delen: "stop" naar de kamer (spelers krijgen "einde", kamer weg), daarna dicht.
-     * Is de verbinding net kwijt, dan max. wait ms wachten tot hij terug is. → true als "stop" verstuurd is.
+     * Stoppen met delen, daarna dicht. kind "stop" (SC7): de kamer pauzeert, code en token blijven (hervat() later met
+     * dezelfde code); "wis": kamer opheffen (spelers krijgen "einde").
+     * Is de verbinding net kwijt, dan max. wait ms wachten tot hij terug is. → true als het bericht verstuurd is.
      */
-    stop(wait = 5000) {
+    stop(wait = 5000, kind = "stop") {
       return new Promise((done_) => {
-        const go = () => { const ok = raw(JSON.stringify({ t: "stop" })); this.close(); done_(ok); };
+        const go = () => { const ok = raw(JSON.stringify({ t: kind === "wis" ? "wis" : "stop" })); this.close(); done_(ok); };
         if (ws && ws.readyState === 1) return go();
         if (done) return done_(false);
         const t = T.setTimeout(() => { off(); this.close(); done_(false); }, wait);

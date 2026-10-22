@@ -7,7 +7,9 @@
 // Berichten (JSON, zie ook js/share.js):
 //   DM → kamer   { t: "stand", d }        snapshot uit toPlayerView, portretten eruit (die gaan apart)
 //                { t: "img", id, d }      portret van één speler (data-url), of d: null om het te wissen
-//                { t: "stop" }            stoppen met delen: spelers krijgen "einde", de kamer wordt gewist
+//                { t: "stop" }            stoppen met delen (SC7, 1.39.0): de kamer pauzeert (zoals na PAUSE_MS), code en token
+//                                         blijven; "hervat" deelt weer met dezelfde code. Weg na IDLE_MS.
+//                { t: "wis" }             kamer opheffen ("Nieuwe code"): spelers krijgen "einde", alles weg
 //                { t: "hervat" }          na een pauze weer delen (zelfde code en token); de DM pusht daarna de stand
 //   speler →     { t: "hallo" }           kamer stuurt de bewaarde portretten en de laatste stand
 //   kamer → DM   { t: "n", n }            aantal verbonden spelersschermen
@@ -165,6 +167,12 @@ export class Room {
       const s = JSON.stringify({ t: "img", id, d: m.d == null ? null : m.d });
       for (const w of this.players()) sendTo(w, s);
     } else if (m.t === "stop") {
+      // gestopt = pauze: spelers wachten met dezelfde code; opruimen 12 u na nu
+      await st.put("at", Date.now());
+      if (!(await st.get("paused"))) await this.pause(ws);
+      await this.plan();
+      closeWs(ws, 1000, "gestopt");
+    } else if (m.t === "wis") {
       await this.wipe(ws);
     } else if (m.t === "hervat") {
       const now = Date.now();
@@ -187,10 +195,10 @@ export class Room {
   }
 
   /** Pauze: spelers krijgen "stop" (verbinding blijft open), DM krijgt "pauze"; code, stand en portretten blijven */
-  async pause() {
+  async pause(except) {
     await this.ctx.storage.put("paused", true);
     for (const w of this.players()) sendTo(w, STOP);
-    for (const w of this.ctx.getWebSockets("dm")) sendTo(w, PAUZE);
+    for (const w of this.ctx.getWebSockets("dm")) if (w !== except) sendTo(w, PAUZE);
   }
 
   /** Kamer opheffen: spelers krijgen "einde" en 4004, alles weg */
