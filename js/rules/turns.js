@@ -1,7 +1,7 @@
 // Beurtvolgorde, conditie-duur en alles wat aan het begin/einde van een beurt gebeurt.
 import { d, sgn } from "./dice.js";
 import { fx } from "./combat.js";
-import { tickEffects, endFightEffects } from "./effects.js";
+import { tickEffects, endFightEffects, rageOf } from "./effects.js";
 import { tickSaves, turnSaves, untickSaves } from "./saves.js";
 
 export const CONDS = ["Blinded", "Charmed", "Deafened", "Frightened", "Grappled", "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned", "Prone", "Restrained", "Stunned", "Unconscious", "Concentrating"];
@@ -268,6 +268,21 @@ export function durLabel(e, list, short = false) {
   return t;
 }
 
+/**
+ * Resterende duur in woorden voor de conditie-uitleg (RE10): "nog 3 rondes", "t/m einde van zijn beurt".
+ * name(id) = naam die getoond mag worden (spelersscherm: leeg bij een verborgen of anonieme deelnemer). Leeg = geen duur.
+ */
+export function durWords(e, list, name = (id) => (list.find((x) => x.id === id) || {}).name || "") {
+  if (!e) return "";
+  if (e.kind === "rounds") return e.count === 1 ? "nog 1 ronde" : `nog ${e.count} rondes`;
+  if (e.kind === "tend") return e.count > 1 ? "t/m einde van zijn volgende beurt" : "t/m einde van zijn beurt";
+  if (e.kind === "tstart") return "t/m begin van zijn volgende beurt";
+  if (e.kind === "sstart") { const n = name(e.who); return n ? `t/m begin van de beurt van ${n}` : "t/m begin van een andere beurt"; }
+  return "";
+}
+/** Herhaalsave in woorden: "STR DC 13 aan het einde van zijn beurt" */
+export const saveWords = (e) => (e && e.save ? `${e.save.ab} DC ${e.save.dc} aan het einde van zijn beurt` : "");
+
 /** Een beurtgrens ("start" of "end" van deelnemer id): duur aftellen (herhaal-saves: saves.js, open bij het begin van de beurt) */
 export function turnBoundary(list, at, id) {
   const out = fx();
@@ -330,6 +345,7 @@ export function step(state, dir, rng = Math.random) {
   if (dir < 0) { untickSaves(state); return out; }
 
   passed.push(["start", cur.id]);
+  if (was && was !== cur) rageTurnEnd(was, out);
   const ts = tickSaves(state); out.why.push(...ts.why); out.msgs.push(...ts.msgs); // RE12: vervallen saves melden
   for (const [at, id] of passed) {
     const r = turnBoundary(state.list, at, id);
@@ -349,6 +365,17 @@ export function step(state, dir, rng = Math.random) {
   if (rc.length) out.msgs.push(`${cur.name} recharge: ${rc.join("; ")}`);
   if (cur.kind === "pc" && cur.max && cur.hp <= 0 && cur.ds && !cur.ds.stable && !cur.ds.dead) out.msgs.push(`${cur.name} ligt op 0 HP: death save!`);
   return out;
+}
+
+/**
+ * RE16: einde van de beurt van een barbarian in rage. Geen schade sinds zijn vorige beurt en de DM tikte niet op
+ * Voorbij: rage loopt door (de app weet niet of hij aanviel), maar niet stil. Daarna telt de schade opnieuw.
+ */
+function rageTurnEnd(c, out) {
+  const e = rageOf(c);
+  if (!e) return;
+  if (!e.hit) out.msgs.push(`Rage ${c.name} loopt door.`);
+  delete e.hit;
 }
 
 /**

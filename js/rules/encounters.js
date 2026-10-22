@@ -101,6 +101,27 @@ export function difficulty(mons, who, all = false) {
   }
   return { n, nm, weak, all: !!all && weak.length > 0, xp, mult, adj, th, rating, noLvl, noXp, pcs };
 }
+/**
+ * AF8: advies bij Deadly. Per monstersoort één exemplaar weghalen en opnieuw rekenen (zelfde party, zelfde "Toch meetellen").
+ * → null (niet Deadly), { one: true } (één monster), { name, rating } (soort die het laagst-maar-dichtst bij Hard brengt:
+ * Hard met de meeste overgebleven XP, anders het beste lagere oordeel), of { stays: true } (blijft Deadly).
+ */
+export function deadlyTip(mons, who, all = false) {
+  const r = difficulty(mons, who, all);
+  if (r.rating !== 3) return null;
+  if (r.n <= 1) return { one: true };
+  let best = null;
+  for (const name of [...new Set((mons || []).filter((m) => m.n > 0).map((m) => m.name))]) {
+    let done = false;
+    const M = mons.map((m) => (!done && m.name === name && m.n > 0 ? ((done = true), { ...m, n: m.n - 1 }) : m));
+    const x = difficulty(M, who, all);
+    if (x.rating == null || x.rating >= 3) continue;
+    // liefst Hard (2), en daarbinnen de meeste XP (het minst afgezwakte gevecht); anders het hoogste lagere oordeel
+    if (!best || x.rating > best.rating || (x.rating === best.rating && x.adj > best.adj)) best = { name, rating: x.rating, adj: x.adj };
+  }
+  return best ? { name: best.name, rating: best.rating } : { stays: true };
+}
+
 export const ratingName = (r) => (r == null ? null : r < 0 ? "Trivial" : RATINGS[r]);
 /** Waarom er geen oordeel is: "level onbekend", "geen party", "CR onbekend"; null = er is een oordeel */
 export const noRating = (r) => (r.rating != null ? null : !r.pcs ? "geen party" : r.noLvl.length ? "level onbekend" : "CR onbekend");

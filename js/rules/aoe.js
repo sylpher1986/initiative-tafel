@@ -58,7 +58,16 @@ export const DR_LBL = { r: "Resist", i: "Immuun", v: "Kwetsb." };
 /** Korte tekst: "Resist fire, cold · Immuun poison"; leeg zonder weerstanden */
 export const drText = (dr) => (!dr ? "" : [["r", "Resist"], ["i", "Immuun"], ["v", "Kwetsb."]].filter(([k]) => (dr[k] || []).length).map(([k, l]) => `${l} ${dr[k].join(", ")}`).join(" · "));
 /** Modus voor een doelwit: monster uit het statblock (m.x), speler uit zijn weerstanden */
-export const targetMode = (c, m, type) => (c && c.kind === "pc" ? drMode(c.dr, type) : defMode(m && m.x, type));
+export const targetMode = (c, m, type) => withEff(c, c && c.kind === "pc" ? drMode(c.dr, type) : defMode(m && m.x, type), type);
+/**
+ * Tijdelijke resistance uit effecten (Rage, RE16: `e.rs`) erbovenop: normaal → ½, kwetsbaar + resistant → normaal (PHB),
+ * resist/immuun blijven. eff: 1 = komt (mede) door een effect, voor de uitleg.
+ */
+function withEff(c, base, type) {
+  const t = String(type || "").toLowerCase();
+  if (!t || !(c && c.eff || []).some((e) => Array.isArray(e.rs) && e.rs.includes(t))) return base;
+  return base.mode === 1 ? { mode: 0.5, cond: "", eff: 1 } : base.mode === 2 ? { mode: 1, cond: "", eff: 1 } : base;
+}
 
 /** Effectieve keuze: standaard-modus (targetMode: statblock of opgeslagen resistances) tenzij de DM zelf koos */
 export function pickFor(t, def) {
@@ -68,15 +77,33 @@ export function pickFor(t, def) {
 /** Magic Resistance (advantage op saves tegen spells) staat bij de traits */
 export const hasMagicRes = (m) => !!(m && (m.t || []).some((r) => /^magic resistance/i.test(r[0])));
 
-/** Save rollen; adv = 2d20, de hoogste telt. mods uit saveMods (effects.js): cover vast, Bless/Bane een d4 erbij */
-export function rollSave(bo, adv, rng = Math.random, mods = []) {
-  const r = d(20, rng), r2 = adv ? d(20, rng) : null;
+/**
+ * Save rollen. adv: true of > 0 = advantage (2d20, hoogste), < 0 = disadvantage (laagste), anders één d20.
+ * why = bron voor de tekst (standaard bij advantage "Magic Resistance"). mods uit saveMods (effects.js): cover vast, Bless/Bane een d4 erbij.
+ */
+export function rollSave(bo, adv, rng = Math.random, mods = [], why = "") {
+  const v = adv === true ? 1 : Math.sign(+adv || 0);
+  const r = d(20, rng), r2 = v ? d(20, rng) : null;
   const x = mods.map((m) => (m.d ? { n: m.n, d: m.d, r: d(Math.abs(m.d), rng) } : { n: m.n, b: m.b }));
   const extra = x.reduce((s, m) => s + (m.d ? Math.sign(m.d) * m.r : m.b), 0);
-  return { r, r2, bo, x, tot: Math.max(r, r2 ?? r) + bo + extra };
+  return { r, r2, bo, x, av: v, aw: why || (v > 0 ? "Magic Resistance" : ""), tot: (v < 0 ? Math.min(r, r2) : Math.max(r, r2 ?? r)) + bo + extra };
 }
 const sg = (v) => (v >= 0 ? "+" : "−");
-export const rollText = (x, dc) => `d20 [${x.r}${x.r2 != null ? `, ${x.r2}` : ""}] ${x.bo >= 0 ? "+" : ""}${x.bo}${(x.x || []).map((m) => (m.d ? ` ${sg(m.d)} 1d${Math.abs(m.d)} [${m.r}] ${m.n}` : ` ${sg(m.b)} ${Math.abs(m.b)} ${m.n}`)).join("")} = ${x.tot}${dc > 0 ? (x.tot >= dc ? " ✓" : " ✗") : ""}${x.r2 != null ? " (advantage: Magic Resistance)" : ""}`;
+export const rollText = (x, dc) => `d20 [${x.r}${x.r2 != null ? `, ${x.r2}` : ""}] ${x.bo >= 0 ? "+" : ""}${x.bo}${(x.x || []).map((m) => (m.d ? ` ${sg(m.d)} 1d${Math.abs(m.d)} [${m.r}] ${m.n}` : ` ${sg(m.b)} ${Math.abs(m.b)} ${m.n}`)).join("")} = ${x.tot}${dc > 0 ? (x.tot >= dc ? " ✓" : " ✗") : ""}${x.r2 != null ? ` (${x.av < 0 ? "disadvantage" : "advantage"}${x.aw || x.av > 0 ? `: ${x.aw || "Magic Resistance"}` : ""})` : ""}`;
+
+/**
+ * Advantage/disadvantage op een save uit condities en effecten (RE11/RE16), plus Magic Resistance van de aanroeper.
+ * Exhaustion 3+ disadvantage; Rage advantage op STR. Samen heffen ze elkaar op. → { v: 1|0|-1, why }
+ */
+export function saveAdv(c, ab, magic = false) {
+  const adv = [], dis = [];
+  if (magic) adv.push("Magic Resistance");
+  if (ab === "STR" && (c && c.eff || []).some((e) => e.rg)) adv.push("Rage");
+  const ex = (c && c.eff || []).find((e) => e.n === "Exhaustion");
+  if (ex && (ex.x | 0) >= 3) dis.push(`Exhaustion ${ex.x | 0}`);
+  const v = adv.length && !dis.length ? 1 : dis.length && !adv.length ? -1 : 0;
+  return { v, why: v > 0 ? adv.join(", ") : v < 0 ? dis.join(", ") : "" };
+}
 
 /** Wat er met één doel gebeurt, op een kopie (voor de preview): dealt en een korte uitkomst */
 export function aoeOutcome(c, pick, raw) {

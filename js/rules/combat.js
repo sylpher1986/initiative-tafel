@@ -2,6 +2,7 @@
 //   msgs: korte meldingen voor de gebruiker (platte tekst)
 //   why:  oorzaken voor het logboek, [{t, id}]
 import { d } from "./dice.js";
+import { EXH, EXH_NAME, isExh, exhLevel } from "./conditions.js";
 
 export const fx = () => ({ msgs: [], why: [] });
 //   saves: (optioneel) nieuwe concentration saves, [{ id, kind: "conc", ab, dc }]; de UI zet ze in S.saves
@@ -142,6 +143,7 @@ export function applyDamage(c, raw, mode = 1, quiet = false) {
   const out = fx();
   const v = Math.floor(raw * mode);
   if (v > 0) merge(out, wakeByDamage(c)); // vóór de HP: wie op 0 valt is daarna gewoon bewusteloos
+  if (v > 0) for (const e of c.eff || []) if (e.rg) e.hit = 1; // RE16: schade genomen sinds de vorige beurt = rage loopt door
   const absorb = Math.min(c.temp || 0, v);
   if (absorb) c.temp -= absorb;
   const rest = v - absorb;
@@ -195,11 +197,29 @@ export function revertMax(c, hpd) {
   c.hp = Math.min(c.hp, c.max);
 }
 
+/**
+ * Exhaustion-effect op niveau x (1–6) toevoegen (RE11). Het oude Exhaustion-effect moet al weg zijn.
+ * Niveau 4+: max HP gehalveerd (naar beneden afgerond, minstens 1), als max-HP-verschil `hpd` zoals Aid, zodat het
+ * vanzelf terugdraait. Geeft het effect; de dood bij niveau 6 regelt de aanroeper.
+ */
+export function exhEffect(c, x) {
+  const e = { id: Math.random().toString(36).slice(2, 9), n: EXH_NAME, x, st: "", op: "+", v: 0, txt: EXH[x], end: "", d: null, lr: false, by: null, spell: null, hpd: 0 };
+  if (x >= 4 && c.max > 0) {
+    const nm = Math.max(1, c.max - Math.floor(c.max / 2));
+    e.st = "max"; e.v = e.hpd = nm - c.max;
+    c.max = nm; c.hp = Math.min(c.hp, c.max);
+  }
+  c.eff = [...(c.eff || []).filter((y) => !isExh(y)), e];
+  return e;
+}
+
 /** Short of long rest voor een speler (party-lid of deelnemer aan tafel) */
 export function restMember(m, long) {
   if (long) {
+    const ex = exhLevel(m); // Exhaustion: één niveau minder (PHB: long rest met eten en drinken)
     for (const e of m.eff || []) if (e.hpd) revertMax(m, e.hpd); // long rest: alle tijdelijke effecten voorbij
     m.eff = [];
+    if (ex > 1) exhEffect(m, ex - 1);
     m.hp = m.max; m.temp = 0; m.ds = null;
     if (m.cond) m.cond = m.cond.filter((x) => x !== "Unconscious");
     if (m.casting) {

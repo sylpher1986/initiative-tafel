@@ -6,6 +6,8 @@ import { esc } from "./ui/util.js";
 import { icon } from "./ui/avatar.js";
 import { tvPlan } from "./tvfit.js";
 import { qrSvg } from "./qr.js";
+import { CINFO } from "./rules/conditions.js";
+import { openCond, closeCond, condOpen, condSheetClick } from "./ui/condinfo.js";
 
 const $ = (s) => document.querySelector(s);
 const ST_CLS = { Ongedeerd: "ok", Gewond: "ok", Bloodied: "mid", "Bijna dood": "low", Bewusteloos: "low", Stabiel: "mid", Neer: "out", Dood: "out" };
@@ -28,7 +30,19 @@ function hp(c) {
 }
 
 const dsB = (c) => (c.ds ? `<span class="bd r">${dsText(c.ds)}</span>` : "");
-const tagsB = (c) => (c.tags || []).map((t) => `<span class="bd cc">${esc(t)}</span>`).join("");
+/** RE10: welke uitleg bij een tag hoort ("Exhaustion 3" → niveau 3, "Concentrating · Bless" → Concentrating); null = geen */
+function tagKey(t) {
+  const x = /^Exhaustion (\d)$/.exec(t);
+  if (x) return { key: "Exhaustion", lvl: +x[1] };
+  const k = String(t).split(" · ")[0];
+  return CINFO[k] ? { key: k, lvl: 0 } : null;
+}
+/** Tags; met uitleg tikbaar (telefoon), op de tv alleen tekst (niet tikbaar, kort) */
+const tagsB = (c) => (c.tags || []).map((t, i) => {
+  const k = !TV_MQ.matches && tagKey(t);
+  return k ? `<button type="button" class="bd cc cinf" data-cinfo="${esc(k.key)}" data-cid="${esc(c.id)}" data-ti="${i}"${k.lvl ? ` data-lvl="${k.lvl}"` : ""} aria-label="${esc(t)}: uitleg">${esc(t)}</button>`
+    : `<span class="bd cc">${esc(t)}</span>`;
+}).join("");
 
 function row(c, V, meId) {
   const turn = c.id === V.active || (V.group || []).includes(c.id), nxt = c.id === V.next, me = c.id === meId;
@@ -133,7 +147,18 @@ function bindMe() {
     if (e.target.id !== "pv-buzz" || !me) return;
     me.buzz = e.target.checked; saveMe();
   });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && pickOpen) setPick(false); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (condOpen()) closeCond(); else if (pickOpen) setPick(false);
+  });
+  // RE10: uitleg bij een conditie; duur en herhaalsave uit de snapshot (de DM-app bepaalt wat spelers zien)
+  document.addEventListener("click", (e) => {
+    if (condSheetClick(e)) return;
+    const b = e.target.closest("button[data-cinfo]");
+    if (!b) return;
+    const c = lastV && lastV.list.find((x) => x.id === b.dataset.cid), td = c && c.td && c.td[+b.dataset.ti];
+    openCond(b, { lvl: +b.dataset.lvl || 0, rows: [["Duur", td && td.d], ["Herhaalsave", td && td.s]] });
+  });
 }
 
 function paint(V) {
@@ -224,7 +249,7 @@ function boot() {
   bindMe();
   addEventListener("resize", refit);
   document.addEventListener("fullscreenchange", refit);
-  TV_MQ.addEventListener?.("change", () => { tvQr(); refit(); });
+  TV_MQ.addEventListener?.("change", () => { tvQr(); refit(); }); // tags: tikbaar of niet volgt bij de volgende stand (paint heeft bijwerkingen: pauze, net)
   document.fonts?.ready.then(refit); // meten vóór de letters geladen zijn is te vroeg
   paintMe(null, null);
   // SC4: hoogte van de vaste kop, zodat scrollIntoView de beurt er niet onder zet (scroll-margin-top)

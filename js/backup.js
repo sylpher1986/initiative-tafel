@@ -7,6 +7,7 @@ import { dedupeAnon } from "./playerview.js";
 import { cleanEncounters, cleanLvl } from "./rules/encounters.js";
 import { cleanEnc } from "./rules/fight.js";
 import { cleanDr } from "./rules/aoe.js";
+import { cleanRs } from "./rules/effects.js";
 
 export const FORMAT = "initiative-tafel";
 export const VERSION = 2; // 2 (1.28.0): encounters erbij
@@ -62,7 +63,10 @@ const cleanEff = (e) => {
   return { id: str(e.id, 40) || Math.random().toString(36).slice(2, 9), n: str(e.n, 60) || "Effect", st,
     op: st === "ac" && ["+", "=", "min"].includes(e.op) ? e.op : "+", v: st === "ac" ? lim(e.v, -20, 40) : st ? lim(e.v, -999, 999) : 0, txt: str(e.txt, 120), end: str(e.end, 120),
     d: obj(e.d) ? cleanDur(e.d) : null, lr: !!e.lr, by: e.by ? str(e.by, 40) : null, spell: e.spell ? str(e.spell, 120) : null, ...(e.by && e.cast ? { cast: str(e.cast, 60) } : {}), hpd: st === "max" ? lim(e.hpd, -9999, 9999) : 0,
-    ...(obj(e.af) && e.af.n ? { af: { n: str(e.af.n, 60), txt: str(e.af.txt, 120), ...(CONDS.includes(e.af.cond) && e.af.cond !== "Concentrating" ? { cond: e.af.cond } : {}) } } : {}) }; // vervolg (Lethargy)
+    ...(obj(e.af) && e.af.n ? { af: { n: str(e.af.n, 60), txt: str(e.af.txt, 120), ...(CONDS.includes(e.af.cond) && e.af.cond !== "Concentrating" ? { cond: e.af.cond } : {}) } } : {}), // vervolg (Lethargy)
+    ...(e.n === "Exhaustion" ? { x: lim(e.x, 1, 6) || 1 } : {}), // RE11: niveau
+    ...(cleanRs(e.rs) ? { rs: cleanRs(e.rs) } : {}), // RE16: tijdelijke resistance (Rage)
+    ...(e.rg ? { rg: 1, ...(e.frz ? { frz: 1 } : {}), ...(e.bear ? { bear: 1 } : {}), ...(e.hit ? { hit: 1 } : {}) } : {}) };
 };
 
 export function cleanCombatant(c) {

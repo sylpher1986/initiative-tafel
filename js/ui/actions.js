@@ -6,13 +6,15 @@ import { render, ui, openId, mode, paintLog, paintParty, paintQadd, monListHtml,
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
-import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc, effSpec } from "../rules/effects.js";
+import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc, effSpec, setExh, startRage, rageOf } from "../rules/effects.js";
+import { exhLevel } from "../rules/conditions.js";
+import { openCond, closeCond, condOpen, condSheetClick } from "./condinfo.js";
 import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
-import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant, setInit } from "../rules/turns.js";
+import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant, setInit, durWords, saveWords } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
-import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, targetMode, drToggle, drKind, DR_LBL, cleanDr } from "../rules/aoe.js";
+import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, saveAdv, DTYPES, targetMode, drToggle, drKind, DR_LBL, cleanDr } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
 import { castInfo, legInfo, rcInfo, pickList, isConc, edFor } from "../rules/spells.js";
 import { rulesEd, setRulesEd } from "./spellrules.js";
@@ -39,6 +41,26 @@ const concNote = (f) => {
   const C = ((f && f.saves) || []).filter((s) => s.kind === "conc");
   return !C.length ? "" : C.length === 1 ? ` · concentratie-save CON ${C[0].dc} in de beurtbalk` : ` · ${C.length} concentratie-saves in de beurtbalk`;
 };
+/** RE16: Bear Totem / Frenzy per speler op dit apparaat (subclass staat niet betrouwbaar op de sheet) */
+const RAGE_KEY = "it-rage";
+const rageKey = (c) => c.pid || c.id;
+function rageOpts(c) {
+  try { const o = (JSON.parse(localStorage.getItem(RAGE_KEY) || "{}") || {})[rageKey(c)] || {}; return { bear: o.bear === true, frz: o.frz === true }; } catch { return { bear: false, frz: false }; }
+}
+function saveRageOpts(c, o) {
+  try { const all = JSON.parse(localStorage.getItem(RAGE_KEY) || "{}") || {}; all[rageKey(c)] = { bear: !!o.bear, frz: !!o.frz }; localStorage.setItem(RAGE_KEY, JSON.stringify(all)); } catch { /* privémodus: alleen deze keer */ }
+}
+
+/** RE10: uitleg bij een conditiechip; duur, herhaalsave en bron uit de encounter */
+function openCondFor(btn) {
+  const S = app.S, c = S.list.find((x) => x.id === btn.dataset.cid), k = btn.dataset.cinfo;
+  if (!c) return;
+  const e = c.cd && c.cd[k], by = e && e.by && S.list.find((x) => x.id === e.by);
+  const rows = k === "Concentrating" ? [["Spell", c.concSpell || ""]]
+    : e ? [["Duur", durWords(e, S.list)], ["Herhaalsave", saveWords(e)], ["Van", e.spell ? `${e.spell}${by ? ` · ${by.name}${by.cond.includes("Concentrating") ? " (concentratie)" : ""}` : ""}` : ""]] : [];
+  openCond(btn, { lvl: exhLevel(c), rows });
+}
+
 const apply = (fx) => { if (!fx) return; addWhy(fx.why); show(fx); if (fx.saves) fx.saves.forEach((x) => addSave(app.S, x)); };
 
 /* ---------- monsters toevoegen ---------- */
@@ -140,11 +162,11 @@ const row = {
     const isOpen = openId() === c.id;
     ui.open = isOpen ? "" : c.id;
     ui.fromDown = !isOpen && li && li.dataset.down ? c.id : null; // uit het blok "Neer" geopend: blijft daar staan
-    ui.panel = null; ui.castPick = null; ui.edit = null; ui.effWho = null; ui.effCustom = false; ui.effForm = {}; ui.drOpen = null;
+    ui.panel = null; ui.castPick = null; ui.edit = null; ui.effWho = null; ui.effCustom = false; ui.effForm = {}; ui.drOpen = null; ui.exhOpen = false; ui.rage = null;
     return "scroll";
   },
   panel(c, b) {
-    ui.panel = ui.panel === b.dataset.p ? null : b.dataset.p; ui.effWho = null;
+    ui.panel = ui.panel === b.dataset.p ? null : b.dataset.p; ui.effWho = null; ui.exhOpen = false; ui.rage = null;
     // keys: alleen wat het paneel toont, zodat Opslaan niets terugzet wat intussen direct op de kaart is aangepast
     ui.edit = ui.panel === "more" ? { id: c.id, name: c.name, ac: c.ac || "", max: baseMax(c) || "", init: c.init, dirty: false, keys: editKeys(c, mode() === "prep") } : null;
   },
@@ -170,6 +192,7 @@ const row = {
   effp(c, b) {
     const i = +b.dataset.i, p0 = PRESETS[i];
     if (!p0) return false;
+    if (p0.rage) { if (c.kind !== "pc") return false; ui.rage = { id: c.id, ...rageOpts(c) }; return; } // RE16: eerst de bevestigstap
     // editie per caster: zijn D&D Beyond-sheet, anders de instelling Spells (Barkskin 2024 = geen concentratie)
     const act = app.S.list.find((x) => x.id === app.S.active), p = presetsFor(edFor(act, p0.n, rulesEd()))[i];
     if ((p0.conc || p.conc) && !act) { ui.effWho = { id: c.id, i }; return; } // geen beurt: vraag wie cast (de sheet bepaalt de editie)
@@ -194,6 +217,24 @@ const row = {
     return applyEff(c, { ...spec, dur: f.dur || "inf", conc: !!by }, by);
   },
   effdel(c, b) { apply(removeEffect(c, b.dataset.e, "handmatig", { active: app.S.active })); },
+  /* ---- Rage (RE16): bevestigstap met Bear Totem / Frenzy (per speler onthouden op dit apparaat) ---- */
+  "rage-opt"(c, b) { if (!ui.rage || ui.rage.id !== c.id) return false; ui.rage[b.dataset.k] = !ui.rage[b.dataset.k]; saveRageOpts(c, ui.rage); },
+  "rage-no"() { ui.rage = null; },
+  "rage-go"(c) {
+    const o = ui.rage; if (!o || o.id !== c.id) return false;
+    ui.rage = null; ui.panel = null;
+    because("Rage");
+    const out = startRage(c, makeDur(c, { dur: "r10" }, app.S.active), { bear: o.bear, frz: o.frz });
+    addWhy(out.why);
+    return out.msgs.length ? { undoToast: out.msgs.join(" ") } : undefined;
+  },
+  /* ---- Exhaustion (RE11): rij met − en + in het Conditie-paneel ---- */
+  "exh-open"() { ui.exhOpen = !ui.exhOpen; },
+  exh(c, b) {
+    const out = setExh(c, exhLevel(c) + +b.dataset.v);
+    addWhy(out.why);
+    if (exhLevel(c) === 6) return { undoToast: out.msgs.join(" ") }; // dood: zonder "Zeker?", met Ongedaan (zoals verwijderen)
+  },
   "sheet-open"(c, b) { ui.sheet = { id: c.id, kind: b.dataset.kind, val: "", mode: 1, from: b.classList.contains("khp") ? "khp" : b.dataset.kind }; },
   react(c) { c.reaction = !c.reaction; },
   hide(c) { if (c.hidden) delete c.hidden; else c.hidden = true; },
@@ -512,6 +553,9 @@ export function onClick(e) {
   // (levelvelden in het Encounters-paneel doet dat paneel zelf: zijn klik komt eerder en zet soms net de focus)
   if (pf && pf.dataset && (pf.dataset.pf || ("dlvl" in pf.dataset && !pf.closest("#enc-panel"))) && !pf.contains(e.target)) pf.blur();
   if (spellInfoClick(e)) return; // spell-uitleg: tikbare naam of het paneel sluiten
+  if (condSheetClick(e)) return; // conditie-uitleg (RE10): het paneel sluiten
+  const ci = e.target.closest("button[data-cinfo]");
+  if (ci) { openCondFor(ci); return; }
   const pick = e.target.closest("[data-file]"); // eigen knop voor een verborgen bestandskiezer (geen Engelse "Choose File")
   if (pick) { document.getElementById(pick.dataset.file)?.click(); return; }
   const sk = e.target.closest("[data-sk]");
@@ -544,6 +588,15 @@ export function onClick(e) {
   }
   if (b.dataset.prep) { if (b.dataset.prep === "close") closePrep(); else openPrep(b.dataset.prep); return; }
   if (b.dataset.svroll) { svRoll(b.dataset.svroll); return; }
+  if (b.dataset.rgend) { // RE16: "Rage loopt door?" → Voorbij
+    const c = app.S.list.find((x) => x.id === b.dataset.rgend), e = c && rageOf(c);
+    if (!e) return;
+    because("Rage voorbij");
+    const out = removeEffect(c, e.id, "geen aanval of schade sinds vorige beurt", { active: app.S.active });
+    addWhy(out.why); render();
+    toastHtml(`${esc(out.msgs.join(" "))} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+    return;
+  }
   if (b.dataset.svok) { const s = (app.S.saves || []).find((x) => x.sid === b.dataset.svok), c = s && app.S.list.find((x) => x.id === s.id); if (c) svDone(c, s.sid, b.dataset.v === "1", "", ""); return; }
   if (b.dataset.svrollall) { svRollAll(); return; }
   if (b.dataset.svsheet) { ui.sv = b.dataset.svsheet === "1"; if (ui.sv) { ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = null; ui.atk = null; } render(); if (ui.sv) $("#ssheet .ssheet")?.focus(); else $("[data-svsheet]")?.focus(); return; }
@@ -669,6 +722,7 @@ function prepField(c, t) {
 export function onKey(e) {
   if (e.key === "Enter" && e.target.dataset && e.target.dataset.pf) { e.preventDefault(); e.target.blur(); return; } // veld op de kaart: klaar = opslaan
   if (spellOpen()) { if (e.key === "Escape") { e.preventDefault(); closeSpell(); } return; } // ligt boven alle andere panelen: toetsen niet naar het cijferpad eronder
+  if (condOpen()) { if (e.key === "Escape") { e.preventDefault(); closeCond(); } return; } // conditie-uitleg (RE10): idem
   if (keysOpen()) { if (e.key === "Escape" || e.key === "?") { e.preventDefault(); closeKeys(); } return; } // overzicht sneltoetsen (GV10)
   if (ui.end && e.key === "Escape") { e.preventDefault(); closeEnd(); return; }
   if (ui.logSheet && e.key === "Escape") { e.preventDefault(); closeLogSheet(); return; }
@@ -1124,8 +1178,9 @@ function qGo() {
 function svRoll(sid, adv = false, quiet = false) {
   const S = app.S, s = (S.saves || []).find((x) => x.sid === sid), c = s && S.list.find((x) => x.id === s.id);
   if (!c || !isValid(S, s)) return "";
-  const x = rollSave(svBonus(c, s.ab), adv, Math.random, saveMods(c, s.ab));
-  const ok = x.tot >= s.dc, txt = `${s.ab} ${rollText(x, s.dc)}`.replace(" (advantage: Magic Resistance)", adv ? " (advantage)" : "");
+  const sa = saveAdv(c, s.ab, adv); // RE11/RE16: Exhaustion 3+ / Rage op STR
+  const x = rollSave(svBonus(c, s.ab), sa.v, Math.random, saveMods(c, s.ab), adv && sa.why === "Magic Resistance" ? "" : sa.why);
+  const ok = x.tot >= s.dc, txt = `${s.ab} ${rollText(x, s.dc)}`.replace(" (advantage: Magic Resistance)", " (advantage)");
   return svDone(c, sid, ok, txt, txt, quiet, adv);
 }
 
@@ -1260,7 +1315,7 @@ function spellClick(a, k, b) {
     if (!mons.length) { toast("Kies eerst de monsters die een save doen."); return true; }
     selfToast(mons.map((x) => x.c), sp.ab);
     // altijd een spell: Magic Resistance geeft advantage; Bless/Bane en cover tellen mee
-    mons.filter(({ c }) => !selfRoll(c, sp.ab)).forEach(({ c, p }) => { const x = rollSave(saveBonus(p.m, sp.ab), hasMagicRes(p.m), Math.random, saveMods(c, sp.ab)); a.s[c.id] = { ...(a.s[c.id] || {}), roll: x, ok: x.tot >= dc, lr: false }; });
+    mons.filter(({ c }) => !selfRoll(c, sp.ab)).forEach(({ c, p }) => { const sa = saveAdv(c, sp.ab, hasMagicRes(p.m)), x = rollSave(saveBonus(p.m, sp.ab), sa.v, Math.random, saveMods(c, sp.ab), sa.why); a.s[c.id] = { ...(a.s[c.id] || {}), roll: x, ok: x.tot >= dc, lr: false }; });
   } else return false;
   paintAoe();
   return true;
@@ -1329,7 +1384,7 @@ export function bindAoe() {
       if (!mons.length) { toast("Kies eerst de monsters die een save doen."); return; }
       selfToast(mons, a.ab);
       mons.filter((c) => !selfRoll(c, a.ab)).forEach((c) => {
-        const m = findMon(c.ref), x = rollSave(saveBonus(m, a.ab), hasMagicRes(m), Math.random, saveMods(c, a.ab));
+        const m = findMon(c.ref), sa = saveAdv(c, a.ab, hasMagicRes(m)), x = rollSave(saveBonus(m, a.ab), sa.v, Math.random, saveMods(c, a.ab), sa.why);
         aoeSet(a, c.id, { roll: x, save: x.tot >= dc ? okSave(a) : "fail", lr: false });
       });
     }
@@ -1662,9 +1717,11 @@ export function bindParty() {
     if (b.id === "p-short" || b.id === "p-long") {
       const long = b.id === "p-long";
       because(long ? "long rest" : "short rest");
+      const ex = long ? app.party.filter((m) => exhLevel(m)).map((m) => [m.name, exhLevel(m)]) : [];
       app.party.forEach((m) => R.restMember(m, long));
       app.S.list.forEach((c) => { if (c.pid) R.restMember(c, long); });
-      saveParty(); toast(long ? "Long rest: HP, spell slots en resources hersteld." : "Short rest: short-rest resources hersteld."); render();
+      const exT = ex.length ? ` Exhaustion: ${ex.map(([n, x]) => `${n} ${x} → ${x - 1}`).join(", ")}.` : ""; // RE11: één niveau minder
+      saveParty(); toast(long ? `Long rest: HP, spell slots en resources hersteld.${exT}` : "Short rest: short-rest resources hersteld."); render();
     }
   });
 }

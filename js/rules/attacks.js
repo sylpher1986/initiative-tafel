@@ -1,5 +1,6 @@
 // Acties uit een statblock compact maken voor de monsterkaart: to hit, damage (met type) en save-DC.
 // Puur: geen DOM. Statblocktekst kan uit een import komen; de UI escapet alles wat hieruit komt.
+import { exhLevel } from "./conditions.js";
 import { d } from "./dice.js";
 import { applyDamage, critAtZero, merge, wakeByDamage } from "./combat.js";
 
@@ -173,6 +174,7 @@ export function atkAdv(by, tgt, kind = "") {
   const adv = [], dis = [], hint = [];
   const bc = (by && by.cond) || [], tc = (tgt && tgt.cond) || [];
   for (const k of DIS_BY) if (bc.includes(k)) dis.push(`${by.name} ${k}`);
+  if (exhLevel(by) >= 3) dis.push(`${by.name} Exhaustion ${exhLevel(by)}`); // RE11: niveau 3+ disadvantage op aanvallen
   if (bc.includes("Invisible")) adv.push(`${by.name} Invisible`);
   if (bc.includes("Frightened")) hint.push(`${by.name} Frightened: disadvantage als de bron in zicht is`);
   for (const k of ADV_TGT) if (tc.includes(k)) adv.push(`${tgt.name} ${k}`);

@@ -6,10 +6,11 @@ import { $, esc, n0, spellLink } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
 import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf, isSurprised, reactUsed, REACT_TAG, canToggleSurprise, nextUp, freshRoll, initPlan, initText } from "../rules/turns.js";
-import { PRESETS as PRESETS_14, presetsFor, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn } from "../rules/effects.js";
+import { PRESETS as PRESETS_14, presetsFor, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn, effName, isRage, rageOf, rageRes, barbLevel, rageDmg } from "../rules/effects.js";
+import { isExh, exhLevel, EXH } from "../rules/conditions.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList, splitSpells, edFor, sheetEd } from "../rules/spells.js";
-import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus, saveKnown, targetMode, drText, drKind, DR_LBL } from "../rules/aoe.js";
+import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus, saveKnown, targetMode, drText, drKind, DR_LBL, saveAdv } from "../rules/aoe.js";
 import { spellItem } from "../data/spells.js";
 import { diceify, syncSB, monCard, isPhone } from "./statblock.js";
 import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv } from "../rules/attacks.js";
@@ -35,6 +36,8 @@ export const ui = {
   panel: null,         // "conds" of "more" binnen de open kaart
   sheet: null,         // { id, kind: "dmg"|"heal"|"thp", val: "", mode: 1|0.5|2 }
   condOpt: {}, openCast: new Set(), castPick: null, confirmReset: false,
+  exhOpen: false,      // RE11: rij met het Exhaustion-niveau in het Conditie-paneel
+  rage: null,          // RE16: bevestigstap { id, bear, frz } in het Effect-paneel
   logOpen: false, editLog: null, partyInit: {},
   startAsk: false,     // GV7: vraag "Nog N monsters uit het vorige gevecht" boven Start
   oldGo: null,         // GV7: antwoord daarop tot het gevecht echt start: "drop" (oude wissen) | "keep" (toch starten)
@@ -169,7 +172,11 @@ const hpBar = (c) => `<div class="hpw">${hpIn(c)}</div>`;
 /** Gevecht: tik op de HP-rij = direct het schadepaneel (eigen knop, 44 px hoog, naast de kop die de kaart opent) */
 const hpBtn = (c) => `<button type="button" class="khp hpw" data-a="sheet-open" data-kind="dmg" aria-label="${esc(c.name)}: ${n0(c.hp)} van ${n0(c.max)} HP${c.temp ? `, +${n0(c.temp)} temp` : ""}. Schade invoeren">${hpIn(c)}</button>`;
 
-function condChips(c, S, interactive) {
+/**
+ * Conditie-chips. interactive = open kaart: Concentrating met ✕ (beëindigen), de rest tikbaar voor uitleg (RE10).
+ * info = alleen uitleg (live-blok op de tablet): ook Concentrating niet weghalen. Dicht: alleen tekst.
+ */
+function condChips(c, S, interactive, info = interactive) {
   return c.cond.map((x) => {
     const dt = durText(c, x, S.list);
     const dl = dt ? ` · ${esc(dt)}` : "";
@@ -177,9 +184,11 @@ function condChips(c, S, interactive) {
       const label = `Concentrating${c.concSpell ? ` · ${esc(c.concSpell)}` : ""}${dl}`;
       return interactive ? `<button class="bd cc cbtn" data-a="dropconc" title="Concentratie beëindigen">${label} <span aria-hidden="true">✕</span><span class="vh">beëindigen</span></button>` : `<span class="bd cc">${label}</span>`;
     }
-    return `<span class="bd cc">${x}${dl}</span>`;
+    return info ? cinfoBtn(c, x, `${esc(x)}${dl}`) : `<span class="bd cc">${x}${dl}</span>`;
   }).join("");
 }
+/** RE10: tikbare chip voor de uitleg (stippel eronder, geen ✕) */
+const cinfoBtn = (c, key, html, cls = "bd cc") => `<button type="button" class="${cls} cinf" data-cinfo="${esc(key)}" data-cid="${esc(c.id)}" aria-label="${esc(key)}: uitleg">${html}</button>`;
 
 /** Samenvatting voor een gesloten kaart */
 /** AC in de kop (AF13): schildje met het effectieve getal, in accentkleur met vulling als effecten hem veranderen */
@@ -189,9 +198,12 @@ function acMeta(c) {
 }
 
 /** Effect-chips: in de open kaart knoppen om weg te halen, dicht alleen tekst (korte duur) */
-function effChips(c, S, interactive) {
+function effChips(c, S, interactive, info = interactive) {
   const E = c.eff || [];
   return [...E.filter(isWarn), ...E.filter((e) => !isWarn(e))].map((e) => {
+    // RE11: Exhaustion is een conditie met niveau: uitleg in plaats van ✕ (niveau wijzigen via Conditie)
+    if (isExh(e)) return info ? cinfoBtn(c, "Exhaustion", esc(effName(e)), "bd r") : `<span class="bd r">${esc(effName(e))}</span>`;
+    if (isRage(e)) return rageChip(c, e, S, interactive);
     const w = isWarn(e), cls = w ? "bd r" : "bd ef";
     const by = e.by && e.by !== c.id ? S.list.find((x) => x.id === e.by) : null;
     const dur = e.d ? durLabel(e.d, S.list, !interactive) : e.lr ? "long rest" : "";
@@ -201,14 +213,29 @@ function effChips(c, S, interactive) {
   }).join("");
 }
 
-/** Conditie- en effect-chips (alleen tekst) voor de speler-sheet in het zijpaneel */
-const sbChips = (c) => condChips(c, app.S, false) + effChips(c, app.S, false) + reactChip(c, app.S);
+/** RE16: rage damage uit het barbarian-level (klasse op de sheet, anders het level als er geen klasse bekend is) */
+export function rageLvl(c) {
+  const cls = c.sheet && c.sheet.cls;
+  if (cls) return barbLevel(cls); // multiclass: alleen de barbarian-levels
+  const m = c.pid && app.party.find((x) => x.pid === c.pid), l = Number.isInteger(c.lvl) ? c.lvl : m && Number.isInteger(m.lvl) ? m.lvl : null;
+  return l; // geen klasse bekend: het level (handmatig toegevoegde barbarian)
+}
+const rageBonus = (c) => { const b = rageDmg(rageLvl(c)); return b ? `+${b}` : "+2/+3/+4"; };
+/** "Rage +2 · 10r": daar kijkt de DM als de speler zijn schade noemt; open kaart met ✕ */
+function rageChip(c, e, S, interactive) {
+  const t = [`Rage ${rageBonus(c)}`, e.d ? durLabel(e.d, S.list, !interactive) : "", e.bear ? "Bear" : "", e.frz ? "Frenzy" : ""].filter(Boolean).map(esc).join(" · ");
+  return interactive ? `<button class="bd ef cbtn" data-a="effdel" data-e="${esc(e.id)}" title="Rage beëindigen">${t} <span aria-hidden="true">✕</span><span class="vh">beëindigen</span></button>` : `<span class="bd ef">${t}</span>`;
+}
+
+/** Conditie- en effect-chips voor de speler-sheet in het zijpaneel (condities tikbaar voor uitleg, RE10) */
+const sbChips = (c) => condChips(c, app.S, false, true) + effChips(c, app.S, false, true) + reactChip(c, app.S);
 /** GV12: reaction gebruikt tot hij terug is (begin eigen beurt); dichte kaart en live-blok */
 const reactChip = (c, S) => (reactUsed(c, S, pcReact()) ? `<span class="bd">${REACT_TAG}</span>` : "");
 
 const hidBadge = (c) => (c.hidden ? `<span class="bd hid" title="Spelers zien deze deelnemer niet">verborgen</span>` : "")
   + (c.kind === "monster" && c.anon ? `<span class="bd hid" title="Spelers zien: ${esc(anonName(c, app.S.list))}">onbekend</span>` : "");
-const surBadge = (c, S) => (isSurprised(c, S) ? `<span class="bd cc sur" title="Verrast: eerste beurt wordt overgeslagen, geen reaction tot die beurt voorbij is">Verrast</span>` : "");
+const surBadge = (c, S, info = false) => (!isSurprised(c, S) ? "" : info ? cinfoBtn(c, "Verrast", "Verrast", "bd cc sur")
+  : `<span class="bd cc sur" title="Verrast: eerste beurt wordt overgeslagen, geen reaction tot die beurt voorbij is">Verrast</span>`);
 
 function badges(c, S) {
   const out = [surBadge(c, S), hidBadge(c), condChips(c, S, false), effChips(c, S, false)];
@@ -268,7 +295,7 @@ function castBlock(c) {
     ? `<div class="pick"><span class="hint">Welke spell?</span>${pickList(c, x.lvl, rulesEd()).map((sp) =>
       `<button class="btn small ${sp.conc ? "conc" : ""}" data-pickspell="${esc(sp.n)}" data-conc="${sp.conc ? 1 : ""}">${esc(sp.n)}${sp.lv < x.lvl ? ` (${sp.lv}e, upcast)` : ""}${sp.conc ? " · conc." : ""}</button>`).join("")}<button class="link" data-pickspell="">Andere / overslaan</button></div>` : "";
   return `<details class="cast" data-cast ${ui.openCast.has(c.id) || ui.castPick?.id === c.id ? "open" : ""}><summary class="link strong">Spells <span style="font-weight:400">(${sum})</span></summary>
-    <div class="castbox">
+    <div class="castbox">${rageOf(c) ? `<p class="hint">Rage: geen spells casten.</p>` : ""}
       ${k.slots.map((x, i) => `<div class="slotrow"><span class="lv">${ORD[x.lvl] || ""}</span><span class="pp">${pp(x, `data-slot="${i}"`)}</span><span class="sp">${spLinks(x.spells, c)}</span></div>${pick(x)}`).join("")}
       ${k.daily.map((g, gi) => g.items.map((it, ii) => `<div class="slotrow"><span class="lv">${esc(g.label.split(" ")[0])}</span><span class="pp">${pp(it, `data-daily="${gi}.${ii}"`)}</span><span class="sp">${spLinks(it.n, c)}</span></div>`).join("")).join("")}
       <div><button class="link" data-a="cast-reset">Alles herstellen (long rest)</button></div>
@@ -290,7 +317,18 @@ function condPanel(c) {
       <label>Duur bij aanzetten<select data-f="cdur">${DURS.map(([v, l]) => `<option value="${v}" ${(opt.dur || "inf") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
       <label>Save aan einde beurt<span style="display:flex;gap:4px"><select data-f="cab"><option value="">geen</option>${["STR", "DEX", "CON", "INT", "WIS", "CHA"].map((a) => `<option ${opt.ab === a ? "selected" : ""}>${a}</option>`).join("")}</select><input data-f="cdc" type="number" inputmode="numeric" placeholder="DC" value="${esc(opt.dc || "")}" style="width:64px"></span></label>
     </div>
-    <div class="condgrid">${CONDS.map((x) => `<button type="button" data-cond="${x}" aria-pressed="${c.cond.includes(x)}">${x}</button>`).join("")}</div></div>`;
+    <div class="condgrid">${CONDS.map((x) => `<button type="button" data-cond="${x}" aria-pressed="${c.cond.includes(x)}">${x}</button>`).join("")}<button type="button" data-a="exh-open" aria-pressed="${exhLevel(c) > 0}" aria-expanded="${!!ui.exhOpen}">${exhLevel(c) ? `Exhaustion ${exhLevel(c)}` : "Exhaustion"}</button></div>
+    ${ui.exhOpen ? exhRow(c) : ""}</div>`;
+}
+
+/** RE11: niveau 0–6 met − en +; wat er bij dit niveau geldt (opgeteld) */
+const EXH_SHORT = ["", "disadvantage op checks", "speed ½", "disadvantage op attacks en saves", "max HP ½", "speed 0", "dood"];
+export const exhSummary = (x) => (x ? `Niveau ${x}: ${EXH_SHORT.slice(1, x + 1).filter((t, i) => !(x >= 5 && i === 1)).join(" · ")}` : "Niveau 0: geen exhaustion");
+function exhRow(c) {
+  const x = exhLevel(c);
+  return `<div class="exhrow"><button type="button" class="btn" data-a="exh" data-v="-1" ${x ? "" : "disabled"} aria-label="Exhaustion een niveau lager">−</button>
+    <b aria-live="polite">Exhaustion ${x}</b><button type="button" class="btn" data-a="exh" data-v="1" ${x >= 6 ? "disabled" : ""} aria-label="Exhaustion een niveau hoger">+</button></div>
+    <p class="hint exhtxt">${esc(exhSummary(x))}. Long rest: één niveau minder.</p>`;
 }
 
 
@@ -368,6 +406,7 @@ function effPanel(c) {
       <div class="effgrid">${S.list.filter((x) => x.kind !== "lair").map((x) => `<button class="btn tap" data-a="effby" data-by="${esc(x.id)}">${esc(x.name)}</button>`).join("")}</div>
       <button class="link" data-a="effwho-no">Annuleer</button></div>`;
   }
+  if (ui.rage && ui.rage.id === c.id) return rageBox(c);
   const act = S.list.find((x) => x.id === S.active);
   const f = ui.effForm;
   const custom = ui.effCustom ? `<div class="effform">
@@ -381,14 +420,36 @@ function effPanel(c) {
       <label>Concentratie van<select data-f="ef-by"><option value="">geen</option>${S.list.filter((x) => x.kind !== "lair").map((x) => `<option value="${esc(x.id)}" ${f.by === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label>
       <button class="btn primary tap" data-a="eff-add">Toevoegen</button></div>` : "";
   return `<div class="kpanel">
-    <div class="effgrid">${PRESETS_14.map((p0, i) => {
-      const p = presetsFor(presetEd(act, p0.n))[i], tag = edTag(act, p0.n, p); // caster = wie aan de beurt is
+    <div class="effgrid">${presetOrder(c).map((i) => {
+      const p0 = PRESETS_14[i], p = presetsFor(presetEd(act, p0.n))[i], tag = edTag(act, p0.n, p); // caster = wie aan de beurt is
       const off = p.st === "ac" && p.op === "+" && !c.ac;
       return `<button class="btn tap" data-a="effp" data-i="${i}" ${off ? `disabled title="Vul eerst AC in (⋯)"` : ""}><span>${esc(p.n)}${tag ? ` <span class="tag">${esc(tag)}</span>` : ""}</span><small>${esc(p.dex ? "AC 13 + Dex" : p.st ? effText(p) : p.txt.split(" op ")[0])}${p.conc ? " · conc" : ""}</small></button>`;
     }).join("")}<button class="btn tap" data-a="effcustom" aria-pressed="${ui.effCustom}">+ Eigen effect</button></div>
     ${!c.ac ? `<p class="hint">Geen AC bekend: AC + is uit. Vul AC in via ⋯.</p>` : ""}
     <p class="hint">Concentratie-spells: caster is ${act ? `<b>${esc(act.name)}</b> (aan de beurt)` : "je kiest zelf"}. Zelfde effect opnieuw = vernieuwen.</p>
     ${custom}</div>`;
+}
+
+/** RE16: Rage alleen bij spelers; bij een barbarian (klasse of Rage-teller) als eerste. Indexen blijven die van PRESETS. */
+function presetOrder(c) {
+  const I = PRESETS_14.map((p, i) => i).filter((i) => !PRESETS_14[i].pc || c.kind === "pc");
+  const r = I.find((i) => PRESETS_14[i].rage);
+  return r != null && (barbLevel(c.sheet && c.sheet.cls) || rageRes(c)) ? [r, ...I.filter((i) => i !== r)] : I;
+}
+
+/** RE16: bevestigstap vóór Rage (kost een resource, stopt concentratie): samenvatting, Bear Totem / Frenzy, Start */
+function rageBox(c) {
+  const o = ui.rage, r = rageRes(c), lvl = rageLvl(c), b = rageDmg(lvl);
+  const res = r ? `${r.n} ${n0(r.left)} van ${n0(r.max)} over` : "Geen Rage-teller op de sheet: houd het aantal zelf bij.";
+  const conc = c.cond.includes("Concentrating") ? `<p class="hint rgwarn">⚠ Concentratie${c.concSpell ? ` op ${esc(c.concSpell)}` : ""} stopt.</p>` : "";
+  const tg = (k, l) => `<button type="button" class="btn tap" data-a="rage-opt" data-k="${k}" aria-pressed="${!!o[k]}">${l}</button>`;
+  return `<div class="kpanel rgbox">
+    <p class="rghead"><b>Rage · ${esc(c.name)}</b>${lvl ? ` <span class="hint">(${c.sheet && c.sheet.cls ? "barbarian" : "level"} ${n0(lvl)})</span>` : ""}</p>
+    <p class="hint">${b ? `+${b}` : "+2/+3/+4"} rage damage (melee, STR) · resistance ${o.bear ? "tegen alles behalve psychic" : "B/P/S"} · advantage op STR-checks en STR-saves · geen spells, geen concentratie · 10 rondes</p>
+    <p class="hint">${esc(res)}</p>${conc}
+    <div class="effgrid rgopt">${tg("bear", "Bear Totem")}${tg("frz", "Frenzy")}</div>
+    ${o.frz ? `<p class="hint">Frenzy: na afloop één niveau exhaustion.</p>` : ""}
+    <div class="bar"><button type="button" class="btn tap" data-a="rage-no">Annuleer</button><button type="button" class="btn primary tap" data-a="rage-go">Start Rage${r && r.left <= 0 ? " (0 over)" : ""}</button></div></div>`;
 }
 
 function actionsBlock(c) {
@@ -521,7 +582,7 @@ function row(c, S, down = false) {
       ${hp && prep ? hpBar(c) : ""}
     </button>${fhp ? hpBtn(c) : ""}
     ${open ? `<div class="kbody">
-      ${c.hidden || c.anon || c.cond.length || (c.eff || []).length || isSurprised(c, S) ? `<div class="badges">${surBadge(c, S)}${hidBadge(c)}${condChips(c, S, true)}${effChips(c, S, true)}</div>` : ""}
+      ${c.hidden || c.anon || c.cond.length || (c.eff || []).length || isSurprised(c, S) ? `<div class="badges">${surBadge(c, S, true)}${hidBadge(c)}${condChips(c, S, true)}${effChips(c, S, true)}</div>` : ""}
       ${acBreakdown(c) ? `<p class="hint acb">AC ${n0(effAc(c))} = ${esc(acBreakdown(c))}</p>` : ""}
       ${defLine(c)}
       ${dsBlock(c)}
@@ -635,7 +696,18 @@ function svRow(S, s, full = false) {
   const btns = c.kind === "monster" && !self
     ? `<button type="button" class="svroll" data-svroll="${esc(s.sid)}" aria-label="${esc(c.name)}: ${esc(s.ab)}-save rollen, DC ${s.dc}">Rol ${sgn(svBonus(c, s.ab))}</button>`
     : `<button type="button" class="svok" data-svok="${esc(s.sid)}" data-v="1" aria-label="${esc(c.name)}: ${esc(s.ab)}-save geslaagd">Geslaagd</button><button type="button" class="svok bad" data-svok="${esc(s.sid)}" data-v="0" aria-label="${esc(c.name)}: ${esc(s.ab)}-save gefaald">Gefaald</button>`;
-  return `<div class="svrow${end ? " svend" : ""}"><span class="svn"><b>${esc(c.name)}</b><small>${esc(`${s.ab} ${s.dc} · ${what}${self ? " · zelf rollen" : ""}`)}</small>${end ? `<small class="svx">vervalt bij Volgende</small>` : ""}</span>${btns}</div>`;
+  const av = saveAdv(c, s.ab), adv = av.v ? ` · ${av.v > 0 ? "adv" : "dis"} (${av.why})` : ""; // RE11/RE16
+  return `<div class="svrow${end ? " svend" : ""}"><span class="svn"><b>${esc(c.name)}</b><small>${esc(`${s.ab} ${s.dc} · ${what}${adv}${self ? " · zelf rollen" : ""}`)}</small>${end ? `<small class="svx">vervalt bij Volgende</small>` : ""}</span>${btns}</div>`;
+}
+
+/**
+ * RE16: "Rage loopt door?" tijdens de beurt van een barbarian in rage die sinds zijn vorige beurt geen schade nam.
+ * Doorgaan is het normale geval (0 tikken); de app weet niet of hij aanviel, dus alleen een knop Voorbij.
+ */
+function rageRow(S) {
+  const c = S.round ? S.list.find((x) => x.id === S.active) : null, e = c && rageOf(c);
+  if (!e || e.hit) return "";
+  return `<div class="svrow rgrow"><span class="svn"><b>${esc(c.name)}</b><small>Rage loopt door? geen schade sinds vorige beurt</small></span><button type="button" class="svok bad" data-rgend="${esc(c.id)}" aria-label="Rage van ${esc(c.name)} voorbij">Voorbij</button></div>`;
 }
 
 /** GV2: alle monsters op 0 HP (minstens één; lair telt niet): regel in de beurtbalk, de DM rondt zelf af */
@@ -647,9 +719,10 @@ const allDown = (S) => { const M = S.list.filter((c) => c.kind === "monster"); r
  * Ook in Voorbereiden tijdens een gevecht (paintDock), zodat een save uit de schade nooit onzichtbaar is.
  */
 function svBar(S) {
-  const O = openSaves(S);
-  if (!O.length) return "";
-  if (O.length <= 2) return `<div class="svbar">${O.map((s) => svRow(S, s)).join("")}</div>`;
+  const O = openSaves(S), rg = rageRow(S), lim = rg ? 1 : 2; // de Rage-regel telt mee in de grens van 2 regels
+  if (!O.length) return rg ? `<div class="svbar">${rg}</div>` : "";
+  if (O.length <= lim) return `<div class="svbar">${rg}${O.map((s) => svRow(S, s)).join("")}</div>`;
+  if (rg) return `<div class="svbar">${rg}<button type="button" class="svall" data-svsheet="1">Saves · ${O.length} open <span aria-hidden="true">▸</span></button></div>`;
   const C = O.filter((s) => s.kind === "conc"), btn = (t) => `<button type="button" class="svall" data-svsheet="1">${t} <span aria-hidden="true">▸</span></button>`;
   if (!C.length || C.length > 2) return `<div class="svbar">${btn(`Saves · ${O.length} open${C.length ? ` · ${C.length} concentratie` : ""}`)}</div>`;
   return `<div class="svbar">${C.map((s) => svRow(S, s)).join("")}${btn(`Saves · ${O.length - C.length} andere open`)}</div>`;
@@ -776,7 +849,7 @@ function paintSheet() {
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3>${esc(c.name)}</h3><button class="link" data-sk="close">Annuleer</button></div>
       <div class="seg2">${kinds.map(([k, l]) => `<button data-sk="kind" data-v="${k}" aria-pressed="${s.kind === k}">${l}</button>`).join("")}</div>
-      ${s.kind === "dmg" ? `<div class="seg2 sm">${[[1, "Normaal"], [0.5, "Resist ½"], [2, "Kwetsb. ×2"], [0, "Immuun"]].map(([m, l]) => `<button data-sk="mode" data-v="${m}" aria-pressed="${s.mode === m}">${l}</button>`).join("")}</div>${c.kind === "pc" && c.dr ? `<p class="hint drhint">${esc(drText(c.dr))}</p>` : ""}` : ""}
+      ${s.kind === "dmg" ? `<div class="seg2 sm">${[[1, "Normaal"], [0.5, "Resist ½"], [2, "Kwetsb. ×2"], [0, "Immuun"]].map(([m, l]) => `<button data-sk="mode" data-v="${m}" aria-pressed="${s.mode === m}">${l}</button>`).join("")}</div>${c.kind === "pc" && c.dr ? `<p class="hint drhint">${esc(drText(c.dr))}</p>` : ""}${rageOf(c) ? `<p class="hint drhint">Rage: resistance ${rageOf(c).bear ? "tegen alles behalve psychic" : "B/P/S"}, halveer.</p>` : ""}` : ""}
       <div class="disp" aria-live="polite">${esc(s.val || "0")}</div>
       <div class="preview">${preview}</div>
       <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-sk="d" data-v="${n}">${n}</button>`).join("")}<button data-sk="back" aria-label="Wissen">⌫</button><button data-sk="d" data-v="0">0</button><button data-sk="clear" aria-label="Alles wissen">C</button>
@@ -898,13 +971,17 @@ const SAVES0 = [["fail", "Gefaald"], ["none", "Geslaagd 0"]]; // save-actie zond
 /** Uitkomst van een geslaagde save in dit paneel */
 export const okSave = (a) => (a && a.half === false ? "none" : "half");
 
+/** RE11/RE16: "adv (Rage)" / "dis (Exhaustion 3)" bij een save, vóór het rollen (spelers rollen zelf) */
+const advHint = (c, ab) => { const v = saveAdv(c, ab); return v.v ? `${v.v > 0 ? "adv" : "dis"} (${esc(v.why)})` : ""; };
+
 function aoeRow(a, c, p, o, n) {
   const id = esc(c.id), nm = esc(c.name), dc = parseInt(a.dc);
   const end = !n ? "" : o.res ? ` · <b class="bad">${o.res}</b>` : c.hp > 0 ? ` · ${n0(c.hp)} → ${n0(o.hp)} HP` : "";
   const mods = p.roll ? [] : saveMods(c, a.ab);
   const info = [
     p.roll ? `${esc(a.ab)} save ${esc(rollText(p.roll, dc))}` : mods.length ? `Bij de save: ${esc(modsText(mods))}` : "",
-    p.auto && p.mode !== 1 && a.type ? `${MODE_LBL[p.mode]} (${c.kind === "pc" ? "opgeslagen" : "statblock"})` : "",
+    p.roll ? "" : advHint(c, a.ab),
+    p.auto && p.mode !== 1 && a.type ? `${MODE_LBL[p.mode]} (${p.def && p.def.eff ? "Rage" : c.kind === "pc" ? "opgeslagen" : "statblock"})` : "",
     p.auto && p.def.cond ? `let op: ${esc(p.def.cond)}` : "",
   ].filter(Boolean).join(" · ");
   const lrLeft = c.lr ? n0(c.lr.left) : 0;
@@ -991,7 +1068,7 @@ function spellRow(a, sp, caster, c, p) {
   const res = !p.sel ? "" : p.immune ? `<b class="sres zero">immuun</b>` : p.ok || p.lr ? `<b class="sres zero">geen effect</b>`
     : `<b class="sres">${esc(sp.eff || sp.conds.join(" + "))}</b>`;
   const mods = p.roll ? [] : sp.ab ? saveMods(c, sp.ab) : [];
-  const info = p.roll ? `${esc(sp.ab)} save ${esc(rollText(p.roll, dc))}` : mods.length ? `Bij de save: ${esc(modsText(mods))}` : "";
+  const info = p.roll ? `${esc(sp.ab)} save ${esc(rollText(p.roll, dc))}` : [mods.length ? `Bij de save: ${esc(modsText(mods))}` : "", sp.ab ? advHint(c, sp.ab) : ""].filter(Boolean).join(" · ");
   const lrLeft = c.lr ? n0(c.lr.left) : 0;
   const lrBtn = p.lr ? `<span class="hint">Legendary resistance: save geslaagd</span>`
     : sp.ab && !p.ok && !p.immune && lrLeft > 0 ? `<button type="button" class="link" data-ao="slr" data-id="${id}">Legendary resistance gebruiken (${lrLeft} over)</button>` : "";
@@ -1147,7 +1224,7 @@ function atkRes(x, c, by) {
       : was > 0 && sim.hp <= 0 ? ` · <b class="bad">${c.kind === "pc" ? "bewusteloos" : "neer"}</b>`
       : c.kind === "pc" && was <= 0 && res.dealt ? ` · <b class="bad">${res.crit ? "twee failures" : "death save failure"}</b>` : "";
     body = `${x.parts.length ? `<div class="xdmg">${x.parts.map((p) => esc(partText(p, res.crit))).join("<br>")}</div>` : `<p class="hint">Geen schade-worp in deze aanval.</p>`}
-      ${res.types.map((t) => `<div class="xmode"><span class="qlbl">${esc(t.type || "schade")}${c.kind === "pc" && t.mode !== 1 && t.mode === targetMode(c, null, t.type).mode ? " · opgeslagen" : ""}</span><div class="seg2 sm" role="group" aria-label="Weerstand ${esc(t.type)}">${XMODES.map(([v, l]) => `<button type="button" data-xa="mode" data-t="${esc(t.type)}" data-v="${v}" aria-pressed="${t.mode === v}">${l}</button>`).join("")}</div></div>`).join("")}
+      ${res.types.map((t) => `<div class="xmode"><span class="qlbl">${esc(t.type || "schade")}${t.mode !== 1 && t.mode === targetMode(c, null, t.type).mode ? (targetMode(c, null, t.type).eff ? " · Rage" : c.kind === "pc" ? " · opgeslagen" : "") : ""}</span><div class="seg2 sm" role="group" aria-label="Weerstand ${esc(t.type)}">${XMODES.map(([v, l]) => `<button type="button" data-xa="mode" data-t="${esc(t.type)}" data-v="${v}" aria-pressed="${t.mode === v}">${l}</button>`).join("")}</div></div>`).join("")}
       <div class="xrow"><button type="button" class="btn small" data-xa="crit" aria-pressed="${res.crit}">Kritiek</button>
       <span class="acalc">${c.max ? `${n0(c.hp)} → ${n0(sim.hp)} HP${end}` : "HP onbekend"}</span></div>`;
     foot = `${shieldOk(c, x, r, res) ? `<button type="button" class="btn" data-xa="shield">Shield +5</button>` : "<span></span>"}
@@ -1199,6 +1276,7 @@ export function paintInit() {
       <div class="shead"><h3 id="i-title">Initiative</h3><button type="button" class="link" data-ia="close">Annuleer</button></div>
       ${monRollHtml(mons)}
       <div class="isur"><span id="i-sur">Verrast</span><div class="seg2" role="group" aria-labelledby="i-sur">${[["none", "Niemand"], ["mon", "Monsters"], ["pc", "Spelers"]].map(([k, l]) => `<button type="button" data-ia="sur" data-v="${k}" aria-pressed="${(x.sur || "none") === k}" ${k === "mon" && !mons ? "disabled" : ""}>${l}</button>`).join("")}</div></div>
+      <p class="hint isurh" id="i-surh">${(x.sur || "none") === "none" ? "Verrast is wie de tegenpartij niet opmerkte toen het gevecht begon (Stealth tegen passive Perception). Losse wezens: ⋯ → Verrast." : "Verrasten slaan hun eerste beurt over en hebben tot die voorbij is geen reaction."}</p>
       <div class="ilist">${L.map((c) => `<div class="ir ${c.id === x.act ? "act" : ""}">
         <button type="button" class="irn" data-ia="sel" data-id="${esc(c.id)}" aria-pressed="${c.id === x.act}" aria-label="${esc(c.name)}: initiative ${esc(x.v[c.id] || "leeg")}"><span>${esc(c.name)}</span>${x.rolls[c.id] ? `<small>${esc(x.rolls[c.id])}</small>` : ""}</button>
         <b class="iv" aria-hidden="true">${x.v[c.id] !== "" && x.v[c.id] != null ? esc(x.v[c.id]) : "—"}</b>

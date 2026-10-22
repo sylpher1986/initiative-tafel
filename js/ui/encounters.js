@@ -27,8 +27,9 @@ const chipLbl = (r) => E.ratingName(r.rating) || E.noRating(r);
 const chipCls = (r) => (r.rating == null ? "unk" : `r${r.rating + 1}`);
 
 /** Uitleg: ruwe XP × multiplier = aangepaste XP, party, drempels */
-function diffWhy(r, lair, tog) {
+function diffWhy(r, lair, tog, mons) {
   const P = partyNow();
+  const tip = r.rating === 3 && mons ? E.deadlyTip(mons, P.who, r.all) : null; // AF8: eerste regel bij Deadly
   const cnt = r.nm < r.n ? `${r.nm} van ${r.n} monsters tellen` : plural(r.n, "monster", "monsters");
   const lines = [`${fmt(r.xp)} XP × ${multTxt(r.mult)} (${cnt}${r.pcs ? `, ${plural(r.pcs, "speler", "spelers")}` : ""}) = <b>${fmt(r.adj)} XP</b>`];
   if (!r.pcs) lines.push("Geen spelers: zet de party aan tafel of voeg partyleden toe.");
@@ -37,7 +38,15 @@ function diffWhy(r, lair, tog) {
   if (r.noXp.length) lines.push(`Zonder CR (telt niet mee): ${esc(r.noXp.join(", "))}`);
   if (r.pcs && (r.pcs < 3 || r.pcs >= 6)) lines.push(r.pcs < 3 ? "Kleine party: multiplier een stap hoger." : "Grote party: multiplier een stap lager.");
   if (lair) lines.push("Lair telt niet mee.");
-  return `<div class="dwhy">${lvlRows(P.who)}${lines.map((l) => `<p>${l}</p>`).join("")}${weakRow(r, tog)}</div>`;
+  return `<div class="dwhy">${tip ? `<p class="dtip">${esc(deadlyText(tip))}</p>` : ""}${lvlRows(P.who)}${lines.map((l) => `<p>${l}</p>`).join("")}${weakRow(r, tog)}</div>`;
+}
+
+/** AF8: één zin bij Deadly, met advies */
+export function deadlyText(t) {
+  const head = "Deadly: een speler kan sterven.";
+  if (t.one) return `${head} Kies een lagere CR voor Hard.`;
+  if (t.stays) return `${head} Ook met 1 monster minder blijft het Deadly.`;
+  return `${head} Met 1 ${t.name} minder wordt het ${E.ratingName(t.rating)}.`;
 }
 
 /**
@@ -86,7 +95,7 @@ export function encBanner(S, prep) {
   if (!n) return S.list.length && !hasLair(S.list) && app.encounters.length
     ? `<li class="sbanner encb"><span>Geen monsters</span><button type="button" class="btn small primary" data-prep="enc">Encounter inladen</button></li>` : "";
   const r = diffList();
-  return `<li class="dbanner"><button type="button" class="dbtn" data-enc="difftog" aria-expanded="${!!ui.diffOpen}">Moeilijkheid <b class="dchip ${chipCls(r)}">${esc(chipLbl(r))}</b> · ${fmt(r.adj)} XP <span aria-hidden="true">${ui.diffOpen ? "▾" : "▸"}</span></button>${ui.diffOpen ? diffWhy(r, hasLair(S.list), `data-enc="allmon"`) : ""}</li>`;
+  return `<li class="dbanner"><button type="button" class="dbtn" data-enc="difftog" aria-expanded="${!!ui.diffOpen}">Moeilijkheid <b class="dchip ${chipCls(r)}">${esc(chipLbl(r))}</b> · ${fmt(r.adj)} XP <span aria-hidden="true">${ui.diffOpen ? "▾" : "▸"}</span></button>${ui.diffOpen ? diffWhy(r, hasLair(S.list), `data-enc="allmon"`, E.listMons(app.S.list, findMon)) : ""}</li>`;
 }
 
 /**
@@ -144,7 +153,7 @@ function rowHtml(e) {
   return `<div class="encrow">
     <div class="ehead"><div class="einfo"><b>${esc(e.name)}</b><small>${esc(encSummary(e))} · ${esc(dateTxt(e.updatedAt))}</small>${e.notes ? `<small class="enote">${esc(e.notes)}</small>` : ""}</div>
       ${e.monsters.length ? `<button type="button" class="dchip ${chipCls(r)}" data-enc="why" data-id="${id}" aria-expanded="${ui.encWhy === e.id}" aria-label="Moeilijkheid ${esc(chipLbl(r))}, ${fmt(r.adj)} XP: uitleg">${esc(chipLbl(r))}</button>` : ""}</div>
-    ${ui.encWhy === e.id ? diffWhy(r, !!e.lair, `data-enc="encall" data-id="${id}"`) : ""}${ask}
+    ${ui.encWhy === e.id ? diffWhy(r, !!e.lair, `data-enc="encall" data-id="${id}"`, E.encMons(e, findMon)) : ""}${ask}
     <div class="ebtns"><button type="button" class="btn primary" data-enc="load" data-id="${id}">Inladen</button><button type="button" class="btn emore" data-enc="menu" data-id="${id}" aria-expanded="${ui.encMenu === e.id}" aria-label="Meer acties voor ${esc(e.name)}">⋯</button></div>
     ${menu}</div>`;
 }

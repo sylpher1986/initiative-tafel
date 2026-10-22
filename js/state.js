@@ -3,7 +3,7 @@ import * as store from "./storage.js";
 import { diffLog } from "./log.js";
 import { uid } from "./rules/dice.js";
 import { setLibrary } from "./data/monsters.js";
-import { endConcEffects } from "./rules/effects.js";
+import { endConcEffects, endRage } from "./rules/effects.js";
 import { endConcConds } from "./rules/spellcast.js";
 import { cleanEncounters } from "./rules/encounters.js";
 import { tidy } from "./rules/fight.js";
@@ -153,7 +153,7 @@ export function resetBaseline(boot = false) {
 export function commit() {
   // effecten en condities (Hold Person) van een caster die geen concentratie meer heeft (0 HP, nieuwe spell, verwijderd) horen bij deze stap
   if (!redoing) { // een stap van Opnieuw is al genormaliseerd en heeft zijn logregels al
-    pendingWhy.push(...endConcEffects(app.S.list, app.S.active).why, ...endConcConds(app.S.list).why);
+    pendingWhy.push(...endRage(app.S.list).why, ...endConcEffects(app.S.list, app.S.active).why, ...endConcConds(app.S.list).why); // RE16: rage voorbij bij bewusteloos
     tidy(app.S); // wie neer ging (GV2), ingeladen encounter vergeten zonder monsters (VB2)
   }
   let p = snap();

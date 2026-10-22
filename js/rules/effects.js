@@ -1,7 +1,9 @@
 // Tijdelijke effecten op een deelnemer (5e 2014): op AC (+N, =N, minimaal N), op max HP (±N) of alleen een herinnering.
 // Duur zoals bij condities (zie makeDur in turns.js), "tot long rest", en optioneel gekoppeld aan de concentratie van een caster.
 // De basis-AC blijft in c.ac; de kaart toont effAc(c). Max HP-effecten passen c.max echt aan en onthouden hun verschil (hpd).
-import { fx, applyPcHp, revertMax, newDs, setUncon, dropConc, merge } from "./combat.js";
+import { fx, applyPcHp, revertMax, newDs, setUncon, dropConc, merge, exhEffect } from "./combat.js";
+import { DTYPES } from "./aoe.js";
+import { EXH, isExh, exhLevel } from "./conditions.js";
 
 /**
  * Presets. dur: sleutel uit DURS (turns.js) of "lr" (tot long rest). dex: 13 + Dex-mod (Mage Armor).
@@ -21,6 +23,8 @@ export const PRESETS = [
   { n: "Aid", st: "max", op: "+", v: 5, dur: "lr", txt: "+5 per slot-level boven de 2e" },
   { n: "Bless", st: "", v: 0, dur: "r10", conc: true, txt: "+1d4 op attack rolls en saves", sv: { d: 4 } },
   { n: "Bane", st: "", v: 0, dur: "r10", conc: true, txt: "−1d4 op attack rolls en saves", sv: { d: -4 } },
+  // RE16: barbarian (2014). Geen spell: geen caster-koppeling en geen 2024-variant. rs = tijdelijke resistance.
+  { n: "Rage", st: "", v: 0, dur: "r10", rage: true, pc: true, rs: ["bludgeoning", "piercing", "slashing"], txt: "resist B/P/S, adv. STR, geen spells" },
 ];
 
 const OPS = ["+", "=", "min"];
@@ -84,6 +88,9 @@ export function addEffect(c, spec, d, opt = {}) {
   const e = { id: opt.id || Math.random().toString(36).slice(2, 9), n, st, op, v, txt: String(spec.txt || "").slice(0, 120),
     end: String(spec.end || "").slice(0, 120), d: d || null, lr: !!opt.lr, by: opt.by || null, spell: opt.by ? String(opt.spell || n).slice(0, 120) : null, hpd: 0 };
   if (opt.by && opt.cast) e.cast = String(opt.cast).slice(0, 60);
+  const rs = cleanRs(spec.rs);
+  if (rs) e.rs = rs; // tijdelijke resistance (Rage)
+  if (spec.rage) { e.rg = 1; if (spec.frz) e.frz = 1; if (spec.bear) e.bear = 1; }
   // vervolg (Lethargy) vastleggen bij het effect: een latere wissel van de spellregels verandert een lopende spell niet
   if (spec.after && spec.after.n) e.af = { n: String(spec.after.n).slice(0, 60), txt: String(spec.after.txt || "").slice(0, 120), ...(spec.after.cond ? { cond: String(spec.after.cond).slice(0, 20) } : {}) };
   c.eff = [...(c.eff || []), e];
@@ -157,6 +164,10 @@ export function removeEffect(c, id, why = "handmatig", opt = {}) {
   c.eff = c.eff.filter((x) => x !== e);
   if (e.hpd) revertMax(c, e.hpd);
   if (why === null) return out;
+  if (e.frz) { // Frenzy (Path of the Berserker): na afloop één niveau exhaustion, ook als het gevecht stopt
+    const r = setExh(c, exhLevel(c) + 1, "Frenzy voorbij");
+    out.why.push(...r.why); out.msgs.push(...r.msgs);
+  }
   const nx = opt.after !== false && (e.af || (preset(e.n) || {}).after); // oude opslag zonder af: de 2014-preset
   const alive = !(c.kind === "monster" && c.hp <= 0) && !(c.ds && c.ds.dead);
   out.why.push({ t: why, id: c.id });
@@ -223,4 +234,82 @@ export function effSpec(k, v) {
   const n = Math.abs(parseInt(v) || 0), neg = k === "ac-" || k === "max-";
   const st = /^ac/.test(k) ? "ac" : /^max/.test(k) ? "max" : "";
   return { st, op: k === "ac=" ? "=" : k === "acmin" ? "min" : "+", v: neg ? -n : n };
+}
+
+/* ---------- Exhaustion (RE11, PHB 2014) ---------- */
+
+/**
+ * Exhaustion op niveau x zetten (0 = weg). Eén effect "Exhaustion" met niveau `x`; niveau 4+ halveert max HP (hpd,
+ * draait terug bij een lager niveau), niveau 6 is de dood. why = reden voor het logboek.
+ */
+export function setExh(c, x, why = "handmatig") {
+  const out = fx();
+  x = Math.max(0, Math.min(6, Math.round(+x) || 0));
+  const old = (c.eff || []).find(isExh), was = exhLevel(c);
+  if (x === was) return out;
+  if (old) removeEffect(c, old.id, null);
+  out.why.push({ t: `Exhaustion ${was} → ${x}${why && why !== "handmatig" ? ` (${why})` : ""}`, id: c.id });
+  if (!x) { out.msgs.push(`${c.name}: Exhaustion voorbij.`); return out; }
+  exhEffect(c, x);
+  const dead = c.kind === "pc" ? !!(c.ds && c.ds.dead) : c.max > 0 && c.hp <= 0;
+  if (x === 6 && !dead) {
+    if (c.kind === "pc") { c.ds = { ...newDs(), f: 3, dead: true }; c.hp = 0; c.temp = 0; setUncon(c, true); }
+    else { c.hp = 0; c.temp = 0; }
+    merge(out, dropConc(c, "Exhaustion 6"));
+    out.msgs.push(`${c.name} sterft: Exhaustion 6.`);
+    return out;
+  }
+  out.msgs.push(`${c.name}: Exhaustion ${x}${x > was ? ` (${EXH[x].toLowerCase()})` : ""}.`);
+  return out;
+}
+
+/** Effectnaam zoals de chip hem toont: "Exhaustion 2", anders de naam */
+export const effName = (e) => (isExh(e) ? `Exhaustion ${Math.max(1, e.x | 0)}` : e.n);
+
+/* ---------- Rage (RE16, barbarian 2014) ---------- */
+
+const RS_ALL = DTYPES.filter((t) => t !== "psychic"); // Bear Totem: alles behalve psychic
+/** Geldige damage types of undefined */
+export function cleanRs(a) {
+  const r = Array.isArray(a) ? [...new Set(a.map((t) => String(t).toLowerCase()).filter((t) => DTYPES.includes(t)))].sort() : [];
+  return r.length ? r : undefined;
+}
+export const isRage = (e) => !!(e && e.rg);
+export const rageOf = (c) => (c && c.eff || []).find(isRage) || null;
+/** Barbarian-level uit de klasse ("Barbarian 5 / Fighter 2" → 5), anders null */
+export const barbLevel = (cls) => { const m = String(cls || "").match(/barbarian\D{0,20}?(\d{1,2})/i); return m ? Math.min(20, +m[1]) || null : null; };
+/** Rage damage (PHB): +2 t/m level 8, +3 t/m 15, +4 vanaf 16; zonder level null */
+export const rageDmg = (lvl) => (!lvl ? null : lvl >= 16 ? 4 : lvl >= 9 ? 3 : 2);
+/** De sheet-resource "Rage" (D&D Beyond), of null */
+export const rageRes = (c) => (c && c.res || []).find((r) => /^rage\b/i.test(String(r.n || ""))) || null;
+
+/**
+ * Rage starten. opt: { bear, frz }. d = duur (makeDur, 10 rondes). Lopende concentratie stopt (PHB: geen
+ * concentratie tijdens rage); de sheet-resource telt af als hij er is. Op 0 HP kan het niet.
+ */
+export function startRage(c, d, opt = {}) {
+  const out = fx();
+  if (c.max && c.hp <= 0) { out.msgs.push(`${c.name} ligt op 0 HP en kan niet ragen.`); return out; }
+  const p = preset("Rage");
+  merge(out, addEffect(c, { ...p, rs: opt.bear ? RS_ALL : p.rs, txt: opt.bear ? "resist alles behalve psychic, adv. STR, geen spells" : p.txt, bear: !!opt.bear, frz: !!opt.frz }, d));
+  const r = rageRes(c);
+  if (r) {
+    if (r.left > 0) { r.left--; out.msgs.push(`${r.n}: nog ${r.left} van ${r.max} over.`); }
+    else out.msgs.push(`${r.n}: niets meer over op de sheet (gebruikt tot long rest).`);
+  }
+  merge(out, dropConc(c, "Rage"));
+  return out;
+}
+
+/** Rage voorbij als de barbarian bewusteloos is (0 HP of Unconscious); in commit(), zoals endConcEffects */
+export function endRage(list) {
+  const out = fx();
+  for (const c of list) {
+    const e = rageOf(c);
+    if (!e) continue;
+    if ((c.max && c.hp <= 0) || c.cond.includes("Unconscious")) {
+      const r = removeEffect(c, e.id, "bewusteloos"); out.msgs.push(...r.msgs); out.why.push(...r.why);
+    }
+  }
+  return out;
 }

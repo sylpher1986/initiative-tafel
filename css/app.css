@@ -1053,3 +1053,25 @@ kbd{display:inline-block;min-width:1.6em;padding:1px 6px;border:1px solid var(--
 .ifoot.one{grid-template-columns:1fr}
 .kbonly{display:none}
 @media (hover:hover) and (pointer:fine){.kbonly{display:inline-flex}}
+
+/* RE10: conditiechip met uitleg (stippel zoals tikbare spellnamen, geen ✕) en paneel #csheet */
+.bd.cinf{cursor:pointer;min-height:44px;padding-inline:10px;text-decoration:underline dotted;text-underline-offset:3px;-webkit-tap-highlight-color:transparent}
+.bd.cinf:hover,.bd.cinf:focus-visible{background:var(--warn-soft)}
+.csheet .rtext p{margin:0 0 6px}
+.cgrid{display:grid;gap:6px;margin:0;padding:8px 0 0;border-top:1px solid var(--line)}
+.cgrid div{min-width:0}
+.cgrid dt{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.cgrid dd{margin:0;overflow-wrap:anywhere}
+/* RE11: Exhaustion-niveau in het Conditie-paneel */
+.exhrow{display:flex;align-items:center;gap:10px;margin-top:8px}
+.exhrow .btn{min-width:44px;font-size:1.1rem}
+.exhrow b{min-width:8em;text-align:center;font-variant-numeric:tabular-nums}
+.exhtxt{margin:4px 0 0}
+/* RE16: bevestigstap Rage in het Effect-paneel */
+.rgbox p{margin:0 0 6px}
+.rgbox .rghead{margin-bottom:4px}
+.rgbox .rgwarn{color:var(--warn)}
+.rgopt{margin:6px 0}
+.rgbox .bar{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.dwhy .dtip{color:var(--fg);font-weight:600}
+.isurh{margin:-4px 0 0;font-size:.8rem}

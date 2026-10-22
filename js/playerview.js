@@ -1,7 +1,8 @@
 // Spelersscherm: wat spelers mogen zien. Puur (geen DOM), getest.
 // Alleen deze snapshot verlaat het DM-scherm, nooit de volledige toestand. Zo kan dezelfde snapshot
 // later ook via een server naar andere apparaten zonder dat er DM-info meegaat.
-import { sortOrder, isOut, groupOf, nextUp, isSurprised, skipsTurn, reactUsed, REACT_TAG } from "./rules/turns.js";
+import { sortOrder, isOut, groupOf, nextUp, isSurprised, skipsTurn, reactUsed, REACT_TAG, durWords, saveWords } from "./rules/turns.js";
+import { effName } from "./rules/effects.js";
 import { iconId, cleanImg } from "./ui/avatar.js";
 import { esc } from "./ui/util.js";
 
@@ -69,15 +70,22 @@ function hpFor(c, how) {
 
 export { REACT_TAG };
 
-function tagsFor(c, S, pcr) {
-  const t = isSurprised(c, S) ? ["Verrast"] : [];
+/**
+ * Tags (namen) plus td: per tag de duur en herhaalsave voor de uitleg op het spelersscherm (RE10), parallel aan tags;
+ * null waar niets te zeggen is. name(id) = naam die spelers mogen zien (verborgen/anoniem: leeg), nooit de bron (spell/caster).
+ */
+function tagsFor(c, S, pcr, name) {
+  const t = isSurprised(c, S) ? ["Verrast"] : [], td = t.map(() => null);
   // SC8: speler op 0 HP heeft al de status Bewusteloos/Stabiel/Dood; "Unconscious" ernaast is dubbel
   const down = c.kind === "pc" && c.max && c.hp <= 0;
-  t.push(...(c.cond || []).filter((x) => !(down && x === "Unconscious"))
-    .map((x) => (x === "Concentrating" && c.kind === "pc" && c.concSpell ? `Concentrating · ${c.concSpell}` : x)));
-  for (const e of c.eff || []) if (!t.includes(e.n)) t.push(e.n);
-  if (reactUsed(c, S, pcr)) t.push(REACT_TAG);
-  return t;
+  for (const x of (c.cond || []).filter((k) => !(down && k === "Unconscious"))) {
+    t.push(x === "Concentrating" && c.kind === "pc" && c.concSpell ? `Concentrating · ${c.concSpell}` : x);
+    const e = c.cd && c.cd[x], d = e ? durWords(e, S.list, name) : "", sv = saveWords(e);
+    td.push(d || sv ? { ...(d ? { d } : {}), ...(sv ? { s: sv } : {}) } : null);
+  }
+  for (const e of c.eff || []) { const n = effName(e); if (!t.includes(n)) { t.push(n); td.push(null); } }
+  if (reactUsed(c, S, pcr)) { t.push(REACT_TAG); td.push(null); }
+  return { t, td: td.some(Boolean) ? td : null };
 }
 
 /** SC5: slots, daily spells en resources van een speler (geen geheim; alleen de eigen kaart toont ze). null = niets */
@@ -137,14 +145,16 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS, prev = null, opts 
   const next = nx ? nx.id : null;
   if (vt.guess && active === next) active = null; // teruggerekend en gelijk aan Daarna: waarschijnlijk mis, dan liever geen naam
   const anonMany = anonSeen(all) > 1; // één keer per snapshot, niet per rij
+  const nameOf = (id) => { const x = all.find((y) => y.id === id); return x && seen(x) && !(x.kind === "monster" && x.anon > 0) ? x.name : ""; }; // RE10: duur "t/m beurt van X"
   const list = shown.map((c) => {
     if (c.kind === "lair") return { id: c.id, kind: "lair", name: "Lair", init: vis.init ? c.init : null };
     const pc = c.kind === "pc", anon = !pc && c.anon > 0; // naam en icoon (type) verraden het monster
     const r = {
       id: c.id, kind: pc ? "pc" : "monster", name: anon ? anonLabel(c, anonMany) : c.name, init: vis.init ? c.init : null,
       icon: anon ? "m-unknown" : iconId(c, pc ? "" : metaOf(c)), img: pc ? cleanImg(c.img) : null,
-      out: isOut(c), hp: hpFor(c, pc ? "exact" : vis.monHp), tags: vis.tags === "all" || (pc && vis.tags === "pc") ? tagsFor(c, S, pcr) : [],
+      out: isOut(c), hp: hpFor(c, pc ? "exact" : vis.monHp), tags: [],
     };
+    if (vis.tags === "all" || (pc && vis.tags === "pc")) { const T = tagsFor(c, S, pcr, nameOf); r.tags = T.t; if (T.td) r.td = T.td; }
     const sl = pc ? slotsFor(c) : null;
     if (sl) r.sl = sl;
     const d = c.ds || {}; // zonder ds-object nog geen worpen (zoals de DM-kaart met newDs())
@@ -234,6 +244,11 @@ export function cleanView(d) {
       hp: h ? (h.max != null ? { hp: int(h.hp), max: Math.max(0, int(h.max)), temp: Math.max(0, int(h.temp)), st: st(h.st) } : { st: st(h.st) }) : null,
       tags: Array.isArray(c.tags) ? c.tags.slice(0, 20).map((t) => str(t, 80)).filter(Boolean) : [],
     });
+    // RE10: duur/save per tag (optioneel; een oudere DM-app stuurt het niet). Alleen als het parallel aan tags past.
+    if (Array.isArray(c.td) && Array.isArray(c.tags) && c.td.length === c.tags.length && r.tags.length === c.tags.length) {
+      const td = c.td.slice(0, 20).map((x) => (x && typeof x === "object" && (x.d || x.s) ? { ...(x.d ? { d: str(x.d, 80) } : {}), ...(x.s ? { s: str(x.s, 80) } : {}) } : null));
+      if (td.some(Boolean)) r.td = td;
+    }
     if (c.ds && typeof c.ds === "object") r.ds = { s: Math.max(0, Math.min(3, int(c.ds.s))), f: Math.max(0, Math.min(3, int(c.ds.f))) };
     if (kind === "pc" && c.sl && typeof c.sl === "object") {
       const sl = cleanSl(c.sl);
