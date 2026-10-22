@@ -82,6 +82,10 @@ test("stepText: eerste regel + aantal, beurtwissel = waar je nu staat, geen rege
   const end = [{ msg: "Gevecht afgerond: 450 XP" }, { type: "round", msg: "Gevecht gestopt" }];
   assert.equal(stepText(end, S, "Ongedaan").text, "Gevecht loopt weer · beurt van Aram (ronde 2)");
   assert.equal(stepText(end, { round: 0, list: [] }, "Opnieuw").text, "Opnieuw: Gevecht gestopt");
+  assert.equal(stepText(start, { round: 1, active: "a", list: [{ id: "a", name: "Aram" }] }, "Opnieuw").text, "Opnieuw: Start gevecht");
+  const rm = [{ type: "turn", msg: "Beurt van Noor" }, { msg: "Goblin 3 verwijderd" }, { msg: "Lotte: Prone voorbij" }];
+  assert.equal(stepText(rm, S, "Ongedaan").text, "Terug naar beurt van Aram (ronde 2) · Goblin 3 verwijderd");
+  assert.deepEqual(stepEntries([{ id: "1", msg: "Afgerond: 450 XP, 4 delen" }], [{ id: "1", msg: "Afgerond: 450 XP, 3 delen" }]).length, 1); // relog
   const long = stepText([{ msg: "x".repeat(200) }], S, "Ongedaan").text;
   assert.ok(long.length <= 80 && long.endsWith("…"));
 });

@@ -1,5 +1,6 @@
 // Tekent de encounter (compacte kaarten, één tegelijk open), de beurtbalk, het schade-paneel,
 // de party en het logboek. Render past de data niet aan.
+import { MAC } from "./keys.js";
 import { paintSetStat } from "./settings.js";
 import { $, esc, n0, spellLink } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
@@ -594,11 +595,10 @@ function oldAsk(S) {
     <div class="bar">${onlyOld ? `<button type="button" class="btn primary tap" id="old-wipe">Oude monsters wissen</button>` : `<button type="button" class="btn primary tap" id="old-start">Oude wissen en starten</button>`}<button type="button" class="btn tap" id="old-go">Toch starten</button><button type="button" class="link" id="old-no">Annuleer</button></div></div>`;
 }
 
-const MOD_Z = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "") ? "⌘Z" : "Ctrl+Z";
 function paintDock() {
   const S = app.S;
   const L = sortOrder(S.list);
-  const undoBtn = `<button id="undo" ${canUndo() ? "" : "disabled"} aria-label="Ongedaan maken" title="Ongedaan maken (${MOD_Z})" aria-keyshortcuts="Meta+Z Control+Z">↶</button>`;
+  const undoBtn = `<button id="undo" ${canUndo() ? "" : "disabled"} aria-label="Ongedaan maken" title="Ongedaan maken (${MAC ? "⌘Z" : "Ctrl+Z"})" aria-keyshortcuts="Meta+Z Control+Z">↶</button>`;
   const pb = (k, l, al) => `<button type="button" data-prep="${k}" aria-pressed="${ui.prep === k || (k === "mon" && MONTABS.includes(ui.prep))}"${al ? ` aria-label="${al}" title="${al}"` : ""}>${l}</button>`;
   const prepRow = mode() === "prep" ? `<div class="prow">${pb("mon", `<span class="pp">+&nbsp;</span>Monster`, "")}${pb("pc", `<span class="pp">+&nbsp;</span>Speler`, "")}${pb("party", "Party", "")}${pb("data", GEAR, "Instellingen")}</div>` : "";
   if (!S.round) {

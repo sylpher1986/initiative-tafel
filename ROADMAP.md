@@ -16,7 +16,7 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 6. ~~IN8~~ klaar in 1.35.1 (WP2, zie Klaar)
 7. ~~GV7~~ klaar in 1.37.0 (WP4, zie Klaar)
 8. ~~SP4~~ · ~~AF7~~ · ~~AF15~~ klaar in 1.37.0 (WP4, zie Klaar)
-9. **GV8** Undo: ⌘⇧Z draait nog een stap terug; melding noemt niet wat er terugging
+9. ~~GV8~~ klaar in 1.37.1 (WP5, zie Klaar)
 10. **SC4** Sticky "Aan de beurt / Daarna" op de telefoon · **SC5** "Dit ben ik" op het spelersscherm
 11. **SC6** Tv-weergave: HP en condities op 3 m leesbaar
 12. **SC7** Zelfde code na Stop met delen · **SC1** QR-code (omhoog uit P3)
@@ -42,7 +42,7 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 - Afwerking: **AF8**, **AF10–AF12**
 - Regels: **RE3–RE6**, **RE14** (eigen monster beter inlezen), **RE15** (eigen death save-worp)
 - Voorbereiding: **VB4** (zoeken NL/typfouten), **VB5** (lege encounter maken)
-- Gevecht: **GV10** (sneltoetsen), **GV11** (minder klikken na een misser)
+- Gevecht: ~~GV10~~ (klaar in 1.37.1), **GV11** (minder klikken na een misser)
 - Taal: **TA1**
 - Technische schuld: **TS1** (oppakken wanneer je die code toch aanraakt)
 - Fase 2 en 3
@@ -57,7 +57,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | ~~**WP2**~~ | Tikken en lezen op de telefoon: tikdoelen, verspringen, hoofdknop, minteken, AC groter, HP-balken gelijk (klaar) | AF6, IN8, IN9, AF7, AF13, SC10 | 1.35.1 |
 | ~~**WP3**~~ | Regels in het gevecht: Hold Person, initiative na eigen beurt, open saves, concentration save vanuit de schade (klaar) | RE8, RE9, RE12, RE17 | 1.36.0 |
 | ~~**WP4**~~ | Speler toevoegen en gevecht afronden (klaar) | SP4, GV7, AF9, AF15 | 1.37.0 |
-| **WP5** | Undo en toetsenbord | GV8, GV10 | 1.37.x |
+| ~~**WP5**~~ | Undo en toetsenbord (klaar) | GV8, GV10 | 1.37.1 |
 | **WP6** | Spelersscherm op de telefoon: sticky kop, "Dit ben ik", teksten, reaction zichtbaar | SC4, SC5, SC8, GV12 | 1.38.0 |
 | **WP7** | Tv en koppelen: leesbaarheid, zelfde code, QR | SC6, SC7, SC1 | 1.39.0 |
 | **WP8** | Condities en statussen aan tafel: uitleg, Exhaustion, Rage, Deadly/Verrast | RE10, RE11, RE16, AF8 | 1.40.0 |
@@ -73,9 +73,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - Geen open punten (IN8 en IN9 klaar in 1.35.1, zie Klaar).
 
 ## Gevecht aan tafel
-- [ ] **GV8 Undo** (P2): (a) bug: ⌘⇧Z/Ctrl+Shift+Z (redo op Mac) doet nóg een undo, Shift uitsluiten in `onKey`; (b) melding noemt wat er terugging ("Ongedaan: Goblin 2 −50 HP", uit de logregel van die stap); (c) Opnieuw (redo) alleen als het eenvoudig blijkt: geschiedenis + IndexedDB (DA2/TS2) krijgen dan een tweede stapel.
 - [ ] **GV12 Reaction gebruikt zichtbaar** (P2, eigen test Michiel): nu alleen een badge op een dichte kaart; open kaart, live-blok (tablet), beurtbalk en spelersscherm tonen niets. Tonen tot de reaction terug is (begin van de eigen beurt, bestaande regel in `step`). Spelersscherm via `toPlayerView` (alleen zichtbare deelnemers; monsters volgens de instelling Condities). Met GV4 "Spelers zelf" niet bij spelers. UX-agent kiest de vorm (chip, icoon bij de naam) en of het op de tv mag.
-- [ ] **GV10 Sneltoetsen** (P3): spatie/N = Volgende, Shift+N = Vorige, "?" = overzicht. Alleen buiten invoervelden en panelen.
 - [ ] **GV11 Minder klikken na een misser** (P3): misser sluit vanzelf of biedt "Volgende aanval" (multiattack); "+ meer doelen" bij concentratie-effecten. UX-agent kiest.
 
 ## Voorbereiding en encounters
@@ -266,3 +264,5 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [x] Spelersscherm: naam onbekend per monster (⋯ of bij toevoegen): spelers zien "Onbekend wezen (N)" met een algemeen icoon, ook in groepsnaam en "Neer: …" (1.26.0)
 - [x] Spellregels 2014 | 2024 (Instellingen, alleen spells): Barkskin 17 zonder concentratie, Lethargy = Incapacitated, concentratie per editie, Sleep 2024 (Incapacitated → Unconscious); concentratielijst uit de SRD-data (Enthrall/Forcecage eruit, o.a. Hideous Laughter, Spike Growth, Vampiric Touch erbij); Web duurt zolang de concentratie (1.21.0)
 - [x] Spells per speler volgens de versie op zijn D&D Beyond-sheet (bronnen per spell), tag "2024 · sheet" waar het afwijkt van de instelling (1.22.0)
+- **GV8** (1.37.1, WP5) Undo: ⌘⇧Z/Ctrl+Shift+Z deed nóg een undo, nu Opnieuw (ook Ctrl+Y). Melding na ↶ noemt wat er terugging ("Ongedaan: Goblin 2: 30 → 0 HP (−30) +2 meer", bij een beurtwissel "Terug naar beurt van Aram (ronde 2)"), met knop **Opnieuw**; Opnieuw alleen in het geheugen (weg na een nieuwe wijziging of herladen).
+- **GV10** (1.37.1, WP5) Sneltoetsen in Gevecht (geen paneel open, niet in een veld): N of spatie = Volgende, Shift+N = Vorige, "?" = overzicht (ook Instellingen → Hulp → Sneltoetsen, alleen met muis/toetsenbord).

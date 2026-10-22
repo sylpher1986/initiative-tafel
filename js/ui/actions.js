@@ -31,7 +31,7 @@ import { startFight, oldMons, dropOld } from "../rules/fight.js";
 import { finishFight, closeEnd } from "./einde.js";
 import { pcReact, setPcReact } from "./pcreact.js";
 import { armTour, restartTour } from "./tour.js";
-import { keysKey, keysOpen, closeKeys, openKeys } from "./keys.js";
+import { keysKey, keysOpen, closeKeys, openKeys, MAC } from "./keys.js";
 
 /** Fx uit de regels: meldingen tonen en oorzaken doorgeven aan het logboek */
 /** RE17: nieuwe concentration saves uit schade, als staart voor de melding (bediening alleen in de beurtbalk) */
@@ -293,6 +293,7 @@ function rowData(c, b) {
 
 /** GV8: melding na Ongedaan/Opnieuw: wat er terugging (eerste logregel of de beurt), met de knop voor de andere kant op */
 function stepToast(verb, entries) {
+  closeToast(); // dubbeltik op ↶: niet samenvoegen met de vorige melding (anders twee keer id toast-redo)
   const { text, more } = stepText(entries, app.S, verb);
   const last = verb === "Ongedaan" && !canUndo() ? " Dit was de laatste stap." : "";
   const btn = (id, l) => `<button class="tundo" id="${id}">${l}</button>`;
@@ -688,13 +689,13 @@ export function onKey(e) {
   const typing = /INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.target.isContentEditable;
   const kz = e.key.toLowerCase();
   // ⌘Z/Ctrl+Z = Ongedaan; ⌘⇧Z/Ctrl+Shift+Z/Ctrl+Y = Opnieuw (GV8: Shift deed eerst nóg een undo)
-  if ((e.ctrlKey || e.metaKey) && !e.altKey && !typing && (kz === "z" || (kz === "y" && e.ctrlKey && !e.shiftKey))) {
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !typing && (kz === "z" || (kz === "y" && e.ctrlKey && !e.shiftKey && !MAC))) {
     e.preventDefault();
     if (e.repeat) return;
     const fwd = kz === "y" || e.shiftKey;
     if (fwd ? !canRedo() : !canUndo()) return;
     ui.qadd = null; ui.aoe = null; ui.atk = null; ui.initDraft = null;
-    if (fwd) { closeToast(); global.redo(); } else global.undo();
+    if (fwd) global.redo(); else global.undo();
     render(); return;
   }
   if (keysKey(e, typing)) return; // GV10: "?" = overzicht, N/spatie = Volgende, Shift+N = Vorige

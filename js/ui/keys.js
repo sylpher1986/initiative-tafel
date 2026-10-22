@@ -2,11 +2,10 @@
 // Alleen in Gevecht (niet Voorbereiden tijdens een gevecht), zonder open paneel, buiten invoervelden.
 // De toets volgt altijd de knop in de beurtbalk (zelfde code, uit = niets). N start nooit een gevecht.
 import { $ } from "./util.js";
-import { app } from "../state.js";
 import { mode } from "./render.js";
 
 const panelOpen = () => !!document.querySelector(".sheet-wrap:not([hidden]), .tabstop");
-const MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
+export const MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
 const MOD = MAC ? "⌘" : "Ctrl";
 
 let back = null; // waar de focus heen gaat na sluiten
@@ -20,7 +19,7 @@ export function keysKey(e, typing) {
   }
   const n = e.key === "n" || e.key === "N", sp = e.key === " ";
   if (!n && !sp) return false;
-  if (mode() !== "fight" || !app.S.round || panelOpen()) return false;
+  if (mode() !== "fight" || panelOpen()) return false; // fight = er loopt een gevecht
   if (sp && e.target.closest?.("button, a, summary, [role=button]")) return false; // daar klikt spatie al
   if (sp && e.shiftKey) return false;
   e.preventDefault();
