@@ -1,5 +1,5 @@
 // Spelersscherm: toont alleen de snapshot die het DM-scherm stuurt (js/playerview.js), nooit eigen data.
-import { cleanView } from "./playerview.js";
+import { cleanView, headHtml } from "./playerview.js";
 import { localChannel, roomChannel, normCode, fmtCode } from "./share.js";
 import { esc } from "./ui/util.js";
 import { icon } from "./ui/avatar.js";
@@ -38,10 +38,8 @@ function row(c, V) {
 
 function paint(V) {
   $("#pv-wait").hidden = true;
-  const act = V.list.find((c) => c.id === V.active), nxt = V.list.find((c) => c.id === V.next);
-  $("#pv-now").innerHTML = V.round
-    ? `<div><span class="l">Ronde ${V.round} · aan de beurt</span><b>${V.gname ? esc(V.gname) : act ? esc(act.name) : "…"}</b></div>${nxt ? `<div class="r"><span class="l">Daarna</span>${esc(nxt.name)}</div>` : ""}`
-    : `<div><span class="l">Nog geen gevecht</span><b>Rol initiative</b></div>`;
+  paused = false; lastAt = Date.now(); netOk(); // een (bewaarde) stand zegt niets over de DM: dat doet alleen dmnet
+  $("#pv-now").innerHTML = headHtml(V);
   // dode monsters niet in de volgorde maar als één regel onderaan (zoals het blok "Neer" bij de DM)
   // (buiten de lijst, zodat hij bij twee kolommen onder beide kolommen staat)
   const down = V.list.filter((c) => c.kind === "monster" && c.out);
@@ -91,15 +89,49 @@ function boot() {
 /* ---------- kamer (andere apparaten) ---------- */
 let room = null, code = "";
 
+/* ---------- verbinding kwijt / DM weg (SC3) ----------
+ * Eigen verbinding kwijt: meteen een opvallende balk en de lijst gedimd, na LOST_MS de lijst weg (een oude stand leest op
+ * een tv als live). DM weg (kamer meldt dmnet on:0): pas na DM_MS een neutrale balk, lijst blijft (er gebeurt alleen niets).
+ * Bij een pauze geen balken: daar geldt de pauzetekst. */
+const LOST_MS = 120000, DM_MS = 45000;
+let lastAt = 0, paused = false, netLost = false, lostT = 0, dmT = 0, dmGone = false;
+const hhmm = (t) => new Date(t).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+const since = () => (lastAt ? ` · stand van ${hhmm(lastAt)}` : "");
+
+function bar() {
+  const el = $("#pv-net");
+  const kind = netLost ? "lost" : dmGone && !paused && lastAt ? "dm" : "";
+  el.hidden = !kind;
+  el.className = "pvnet" + (kind ? " " + kind : "");
+  el.innerHTML = kind === "lost" ? `<b>Geen verbinding${since()}</b><span>Opnieuw verbinden…</span>`
+    : kind === "dm" ? `<b>De DM is even weg${since()}</b><span>Het gevecht gaat hier verder zodra de DM terug is.</span>` : "";
+  document.body.classList.toggle("stale", netLost && !!lastAt);
+}
+function netLostNow() {
+  if (netLost) return;
+  netLost = true; bar();
+  clearTimeout(lostT);
+  lostT = setTimeout(() => {
+    if (!netLost || paused || !lastAt) return;
+    clear();
+    $("#pv-wait").hidden = false;
+    $("#pv-wait").textContent = "Geen verbinding met de DM. Zodra die terug is, verschijnt het gevecht hier vanzelf.";
+  }, LOST_MS);
+}
+function netOk() { clearTimeout(lostT); if (netLost) { netLost = false; bar(); } }
+function dmAway() { if (dmGone || dmT) return; dmT = setTimeout(() => { dmT = 0; dmGone = true; bar(); }, DM_MS); } // na herverbinden niet opnieuw beginnen
+function dmBack() { clearTimeout(dmT); dmT = 0; if (dmGone) { dmGone = false; bar(); } }
+
 function handler(c) {
   return (m) => {
     if (m.t === "dm") c.send({ t: "hallo" }); // DM-scherm (opnieuw) gestart, of kamer (opnieuw) verbonden
     else if (m.t === "stand") { const V = cleanView(m.d); if (V) { $("#pv-join").hidden = true; paint(V); } }
     else if (c === room && m.t === "einde") leave("De DM deelt niet meer.");
     else if (c === room && m.t === "stop") pause();
+    else if (c === room && m.t === "dmnet") m.on ? dmBack() : dmAway();
     else if (c === room && m.t === "net") {
-      $("#pv-net").hidden = m.s !== "kwijt";
-      $("#pv-net").textContent = "Verbinding kwijt, opnieuw verbinden…";
+      if (m.s === "kwijt") netLostNow();
+      else if (m.s === "open") netOk(); // de kamer stuurt bij verbinden de DM-status (dmnet)
       if (m.s === "weg") leave(`Kamer ${fmtCode(code)} bestaat niet (meer). Vraag de DM om een nieuwe code.`);
     }
   };
@@ -118,7 +150,7 @@ function join(k) {
 
 /** Stand weg (verouderd of gestopt) */
 function clear() {
-  $("#pv-net").hidden = true;
+  clearTimeout(lostT); clearTimeout(dmT); dmT = 0; netLost = dmGone = false; lastAt = 0; bar();
   $("#pv-now").innerHTML = ""; $("#pv-list").innerHTML = "";
   $("#pv-down").hidden = true; $("#pv-down").innerHTML = ""; document.body.classList.remove("two");
 }
@@ -128,7 +160,7 @@ function clear() {
  * De oude stand gaat weg: op een tv leest een gedimde lijst nog als live. De volgende stand verschijnt vanzelf (paint).
  */
 function pause() {
-  clear();
+  clear(); paused = true;
   $("#pv-join").hidden = true;
   $("#pv-wait").hidden = false;
   $("#pv-wait").innerHTML = `<b class="pvpause">De DM deelt op dit moment niet.</b><br>Zodra de DM weer deelt, verschijnt het gevecht hier vanzelf. · Kamer ${esc(fmtCode(code))}`;

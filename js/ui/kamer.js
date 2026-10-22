@@ -10,7 +10,7 @@ const LOST_MS = 10000; // pas na 10 s kwijt: rode stip op ⚙ en één melding
 
 let getView = null, addLink = null;
 let room = null, ch = null, link = null, off = null;
-let st = "uit", n = 0, err = "", lostT = 0, warned = false;
+let st = "uit", n = 0, peak = 0, err = "", lostT = 0, warned = false;
 // pauze: de kamer stopte het delen na 30 min zonder gewijzigde stand. missed = melding "Spelers zien dit niet" al getoond (één per pauze)
 let paused = false, resuming = false, missed = false;
 
@@ -51,14 +51,14 @@ function disconnect() {
   if (off) off(); off = null;
   if (link) addLink(link, false); link = null;
   if (ch) ch.close(); ch = null;
-  lost(false); n = 0; setPaused(false);
+  lost(false); n = peak = 0; setPaused(false);
 }
 
 function connect() {
   disconnect();
   ch = roomChannel(room.code, room.token, { allow: canWrite });
   off = ch.on((m) => {
-    if (m.t === "n") { n = Math.max(0, m.n | 0); paint(); }
+    if (m.t === "n") { n = Math.max(0, m.n | 0); peak = Math.max(peak, n); paint(); }
     else if (m.t === "pauze") { if (!paused) { setPaused(true); paint(); } }
     else if (m.t === "hervat") { const was = paused; setPaused(false); paint(); if (was) toast("Spelers zien het gevecht weer."); }
     else if (m.t === "gemist") {
@@ -97,7 +97,7 @@ async function stop() {
   ch = null;
   if (off) off(); off = null;
   if (link) addLink(link, false); link = null;
-  lost(false); n = 0; setPaused(false);
+  lost(false); n = peak = 0; setPaused(false);
   room = null; saveRoom(null); st = "uit"; err = "";
   paint();
   if (c && !(await c.stop())) toast("Geen verbinding met de kamer: spelers zien de laatste stand tot de kamer verloopt (12 uur).");
@@ -138,7 +138,9 @@ function paint() {
       <button type="button" class="btn tap" data-kamer="stop">Stop met delen</button></div>`;
     return;
   }
-  const status = st === "open" ? (n ? `${n} scherm${n === 1 ? "" : "en"} verbonden` : "Nog niemand verbonden")
+  // "(was 3)": er viel een scherm weg (SC3); de DM kan er niets aan doen, dus alleen hier en niet in het gevecht
+  const was = peak > n ? ` (was ${peak})` : "";
+  const status = st === "open" ? (n ? `${n} scherm${n === 1 ? "" : "en"} verbonden${was}` : peak ? `Geen schermen meer verbonden${was}` : "Nog niemand verbonden")
     : st === "elders" ? "Het delen loopt nu in een ander tabblad of venster."
     : st === "kwijt" ? "Verbinding kwijt, opnieuw verbinden…" : "Verbinden…";
   const canShare = typeof navigator.share === "function";

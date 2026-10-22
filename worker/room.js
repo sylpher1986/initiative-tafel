@@ -14,6 +14,9 @@
 //                { t: "hervat" }          bevestiging van "hervat"
 //                { t: "pauze" }           delen gepauzeerd (PAUSE_MS zonder gewijzigde stand); ook bij verbinden tijdens een pauze
 //   kamer → speler: de doorgestuurde "img"/"stand", { t: "stop" } (pauze: socket blijft open) en { t: "einde" } (kamer weg)
+//                { t: "dmnet", on }       DM-verbinding weg (0: laatste DM-socket dicht) of terug (1); een nieuw scherm krijgt
+//                                         altijd de huidige status (de bewaarde stand zegt niets over de DM). Wachten (DM-telefoon even vergrendeld) doet de speler
+//                                         zelf: de kamer heeft geen timers (hibernation).
 // Pauze: alleen een stand die inhoudelijk verschilt van de bewaarde telt als DM-activiteit (`act`); een identieke herpush
 // (na herverbinden), "img" en spelersberichten niet. Na PAUSE_MS: `paused`, spelers krijgen "stop", standen worden genegeerd
 // tot "hervat". Eén alarm voor pauze én opruimen (IDLE_MS na `at`): steeds het eerstvolgende moment.
@@ -67,6 +70,7 @@ export async function isOwner(owner, req) {
 const sendTo = (ws, s) => { try { ws.send(s); } catch { /* al dicht */ } };
 const closeWs = (ws, code, why) => { try { ws.close(code, why); } catch { /* al dicht */ } };
 const STOP = JSON.stringify({ t: "stop" }), PAUZE = JSON.stringify({ t: "pauze" });
+const DM_ON = JSON.stringify({ t: "dmnet", on: 1 }), DM_OFF = JSON.stringify({ t: "dmnet", on: 0 });
 const msgOf = (raw) => { try { const m = JSON.parse(raw); return m && typeof m === "object" ? m : null; } catch { return null; } };
 
 export class Room {
@@ -105,7 +109,11 @@ export class Room {
       // "pauze" vóór "n": de DM-kant weet bij "n" dat de kamer niet gepauzeerd is (oude pauze in een ander tabblad opgeheven)
       if (await st.get("paused")) sendTo(server, PAUZE);
       sendTo(server, JSON.stringify({ t: "n", n: this.players().length }));
-    } else this.count();
+      for (const w of this.players()) sendTo(w, DM_ON);
+    } else {
+      sendTo(server, this.ctx.getWebSockets("dm").length ? DM_ON : DM_OFF);
+      this.count();
+    }
     return rt.upgraded(client);
   }
 
@@ -197,9 +205,14 @@ export class Room {
 
   async webSocketClose(ws, code) {
     closeWs(ws, code === 1005 || code === 1006 || !code ? 1000 : code, "dicht");
-    if (!this.isDm(ws)) this.count(ws);
+    this.gone(ws);
   }
-  async webSocketError(ws) { if (!this.isDm(ws)) this.count(ws); }
+  async webSocketError(ws) { this.gone(ws); }
+  /** Een socket viel weg: speler → DM krijgt het nieuwe aantal; laatste DM-socket → spelers krijgen "dmnet on: 0" */
+  gone(ws) {
+    if (!this.isDm(ws)) return this.count(ws);
+    if (!this.ctx.getWebSockets("dm").some((w) => w !== ws)) for (const w of this.players()) sendTo(w, DM_OFF);
+  }
 
   async alarm() {
     const st = this.ctx.storage, at = await st.get("at");

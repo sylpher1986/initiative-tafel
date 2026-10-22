@@ -71,7 +71,10 @@ export function splitImgs(view, sent) {
 /** Backoff voor opnieuw verbinden: 1, 2, 4 … max 30 s, met wat spreiding zodat niet alle schermen tegelijk komen */
 export const backoff = (n, rnd = Math.random) => Math.min(30000, 1000 * 2 ** Math.min(n, 5)) * (0.8 + 0.4 * rnd());
 
-const PING = 25000, DEAD = 60000, PROBE = 5000;
+// Heartbeat: de DM pingt rustig (rode stip na 10 s kwijt is genoeg); spelers sneller, zodat een speler binnen ±20 s ziet
+// dat zijn stand niet meer bijwerkt (SC3). De pong is een auto-response van de kamer: maakt de Durable Object niet wakker.
+export const BEAT = { dm: { ping: 25000, dead: 60000 }, p: { ping: 10000, dead: 20000 } };
+const PROBE = 5000;
 
 /**
  * Kanaal via de kamer. token = DM (schrijft), zonder token = speler (alleen lezen).
@@ -82,6 +85,7 @@ const PING = 25000, DEAD = 60000, PROBE = 5000;
  *   { t: "hervat" }  (DM) kamer bevestigt hervat(); daarna volgt "hallo" (dmLink pusht)
  *   { t: "gemist" }  (DM) een gewijzigde stand tijdens de pauze: spelers zien hem niet
  *   { t: "stop" }    (speler) de DM deelt op dit moment niet; de verbinding blijft open, een nieuwe stand komt vanzelf
+ *   { t: "dmnet", on } (speler) DM-verbinding met de kamer weg (on: 0) of terug (on: 1); bij elke verbinding de huidige status
  * Bij elke (nieuwe) verbinding: DM-kant meldt { t: "hallo" } (dmLink pusht opnieuw), spelerskant { t: "dm" } (speler zegt hallo).
  * Spelerskant: portretten die apart binnenkomen worden weer in de stand gezet (cleanView controleert ze daarna).
  * opts: { base, WS, timers } voor tests; allow(): false = niet (meer) verbinden (DA3: tabblad niet meer de eigenaar).
@@ -92,6 +96,7 @@ export function roomChannel(code, token, opts = {}) {
   const allow = opts.allow || (() => true);
   const base = opts.base || (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
   const url = `${base}/api/room/${code}/ws${token ? "?t=" + encodeURIComponent(token) : ""}`;
+  const { ping: PING, dead: DEAD } = token ? BEAT.dm : BEAT.p;
   const subs = new Set(), sent = new Map(), imgs = new Map();
   let ws = null, tries = 0, retry = 0, ping = 0, lastIn = 0, done = false, state = "", paused = false, want = false, check = false;
   const emit = (m) => subs.forEach((f) => f(m));
@@ -171,7 +176,9 @@ export function roomChannel(code, token, opts = {}) {
     if (!(ws && ws.readyState === 0)) { tries = Math.min(tries, 1); connect(); }
   };
   const onVis = () => { if (document.visibilityState === "visible") wake(); };
-  if (typeof addEventListener === "function") addEventListener("online", wake);
+  // netwerk weg (browser weet het): meteen als kwijt melden in plaats van op de heartbeat te wachten; "online" verbindt weer
+  const offline = () => { if (ws) dead(ws); };
+  if (typeof addEventListener === "function") { addEventListener("online", wake); addEventListener("offline", offline); }
   if (typeof document !== "undefined") document.addEventListener("visibilitychange", onVis);
 
   queueMicrotask(connect); // eerst laten abonneren, dan pas de eerste status
@@ -189,7 +196,7 @@ export function roomChannel(code, token, opts = {}) {
     on: (f) => { subs.add(f); return () => subs.delete(f); },
     close() {
       done = true; T.clearTimeout(retry); T.clearInterval(ping);
-      if (typeof removeEventListener === "function") removeEventListener("online", wake);
+      if (typeof removeEventListener === "function") { removeEventListener("online", wake); removeEventListener("offline", offline); }
       if (typeof document !== "undefined") document.removeEventListener("visibilitychange", onVis);
       const s = ws; ws = null;
       if (s) try { s.close(1000); } catch { /* al dicht */ }

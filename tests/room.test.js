@@ -10,7 +10,10 @@ class FakeWS {
   send(s) { if (this.closed != null) throw new Error("dicht"); this.sent.push(s); }
   close(code) { if (this.closed == null) this.closed = code; }
   accept() {}
-  msgs() { return this.sent.filter((s) => s !== "pong").map((s) => JSON.parse(s)); }
+  // dmnet (SC3: DM-verbinding) komt bij elk nieuw spelersscherm; de oudere tests gaan over iets anders
+  all() { return this.sent.filter((s) => s !== "pong").map((s) => JSON.parse(s)); }
+  msgs() { return this.all().filter((m) => m.t !== "dmnet"); }
+  dmnet() { return this.all().filter((m) => m.t === "dmnet").map((m) => m.on); }
 }
 rt.pair = () => [new FakeWS(), new FakeWS()];
 rt.upgraded = (client) => ({ status: 101, client });
@@ -209,7 +212,7 @@ test("berichtlimieten en onzin", async () => {
   await dm.say({ t: "iets" });
   await dm.say({ t: "img", id: "a", d: "data:" + "A".repeat(MAX_IMG) });
   await dm.say({ t: "img", id: "x".repeat(41), d: "data:A" });
-  assert.equal(p.ws.sent.length, 0);
+  assert.equal(p.ws.msgs().length, 0);
   // max aantal portretten
   for (let i = 0; i < MAX_IMGS + 3; i++) await dm.say({ t: "img", id: "p" + i, d: "data:A" });
   assert.equal(rooms[code].storage.m.size - [...rooms[code].storage.m.keys()].filter((k) => !k.startsWith("img:")).length, MAX_IMGS);
@@ -375,4 +378,30 @@ test("pauze: kamer van vóór de timer (geen act, alarm over 12 u) krijgt bij DM
   await new Promise((r) => setTimeout(r, 3));
   await dm.say({ t: "stand", d: { v: 1, list: [] } });
   assert.equal(st.m.get("act"), act2, "identieke herpush telt niet");
+});
+
+test("SC3: dmnet: nieuw scherm krijgt altijd de status; DM verbindt → on 1; laatste DM-socket weg → on 0; 4001 niet", async () => {
+  const { code, token } = await make();
+  const p = await open(code);
+  assert.deepEqual(p.ws.dmnet(), [0], "nog geen DM");
+  const dm = await open(code, token);
+  assert.deepEqual(p.ws.dmnet(), [0, 1]);
+  const q = await open(code);
+  assert.deepEqual(q.ws.dmnet(), [1], "DM is er");
+  assert.equal(q.ws.all()[0].t, "dmnet", "status vóór iets anders");
+  // ander tabblad neemt over: oude DM-socket dicht, nieuwe is er → geen on 0
+  const dm2 = await open(code, token);
+  await rooms[code].webSocketClose(dm.ws, 4001);
+  assert.ok(!p.ws.dmnet().slice(2).includes(0));
+  // DM weg
+  dm2.ws.closed = 1006;
+  await rooms[code].webSocketClose(dm2.ws, 1006);
+  assert.equal(p.ws.dmnet().at(-1), 0); assert.equal(q.ws.dmnet().at(-1), 0);
+  // speler weg: geen dmnet
+  const m = p.ws.sent.length;
+  q.ws.closed = 1001; await rooms[code].webSocketClose(q.ws, 1001);
+  assert.equal(p.ws.sent.length, m);
+  // DM terug
+  await open(code, token);
+  assert.equal(p.ws.dmnet().at(-1), 1);
 });
