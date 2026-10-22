@@ -375,13 +375,42 @@ const global = {
   sbfollow() { followTurn(); return false; },
 };
 
-export function scrollToCard(id, onlyIfHidden, instant) {
-  const el = id && document.querySelector(`.c[data-id="${CSS.escape(id)}"]`);
+const TOP = 64; // ruimte boven een kaart na scrollen (kop van de pagina, iets lucht)
+const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+/** Onderrand van wat zichtbaar is: de dock, of een open statblock op de telefoon */
+const visBottom = () => Math.min($("#dock").getBoundingClientRect().top, sbTop()) - 8;
+
+/**
+ * AF6/IN8/IN9: element zichtbaar maken boven de dock. Steekt het onder de dock uit, dan omhoog schuiven tot de onderkant
+ * net boven de dock staat, maar nooit verder dan "bovenkant op TOP" (langer dan het scherm: de kop blijft in beeld).
+ * Staat de bovenkant boven TOP, dan omlaag tot TOP. Anders niets.
+ */
+export function reveal(el, instant) {
   if (!el) return;
-  const r = el.getBoundingClientRect(), dock = Math.min($("#dock").getBoundingClientRect().top, sbTop()); // open statblock op telefoon dekt ook af
-  if (onlyIfHidden && r.top >= 0 && r.bottom <= dock) return;
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  window.scrollBy({ top: r.top - 64, behavior: reduce || instant ? "auto" : "smooth" });
+  const r = el.getBoundingClientRect(), bottom = visBottom();
+  const dy = r.top < TOP ? r.top - TOP : r.bottom > bottom ? Math.min(r.bottom - bottom, r.top - TOP) : 0;
+  if (Math.abs(dy) >= 1) window.scrollBy({ top: dy, behavior: instant || calm() ? "auto" : "smooth" });
+}
+
+const cardEl = (id) => id && document.querySelector(`.c[data-id="${CSS.escape(id)}"]`);
+
+/** Naar een kaart: bovenaan (TOP), of met onlyIfHidden alleen zover dat hij boven de dock past */
+export function scrollToCard(id, onlyIfHidden, instant) {
+  const el = cardEl(id);
+  if (!el) return;
+  if (onlyIfHidden) { reveal(el, instant); return; }
+  window.scrollBy({ top: el.getBoundingClientRect().top - TOP, behavior: calm() || instant ? "auto" : "smooth" });
+}
+
+/**
+ * IN8: na openen blijft de kop van de aangetikte kaart op dezelfde schermplek (de kaart erboven klapte dicht), direct en
+ * zonder animatie, zodat de volgende tik raakt wat er stond. Daarna de open kaart boven de dock in beeld (reveal).
+ */
+function keepCard(id, y0) {
+  const el = cardEl(id);
+  if (!el) return;
+  if (y0 != null) { const dy = el.getBoundingClientRect().top - y0; if (Math.abs(dy) >= 1) window.scrollBy({ top: dy, behavior: "auto" }); }
+  if (el.classList.contains("open")) reveal(el);
 }
 
 /** Voorbeeld-encounter: twee spelers (level 3, zodat de moeilijkheid meteen een oordeel geeft: Hard), twee Goblins en een Hobgoblin (één undo-stap) */
@@ -490,12 +519,15 @@ export function onClick(e) {
   const c = app.S.list.find((x) => x.id === li.dataset.id);
   if (!c) return;
   const fn = row[b.dataset.a];
+  const y0 = fn === row.open ? li.getBoundingClientRect().top : null; // IN8: schermplek van de aangetikte kaart
+  const pnl = fn === row.panel ? b.dataset.p : null;
   let res = fn ? fn(c, b, li) : rowData(c, b);
   if (res === false) return;
   if (fn === row.sb || fn === row.sheet) return;
   render();
   if (fn === row["sheet-open"]) $("#sheet .sheet")?.focus({ preventScroll: true }); // cijfers en Enter werken via onKey
-  if (res === "scroll") scrollToCard(openId(), true);
+  if (res === "scroll") keepCard(c.id, y0);
+  if (pnl && ui.panel === pnl) reveal(cardEl(c.id)?.querySelector(".kpanel")); // AF6: paneel niet achter de dock
   if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} ${res.extra || ""}<button class="tundo" id="toast-undo">Ongedaan</button>`);
 }
 

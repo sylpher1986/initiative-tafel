@@ -175,10 +175,10 @@ function condChips(c, S, interactive) {
 }
 
 /** Samenvatting voor een gesloten kaart */
-/** AC in de kop: effectief, in accentkleur als effecten hem veranderen */
+/** AC in de kop (AF13): schildje met het effectieve getal, in accentkleur met vulling als effecten hem veranderen */
 function acMeta(c) {
   const ac = effAc(c);
-  return ac ? `AC <b class="${ac !== c.ac ? "acx" : ""}">${n0(ac)}</b>` : "";
+  return ac ? `<span class="acv${ac !== c.ac ? " acx" : ""}" title="Armor Class"><span class="vh">AC </span>${n0(ac)}</span>` : "";
 }
 
 /** Effect-chips: in de open kaart knoppen om weg te halen, dicht alleen tekst (korte duur) */
@@ -220,8 +220,8 @@ function badges(c, S) {
 
 function pips(o, key, label) {
   if (!o) return "";
-  return `<div class="pips"><span class="lbl">${label} ${n0(o.left)}/${n0(o.max)}</span>${Array.from({ length: n0(o.max) }, (_, i) =>
-    `<button class="pip ${key}" data-pip="${key}" data-i="${i}" aria-pressed="${i >= o.left}" aria-label="${label} ${i + 1}"></button>`).join("")}</div>`;
+  return `<div class="pips"><span class="lbl">${label} ${n0(o.left)}/${n0(o.max)}</span><span class="pg">${Array.from({ length: n0(o.max) }, (_, i) =>
+    `<button class="pip ${key}" data-pip="${key}" data-i="${i}" aria-pressed="${i >= o.left}" aria-label="${label} ${i + 1}"></button>`).join("")}</span></div>`;
 }
 
 function defLine(c) {
@@ -358,7 +358,7 @@ function effPanel(c) {
       <label>Naam<input data-f="ef-n" value="${esc(f.n || "")}" placeholder="bijv. Life Drain" maxlength="60"></label>
       <div class="ed3">
         <label>Op<select data-f="ef-k">${[["ac+", "AC +/−"], ["ac=", "AC wordt"], ["acmin", "AC minimaal"], ["max", "Max HP +/−"], ["txt", "Alleen tekst"]].map(([v, l]) => `<option value="${v}" ${(f.k || "ac+") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
-        <label>Waarde<input data-f="ef-v" type="number" inputmode="numeric" value="${esc(f.v ?? "")}"></label>
+        <label>Waarde<input data-f="ef-v" type="number" value="${esc(f.v ?? "")}"></label>
         <label>Duur<select data-f="ef-dur">${[...DURS, ["lr", "Tot long rest"]].map(([v, l]) => `<option value="${v}" ${(f.dur || "inf") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
       </div>
       <label>Notitie<input data-f="ef-txt" value="${esc(f.txt || "")}" placeholder="bijv. +1d4 op saves" maxlength="120"></label>
@@ -498,7 +498,7 @@ function row(c, S, down = false) {
   const open = openId() === c.id, prep = mode() === "prep";
   const turn = c.id === S.active, hp = c.max && !down, fhp = hp && !prep;
   return `<li class="c k ${c.kind === "pc" ? "pc" : "mon"} ${open ? "open" : ""} ${turn ? "turn" : ""} ${isOut(c) ? "out" : ""}${down ? " down" : ""}${fhp ? " fhp" : ""}" data-id="${esc(c.id)}"${down ? ` data-down="1"` : ""}>
-    <button class="khead" data-a="open" aria-expanded="${open}" aria-label="${esc(c.name)}${open ? ", sluiten" : ", openen"}">
+    <button class="khead" data-a="open" aria-expanded="${open}" aria-label="${esc(c.name)}${effAc(c) && !(isOut(c) && c.kind === "monster") ? `, AC ${n0(effAc(c))}` : ""}${open ? ", sluiten" : ", openen"}">
       <span class="i">${n0(c.init)}${turn ? `<span class="tri" aria-hidden="true">▶</span>` : ""}</span>
       <span class="n">${avatar(c, c.ref ? findMon(c.ref)?.meta : "")}<span class="nm">${esc(c.name)}</span></span>
       <span class="meta">${isOut(c) && c.kind === "monster" ? "neer" : acMeta(c)}</span>
@@ -825,11 +825,11 @@ export function paintQadd() {
       <div class="mlist qlist" id="q-list"></div>
       <div id="q-prev"></div>
       <div class="addblk" id="q-blk"></div>
-      <label class="chk tall"><input type="checkbox" data-q="hid" id="q-hid"> Verborgen voor spelers</label>
+      <label class="chk"><input type="checkbox" data-q="hid" id="q-hid"> Verborgen voor spelers</label>
       <p class="hint" id="q-hidh" hidden>${HID_HINT}</p>
-      <label class="chk tall"><input type="checkbox" data-q="anon" id="q-anon"> Naam onbekend voor spelers</label>
+      <label class="chk"><input type="checkbox" data-q="anon" id="q-anon"> Naam onbekend voor spelers</label>
       <p class="hint" id="q-anonh" hidden>${ANON_HINT}</p>
-      <button type="button" class="btn primary qgo" data-q="go"></button>
+      <div class="sfoot"><button type="button" class="btn primary qgo" data-q="go"></button></div>
     </div>`;
     el.hidden = false;
   }
@@ -1167,7 +1167,7 @@ export function paintInit() {
         <b class="iv" aria-hidden="true">${x.v[c.id] !== "" && x.v[c.id] != null ? esc(x.v[c.id]) : "—"}</b>
         <button type="button" class="btn small" data-ia="roll" data-id="${esc(c.id)}" aria-label="Initiative rollen voor ${esc(c.name)}">Rol</button></div>`).join("")}</div>
       <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button type="button" data-ia="d" data-v="${n}">${n}</button>`).join("")}<button type="button" data-ia="back" aria-label="Wissen">⌫</button><button type="button" data-ia="d" data-v="0">0</button><button type="button" data-ia="clear" aria-label="Leegmaken">C</button></div>
-      <div class="ifoot"><button type="button" class="btn" data-ia="next" ${last ? "disabled" : ""}>Volgende ›</button><button type="button" class="btn primary qgo" data-ia="go">Start gevecht</button></div>
+      <div class="ifoot sfoot"><button type="button" class="btn" data-ia="next" ${last ? "disabled" : ""}>Volgende ›</button><button type="button" class="btn primary qgo" data-ia="go">Start gevecht</button></div>
     </div>`;
   el.hidden = false;
 }

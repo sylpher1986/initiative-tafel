@@ -53,12 +53,12 @@ h1{font-family:var(--display);font-weight:800;font-size:1.6rem;margin:0;letter-s
 h1 span{color:var(--accent)}
 .round{display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
 .round b{font-family:var(--display);font-size:1.15rem}
-.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;min-height:40px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;min-height:44px;min-width:44px}
 .btn:hover{border-color:var(--muted)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:700}
 .btn.ghost{background:transparent}
 .btn:disabled{opacity:.4;cursor:default}
-.btn.small{min-height:32px;padding:4px 10px;font-size:.9rem}
+.btn.small{min-height:44px;padding:4px 10px;font-size:.9rem}
 .bar{display:flex;gap:8px;flex-wrap:wrap}
 
 /* Turn banner */
@@ -87,68 +87,70 @@ ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .hpbar i{display:block;height:100%;background:var(--good)}
 .hpbar i.mid{background:var(--warn)} .hpbar i.low{background:var(--bad)}
 .hpnum{font-variant-numeric:tabular-nums;font-size:.9rem;white-space:nowrap}
-.dmg{display:flex;gap:4px}
-.dmg input{width:56px;border:1px solid var(--line);border-radius:6px;background:var(--bg);padding:4px 6px;text-align:center;font-variant-numeric:tabular-nums}
-.dmg button{border:1px solid var(--line);border-radius:6px;background:var(--surface);min-width:34px;min-height:32px;font-weight:700}
-.dmg .mode{min-width:40px;color:var(--muted);font-variant-numeric:tabular-nums}
-.dmg .mode.on{color:var(--accent-fg);background:var(--accent);border-color:var(--accent)}
-.dmg .tmp{color:var(--active);font-size:.75rem;letter-spacing:.04em}
 .thp{color:var(--active);font-weight:700}
 .defl{font-size:.8rem;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}
 .defl b{color:var(--fg);font-weight:700}
-.dmg .hit{color:var(--bad)} .dmg .heal{color:var(--good)}
 .row3{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center}
-.pips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:.85rem;color:var(--muted)}
-.pips .lbl{min-width:0}
-.pip{width:22px;height:22px;border-radius:50%;border:2px solid var(--accent);background:var(--accent);padding:0}
-.pip[aria-pressed="true"]{background:transparent;opacity:.55}
+.pips{display:flex;align-items:center;gap:0;flex-wrap:wrap;margin-top:2px;font-size:.85rem;color:var(--muted)}
+.pips .lbl{min-width:0;margin-right:6px}
+.pips .pg{display:inline-flex;flex-wrap:wrap} /* pips breken als groep af, niet los van elkaar */
+/* AF6: tikvlak 44×44 zonder overlap, het zichtbare bolletje is ::before */
+.pip{width:44px;height:44px;border:0;background:none;padding:0;display:inline-grid;place-items:center;color:var(--accent);border-radius:8px}
+.pip::before{content:"";box-sizing:border-box;width:24px;height:24px;border-radius:50%;border:2px solid currentColor;background:currentColor}
+.pip[aria-pressed="true"]::before{background:transparent;opacity:.55}
+.pip:focus-visible{outline-offset:-6px}
 .lacts{display:grid;gap:8px;margin-top:8px}
 .lact{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
 .lact p{margin:0 0 6px}
 .lact.used{opacity:.6}
 .lairsel{font-weight:700;font-size:1.05rem;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:4px 6px;max-width:100%;min-width:0}
-.ds{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin-top:8px;padding:8px 10px;border:1px solid var(--bad);border-radius:8px}
+.ds{display:flex;align-items:center;gap:4px 12px;flex-wrap:wrap;margin-top:8px;padding:8px 10px;border:1px solid var(--bad);border-radius:8px}
 .ds .lbl{font-weight:700;color:var(--bad);font-size:.85rem;text-transform:uppercase;letter-spacing:.06em}
-.dsg{display:flex;align-items:center;gap:4px;font-size:.85rem;color:var(--muted)}
-.dsp{width:22px;height:22px;border-radius:50%;padding:0;border:2px solid currentColor;background:transparent}
+.dsg{display:flex;align-items:center;gap:0;font-size:.85rem;color:var(--muted)}
+.dsp{width:44px;height:44px;border:0;background:none;padding:0;display:inline-grid;place-items:center;border-radius:8px}
+.dsp::before{content:"";box-sizing:border-box;width:26px;height:26px;border-radius:50%;border:2px solid currentColor;background:transparent}
 .dsp.s{color:var(--good)} .dsp.f{color:var(--bad)}
-.dsp[aria-pressed="true"]{background:currentColor}
+.dsp[aria-pressed="true"]::before{background:currentColor}
+.dsp:focus-visible{outline-offset:-6px}
 .ds .st{font-weight:700}
 .ds .st.ok{color:var(--good)} .ds .st.dead{color:var(--bad)}
 .rcs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.rc{font-size:.8rem;padding:3px 10px;border-radius:99px;border:1px solid var(--good);color:var(--good);background:transparent}
+.rc{font-size:.8rem;min-height:44px;padding:0 12px;border-radius:99px;border:1px solid var(--good);color:var(--good);background:transparent}
 .rc[aria-pressed="false"]{border-color:var(--bad);color:var(--bad);border-style:dashed}
 .tag.l{background:var(--active-soft);color:var(--active)}
 .c.lair{background:var(--active-soft);border-style:dashed}
 .chip{font-size:.78rem;padding:2px 8px;border-radius:99px;border:1px solid var(--warn);color:var(--warn);background:transparent}
 .link{border:0;background:none;padding:2px 4px;color:var(--muted);font-size:.85rem;text-decoration:underline;text-underline-offset:2px}
+/* AF6: knop- en summary-links 44 px hoog (ook midden in een zin: de regel wordt dan hoger) */
+button.link,summary.link{display:inline-flex;align-items:center;gap:.3em;min-height:44px;padding:0 8px}
+/* inline-flex haalt de standaard ▸ weg: zelf tekenen, behalve waar die al bewust uit stond (.cast, .conds) */
+details:not(.cast):not(.conds)>summary.link::before{content:"▸";text-decoration:none;display:inline-block}
+details[open]:not(.cast):not(.conds)>summary.link::before{content:"▾"}
 .link.strong{color:var(--accent);font-weight:700}
 details.conds{width:100%}
-details.conds summary{list-style:none;display:inline}
+details.conds summary{list-style:none;display:inline-flex}
 details.conds summary::-webkit-details-marker{display:none}
-.condgrid{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.condgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px;margin-top:6px}
 .durrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:8px}
 .durrow label{font-size:.72rem}
-.durrow select,.durrow input{min-height:34px;padding:4px 6px;font-size:.9rem}
-.react{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--muted);white-space:nowrap}
-.react[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg);text-decoration:line-through}
+.durrow select,.durrow input{min-height:44px;padding:4px 6px;font-size:.9rem}
 .pick{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 0 4px 54px}
 .pick .conc{border-color:var(--warn);color:var(--warn)}
 @media (max-width:420px){.pick{padding-left:0}}
 .chip.cbtn{cursor:pointer;font:inherit;font-size:.78rem}
 .chip.cbtn:hover{background:var(--warn);color:var(--bg)}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.chk{display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.95rem;color:var(--fg)}
+.chk{display:flex;align-items:center;min-height:44px;gap:8px;text-transform:none;letter-spacing:0;font-size:.95rem;color:var(--fg)}
 .chk input{width:20px;height:20px;min-height:0;accent-color:var(--accent)}
 .pm{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
 .pm:last-of-type{border-bottom:0}
 .pm .pn{font-weight:700}
 .pm .pi{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .pm .pc{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
-.pm .pc input{width:64px;min-height:36px;padding:4px;text-align:center;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+.pm .pc input{width:64px;min-height:44px;padding:4px;text-align:center;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
 .pm .here{font-size:.8rem;color:var(--good);font-weight:700}
 .logbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px}
-.logbox summary{cursor:pointer;font-family:var(--display);font-weight:700;font-size:1.05rem;display:flex;gap:8px;align-items:baseline}
+.logbox summary{cursor:pointer;font-family:var(--display);font-weight:700;font-size:1.05rem;display:flex;gap:8px;align-items:center;min-height:44px}
 .lglist{list-style:none;margin:0;padding:0;max-height:55vh;overflow:auto;display:grid;gap:2px}
 .lg{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 10px;padding:6px 0;border-bottom:1px dashed var(--line)}
 .lg-meta{grid-row:1/span 3;font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;padding-top:2px;min-width:5.5em}
@@ -167,18 +169,18 @@ details.conds summary::-webkit-details-marker{display:none}
 .lg-turn{font-size:.78rem;color:var(--active);padding:4px 0 0;text-transform:uppercase;letter-spacing:.06em}
 @media (max-width:420px){.lg{grid-template-columns:minmax(0,1fr)}.lg-meta{grid-row:auto}}
 .chip .dl{opacity:.8;font-variant-numeric:tabular-nums}
-.condgrid button{font-size:.78rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line);background:var(--bg)}
+.condgrid button{font-size:.82rem;min-height:44px;padding:2px 4px;border-radius:10px;border:1px solid var(--line);background:var(--bg)}
 .condgrid button[aria-pressed="true"]{border-color:var(--warn);color:var(--warn);font-weight:700}
 
 /* Voorbereiden: paneel met de formulieren (knoppen in de beurtbalk) */
 .psheet{gap:12px}
-.psheet .plair{justify-self:start;min-height:44px}
+.psheet .plair{justify-self:start}
 /* grid-items mogen smaller worden dan hun inhoud, zodat brede onderdelen zelf scrollen i.p.v. de pagina op te rekken */
 .wrap>section>*{min-width:0}
 .form{display:grid;gap:10px}
 .f2{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
 label{display:grid;gap:3px;font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-label input,label select,label textarea{text-transform:none;letter-spacing:0;font-size:1rem;color:var(--fg);border:1px solid var(--line);border-radius:6px;background:var(--bg);padding:8px;min-height:40px;width:100%}
+label input,label select,label textarea{text-transform:none;letter-spacing:0;font-size:1rem;color:var(--fg);border:1px solid var(--line);border-radius:6px;background:var(--bg);padding:8px;min-height:44px;width:100%}
 textarea{min-height:120px;resize:vertical}
 .mlist{max-height:min(240px,32vh);max-height:min(240px,32dvh);overflow:auto;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
 .mlist button{display:flex;width:100%;min-height:44px;align-items:center;justify-content:space-between;gap:8px;border:0;border-bottom:1px solid var(--line);background:transparent;padding:8px 10px;text-align:left}
@@ -231,21 +233,22 @@ textarea{min-height:120px;resize:vertical}
 .sb .entry b i,.sbx .entry b i{font-style:italic}
 .sb .entry,.sbx .entry{white-space:pre-line}
 .cast{margin-top:6px;width:100%}
-.cast summary{list-style:none;display:inline}
+.cast summary{list-style:none;display:inline-flex}
 .cast summary::-webkit-details-marker{display:none}
 .castbox{display:grid;gap:6px;margin-top:6px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
 .slotrow{display:grid;grid-template-columns:44px auto minmax(0,1fr);gap:4px 10px;align-items:center}
 .slotrow .lv{font-family:var(--display);font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
-.slotrow .pp{display:flex;gap:4px;flex-wrap:wrap}
+.slotrow .pp{display:flex;gap:0;flex-wrap:wrap}
 .slotrow .sp{font-size:.82rem;color:var(--muted);min-width:0;overflow-wrap:anywhere}
-.castbox .pip{width:20px;height:20px}
 .resrow{display:grid;grid-template-columns:minmax(0,9em) minmax(0,1fr);gap:4px 10px;align-items:center}
 .resrow .rn{font-weight:700;color:var(--accent);font-size:.9rem;overflow-wrap:anywhere}
-.resrow .pp{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.resrow .pp{display:flex;gap:0;flex-wrap:wrap;align-items:center}
 .resrow .sp{grid-column:2;font-size:.8rem;color:var(--muted)}
+/* AF6: pips van 44 px; op de telefoon spellnamen onder de slots en resources onder hun naam */
+@media (max-width:420px){.slotrow{grid-template-columns:44px minmax(0,1fr)}.slotrow .sp{grid-column:2}.resrow{grid-template-columns:minmax(0,1fr)}.resrow .sp{grid-column:1}}
 .slotin{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:4px}
 .slotin label{font-size:.7rem;text-align:center}
-.slotin input{padding:6px 2px;text-align:center;min-height:36px}
+.slotin input{padding:6px 2px;text-align:center;min-height:44px}
 @media (max-width:420px){.slotin{grid-template-columns:repeat(5,minmax(0,1fr))}}
 .dice{border:0;border-bottom:1px dotted var(--accent);background:none;padding:0 1px;color:var(--accent);font-weight:700}
 .dice:hover{background:var(--accent-soft)}
@@ -324,7 +327,6 @@ ol.order{gap:6px}
 .c.k .n{display:flex;align-items:center;gap:8px}
 .c.k .n>.nm{display:block;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .c.k .meta{font-size:.82rem;color:var(--muted);white-space:nowrap}
-.c.k .meta b{color:var(--fg)}
 .hpw{grid-column:2/4;display:flex;align-items:center;gap:8px}
 .hpw .bar{display:block;flex:1;height:6px;border-radius:3px;background:var(--sunk);overflow:hidden}
 .hpw .bar i{display:block;height:100%;background:var(--good)}
@@ -352,7 +354,7 @@ ol.order{gap:6px}
 .bd.g{border-color:var(--good);color:var(--good)}
 .bd.r{border-color:var(--bad);color:var(--bad);max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .bd.b{border-color:var(--active);color:var(--active)}
-.bd.cbtn{cursor:pointer;min-height:32px;padding-inline:10px}
+.bd.cbtn{cursor:pointer;min-height:44px;padding-inline:10px}
 .kbody{padding:0 12px 12px 48px;display:grid;gap:8px}
 .acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .acts button{min-height:46px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-weight:700;font-size:.85rem;padding:4px;color:var(--fg)}
@@ -363,9 +365,9 @@ ol.order{gap:6px}
 .kpanel{display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
 .kpanel.more{display:flex;flex-wrap:wrap;align-items:end;gap:8px}
 .kpanel .inl{display:grid;gap:3px}
-.kpanel .inl input{width:80px;min-height:40px}
+.kpanel .inl input{width:80px;min-height:44px}
 .btn.danger{color:var(--bad);border-color:var(--bad)}
-.pip.lr{border-radius:4px;transform:rotate(45deg) scale(.85)}
+.pip.lr::before{border-radius:4px;transform:rotate(45deg) scale(.85)}
 .c.k.lair{padding:0}
 .c.k.lair>.i,.c.k.lair>.n,.c.k.lair>.meta{display:inline-block}
 .c.k.lair{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:4px 10px;padding:10px 12px 0 4px}
@@ -399,13 +401,14 @@ ol.order{gap:6px}
 .sheet{position:absolute;left:0;right:0;bottom:0;max-width:480px;margin-inline:auto;background:var(--surface);border-radius:20px 20px 0 0;
   padding:10px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));box-shadow:0 -10px 30px rgba(0,0,0,.25);display:grid;gap:10px}
 .grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto}
-.shead{display:flex;justify-content:space-between;align-items:baseline}
+.shead{display:flex;justify-content:space-between;align-items:center}
+.shead .link{min-width:44px;min-height:44px;margin:-10px -8px -10px 0;padding:0 8px;justify-content:center}
 .shead h3{margin:0;font-family:var(--display);font-size:1.2rem}
 .seg2{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .seg2 button{border:0;background:transparent;padding:10px 4px;font-weight:700;font-size:.9rem;color:var(--muted);min-height:44px}
 .seg2 button+button{border-left:1px solid var(--line)}
 .seg2 button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
-.seg2.sm button{font-size:.8rem;min-height:38px;padding:6px 2px}
+.seg2.sm button{font-size:.8rem;min-height:44px;padding:6px 2px}
 .disp{font-family:var(--display);font-size:2.4rem;text-align:center;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
 .preview{text-align:center;color:var(--muted);font-size:.95rem;min-height:1.4em}
 .preview b{color:var(--fg)}.preview .bad{color:var(--bad)}
@@ -502,9 +505,8 @@ body:has(.sheet-wrap:not([hidden])) .toast{top:calc(8px + env(safe-area-inset-to
 .asave{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--active-soft)}
 .asave select,.asave input{min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:0 8px;font-size:1rem}
 .asave input{width:72px;text-align:center}
-.asave .btn{margin-left:auto;min-height:44px}
+.asave .btn{margin-left:auto}
 .asel{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-.asel .link{min-height:44px;padding:0 8px}
 .alist{display:grid;gap:8px}
 .at{border:1px solid var(--line);border-radius:10px;padding:4px 10px 10px;display:grid;gap:8px;background:var(--surface)}
 .at.off{border-style:dashed;background:transparent;padding-bottom:4px}
@@ -517,7 +519,7 @@ body:has(.sheet-wrap:not([hidden])) .toast{top:calc(8px + env(safe-area-inset-to
 .adealt.zero{color:var(--muted)}
 .acalc{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .acalc b{color:var(--fg)}.acalc .bad{color:var(--bad)}
-.at .link{justify-self:start;min-height:36px}
+.at .link{justify-self:start}
 /* Spell op doelen (tab in het AoE-paneel) */
 .atabs{margin-top:-4px}
 .spgrid .btn{min-height:48px}
@@ -531,7 +533,10 @@ body:has(.sheet-wrap:not([hidden])) .toast{top:calc(8px + env(safe-area-inset-to
 .sres{font-size:.9rem;color:var(--bad);text-align:right;flex:0 1 auto;max-width:42%;overflow-wrap:anywhere}
 .sres.zero{color:var(--muted);font-weight:400}
 #s-info:empty{display:none}
-.afoot{position:sticky;bottom:calc(-16px - env(safe-area-inset-bottom,0px));background:var(--surface);display:grid;gap:6px;padding:8px 0 4px;margin-bottom:-4px;text-align:center;border-top:1px solid var(--line)}
+/* IN9: hoofdknop van een paneel plakt onderaan (duimbereik); .sfoot voor toevoegen en initiative */
+.afoot,.sfoot{position:sticky;z-index:1;bottom:calc(-16px - env(safe-area-inset-bottom,0px));background:var(--surface);display:grid;gap:6px;margin:0 calc(-1 * max(16px,env(safe-area-inset-right,0px))) calc(-16px - env(safe-area-inset-bottom,0px)) calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:8px max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));text-align:center;border-top:1px solid var(--line)}
+.psheet .sfoot{margin-bottom:0} /* in het paneel volgt nog "+ Lair actions" */
+.qsheet{scroll-padding-bottom:84px} /* gefocust veld niet onder de plakkende voet */
 .ago:disabled{opacity:.45}
 
 /* D&D Beyond-link (spelersformulier) */
@@ -549,9 +554,10 @@ label.warn input{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
 #pc-match .bar .btn{flex:1 1 130px}
 
 /* Tijdelijke effecten en bewerken (open kaart) */
-.c.k .meta b.acx{color:var(--active)}
+/* AF13: AC als schildje in de kaartkop; past in de bestaande kophoogte, "neer" blijft gewone tekst */
+.c.k .meta .acv{display:inline-grid;place-items:center;min-width:2.1em;height:1.8em;padding:0 .2em;box-sizing:border-box;border:1.5px solid var(--muted);border-radius:.3em .3em 50% 50% / .3em .3em 40% 40%;font:800 1.1rem/1 var(--display);font-variant-numeric:tabular-nums;color:var(--fg)}
+.c.k .meta .acv.acx{border-color:var(--active);color:var(--active);background:var(--active-soft)}
 .bd.ef{border-style:dashed;border-color:var(--active);color:var(--active);max-width:100%;overflow:hidden;text-overflow:ellipsis}
-.kbody .bd.cbtn{min-height:44px}
 .acb{margin:-2px 0 8px}
 .effgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
 .effgrid .btn{display:grid;gap:1px;text-align:left;line-height:1.2;padding:6px 10px}
@@ -564,7 +570,7 @@ label.warn input{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
 .drbox{flex-basis:100%;display:grid;gap:8px;border-top:1px solid var(--line);padding-top:8px}
 .drhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .drhead>span{min-width:0;overflow-wrap:anywhere}
-.drhead .link{min-height:44px;flex:0 0 auto;padding:0 8px}
+.drhead .link{flex:0 0 auto}
 .drgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .drt{position:relative;min-height:44px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--fg);font:inherit;font-size:.9rem;padding:4px}
 .drt[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
@@ -606,7 +612,9 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .pvhp{display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:0}
 .pvhp .hpw{width:min(9em,30vw)}
 .pvhp .hpw .bar{height:.35em}
-.pvhp .hpn{font-size:.75em}
+/* SC10: getal vaste breedte (tot 999/999), zodat alle HP-balken in een kolom even lang zijn; temp HP eronder */
+.pvhp .hpn{font-size:.75em;flex:0 0 auto;min-width:7ch;text-align:right;font-variant-numeric:tabular-nums;display:grid;justify-items:end;line-height:1.1}
+.pvhp .thp{font-size:.8em;line-height:1}
 .pvst{font-size:.75em;padding:1px .6em;border-radius:99px;border:1px solid var(--good);color:var(--good);white-space:nowrap}
 .pvst.mid{border-color:var(--warn);color:var(--warn)}
 .pvst.low{border-color:var(--bad);color:var(--bad)}
@@ -636,7 +644,6 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .asrc{margin:-2px 0 8px;font-variant-numeric:tabular-nums}
 .ar .dflat{font-size:.82rem;color:var(--muted);white-space:nowrap}
 .atkmore{display:flex;align-items:center;min-height:44px}
-.atkmore .link{min-height:44px}
 .atkfold{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-weight:700;font-size:.9rem;cursor:pointer;color:var(--fg)}
 .atk .atkfold{border:0;padding:0;border-radius:0}
 .atk .atkfold.sub{border-top:1px solid var(--line);font-size:.85rem;color:var(--muted)}
@@ -694,7 +701,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .xhow{margin:2px 0 0;font-size:.88rem;color:var(--muted);overflow-wrap:anywhere}
 .xla{margin:8px 0}
 .xla .hint{margin:0;min-width:0;overflow-wrap:anywhere}
-.xback{justify-self:start;min-height:40px}
+.xback{justify-self:start}
 .xhit{margin:0;font-size:.95rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .xhit b{font-size:1.15rem;margin-right:6px}
 .xhit .ok{color:var(--good)}.xhit .bad{color:var(--bad)}
@@ -715,7 +722,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .ir .iv{font-family:var(--display);font-size:1.4rem;text-align:center;font-variant-numeric:tabular-nums}
 .ifoot{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center}
 .ifoot .btn{min-height:50px}
-.ir .btn{min-height:44px;min-width:52px}
+.ir .btn{min-width:52px}
 
 /* Lege lijst: welkomstkaart, party-knop of hint; voorbeeld-banner boven de lijst */
 .order .welcome{list-style:none;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:10px}
@@ -725,7 +732,6 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .welcome .btn{min-height:48px}
 .order .empty{list-style:none;padding:20px;text-align:center}
 .order .sbanner{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.85rem;color:var(--muted);border-left:3px solid var(--warn);padding:2px 0 2px 10px}
-.sbanner .btn{min-height:40px}
 .sbanner .sbtns{display:flex;gap:8px;flex:none}
 
 /* Spell-uitleg: tikbare spellnaam (cursief met stippel, zoals spellnamen in een statblock) en paneel #rsheet */
@@ -737,7 +743,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .rsheet .grab{margin-top:10px}
 .rhead{position:sticky;top:0;background:var(--surface);z-index:1;padding:6px 0 4px;gap:12px}
 .rhead h3{min-width:0;overflow-wrap:anywhere}
-.rhead .link{min-height:44px;flex:0 0 auto}
+.rhead .link{flex:0 0 auto}
 .rsheet .hint,.rmeta{margin:0}
 .rmeta{font-style:italic;color:var(--muted)}
 .rgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin:0;padding:8px 0;border-block:1px solid var(--line)}
@@ -816,11 +822,10 @@ body.pv.stale #pv-now,body.pv.stale #pv-list,body.pv.stale #pv-down{opacity:.4}
 /* Instellingen → Spelersscherm → Wat spelers zien; "Verborgen voor spelers" bij toevoegen */
 .visbox{display:grid;gap:4px}
 .vlbl{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:6px 0 0}
-.chk.tall{min-height:44px}
 
 /* ---------- encounters klaarzetten en moeilijkheid (js/ui/encounters.js) ---------- */
 .dchip{display:inline-flex;align-items:center;font:inherit;font-size:.8rem;font-weight:700;padding:2px 10px;border-radius:99px;border:1px solid var(--muted);color:var(--muted);background:transparent;white-space:nowrap}
-button.dchip{min-height:36px;cursor:pointer}
+button.dchip{min-height:44px;cursor:pointer}
 .dchip.r1{border-color:var(--good);color:var(--good)}
 .dchip.r2{border-color:var(--pc);color:var(--pc)}
 .dchip.r3{border-color:var(--warn);color:var(--warn)}
@@ -866,7 +871,7 @@ button.dchip{min-height:36px;cursor:pointer}
 .pm .pupd{display:block;min-height:44px;padding:0 8px;margin-left:-8px;text-align:left}
 .pm .pupd[aria-disabled="true"]:not([aria-busy]){opacity:.55;cursor:default}
 .pm .pupdbox{grid-column:1/-1;margin:0}
-.pm .plvl input{width:64px;min-height:40px;padding:4px;text-align:center;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+.pm .plvl input{width:64px;min-height:44px;padding:4px;text-align:center;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
 
 /* VB2: ingeladen encounter boven de lijst, notitie (tactiek) ingeklapt */
 .order .encn{list-style:none;display:grid;gap:4px}
@@ -917,7 +922,7 @@ button.dchip{min-height:36px;cursor:pointer}
 .tbox .tprog{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .tbox #tour-x{margin:0 0 10px;line-height:1.4}
 .tbtns{display:flex;align-items:center;gap:8px}
-.tbtns .link{margin-right:auto;min-height:44px}
+.tbtns .link{margin-right:auto}
 .tbtns .btn{min-height:44px}
 .tbtns .btn[hidden]{display:none}
 @media (prefers-reduced-motion:no-preference){.tspot,.tbox{transition:top .2s ease,left .2s ease,width .2s ease,height .2s ease}}
@@ -934,3 +939,4 @@ button.dchip{min-height:36px;cursor:pointer}
 .setsec[open] .schev::before{content:"▾"}
 .setsec>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .setbody{display:grid;gap:10px;padding:2px 0 14px}
+#order{overflow-anchor:none} /* IN8: scrollcorrectie doet keepCard, niet de browser */

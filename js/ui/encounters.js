@@ -163,7 +163,7 @@ function editHtml() {
     <label>Notitie <span class="opt">(optioneel)</span><textarea id="ee-notes" maxlength="2000">${esc(x.notes)}</textarea></label>
     <p class="vlbl">Monsters${x.monsters.length ? ` · <span class="dchip ${chipCls(r)}">${esc(chipLbl(r))}</span> ${fmt(r.adj)} XP` : ""}</p>
     <div class="erows">${rows || `<p class="hint">Nog geen monsters.</p>`}</div>
-    ${x.lairKey ? `<label class="chk tall"><input type="checkbox" id="ee-lair" ${x.lair ? "checked" : ""}> Lair actions (${esc(x.lairKey)})</label>` : ""}
+    ${x.lairKey ? `<label class="chk"><input type="checkbox" id="ee-lair" ${x.lair ? "checked" : ""}> Lair actions (${esc(x.lairKey)})</label>` : ""}
     <label>+ Monster<input id="ee-q" placeholder="naam, type of CR" autocomplete="off" enterkeyhint="search" value="${esc(x.q)}"></label>
     <div class="mlist" id="ee-list"></div>
     <div class="bar"><button type="button" class="btn small" data-enc="edit-no">Annuleer</button><button type="button" class="btn primary" data-enc="edit-go">Opslaan</button></div>`;

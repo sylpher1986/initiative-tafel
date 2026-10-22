@@ -10,19 +10,19 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 2. ~~SC2~~ klaar in 1.35.0 (WP1, zie Klaar)
 3. ~~SC3~~ klaar in 1.35.0 (WP1, zie Klaar)
 4. **RE8** Hold Person vinkt alle humanoïden aan; caster wisselen zet de selectie terug
-5. **AF6** Tapdoelen onder 44 px (conditiechips, death saves, slots, LA, Sluit, Uit party)
+5. ~~AF6~~ klaar in 1.35.1 (WP2, zie Klaar)
 
 **P2: volgende (tempo en leesbaarheid aan tafel)**
-6. **IN8** Lijst verspringt bij openen van een lagere kaart (tik komt op het verkeerde monster)
+6. ~~IN8~~ klaar in 1.35.1 (WP2, zie Klaar)
 7. **GV7** Gevecht afronden: restanten (oude monsters, Prone) in het volgende gevecht
-8. **SP4** + Speler: initiative-bonus i.p.v. verplichte worp, eigen validatie · **AF7** minteken op iOS
+8. **SP4** + Speler: initiative-bonus i.p.v. verplichte worp, eigen validatie · ~~AF7~~ klaar in 1.35.1
 9. **GV8** Undo: ⌘⇧Z draait nog een stap terug; melding noemt niet wat er terugging
 10. **SC4** Sticky "Aan de beurt / Daarna" op de telefoon · **SC5** "Dit ben ik" op het spelersscherm
 11. **SC6** Tv-weergave: HP en condities op 3 m leesbaar
 12. **SC7** Zelfde code na Stop met delen · **SC1** QR-code (omhoog uit P3)
 13. **RE10** Uitleg bij een tik op een conditie (DM én spelersscherm), met duur en DC
 14. **RE9** Initiative verlagen na de eigen beurt: waarschuwing (Delay later)
-15. **IN9** Hoofdknop van panelen onder de vouw; dock over de actieve kaart op iPad
+15. ~~IN9~~ klaar in 1.35.1 (WP2, zie Klaar)
 16. **RE12** Open save die stil vervalt bij Volgende; ✓/✗ zonder tekst
 17. **RE1/RE2** Spell slots verbruiken bij Shield, AoE en Spell (omhoog uit P3)
 18. **RE11** Exhaustion (2014, niveau 1–6)
@@ -34,8 +34,8 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 - **RE17** Concentration save meteen afhandelen vanuit de schade
 - **RE16** Rage (barbarian) als status met alle voordelen
 - **GV12** Reaction gebruikt zichtbaar in de overzichten tot hij terug is
-- **AF13** AC groter op de kaarten van het DM-scherm
-- **SC10** HP-balken op het spelersscherm even lang
+- ~~**AF13** AC groter op de kaarten van het DM-scherm~~ klaar in 1.35.1
+- ~~**SC10** HP-balken op het spelersscherm even lang~~ klaar in 1.35.1
 
 **P3: later**
 - Spelersscherm: **SC8** (teksten), **SC9** (mini-log)
@@ -54,7 +54,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | WP | Inhoud | Codes | Versie |
 |---|---|---|---|
 | ~~**WP1**~~ | Spelersscherm: niets verraden, verbinding kwijt zichtbaar (klaar) | SC2, SC3 | 1.35.0 |
-| **WP2** | Tikken en lezen op de telefoon: tikdoelen, verspringen, hoofdknop, minteken, AC groter, HP-balken gelijk | AF6, IN8, IN9, AF7, AF13, SC10 | 1.35.x |
+| ~~**WP2**~~ | Tikken en lezen op de telefoon: tikdoelen, verspringen, hoofdknop, minteken, AC groter, HP-balken gelijk (klaar) | AF6, IN8, IN9, AF7, AF13, SC10 | 1.35.1 |
 | **WP3** | Regels in het gevecht: Hold Person, initiative na eigen beurt, open saves, concentration save vanuit de schade | RE8, RE9, RE12, RE17 | 1.36.0 |
 | **WP4** | Speler toevoegen en gevecht afronden | SP4, GV7, AF9 | 1.37.0 |
 | **WP5** | Undo en toetsenbord | GV8, GV10 | 1.37.x |
@@ -64,14 +64,13 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | **WP9** | Spells van spelers: schade-spells in AoE (Fireball), slots verbruiken, Pact Magic | RE18, RE1, RE2, RE3 | 1.41.0 |
 | **WP10** | Monsterregels en minder klikken | RE13, RE14, GV11 | 1.42.0 |
 | **WP11** | Voorbereiding: passives, zoeken, lege encounter | SP5, VB4, VB5 | 1.43.0 |
-| **WP12** | Afwerking: haperingen, kleine fouten, toegankelijkheid, death save-worp, mini-log | AF10, AF11, AF12, RE15, SC9 | 1.43.x |
+| **WP12** | Afwerking: haperingen, kleine fouten, toegankelijkheid, death save-worp, mini-log, dobbelstenen in statblocktekst | AF10, AF11, AF12, AF14, RE15, SC9 | 1.43.x |
 | Backlog | Niet ingepland | RE4, RE5, RE6, TA1, TS1, fase 2 en 3 | |
 
 ---
 
 ## Indeling en navigatie
-- [ ] **IN8 Lijst verspringt bij openen van een lagere kaart** (P2): de kaart erboven klapt dicht, de lijst schuift ±160 px en de volgende tik raakt het verkeerde monster (Goblin 2 i.p.v. 3). Na het openen de aangetikte kaart op dezelfde schermpositie houden (scrollpositie corrigeren met het hoogteverschil), niet het automatisch dichtklappen loslaten (één kaart open is een vaste keuze).
-- [ ] **IN9 Hoofdknop onder de vouw** (P2): op de iPhone staan "3× Goblin toevoegen" en "Volgende / Start gevecht" (initiative-paneel) onder de vouw van hun paneel; op iPad liggend bedekt de dock (≥ 130 px) de death saves van de actieve kaart. Hoofdknop sticky onderaan het paneel; `scroll-padding-bottom` = `--dock-h` bij scrollen naar de actieve kaart.
+- Geen open punten (IN8 en IN9 klaar in 1.35.1, zie Klaar).
 
 ## Gevecht aan tafel
 - [ ] **GV7 Gevecht afronden laat restanten achter** (P2): sluit de DM de samenvatting zonder Monsters wissen, dan gaan oude monsters (draak 83/178) mee het volgende gevecht in; Prone e.d. blijven op spelers. Voorstel: bij Start gevecht waarschuwen als er beschadigde monsters uit het vorige gevecht staan (er is al `S.endSum`); in de samenvatting "Condities van spelers wissen?" (Prone/Grappled/Restrained standaard aan, Concentrating niet: kan doorlopen). Vindbaarheid: "Alle monsters neer · Gevecht afronden" in de beurtbalk bestaat al (GV2); een knop in de Gevecht-kop alleen als de UX-agent hem op 320 px kwijt kan.
@@ -115,16 +114,13 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - [ ] **SC6 Tv-weergave** (P2): op 1920×1080 zijn HP-getallen (22 px, grijs) en condities (19 px) op 3 m niet leesbaar en blijft ±35 % leeg; kolommen lezen van boven naar beneden. Schalen tot de hoogte gevuld is, HP groter en met meer contrast; UX-agent kiest tussen één kolom en rij-voor-rij nummering.
 - [ ] **SC7 Zelfde code na Stop met delen** (P2): opnieuw delen geeft nu een nieuwe code, dus tv en telefoons moeten opnieuw koppelen. Code en token in `it-room` laten staan na Stop en de kamer hervatten zolang die nog bestaat (12 u); vaste code per campagne blijft fase 2.
 - [ ] **SC8 Teksten op het spelersscherm** (P3): 0 HP toont "Bewusteloos" én de conditie "Unconscious" (één label); "Death saves ✓0 ✗0" zonder uitleg; lange namen afgekapt. ("Gevecht voorbij" en geen "Rol initiative" meer: klaar in WP1.)
-- [ ] **SC10 HP-balken even lang** (P2, eigen test Michiel): de balk deelt de rij met het getal (`.hpw` flex), dus "8/12" geeft een langere balk dan "112/130 +5". Getal een vaste breedte geven (tabular-nums, rechts uitgelijnd, ±7ch; temp HP eronder of in die ruimte) zodat alle balken in een kolom gelijk zijn, ook op de tv (SC6). Klein, CSS.
 - [ ] **SC9 Mini-log voor spelers op afstand** (P3): optioneel een paar regels "wat gebeurde er net", alleen wat de DM vrijgeeft en altijd via `toPlayerView` (verborgen monsters en Onbekend wezen mogen niet lekken).
 
 ## Afwerking (klein)
 - AF4 is opgegaan in **OB1/OB2** (rondleiding, zie Eerste gebruik)
-- [ ] **AF6 Tapdoelen ≥ 44 px** (P1, vaste regel uit CLAUDE.md): gemeten conditiechips 23 px, death save-bolletjes 22×22, slots 20×20, LA/LR 22–26 px, Sluit 32×23, Uit party 54×23; op de iPhone valt de onderste rij condities half achter de dock. Tikvlak vergroten met padding/`::after` (uiterlijk blijft), panelen scrollen boven de dock. Test die het minimum bewaakt waar dat kan.
-- [ ] **AF7 Minteken op iOS** (P2): `inputmode="numeric"` geeft op iOS geen minteken (Dex-mod −1, initiative-bonus, eigen monster). `inputmode="text"` met `pattern="-?[0-9]*"` of een ±-knop. Nog te bevestigen op een echte iPhone.
+- [ ] **AF14 Dobbelstenen in de statblocktekst** (P3, gevonden in WP2): de tikbare worpen in lopende tekst (`.dice`, "+11 to hit", "2d10 + 6") zijn 23 px hoog. Inline in zinnen, dus niet zomaar 44 px (regels zouden uit elkaar vallen; een `::after` naar boven en onder overlapt de regel erboven). UX-agent kiest: ruimere regelafstand in het statblock, of de worpen als knoppen uit de zin halen.
 - [ ] **AF8 Uitleg bij Deadly en Verrast** (P3): één zin Nederlandse uitleg met advies ("haal 1 monster weg voor Hard"); bij Verrast wanneer iemand verrast is.
 - [ ] **AF9 Bevestiging bij toevoegen en verwijderen** (P3): na Speler toevoegen een melding "Sanne toegevoegd (4 aan tafel)"; bij verwijderen een melding met Ongedaan. "Ook opslaan in vaste party": laatste keuze onthouden i.p.v. altijd aan (con-tafels).
-- [ ] **AF13 AC groter op het DM-scherm** (P2, eigen test Michiel): AC staat in de kaartkop als "AC 15" in 0,82 rem, grijs (`.c.k .meta`). Groter en sneller te vinden (bijv. schildje met het getal vet, ±1,1 rem), ook bij monsters; effect-AC in accentkleur blijft. Controleren op 320 px met lange namen en "neer".
 - [ ] **AF10 Kleine haperingen** (P3): focus in het naamveld bij + Speler; rondleiding pas tikbaar na de animatie; "Zeker?" bij Stop met delen; tik op een open Instellingen-sectie klapt hem dicht (nalopen of dat bedoeld is); import ook op de welkomstkaart; hint "(bijv. uit de Claude-versie)" weg.
 - [ ] **AF11 Kleine fouten** (P3): exportbestandsnaam gebruikt UTC (`toISOString` in `js/ui/actions.js`) → lokale tijd; dode wezens uit de lijst "concentratie van"; nalopen of verborgen monsters in de XP-lijst komen (vermoeden, volgens GV2 tellen ze mee).
 - [ ] **AF12 Toegankelijkheid** (P3): slots als "1st level slot 1 van 4, beschikbaar"; `aria-current` op wie aan de beurt is; monster/speler niet alleen via kleur.
@@ -250,6 +246,12 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **SP2** (1.34.0) Resistances per speler: ⋯ → "Resistances · Wijzig ▸" met Resist | Immuun | Kwetsb. en 13 type-knoppen (in beide modi, ook buiten de party); uit de D&D Beyond-link (bijwerken houdt eigen toevoegingen en meldt "Resist +fire −cold"). Automatisch in AoE ("resistant (opgeslagen)") en het aanvalspaneel; hint in het schadepaneel en het live-blok.
 - **SC2** (1.35.0, WP1) Spelersscherm verraadt niets: zonder gevecht alleen spelers (kop "Nog geen gevecht · Wacht op de DM", na afronden "Gevecht voorbij · Na N rondes"); verborgen monster aan de beurt = vorige zichtbare beurt blijft staan (begint hij ronde 1: "Gevecht begint").
 - **SC3** (1.35.0, WP1) Verbinding kwijt: spelers pingen 10 s/dood na 20 s, `offline` meteen; amberkleurige balk "Geen verbinding · stand van 21:14" met gedimde lijst, na 2 min lijst weg. DM weg (kamer meldt `dmnet`): na 45 s neutrale balk "De DM is even weg".
+- **AF6** (1.35.1, WP2) Tikdoelen ≥ 44 px: knoppen, links, invoervelden, pips/slots/resources, death saves, LA/LR, recharge-chips en conditie-toggles; pips en death saves zijn knoppen van 44×44 met het bolletje als `::before` (geen overlap). Panelen (Conditie, Effect, ⋯) komen boven de dock in beeld. `tests/tap.test.js` bewaakt de CSS.
+- **IN8** (1.35.1, WP2) Openen van een lagere kaart: de aangetikte kop blijft direct op dezelfde plek, daarna schuift de open kaart boven de dock.
+- **IN9** (1.35.1, WP2) Hoofdknop van panelen (Speler/Monster toevoegen, snel toevoegen, Start gevecht) plakt onderaan; iPad: actieve kaart boven de dock.
+- **AF7** (1.35.1, WP2) Minteken op iOS: Dex-mod, initiative (+ Speler) en effectwaarde zonder numeriek toetsenbord. Initiative-totalen elders houden het cijferpad (bewust).
+- **AF13** (1.35.1, WP2) AC als schildje met een vet getal in de kaartkop; effect-AC in accentkleur met vulling.
+- **SC10** (1.35.1, WP2) HP-balken op het spelersscherm even lang: getal met vaste breedte, temp HP eronder.
 - **GV6** (1.34.1) Verwijderen van wie aan de beurt is (⋯ → Verwijder tijdens een gevecht) beëindigt zijn beurt: eerst door naar de volgende (beurtgrenzen, ronde erbij als de volgorde rondgaat), dan weg (`removeCombatant` in `js/rules/turns.js`). Eerder ging de beurt naar de eerste in de volgorde zonder nieuwe ronde.
 - **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.
 
