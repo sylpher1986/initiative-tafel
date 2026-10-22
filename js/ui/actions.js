@@ -303,7 +303,13 @@ const global = {
   /** Gefaalde monster-save: toch Legendary Resistance, of opnieuw met advantage (Magic Resistance tegen een spell) */
   "toast-svlr"() { svRetry((c, sid) => { if (!c.lr || c.lr.left < 1) return; c.lr.left--; because("legendary resistance gebruikt", c.id); svDone(c, sid, true, "legendary resistance", ""); }); },
   "toast-svadv"() { svRetry((c, sid) => svRoll(sid, true)); },
-  undo() { if (undo()) { ui.confirmReset = false; toast(`Ongedaan gemaakt${historySize() ? ` (nog ${historySize()} stappen terug)` : ""}.`); } },
+  undo() {
+    const np = ui.addPid && ui.addPid.step === stepNo() ? ui.addPid.pid : null; ui.addPid = null; // AF9: net toegevoegd met vaste party
+    if (!undo()) return;
+    if (np && !app.S.list.some((c) => c.pid === np)) { app.party = app.party.filter((m) => m.pid !== np); saveParty(); } // syncParty maakte het lid; Ongedaan haalt het weg
+    ui.confirmReset = false; ui.startAsk = false; ui.oldGo = null; // GV7: geen hangende vraag of "oude wissen" na een stap terug
+    toast(`Ongedaan gemaakt${historySize() ? ` (nog ${historySize()} stappen terug)` : ""}.`);
+  },
   // na starten of stoppen volgt de modus weer het gevecht (ui.mode = null)
   start() {
     // GV7: monsters uit het vorige gevecht nog in de lijst? Eerst vragen (vóór het initiative-paneel, ook zonder spelers)
@@ -658,6 +664,7 @@ export function onKey(e) {
   }
   if (ui.la && e.key === "Escape") { e.preventDefault(); closeLa(); return; }
   if (ui.sv && e.key === "Escape") { e.preventDefault(); ui.sv = false; paintSv(); return; }
+  if (ui.startAsk && e.key === "Escape") { e.preventDefault(); global["old-no"](); return; } // GV7: vraag boven Start
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); ui.qadd = null; ui.aoe = null; ui.atk = null; ui.initDraft = null; global.undo(); render(); return; }
   if (ui.sheet && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
     const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" && !e.target.closest?.("#sheet button") ? ["apply"] : null;
@@ -685,7 +692,9 @@ function setBonus(v) {
   pcBonus = Number.isFinite(v) ? Math.trunc(v) : 0;
   $("#pc-bonv").textContent = fmtBonus(pcBonus);
   const [lo, hi] = $("#pc-bon").querySelectorAll("button");
+  const f = document.activeElement;
   lo.disabled = pcBonus <= BON[0]; hi.disabled = pcBonus >= BON[1];
+  if (f && f.disabled && (f === lo || f === hi)) (f === lo ? hi : lo).focus(); // focus niet kwijt aan een knop die uitgaat
 }
 function stepBonus(dv) {
   const v = Math.min(BON[1], Math.max(BON[0], pcBonus + dv));
@@ -710,9 +719,10 @@ function pcValid(plan) {
   const errs = [];
   if (!$("#pc-name").value.trim()) errs.push(["name", "Vul een naam in."]);
   if (needInit(plan) && parseInit($("#pc-init").value) === null) errs.push(["init", "Vul initiative in of tik op Rol."]);
-  if (!inRange($("#pc-ac").value, 1, 30)) errs.push(["ac", "AC tussen 1 en 30, of leeg laten."]);
+  if (!inRange($("#pc-ac").value, 1, 40)) errs.push(["ac", "AC tussen 1 en 40, of leeg laten."]); // zelfde grens als de sheet-parser
   if (!inRange($("#pc-hp").value, 1, 999)) errs.push(["hp", "Max HP tussen 1 en 999, of leeg laten."]);
   if (!inRange($("#pc-lvl").value, 1, 20)) errs.push(["lvl", "Level tussen 1 en 20, of leeg laten."]);
+  $("#pc-initl").hidden = !needInit(plan); // nooit een fout op een verborgen veld
   clearErrs();
   for (const [k, m] of errs) setErr(k, m);
   if (errs.length) { const f = $(`#pc-${errs[0][0]}`); f.focus(); f.scrollIntoView({ block: "center" }); }
@@ -786,6 +796,7 @@ function showMatch() {
   btn.disabled = plan === "none";
   btn.textContent = PLAN_LBL[plan];
   $("#pc-initl").hidden = !needInit(plan); // SP4: buiten een gevecht komt initiative bij Start
+  $("#pc-bon").closest(".lab").hidden = plan === "seat"; // partylid zonder sheet: bewaarde stand, de stepper doet dan niets
   if ($("#pc-initl").hidden) setErr("init", "");
   if (!m) { $("#pc-match").innerHTML = dupHint(); return; }
   const nm = `<b>${esc(m.name)}</b>`;
@@ -876,9 +887,11 @@ export function bindForms() {
       app.S.sample = false; saveParty();
       const what = ch.length ? ` (${ch.join(", ")})` : "";
       resetPcForm(); render(); $("#pc-name").focus();
-      toast(here ? `${ex.name} zit al aan tafel: bijgewerkt${what}. Initiative blijft.`
+      const msg = here ? `${ex.name} zit al aan tafel: bijgewerkt${what}. Initiative blijft.`
         : sh ? `${ex.name} bijgewerkt${what} en aan tafel gezet. Schade en verbruik blijven staan.`
-        : `${ex.name} aan tafel gezet met ${n0(ex.hp)}/${n0(ex.max)} HP${ex.ds && ex.ds.dead ? " (dood)" : ex.max && ex.hp <= 0 ? " (bewusteloos)" : ""}.`);
+        : `${ex.name} aan tafel gezet met ${n0(ex.hp)}/${n0(ex.max)} HP${ex.ds && ex.ds.dead ? " (dood)" : ex.max && ex.hp <= 0 ? " (bewusteloos)" : ""}.`;
+      // AF9: aan tafel zetten is terug te draaien; bijwerken van de party niet (undo dekt alleen de tafel)
+      if (here) toast(msg); else toastHtml(`${esc(msg)}${sh ? " Bijwerken in de party blijft." : ""} <button class="tundo" id="toast-undo">Ongedaan</button>`);
       return;
     }
     const max = parseInt($("#pc-hp").value) || 0;
@@ -898,6 +911,7 @@ export function bindForms() {
     });
     app.S.sample = false; ui.prepLast = app.S.list[app.S.list.length - 1].id;
     resetPcForm(); render(); $("#pc-name").focus();
+    ui.addPid = pid ? { pid, step: stepNo() } : null;
     toastHtml(`${esc(`${nm} toegevoegd${init != null ? ` op initiative ${init}` : ""} (${pcCount()}).`)} <button class="tundo" id="toast-undo">Ongedaan</button>`); // AF9
     // level hoort bij de party (syncParty neemt lvl niet over: het Party-paneel is de bron)
     const pm = pid && lvl && app.party.find((x) => x.pid === pid);
@@ -916,7 +930,7 @@ export function bindForms() {
   $("#pc-party").checked = ptyPref();
   setBonus(0);
   $("#pc-ddbgo").addEventListener("click", ddbFetch);
-  $("#pc-ddb").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); ddbFetch(); } }); // niet de submit (initiative is verplicht)
+  $("#pc-ddb").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); ddbFetch(); } }); // niet de submit (eerst de sheet ophalen)
   for (const k of ["ac", "hp"]) $("#pc-" + k).addEventListener("input", (e) => e.target.closest("label").classList.remove("warn"));
   $("#pc-match").addEventListener("click", (e) => {
     if (e.target.closest("#pc-new")) { pendingNew = true; showMatch(); toast(`Wordt als nieuwe speler toegevoegd.${app.S.round ? " Vul initiative in." : ""}`); }

@@ -129,7 +129,8 @@ export function leftConds(list) {
     for (const n of c.cond || []) {
       if (END_HIDE.includes(n)) continue;
       const e = c.cd && c.cd[n], timed = !!(e && e.kind && e.kind !== "inf");
-      out.push({ k: `${c.id}|${n}`, id: c.id, name: c.name, cond: n, on: !END_KEEP.includes(n) && (END_ON.includes(n) || timed) });
+      const down = n === "Prone" && c.max && c.hp <= 0; // Unconscious houdt Prone in (5e 2014): niet standaard wissen
+      out.push({ k: `${c.id}|${n}`, id: c.id, name: c.name, cond: n, on: !down && !END_KEEP.includes(n) && (END_ON.includes(n) || timed) });
     }
   }
   return out;
@@ -138,7 +139,7 @@ export function leftConds(list) {
 export function wipeConds(list, keys) {
   const done = [];
   for (const k of keys) {
-    const i = k.indexOf("|"), id = k.slice(0, i), n = k.slice(i + 1), c = list.find((x) => x.id === id);
+    const i = k.lastIndexOf("|"), id = k.slice(0, i), n = k.slice(i + 1), c = list.find((x) => x.id === id);
     if (!c || !(c.cond || []).includes(n) || END_HIDE.includes(n)) continue;
     c.cond = c.cond.filter((x) => x !== n);
     if (c.cd) delete c.cd[n];

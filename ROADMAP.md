@@ -14,8 +14,8 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 
 **P2: volgende (tempo en leesbaarheid aan tafel)**
 6. ~~IN8~~ klaar in 1.35.1 (WP2, zie Klaar)
-7. **GV7** Gevecht afronden: restanten (oude monsters, Prone) in het volgende gevecht
-8. **SP4** + Speler: initiative-bonus i.p.v. verplichte worp, eigen validatie · ~~AF7~~ klaar in 1.35.1 · **AF15** Dex-mod zonder lettertoetsenbord
+7. ~~GV7~~ klaar in 1.37.0 (WP4, zie Klaar)
+8. ~~SP4~~ · ~~AF7~~ · ~~AF15~~ klaar in 1.37.0 (WP4, zie Klaar)
 9. **GV8** Undo: ⌘⇧Z draait nog een stap terug; melding noemt niet wat er terugging
 10. **SC4** Sticky "Aan de beurt / Daarna" op de telefoon · **SC5** "Dit ben ik" op het spelersscherm
 11. **SC6** Tv-weergave: HP en condities op 3 m leesbaar
@@ -39,7 +39,7 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 
 **P3: later**
 - Spelersscherm: **SC8** (teksten), **SC9** (mini-log)
-- Afwerking: **AF8–AF12**
+- Afwerking: **AF8**, **AF10–AF12**
 - Regels: **RE3–RE6**, **RE14** (eigen monster beter inlezen), **RE15** (eigen death save-worp)
 - Voorbereiding: **VB4** (zoeken NL/typfouten), **VB5** (lege encounter maken)
 - Gevecht: **GV10** (sneltoetsen), **GV11** (minder klikken na een misser)
@@ -56,7 +56,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | ~~**WP1**~~ | Spelersscherm: niets verraden, verbinding kwijt zichtbaar (klaar) | SC2, SC3 | 1.35.0 |
 | ~~**WP2**~~ | Tikken en lezen op de telefoon: tikdoelen, verspringen, hoofdknop, minteken, AC groter, HP-balken gelijk (klaar) | AF6, IN8, IN9, AF7, AF13, SC10 | 1.35.1 |
 | ~~**WP3**~~ | Regels in het gevecht: Hold Person, initiative na eigen beurt, open saves, concentration save vanuit de schade (klaar) | RE8, RE9, RE12, RE17 | 1.36.0 |
-| **WP4** | Speler toevoegen en gevecht afronden | SP4, GV7, AF9, AF15 | 1.37.0 |
+| ~~**WP4**~~ | Speler toevoegen en gevecht afronden (klaar) | SP4, GV7, AF9, AF15 | 1.37.0 |
 | **WP5** | Undo en toetsenbord | GV8, GV10 | 1.37.x |
 | **WP6** | Spelersscherm op de telefoon: sticky kop, "Dit ben ik", teksten, reaction zichtbaar | SC4, SC5, SC8, GV12 | 1.38.0 |
 | **WP7** | Tv en koppelen: leesbaarheid, zelfde code, QR | SC6, SC7, SC1 | 1.39.0 |
@@ -73,7 +73,6 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - Geen open punten (IN8 en IN9 klaar in 1.35.1, zie Klaar).
 
 ## Gevecht aan tafel
-- [ ] **GV7 Gevecht afronden laat restanten achter** (P2): sluit de DM de samenvatting zonder Monsters wissen, dan gaan oude monsters (draak 83/178) mee het volgende gevecht in; Prone e.d. blijven op spelers. Voorstel: bij Start gevecht waarschuwen als er beschadigde monsters uit het vorige gevecht staan (er is al `S.endSum`); in de samenvatting "Condities van spelers wissen?" (Prone/Grappled/Restrained standaard aan, Concentrating niet: kan doorlopen). Vindbaarheid: "Alle monsters neer · Gevecht afronden" in de beurtbalk bestaat al (GV2); een knop in de Gevecht-kop alleen als de UX-agent hem op 320 px kwijt kan.
 - [ ] **GV8 Undo** (P2): (a) bug: ⌘⇧Z/Ctrl+Shift+Z (redo op Mac) doet nóg een undo, Shift uitsluiten in `onKey`; (b) melding noemt wat er terugging ("Ongedaan: Goblin 2 −50 HP", uit de logregel van die stap); (c) Opnieuw (redo) alleen als het eenvoudig blijkt: geschiedenis + IndexedDB (DA2/TS2) krijgen dan een tweede stapel.
 - [ ] **GV12 Reaction gebruikt zichtbaar** (P2, eigen test Michiel): nu alleen een badge op een dichte kaart; open kaart, live-blok (tablet), beurtbalk en spelersscherm tonen niets. Tonen tot de reaction terug is (begin van de eigen beurt, bestaande regel in `step`). Spelersscherm via `toPlayerView` (alleen zichtbare deelnemers; monsters volgens de instelling Condities). Met GV4 "Spelers zelf" niet bij spelers. UX-agent kiest de vorm (chip, icoon bij de naam) en of het op de tv mag.
 - [ ] **GV10 Sneltoetsen** (P3): spatie/N = Volgende, Shift+N = Vorige, "?" = overzicht. Alleen buiten invoervelden en panelen.
@@ -99,7 +98,6 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - [ ] **RE6 Spell-uitleg:** link vanuit AoE-Spell en Effect-presets; eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie)
 
 ## Spelers en D&D Beyond
-- [ ] **SP4 + Speler: initiative** (P2): het veld "Initiative (worp + mod)" is verplicht, ook bij het klaarzetten van de vaste party; Lotte vulde de modifier in en die telde als worp. Sinds het initiative-paneel bij Start (1.13.0) is een worp hier overbodig: veld wordt "Initiative-bonus" (optioneel, standaard Dex-mod), worp bij Start. Eigen Nederlandse validatie i.p.v. "Please fill out this field"; grenzen op AC (1–30) en HP (1–999).
 - [ ] **SP5 Passives** (P2): passive Perception, Insight en Investigation per speler (uit de D&D Beyond-link, anders invulbaar), zichtbaar op de spelerskaart in Voorbereiden en in het live-blok.
 - Later, als het nodig blijkt: handmatige "Defenses" op de D&D Beyond-sheet (`customDefenseAdjustments`) inlezen; tijdelijke resistances (Rage, Absorb Elements, Protection from Energy) als effect-preset.
 
@@ -115,9 +113,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 ## Afwerking (klein)
 - AF4 is opgegaan in **OB1/OB2** (rondleiding, zie Eerste gebruik)
 - [ ] **AF14 Dobbelstenen in de statblocktekst** (P3, gevonden in WP2): de tikbare worpen in lopende tekst (`.dice`, "+11 to hit", "2d10 + 6") zijn 23 px hoog. Inline in zinnen, dus niet zomaar 44 px (regels zouden uit elkaar vallen; een `::after` naar boven en onder overlapt de regel erboven). UX-agent kiest: ruimere regelafstand in het statblock, of de worpen als knoppen uit de zin halen.
-- [ ] **AF15 Getallen die negatief mogen zonder lettertoetsenbord** (P2, eigen test Michiel op de iPhone, 22-10-2026): de AF7-oplossing (1.35.1, `inputmode` weg) geeft op iOS de 123-laag van het gewone toetsenbord: wel een "−", maar ook ABC, leestekens en de balk "Vul contact automatisch in". Niet goed genoeg. Velden: Dex-mod (`pc-dex`), initiative-bonus (wordt nieuw in SP4), effectwaarde (`ef-v`); eventueel ook initiative-totalen (zie AF7-keuze). UX-agent kiest opnieuw; kandidaten: een stepper −/+ zonder toetsenbord (Dex-mod en bonus hebben een klein bereik, −5…+10), het cijferpad met een ±-knop ernaast, of een eigen cijferpad met "−" zoals het initiative-paneel. Hoe dan ook `autocomplete="off"` op de formuliervelden, zodat iOS geen contact-autofill aanbiedt. Test op een echte iPhone.
 - [ ] **AF8 Uitleg bij Deadly en Verrast** (P3): één zin Nederlandse uitleg met advies ("haal 1 monster weg voor Hard"); bij Verrast wanneer iemand verrast is.
-- [ ] **AF9 Bevestiging bij toevoegen en verwijderen** (P3): na Speler toevoegen een melding "Sanne toegevoegd (4 aan tafel)"; bij verwijderen een melding met Ongedaan. "Ook opslaan in vaste party": laatste keuze onthouden i.p.v. altijd aan (con-tafels).
 - [ ] **AF10 Kleine haperingen** (P3): focus in het naamveld bij + Speler; rondleiding pas tikbaar na de animatie; "Zeker?" bij Stop met delen; tik op een open Instellingen-sectie klapt hem dicht (nalopen of dat bedoeld is); import ook op de welkomstkaart; hint "(bijv. uit de Claude-versie)" weg.
 - [ ] **AF11 Kleine fouten** (P3): exportbestandsnaam gebruikt UTC (`toISOString` in `js/ui/actions.js`) → lokale tijd; dode wezens uit de lijst "concentratie van"; nalopen of verborgen monsters in de XP-lijst komen (vermoeden, volgens GV2 tellen ze mee).
 - [ ] **AF12 Toegankelijkheid** (P3): slots als "1st level slot 1 van 4, beschikbaar"; `aria-current` op wie aan de beurt is; monster/speler niet alleen via kleur.
@@ -253,6 +249,10 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **RE9** (1.36.0, WP3) Initiative tijdens het gevecht: al geweest en naar achteren = deze ronde overgeslagen ("Al geweest deze ronde: speelt pas volgende ronde op 4"); wie aan de beurt is houdt zijn beurtplek; nog niet geweest en naar voren = direct na de huidige beurt ("Nog niet geweest: komt direct na Noor, daarna op 15"). Live in ⋯ en als melding (ook het kaartveld). Een echte Delay/Ready-knop alleen als het nodig blijkt.
 - **RE12** (1.36.0, WP3) Open saves vervallen niet meer stil: de rij zegt in zijn laatste beurt "vervalt bij Volgende", daarna de melding "Save vervallen zonder uitslag: Lotte WIS 13 · Paralyzed blijft". Knoppen Geslaagd/Gefaald met tekst. Ttl blijft.
 - **RE17** (1.36.0, WP3) Concentration save uit de schade: de melding (schadepaneel, AoE, aanvalspaneel) noemt "concentratie-save CON 10 in de beurtbalk"; de beurtbalk is de enige bediening, nu ook in Voorbereiden tijdens een gevecht; concentratie-saves blijven regels (max 2), de rest achter "Saves · N andere open".
+- **SP4** (1.37.0, WP4) + Speler zonder worp: initiative komt bij Start gevecht (kaart "–"); tijdens een gevecht wel een verplicht veld met Rol. Eén veld Init-bonus (stepper) i.p.v. Dex-mod. Eigen Nederlandse foutregels onder het veld; AC 1–40, Max HP 1–999, Level 1–20.
+- **AF15** (1.37.0, WP4) Geen lettertoetsenbord meer: init-bonus is een stepper, effectwaarde heeft het cijferpad met het teken in de keuze (AC −, Max HP −); geen contact-autofill in + Speler.
+- **GV7** (1.37.0, WP4) Start gevecht vraagt bij monsters uit het vorige gevecht: Oude wissen en starten / Toch starten (alleen oude: Oude monsters wissen). Afrondpaneel: "Condities van spelers" met chips (Prone/Grappled/Restrained en condities met een duur standaard aan) en Wis gekozen.
+- **AF9** (1.37.0, WP4) Melding met Ongedaan na Speler toevoegen (haalt ook het nieuwe partylid weg) en na Verwijderen (nu één tik); vinkje "Ook opslaan in vaste party" onthouden per apparaat.
 - **GV6** (1.34.1) Verwijderen van wie aan de beurt is (⋯ → Verwijder tijdens een gevecht) beëindigt zijn beurt: eerst door naar de volgende (beurtgrenzen, ronde erbij als de volgorde rondgaat), dan weg (`removeCombatant` in `js/rules/turns.js`). Eerder ging de beurt naar de eerste in de volgorde zonder nieuwe ronde.
 - **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.
 

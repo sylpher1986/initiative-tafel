@@ -39,6 +39,7 @@ export const ui = {
   oldGo: null,         // GV7: antwoord daarop tot het gevecht echt start: "drop" (oude wissen) | "keep" (toch starten)
   endPick: {},         // GV7: condities in de samenvatting die de DM aan/uit zette ({ "id|cond": bool })
   condDone: null,      // GV7: stepNo() na "Wis gekozen" (blok weg tot er een stap bij komt)
+  addPid: null,        // AF9: { pid, step } van de laatst toegevoegde speler met vaste party (Ongedaan haalt ook het partylid weg)
   pUpd: null,          // SP1: Bijwerken per partylid ({ pid, st: "busy"|"ask"|"err", f, ch, kept, msg })
   mode: null,          // "prep" | "fight"; null = volg het gevecht (loopt → Gevecht, anders Voorbereiden)
   qadd: null,          // { q, sel, n, init: "roll"|"fixed", fix, full } = snel-toevoegen-paneel open (full = statblock in de preview)
@@ -586,8 +587,8 @@ const GEAR = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke
 
 /** GV7: vraag boven Start als er monsters uit het vorige gevecht staan (ui.startAsk na een tik op Start) */
 function oldAsk(S) {
-  const L = ui.startAsk ? oldMons(S) : [];
-  if (!L.length) { ui.startAsk = false; return ""; }
+  const L = ui.startAsk ? oldMons(S) : []; // render muteert niets: start/undo/old-* zetten startAsk
+  if (!L.length) return "";
   const onlyOld = !S.list.some((c) => c.kind === "monster" && !L.includes(c));
   return `<div class="confirmbox oldask" role="group" aria-label="Monsters uit het vorige gevecht"><p>${esc(oldText(L))}</p>
     <div class="bar">${onlyOld ? `<button type="button" class="btn primary tap" id="old-wipe">Oude monsters wissen</button>` : `<button type="button" class="btn primary tap" id="old-start">Oude wissen en starten</button>`}<button type="button" class="btn tap" id="old-go">Toch starten</button><button type="button" class="link" id="old-no">Annuleer</button></div></div>`;

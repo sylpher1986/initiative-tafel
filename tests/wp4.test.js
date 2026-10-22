@@ -38,7 +38,8 @@ test("SP4: logboek zonder 'initiative null'", () => {
   const add = diffLog({ list: [] }, { list: [pc("Sanne", null)] });
   assert.equal(add[0].msg, "Sanne doet mee");
   const ch = diffLog({ list: [pc("Sanne", null)] }, { list: [pc("Sanne", 14)] });
-  assert.match(ch[0].msg, /initiative – → 14/);
+  assert.match(ch[0].msg, /initiative 14/);
+  assert.doesNotMatch(ch[0].msg, /→/);
 });
 
 test("GV7: oude monsters = die er bij het afronden stonden, ook een levende verborgen", () => {
@@ -99,4 +100,17 @@ test("AF15: effectwaarde positief ingetikt, teken uit de keuze", () => {
   assert.deepEqual(effSpec("max", "10"), { st: "max", op: "+", v: 10 });
   assert.deepEqual(effSpec("max-", "5"), { st: "max", op: "+", v: -5 });
   assert.deepEqual(effSpec("txt", ""), { st: "", op: "+", v: 0 });
+});
+
+test("GV7: Prone bij een speler op 0 HP staat uit (hoort bij Unconscious); id met | werkt", () => {
+  const r = leftConds([pc("a|b", 1, { hp: 0, cond: ["Unconscious", "Prone"] }), pc("c", 1, { cond: ["Prone"] })]);
+  assert.deepEqual(r.map((x) => [x.k, x.on]), [["a|b|Prone", false], ["c|Prone", true]]);
+  const L = [pc("a|b", 1, { name: "Ayla", cond: ["Prone"] })];
+  assert.deepEqual(wipeConds(L, ["a|b|Prone"]), ["Ayla Prone"]);
+  assert.deepEqual(L[0].cond, []);
+});
+
+test("SP4: sorteren zonder dex en met null-init crasht niet en blijft stabiel", () => {
+  const L = sortOrder([{ id: "x", name: "X", kind: "pc", init: null }, { id: "y", name: "Y", kind: "pc", init: 5 }, { id: "z", name: "Z", kind: "monster", init: 5 }]);
+  assert.deepEqual(L.map((c) => c.id), ["y", "z", "x"]);
 });
