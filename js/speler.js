@@ -4,6 +4,8 @@ import { ORD } from "./rules/spells.js";
 import { localChannel, roomChannel, normCode, fmtCode } from "./share.js";
 import { esc } from "./ui/util.js";
 import { icon } from "./ui/avatar.js";
+import { tvPlan } from "./tvfit.js";
+import { qrSvg } from "./qr.js";
 
 const $ = (s) => document.querySelector(s);
 const ST_CLS = { Ongedeerd: "ok", Gewond: "ok", Bloodied: "mid", "Bijna dood": "low", Bewusteloos: "low", Stabiel: "mid", Neer: "out", Dood: "out" };
@@ -159,15 +161,48 @@ function paint(V) {
   const rows = V.list.filter((c) => !down.includes(c));
   const L = $("#pv-list");
   L.innerHTML = rows.map((c) => row(c, V, meId)).join("");
-  // tv/tablet liggend: vanaf 7 regels twee kolommen (eerst links van boven naar beneden, dan rechts); CSS bepaalt wanneer
-  document.body.classList.toggle("two", rows.length >= 7);
   $("#pv-down").hidden = !down.length;
   $("#pv-down").innerHTML = down.length ? `<span class="l">Neer</span> ${down.map((c) => esc(c.name)).join(", ")}` : "";
+  tvQr(); fitTv();
   const el = document.querySelector(".pvc.turn");
   if (el) {
     const r = el.getBoundingClientRect(), top = $("#pv-stick").getBoundingClientRect().bottom; // onder de vaste kop (SC4)
     if (r.top < top || r.bottom > innerHeight) el.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }
+}
+
+/* ---------- tv (SC6): één brede regel per deelnemer, letter passend op de hoogte; QR vóór het gevecht (SC1) ---------- */
+const TV_MQ = matchMedia("(orientation:landscape) and (min-width:900px) and (min-height:501px)");
+let tvSig = "";
+const vis = (s) => !$(s).hidden;
+/** Opnieuw passend maken alleen als de opbouw verandert (of het overloopt): een beurtwissel laat de letter staan */
+function fitTv(force) {
+  const b = document.body, tv = TV_MQ.matches;
+  b.classList.toggle("tv", tv);
+  if (!tv) { b.classList.remove("cols"); b.style.removeProperty("--tvfs"); tvSig = ""; return; }
+  const n = $("#pv-list").children.length;
+  const sig = [n, vis("#pv-mecard"), vis("#pv-down"), vis("#pv-net"), vis("#pv-wait"), vis("#pv-qr"), !!$("#pv-now").innerHTML, !!document.fullscreenElement, innerWidth, innerHeight].join();
+  const doc = document.documentElement, over = () => doc.scrollHeight > innerHeight + 1;
+  if (!force && sig === tvSig && !over()) return;
+  tvSig = sig;
+  b.style.setProperty("--rows", Math.max(1, Math.ceil(n / 2)));
+  const set = (f, cols) => { b.style.setProperty("--tvfs", f + "px"); b.classList.toggle("cols", cols); };
+  const { f, cols } = tvPlan(innerHeight, (f, cols) => { set(f, cols); return !over(); });
+  set(f, cols);
+}
+let tvRaf = 0;
+const refit = () => { cancelAnimationFrame(tvRaf); tvRaf = requestAnimationFrame(() => fitTv(true)); };
+
+/** QR op de tv: alleen via een kamer (het lokale kanaal heeft geen code), zonder gevecht of tijdens de pauze */
+let qrFor = "";
+function tvQr() {
+  const el = $("#pv-qr"), on = TV_MQ.matches && !!room && !!code && (paused || !lastV || !lastV.round);
+  el.hidden = !on;
+  document.body.classList.toggle("qr", on);
+  if (!on || qrFor === code) return;
+  qrFor = code;
+  const url = `${location.origin}/speler?k=${code}`;
+  el.innerHTML = `${qrSvg(url, `QR-code om mee te kijken, kamer ${code.split("").join(" ")}`)}<p>Meekijken op je telefoon · <b>${esc(fmtCode(code))}</b></p>`;
 }
 
 /* ---------- scherm aan houden en volledig scherm (tv/tablet) ---------- */
@@ -186,6 +221,10 @@ function boot() {
   });
   keepAwake();
   bindMe();
+  addEventListener("resize", refit);
+  document.addEventListener("fullscreenchange", refit);
+  TV_MQ.addEventListener?.("change", () => { tvQr(); refit(); });
+  document.fonts?.ready.then(refit); // meten vóór de letters geladen zijn is te vroeg
   paintMe(null, null);
   // SC4: hoogte van de vaste kop, zodat scrollIntoView de beurt er niet onder zet (scroll-margin-top)
   const stick = $("#pv-stick");
@@ -227,6 +266,7 @@ function bar() {
     : kind === "dm" ? `<b>De DM is even weg${since()}</b><span>Het gevecht gaat hier verder zodra de DM terug is.</span>` : "";
   document.body.classList.toggle("stale", kind === "lost" && !!lastAt);
   stickOff();
+  fitTv();
 }
 /** Lege vaste kop (geen beurt, geen balk) neemt geen ruimte in (geen :has, oudere iPads) */
 const stickOff = () => $("#pv-stick").classList.toggle("off", !$("#pv-now").innerHTML && $("#pv-net").hidden);
@@ -249,7 +289,7 @@ function handler(c) {
   return (m) => {
     if (m.t === "dm") c.send({ t: "hallo" }); // DM-scherm (opnieuw) gestart, of kamer (opnieuw) verbonden
     else if (m.t === "stand") { const V = cleanView(m.d); if (V) { $("#pv-join").hidden = true; paint(V); } }
-    else if (c === room && m.t === "einde") leave("De DM deelt niet meer.");
+    else if (c === room && m.t === "einde") leave("De DM deelt niet meer met deze code. Vraag de nieuwe code.");
     else if (c === room && m.t === "stop") pause();
     else if (c === room && m.t === "dmnet") m.on ? dmBack() : dmAway();
     else if (c === room && m.t === "net") {
@@ -272,13 +312,14 @@ function join(k) {
   $("#pv-wait").hidden = false;
   $("#pv-wait").textContent = `Verbinden met kamer ${fmtCode(k)}…`;
   try { history.replaceState(null, "", `?k=${k}`); } catch { /* geen probleem */ }
+  tvQr(); fitTv();
 }
 
 /** Stand weg (verouderd of gestopt) */
 function clear() {
   clearTimeout(lostT); clearTimeout(dmT); dmT = 0; netLost = dmGone = false; lastAt = 0; lastJson = ""; bar();
   $("#pv-now").innerHTML = ""; $("#pv-list").innerHTML = "";
-  $("#pv-down").hidden = true; $("#pv-down").innerHTML = ""; document.body.classList.remove("two");
+  $("#pv-down").hidden = true; $("#pv-down").innerHTML = "";
   const had = $("#pv-mepick").contains(document.activeElement);
   $("#pv-now").classList.remove("me"); lastV = null; prevMs = null; pickOpen = false; paintMe(null, null);
   stickOff();
@@ -294,6 +335,7 @@ function pause() {
   $("#pv-join").hidden = true;
   $("#pv-wait").hidden = false;
   $("#pv-wait").innerHTML = `<b class="pvpause">De DM deelt op dit moment niet.</b><br>Zodra de DM weer deelt, verschijnt het gevecht hier vanzelf. · Kamer ${esc(fmtCode(code))}`;
+  tvQr(); fitTv();
 }
 
 function leave(msg) {
@@ -302,6 +344,7 @@ function leave(msg) {
   clear();
   try { history.replaceState(null, "", location.pathname); } catch { /* geen probleem */ }
   showJoin(msg);
+  tvQr(); fitTv();
 }
 
 function showJoin(msg) {

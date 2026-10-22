@@ -845,18 +845,39 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
   .pvc .av{width:1.5em;height:1.5em}
   .pvc .bd{font-size:.58em}
 }
-/* tv en tablet liggend: letter schaalt met de hoogte, vanaf 7 regels twee kolommen (body.two uit speler.js) */
+/* liggend vanaf 900 px (ook een telefoon liggend): letter met de hoogte mee */
 @media (orientation:landscape) and (min-width:900px){
   body.pv{font-size:clamp(14px,3vh,30px)}
-  body.pv.two .pvwrap{max-width:1600px}
-  body.pv.two ol.pvlist{display:block;columns:2;column-gap:.8em}
-  body.pv.two .pvc{break-inside:avoid}
-  body.pv.two .pvwrap{gap:.5em}
-  body.pv.two .pvtop h1{font-size:.9em;margin:0}
-  body.pv.two .pvnow{padding:.35em .9em}
-  body.pv.two .pvc{padding-block:.3em;margin-bottom:.35em}
-  body.pv.two .pvc .badges{margin-top:-.1em}
 }
+/* SC6 tv (body.tv uit speler.js, zelfde query plus min-height 501px): één brede regel per deelnemer
+   (init | avatar + naam | condities | HP), letter --tvfs passend op de hoogte (js/tvfit.js); body.cols = noodgreep */
+body.pv.tv{font-size:var(--tvfs,30px);padding-bottom:0}
+body.pv.tv .pvwrap{max-width:none;padding:0 2vw;gap:.35em}
+body.pv.tv .pvtop h1{font-size:.7em;margin:0}
+:root:fullscreen body.pv.tv .pvtop{display:none}
+:root:-webkit-full-screen body.pv.tv .pvtop{display:none}
+body.pv.tv .pvnow{padding:.3em .8em}
+body.pv.tv .pvnow .l,body.pv.tv .pvnext{font-size:.75em}
+body.pv.tv ol.pvlist{gap:.25em}
+body.pv.tv .pvc{padding-block:.2em}
+body.pv.tv:not(.cols) .pvc{grid-template-columns:1.8em minmax(0,auto) minmax(0,1fr) auto}
+body.pv.tv:not(.cols) .pvc .badges{grid-column:3;grid-row:1;justify-content:flex-start;margin:0}
+body.pv.tv:not(.cols) .pvhp{grid-column:4;grid-row:1}
+body.pv.tv .pvc .bd{font-size:.85em;font-weight:700}
+body.pv.tv .pvi{color:var(--fg)}
+body.pv.tv .pvhp{flex-direction:row;align-items:center;gap:.5em}
+body.pv.tv .pvhp .hpw{display:flex;align-items:center;gap:.5em;width:auto}
+body.pv.tv .pvhp .hpw .bar{width:6em;height:.45em}
+body.pv.tv .pvhp .hpn{font-size:1em;color:var(--fg);font-weight:700;display:flex;gap:.3em;align-items:baseline}
+body.pv.tv .pvst{font-size:.85em;font-weight:700}
+body.pv.tv.cols ol.pvlist{grid-auto-flow:column;grid-template-rows:repeat(var(--rows),auto);grid-template-columns:1fr 1fr;column-gap:.8em}
+body.pv.tv.cols .pvhp .hpw .bar{width:3.5em}
+/* SC1: QR op de tv vóór het gevecht (of tijdens de pauze), rechts naast de lijst; altijd zwart op wit */
+.pvqr{display:none}
+body.pv.tv.qr .pvwrap{padding-right:calc(30vh + 4vw + 24px)}
+body.pv.tv.qr .pvqr:not([hidden]){display:grid;justify-items:center;gap:.3em;position:fixed;right:2vw;bottom:2vw;width:calc(30vh + 24px);padding:12px;background:#fff;color:#111;border-radius:var(--r);font-size:clamp(14px,2vh,24px);text-align:center}
+.pvqr svg.qr{display:block;width:30vh;height:30vh}
+.pvqr p{margin:0;line-height:1.2}
 .pvdown .l{font-size:.75em;text-transform:uppercase;letter-spacing:.08em;margin-right:.4em}
 
 /* Delen met spelers (Instellingen → Spelersscherm, js/ui/kamer.js) */
@@ -868,6 +889,16 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .kamer-url{margin:0;font-size:.82rem;color:var(--muted);overflow-wrap:anywhere}
 .kamer-st{margin:0;font-size:.92rem;color:var(--muted)}
 .kamer-st.on{color:var(--good)}
+.kamer-code.dim{color:var(--muted)}
+/* SC1: QR schermvullend; in beide thema's wit vlak en zwarte tekst (scanners lezen geen negatief, maximaal contrast) */
+.qrfull{position:fixed;inset:0;z-index:70;background:#fff;color:#111;overflow:auto;display:grid;place-items:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.qrin{display:grid;justify-items:center;gap:10px;text-align:center;width:100%;max-width:640px}
+.qrin h2{margin:0;font:700 1.3rem/1.2 var(--display);color:#111}
+.qrfull svg.qr{display:block;width:270px;max-width:100%;height:auto}
+.qrcode{margin:0;font:700 2.5rem/1.1 var(--display);letter-spacing:.12em;font-variant-numeric:tabular-nums;color:#111}
+.qrurl{margin:0;font-size:.85rem;color:#444;overflow-wrap:anywhere}
+.qrnote{margin:0;font-size:.95rem;color:#7a4b00}
+.qrfull .qrclose{width:100%;min-height:48px;background:#fff;color:#111;border:1px solid #555;font-weight:700}
 .kamer-st.on::before{content:"● "}
 html.kamer-lost .dock .prow [data-prep="data"],html.kamer-pauze .dock .prow [data-prep="data"]{position:relative}
 html.kamer-lost .dock .prow [data-prep="data"]::after,html.kamer-pauze .dock .prow [data-prep="data"]::after{content:"";position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:var(--bad)}

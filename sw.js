@@ -46,6 +46,7 @@ const ASSETS = [
   "./js/rules/turns.js",
   "./js/share.js",
   "./js/qr.js",
+  "./js/tvfit.js",
   "./js/speler.js",
   "./js/state.js",
   "./js/histpack.js",
