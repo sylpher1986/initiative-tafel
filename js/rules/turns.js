@@ -33,13 +33,14 @@ export const sortOrder = (list) => [...list].sort(cmpOrder);
  *   komt deze ronde direct na `after` (de beurt van toen), niet op zijn nieuwe plek. Volgende ronde gewoon op de nieuwe plek.
  */
 export const pending = (c, S) => !!(c.nextR && c.nextR.r === S.round && S.round);
+/** RE9: eigen init gewijzigd tijdens de eigen beurt: deze ronde blijft hij op atR.ai (zijn plek toen) */
+const held = (c, S) => !!(c.atR && c.atR.r === S.round && S.round && Number.isFinite(c.atR.ai));
 export function turnOrder(S, L) {
   const a = S.active ? L.find((c) => c.id === S.active) : null;
-  let M = L;
-  if (a && Number.isFinite(S.ai) && a.init !== S.ai && !pending(a, S)) {
-    const v = { ...a, init: S.ai };
-    M = [...L].sort((x, y) => cmpOrder(x === a ? v : x, y === a ? v : y));
-  }
+  const v = a && Number.isFinite(S.ai) && a.init !== S.ai && !pending(a, S) ? { ...a, init: S.ai } : null;
+  // held(x): wijzigde zijn eigen init tijdens zijn beurt → deze ronde nog op de oude plek (‹ Vorige komt er ook langs)
+  const key = (x) => (held(x, S) ? { ...x, init: x.atR.ai } : v && x === a ? v : x);
+  const M = v || L.some((x) => held(x, S)) ? [...L].sort((x, y) => cmpOrder(key(x), key(y))) : L;
   const P = M.filter((c) => pending(c, S));
   if (!P.length) return M;
   const out = M.filter((c) => !pending(c, S)), ids = new Set(L.map((c) => c.id));
@@ -47,10 +48,18 @@ export function turnOrder(S, L) {
   while (todo.length) { // anker kan zelf ingeschoven zijn (ketting): invoegen zodra het anker staat
     const left = [];
     for (const p of todo) {
-      const i = out.findIndex((x) => x.id === p.nextR.after);
-      if (i >= 0) { let j = i + 1; while (out[j] && pending(out[j], S) && out[j].nextR.after === p.nextR.after) j++; out.splice(j, 0, p); }
-      else if (!ids.has(p.nextR.after) || p.nextR.after === p.id) { const k = out.findIndex((x) => cmpOrder(p, x) < 0); out.splice(k < 0 ? out.length : k, 0, p); } // anker weg: gewone plek
-      else left.push(p);
+      const b = ids.has(p.nextR.after) && p.nextR.after !== p.id ? L.find((x) => x.id === p.nextR.after) : null;
+      if (!b) { const k = out.findIndex((x) => cmpOrder(p, x) < 0); out.splice(k < 0 ? out.length : k, 0, p); } // anker weg: gewone plek
+      else if (!pending(b, S)) { // op de plek van het anker toen (nextR.ai): wijzigt het anker later zijn init, dan schuift p niet mee
+        const V = posOf(S, p);
+        let k = 0;
+        while (k < out.length && (pending(out[k], S) || cmpOrder(V, key(out[k])) >= 0)) k++;
+        out.splice(k, 0, p);
+      } else {
+        const i = out.indexOf(b);
+        if (i >= 0) { let j = i + 1; while (out[j] && pending(out[j], S) && out[j].nextR.after === p.nextR.after) j++; out.splice(j, 0, p); }
+        else left.push(p);
+      }
     }
     if (left.length === todo.length) { for (const p of left) out.push(p); break; } // kring (kan niet, maar nooit vastlopen)
     todo = left;
@@ -58,12 +67,23 @@ export function turnOrder(S, L) {
   return out;
 }
 
+/**
+ * Plek van c in de beurtvolgorde als sorteersleutel: wie aan de beurt is op S.ai; ingeschoven op de plek van zijn anker
+ * toen het inschuiven gebeurde (nextR.ai, zonder: de plek van het anker nu; ketting: die van het anker).
+ */
+function posOf(S, c, n = 0) {
+  if (pending(c, S) && n < 20) {
+    const b = S.list.find((x) => x.id === c.nextR.after);
+    if (b && b !== c) return !pending(b, S) && Number.isFinite(c.nextR.ai) ? { ...b, init: c.nextR.ai } : posOf(S, b, n + 1);
+  }
+  if (held(c, S)) return { ...c, init: c.atR.ai };
+  return c.id === S.active && Number.isFinite(S.ai) ? { ...c, init: S.ai } : c;
+}
+
 /** Plek van de beurt: wie aan de beurt is (met zijn initiative bij het begin van de beurt), of het anker als hij er via nextR tussen kwam */
 function cursorOf(S) {
   const a = S.list.find((c) => c.id === S.active);
-  if (!a) return null;
-  if (pending(a, S)) { const b = S.list.find((c) => c.id === a.nextR.after); if (b) return b; }
-  return { ...a, init: Number.isFinite(S.ai) ? S.ai : a.init };
+  return a ? posOf(S, a) : null;
 }
 
 /**
@@ -81,8 +101,9 @@ export function initPlan(S, c, v) {
   const after = (x) => cmpOrder(cur, x) < 0, nu = { ...c, init: v };
   const own = c.id === S.active;
   if (pending(c, S) && !c.nextR.done && !own) return { ...no, next: !after(nu), back: after(nu) };
-  const acted = own || c.skipR === S.round || !after(c);
-  if (acted) return { ...no, own, skip: after(nu), back: c.skipR === S.round && !after(nu) };
+  const acted = own || c.skipR === S.round || !after(posOf(S, c));
+  if (own) return { ...no, own }; // houdt deze ronde zijn plek (atR), nieuwe plek vanaf volgende ronde
+  if (acted) return { ...no, skip: after(nu), back: (c.skipR === S.round || held(c, S)) && !after(nu) };
   return { ...no, next: !after(nu) && !skipsTurn(c, S.round) };
 }
 
@@ -90,10 +111,12 @@ export function initPlan(S, c, v) {
 export function setInit(S, c, v) {
   const out = Object.assign(fx(), { plan: initPlan(S, c, v) }), p = out.plan;
   if (v === c.init) return out;
-  const cur = S.list.find((x) => x.id === S.active);
+  const cur = S.list.find((x) => x.id === S.active), at = cursorOf(S);
   c.init = v;
+  if (p.own && !pending(c, S) && !held(c, S)) c.atR = { r: S.round, ai: at.init }; // beurtplek van deze ronde vasthouden
+  else if (!p.own && c.atR) delete c.atR; // al geweest en opnieuw gewijzigd: gewone regels (skipR)
   if (p.skip) c.skipR = S.round; else if (c.skipR != null) delete c.skipR;
-  if (p.next && !pending(c, S)) c.nextR = { r: S.round, after: S.active };
+  if (p.next && !pending(c, S)) c.nextR = { r: S.round, after: S.active, ...(cur && !pending(cur, S) ? { ai: at.init } : {}) }; // ai: plek van het anker nu
   else if (!p.next && c.nextR && !(p.own && pending(c, S))) delete c.nextR;
   const t = initText(p, v, cur && cur.name);
   if (t) { out.msgs.push(`${c.name}: ${t}.`); out.why.push({ t: t.toLowerCase(), id: c.id }); }
@@ -127,7 +150,7 @@ export const skipsTurn = (c, round) => isOut(c) || (round === 1 && !!c.sur) || (
 /** Nog verrast: geen reaction, geen legendary actions */
 export const isSurprised = (c, S) => c.sur === true && S.round === 1 && !isOut(c);
 const clearSur = (list) => { for (const c of list) delete c.sur; };
-const clearSkip = (list) => { for (const c of list) { delete c.skipR; delete c.nextR; } };
+const clearSkip = (list) => { for (const c of list) { delete c.skipR; delete c.nextR; delete c.atR; } };
 
 /**
  * Bij Start gevecht (initiative-paneel): wie is verrast. who: "none" | "mon" | "pc".
@@ -330,7 +353,7 @@ export function removeCombatant(state, id, rng = Math.random) {
   // RE9: ingeschoven beurten die direct na deze deelnemer kwamen, komen na zijn voorganger (anders vallen ze terug op hun plek vóór de beurt)
   const T = turnOrder(state, sortOrder(state.list)), k = T.findIndex((c) => c.id === id);
   const prev = T.slice(0, Math.max(0, k)).reverse().find((c) => !pending(c, state));
-  for (const c of state.list) if (pending(c, state) && c.nextR.after === id) c.nextR.after = prev ? prev.id : null;
+  for (const c of state.list) if (pending(c, state) && c.nextR.after === id) { c.nextR.after = prev ? prev.id : null; if (prev) c.nextR.ai = posOf(state, prev).init; }
   state.list = state.list.filter((c) => c.id !== id);
   if (state.active === id) state.active = null;
   return out;

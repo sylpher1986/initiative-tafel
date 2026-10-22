@@ -77,8 +77,9 @@ export function cleanCombatant(c) {
     anon: kind === "monster" && Number.isInteger(c.anon) && c.anon > 0 && c.anon < 1000 ? c.anon : undefined, // naam onbekend voor spelers
     grp: kind === "monster" && typeof c.grp === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(c.grp) ? c.grp : undefined,
     sur: c.sur === true || c.sur === 2 ? c.sur : undefined, // surprise in ronde 1 (export midden in een gevecht)
+    atR: obj(c.atR) && Number.isInteger(c.atR.r) && c.atR.r > 0 && Number.isFinite(+c.atR.ai) ? { r: c.atR.r, ai: num(c.atR.ai) } : undefined, // RE9: eigen beurtplek deze ronde
     skipR: Number.isInteger(c.skipR) && c.skipR > 0 ? c.skipR : undefined, // RE9: al geweest, deze ronde overgeslagen
-    nextR: obj(c.nextR) && Number.isInteger(c.nextR.r) && c.nextR.r > 0 ? { r: c.nextR.r, after: c.nextR.after ? str(c.nextR.after, 40) : null, ...(c.nextR.done ? { done: 1 } : {}) } : undefined, // RE9: ingeschoven beurt
+    nextR: obj(c.nextR) && Number.isInteger(c.nextR.r) && c.nextR.r > 0 ? { r: c.nextR.r, after: c.nextR.after ? str(c.nextR.after, 40) : null, ...(Number.isInteger(c.nextR.ai) ? { ai: c.nextR.ai } : {}), ...(c.nextR.done ? { done: 1 } : {}) } : undefined, // RE9: ingeschoven beurt
     ac: num(c.ac), hp: num(c.hp), max: num(c.max), temp: num(c.temp), reaction: !!c.reaction,
     pid: c.pid ? str(c.pid, 40) : null, lvl: kind === "pc" ? cleanLvl(c.lvl) ?? undefined : undefined, ddbId: /^[1-9]\d{0,11}$/.test(String(c.ddbId)) ? String(c.ddbId) : undefined, race: typeof c.race === "string" ? str(c.race, 120) : undefined, img: (kind === "pc" && cleanImg(c.img)) || undefined, ref: c.ref ? str(c.ref, 120) : undefined, roll: c.roll != null ? num(c.roll) : undefined,
     initBonus: c.initBonus != null ? num(c.initBonus) : undefined, concSpell: c.concSpell ? str(c.concSpell, 120) : null,
@@ -108,7 +109,7 @@ export function parseImport(json) {
   for (const [k, v] of Object.entries(obj(json.lairs) || {})) lairs[str(k, 120)] = arr(v).map((a) => ({ n: str(a.n, 120), t: str(a.t, 4000) }));
   return {
     S: {
-      list: dedupeAnon(arr(S.list).map(cleanCombatant)), round: Math.max(0, num(S.round)), active: S.active ? str(S.active, 40) : null, sample: false,
+      list: dedupeAnon(arr(S.list).map(cleanCombatant)), round: Math.max(0, num(S.round)), active: S.active ? str(S.active, 40) : null, ...(Number.isInteger(S.ai) && S.round ? { ai: S.ai } : {}), sample: false, // ai: beurtplek (RE9)
       ...(cleanEnc(S.enc).length ? { enc: cleanEnc(S.enc) } : {}), ...(S.allMon === true ? { allMon: true } : {}), // ingeladen encounter (VB2); samenvatting en gevechtsduur gaan niet mee
       log: arr(S.log).slice(-600).map((e) => ({ id: str(e.id, 40), r: num(e.r), turn: str(e.turn, 120), type: ["round", "turn"].includes(e.type) ? e.type : "", msg: str(e.msg, 1000), why: str(e.why, 1000), note: str(e.note, 1000) })),
     },

@@ -39,7 +39,7 @@ test("RE9: wie aan de beurt is verlaagt zijn eigen init → niemand overgeslagen
   const S = party();
   startCombat(S, rng); // bram 12
   const r = setInit(S, by(S, "bram"), 4);
-  assert.equal(r.plan.own, true); assert.equal(r.plan.skip, true);
+  assert.equal(r.plan.own, true); assert.equal(by(S, "bram").atR.r, 1, "houdt deze ronde zijn plek");
   assert.match(initText(r.plan, 4), /beurt loopt door, volgende ronde op 4/);
   assert.equal(nextUp(S, sortOrder(S.list), S.active).id, "gob");
   assert.deepEqual(turns(S, 6), ["1:gob", "1:noor", "1:orc", "2:gob", "2:noor", "2:bram"]);
@@ -131,4 +131,52 @@ test("RE9: stopCombat ruimt beurtplek en vlaggen op", () => {
   stopCombat(S);
   assert.ok(S.list.every((c) => c.skipR === undefined && c.nextR === undefined));
   assert.equal(S.ai, undefined);
+});
+
+test("RE9 (review): anker wijzigt zelf zijn init → ingeschoven beurt blijft op de plek van toen, niemand dubbel of overgeslagen", () => {
+  // anker is aan de beurt en verlaagt eigen init vóór de ingeschoven beurt
+  let S = party();
+  startCombat(S, rng); step(S, 1, rng); // gob
+  setInit(S, by(S, "orc"), 15); setInit(S, by(S, "gob"), 1);
+  assert.deepEqual(turns(S, 4), ["1:orc", "1:noor", "2:orc", "2:bram"]);
+  // ingeschoven beurt is gespeeld, anker (al geweest) verlaagt daarna
+  S = party();
+  startCombat(S, rng); step(S, 1, rng); setInit(S, by(S, "orc"), 15); step(S, 1, rng); step(S, 1, rng); // noor
+  setInit(S, by(S, "gob"), 1);
+  assert.deepEqual(turns(S, 4), ["2:orc", "2:bram", "2:noor", "2:gob"]);
+  // tijdens de ingeschoven beurt verlaagt het anker
+  S = party();
+  startCombat(S, rng); step(S, 1, rng); setInit(S, by(S, "orc"), 15); step(S, 1, rng); // orc (ingeschoven)
+  setInit(S, by(S, "gob"), 1);
+  assert.deepEqual(turns(S, 2), ["1:noor", "2:orc"]);
+});
+
+test("RE9 (review): beurtplek S.ai en nextR.ai gaan mee door import", async () => {
+  const { parseImport: importData } = await import("../js/backup.js");
+  const S = party();
+  startCombat(S, rng); step(S, 1, rng); setInit(S, by(S, "orc"), 15); setInit(S, by(S, "gob"), 1);
+  const r = importData({ format: "initiative-tafel", version: 2, state: JSON.parse(JSON.stringify(S)) });
+  assert.equal(r.S.ai, 8);
+  assert.equal(r.S.list.find((c) => c.id === "orc").nextR.ai, 8);
+});
+
+test("RE9: eigen init verlaagd, Volgende en ‹ Vorige → terug bij hem (niet overgeslagen)", () => {
+  const S = party();
+  startCombat(S, rng); step(S, 1, rng); // gob 8
+  setInit(S, by(S, "gob"), 1);
+  step(S, 1, rng); assert.equal(S.active, "noor");
+  step(S, -1, rng); assert.equal(S.active, "gob", "Vorige komt bij gob");
+  assert.deepEqual(turns(S, 4), ["1:noor", "1:orc", "2:bram", "2:noor"]);
+  assert.deepEqual(turns(S, 2), ["2:orc", "2:gob"], "ronde 2 op 1");
+  assert.equal(by(S, "gob").atR, undefined);
+});
+
+test("RE9: eigen init gewijzigd, daarna (na de beurt) nog eens verlaagd → gewone regels", () => {
+  const S = party();
+  startCombat(S, rng); step(S, 1, rng); // gob 8
+  setInit(S, by(S, "gob"), 6); // blijft deze ronde op 8
+  step(S, 1, rng); // noor
+  const r = setInit(S, by(S, "gob"), 1);
+  assert.equal(r.plan.skip, true);
+  assert.deepEqual(turns(S, 3), ["1:orc", "2:bram", "2:noor"]);
 });
