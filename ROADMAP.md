@@ -9,7 +9,7 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 1. ~~GV6~~ klaar in 1.34.1 (zie Klaar)
 2. ~~SC2~~ klaar in 1.35.0 (WP1, zie Klaar)
 3. ~~SC3~~ klaar in 1.35.0 (WP1, zie Klaar)
-4. **RE8** Hold Person vinkt alle humanoïden aan; caster wisselen zet de selectie terug
+4. ~~RE8~~ klaar in 1.36.0 (WP3, zie Klaar)
 5. ~~AF6~~ klaar in 1.35.1 (WP2, zie Klaar)
 
 **P2: volgende (tempo en leesbaarheid aan tafel)**
@@ -21,9 +21,9 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 11. **SC6** Tv-weergave: HP en condities op 3 m leesbaar
 12. **SC7** Zelfde code na Stop met delen · **SC1** QR-code (omhoog uit P3)
 13. **RE10** Uitleg bij een tik op een conditie (DM én spelersscherm), met duur en DC
-14. **RE9** Initiative verlagen na de eigen beurt: waarschuwing (Delay later)
+14. ~~RE9~~ klaar in 1.36.0 (WP3, zie Klaar)
 15. ~~IN9~~ klaar in 1.35.1 (WP2, zie Klaar)
-16. **RE12** Open save die stil vervalt bij Volgende; ✓/✗ zonder tekst
+16. ~~RE12~~ klaar in 1.36.0 (WP3, zie Klaar)
 17. **RE1/RE2** Spell slots verbruiken bij Shield, AoE en Spell (omhoog uit P3)
 18. **RE11** Exhaustion (2014, niveau 1–6)
 19. **SP5** Passive Perception / Insight / Investigation per speler
@@ -31,7 +31,7 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 
 **Eigen test Michiel (21-10-2026, aan tafel)**, ingedeeld in P2 en verdeeld over de werkpakketten:
 - **RE18** Schade-spells (Fireball) in AoE: spell kiezen, schade rollen, upcasten (hoog binnen P2)
-- **RE17** Concentration save meteen afhandelen vanuit de schade
+- ~~**RE17** Concentration save meteen afhandelen vanuit de schade~~ klaar in 1.36.0
 - **RE16** Rage (barbarian) als status met alle voordelen
 - **GV12** Reaction gebruikt zichtbaar in de overzichten tot hij terug is
 - ~~**AF13** AC groter op de kaarten van het DM-scherm~~ klaar in 1.35.1
@@ -55,7 +55,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 |---|---|---|---|
 | ~~**WP1**~~ | Spelersscherm: niets verraden, verbinding kwijt zichtbaar (klaar) | SC2, SC3 | 1.35.0 |
 | ~~**WP2**~~ | Tikken en lezen op de telefoon: tikdoelen, verspringen, hoofdknop, minteken, AC groter, HP-balken gelijk (klaar) | AF6, IN8, IN9, AF7, AF13, SC10 | 1.35.1 |
-| **WP3** | Regels in het gevecht: Hold Person, initiative na eigen beurt, open saves, concentration save vanuit de schade | RE8, RE9, RE12, RE17 | 1.36.0 |
+| ~~**WP3**~~ | Regels in het gevecht: Hold Person, initiative na eigen beurt, open saves, concentration save vanuit de schade (klaar) | RE8, RE9, RE12, RE17 | 1.36.0 |
 | **WP4** | Speler toevoegen en gevecht afronden | SP4, GV7, AF9, AF15 | 1.37.0 |
 | **WP5** | Undo en toetsenbord | GV8, GV10 | 1.37.x |
 | **WP6** | Spelersscherm op de telefoon: sticky kop, "Dit ben ik", teksten, reaction zichtbaar | SC4, SC5, SC8, GV12 | 1.38.0 |
@@ -89,16 +89,12 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - [ ] **RE3 Pact Magic-slots apart bijhouden** (komen terug na een short rest); nu opgeteld bij de gewone slots
 - [ ] **RE4 2024-regels buiten spells** (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen
 - [ ] **RE5 Surprise:** keuze ook zonder spelers aan tafel (paneel opent dan niet)
-- [ ] **RE8 Hold Person: doelen en selectie** (P1): Spell → Hold Person vinkt alle humanoïde vijanden aan; 2014 = één humanoid (+1 per slot boven 2nd). Caster wisselen zet de eigen selectie terug op alle (2× gereproduceerd). Spells met één doel zonder voorselectie (`spellDefault`, veld `max` op de preset), selectie bewaren bij caster-wissel (alleen ongeschikte doelen uitzetten).
-- [ ] **RE9 Initiative verlagen na de eigen beurt** (P2): Bram van 12 naar 4 tijdens de beurt van Noor (5) → Bram is deze ronde nog een keer aan de beurt. Eerst een waarschuwing in ⋯/de kaart ("Al geweest deze ronde: speelt pas volgende ronde op 4") en de volgorde zo dat hij deze ronde niet nog eens komt. Een echte Delay/Ready-knop pas als blijkt dat het nodig is.
 - [ ] **RE10 Uitleg bij een conditie** (P2): tik op een conditiechip/badge opent een kort paneel met 2–3 regels Nederlandse uitleg (eigen samenvatting van de SRD, de naam blijft Engels), plus duur en herhaalsave met DC. Op het DM-scherm én het spelersscherm (spelers: duur en DC volgen de zichtbaarheidsinstelling Condities). Vervangt de wens van Fatima (duur en DC).
 - [ ] **RE11 Exhaustion (2014)** (P2): conditie met niveau 1–6 en de effecten per niveau (dis op checks, speed ½, dis op attacks en saves, max HP ½, speed 0, dood); weg met één niveau per long rest. Raakt RE4 (2024-exhaustion) en de effecten in het aanvalspaneel.
-- [ ] **RE12 Open save die stil vervalt** (P2): Lotte klikte Volgende zonder te kiezen; de save verdween en de conditie bleef. Nalopen of de bestaande logoorzaak ("vervallen zonder gevolg") er echt komt; ✓/✗ met tekst ("gelukt/mislukt"). Laten staan tot beantwoord botst met de bewuste ttl (RE7/saves): UX-agent beslist.
 - [ ] **RE13 Monsterregels die je vergeet** (P2): prompt zoals de concentration save: Undead Fortitude ("CON DC 5 + schade"), save-riders na een treffer (Wolf Bite "STR DC 11 of Prone?"), Parry als reaction met +AC. Herkenning in `js/rules/attacks.js` uit de statblocktekst, alleen de bekende SRD-patronen.
 - [ ] **RE14 Eigen monster beter inlezen** (P3): geplakt statblock krijgt geen aanvalsknoppen, geen LA en geen resistances; losse "+6 to hit" zonder crit-knop. Zelfde parser als voor SRD-monsters.
 - [ ] **RE15 Eigen death save-worp invoeren** (P3): getal typen (nat 20 = 1 HP, nat 1 = twee fails), zoals het cijferpad bij initiative.
 - [ ] **RE16 Rage (2014)** (P2, eigen test Michiel): effect-preset op een speler met alle voordelen: resistance tegen bludgeoning/piercing/slashing (tijdelijk, naast SP2-resistances; automatisch in AoE, aanvalspaneel en hint in het schadepaneel), advantage op STR-checks en STR-saves (AoE/Spell-saves), +2/+3/+4 rage damage op melee STR-aanvallen (hint, uit level), geen spells casten en geen concentratie (lopende concentratie stopt bij starten). Duur 10 rondes; eindigt eerder als hij bewusteloos raakt of zijn beurt eindigt zonder aanval of schade sinds zijn vorige beurt (vraag aan het einde van de beurt: "Rage loopt door?", schade sinds de vorige beurt vanzelf ja). Gebruik telt af op de resource "Rage" uit de D&D Beyond-sheet (`c.res`) als die er is. Bear Totem (resistance tegen alles behalve psychic) en Frenzy (exhaustion, RE11) als optie. Regels puur in `js/rules/effects.js`, met test.
-- [ ] **RE17 Concentration save meteen vanuit de schade** (P2, eigen test Michiel): na schade op iemand met Concentrating komt de save nu als open save in de beurtbalk (alleen in Gevecht, bij 3+ achter "Saves · N open", vervalt na één beurtwissel); de melding en het schadepaneel noemen alleen de DC. Voorstel: in de melding na toepassen direct [Rol +N] (monster) of [✓][✗] (speler), en in het aanvalspaneel bij de uitslag. Eerst reproduceren waar Michiel hem miste (schadepaneel, AoE, aanvalspaneel). Samen met RE12 (open saves die stil vervallen); UX-agent kiest.
 - [ ] **RE18 Schade-spells in AoE (Fireball)** (P2, hoog; eigen test Michiel): de tab Spell kent alleen condities en effecten (Bless … Web) en de tab Schade alleen een getal. Gevonden: ± 50 SRD-spells in `data/spells.json` hebben schadedobbelstenen + save in de tekst (Fireball "8d6 fire … dexterity saving throw … half", upcast "+1d6 per slot level above 3rd"). Voorstel: (a) in Schade een veld "Spell" dat zoekt in die spells en type, save, half/geen schade en dobbelstenen invult, met caster (spell save DC uit de sheet of statblock), slotlevel (upcast) en **Rol 8d6** (uitkomst aanpasbaar, worp in het logboek); (b) los daarvan altijd een dobbelsteenveld "Rol XdY+Z" voor homebrew en niet-SRD. Parser puur in `js/rules/`, tabel vooraf gegenereerd en getest (niet bij elke tik parsen). UX-agent kiest of damage-spells ook in de tab Spell verschijnen (Michiel zocht daar) en hoe het samengaat met slots verbruiken (RE1/RE2, zelfde pakket).
 - [ ] **RE6 Spell-uitleg:** link vanuit AoE-Spell en Effect-presets; eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie)
 
@@ -253,6 +249,10 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **AF7** (1.35.1, WP2) Minteken op iOS: Dex-mod, initiative (+ Speler) en effectwaarde zonder numeriek toetsenbord. Initiative-totalen elders houden het cijferpad (bewust).
 - **AF13** (1.35.1, WP2) AC als schildje met een vet getal in de kaartkop; effect-AC in accentkleur met vulling.
 - **SC10** (1.35.1, WP2) HP-balken op het spelersscherm even lang: getal met vaste breedte, temp HP eronder.
+- **RE8** (1.36.0, WP3) Hold Person: geen voorselectie meer (één doel); Bless/Bane houden hun voorselectie. Teller "Doelen · 2 van 1 · 3rd-level slot" en dezelfde staart op de knop (niet blokkeren: slots volgen in WP9). Caster wisselen houdt de keuze per doel; alleen de nieuwe caster gaat uit, gerolde saves gelden tegen de nieuwe DC.
+- **RE9** (1.36.0, WP3) Initiative tijdens het gevecht: al geweest en naar achteren = deze ronde overgeslagen ("Al geweest deze ronde: speelt pas volgende ronde op 4"); wie aan de beurt is houdt zijn beurtplek; nog niet geweest en naar voren = direct na de huidige beurt ("Nog niet geweest: komt direct na Noor, daarna op 15"). Live in ⋯ en als melding (ook het kaartveld). Een echte Delay/Ready-knop alleen als het nodig blijkt.
+- **RE12** (1.36.0, WP3) Open saves vervallen niet meer stil: de rij zegt in zijn laatste beurt "vervalt bij Volgende", daarna de melding "Save vervallen zonder uitslag: Lotte WIS 13 · Paralyzed blijft". Knoppen Geslaagd/Gefaald met tekst. Ttl blijft.
+- **RE17** (1.36.0, WP3) Concentration save uit de schade: de melding (schadepaneel, AoE, aanvalspaneel) noemt "concentratie-save CON 10 in de beurtbalk"; de beurtbalk is de enige bediening, nu ook in Voorbereiden tijdens een gevecht; concentratie-saves blijven regels (max 2), de rest achter "Saves · N andere open".
 - **GV6** (1.34.1) Verwijderen van wie aan de beurt is (⋯ → Verwijder tijdens een gevecht) beëindigt zijn beurt: eerst door naar de volgende (beurtgrenzen, ronde erbij als de volgorde rondgaat), dan weg (`removeCombatant` in `js/rules/turns.js`). Eerder ging de beurt naar de eerste in de volgorde zonder nieuwe ronde.
 - **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.
 

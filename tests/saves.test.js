@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addSave, turnSaves, tickSaves, openSaves, resolveSave, TTL } from "../js/rules/saves.js";
+import { addSave, turnSaves, tickSaves, openSaves, resolveSave, TTL, lastTurn } from "../js/rules/saves.js";
 import { step, startCombat } from "../js/rules/turns.js";
 import { applyDamage, startConc } from "../js/rules/combat.js";
 import { diffLog } from "../js/log.js";
@@ -23,9 +23,11 @@ test("niet afgehandeld: blijft één beurtwissel staan, vervalt daarna zonder ge
   step(S, 1); // m aan de beurt: vraag open
   let r = step(S, 1); // Goblin: vraag staat er nog
   assert.equal(openSaves(S).length, 1);
+  assert.equal(lastTurn(openSaves(S)[0]), true, "RE12: rij zegt 'vervalt bij Volgende'");
   r = step(S, 1); // Wolfim: verlopen
   assert.equal(openSaves(S).length, 0);
-  assert.ok(r.why.some((w) => w.id === "m" && /niet afgehandeld/.test(w.t)));
+  assert.ok(r.why.some((w) => w.id === "m" && /niet afgehandeld, vervallen zonder gevolg/.test(w.t)));
+  assert.ok(r.msgs.includes("Save vervallen zonder uitslag: Bugbear WIS 13 · Paralyzed blijft"), "RE12: niet meer stil");
   assert.ok(S.list[1].cond.includes("Paralyzed"));
   assert.equal(TTL, 2);
 });
@@ -106,4 +108,15 @@ test("RE7: Vorige over de rondegrens en langs een verraste deelnemer telt ook te
   step(S, -1); // terug naar Goblin in ronde 1
   assert.equal(S.round, 1);
   assert.equal(S.saves[0].ttl, TTL);
+});
+
+test("RE12: vervallen concentration save meldt 'concentratie blijft'; ongeldige save vervalt zonder melding", () => {
+  const S = { list: [pc({ cond: ["Concentrating"], concSpell: "Bless" }), mon()], round: 1, active: "p", saves: [] };
+  addSave(S, { id: "p", kind: "conc", n: "Bless", ab: "CON", dc: 10 });
+  addSave(S, { id: "m", kind: "cond", n: "Frightened", ab: "WIS", dc: 12 }); // conditie bestaat niet (meer)
+  assert.equal(lastTurn(S.saves[0]), false);
+  tickSaves(S);
+  const r = tickSaves(S);
+  assert.deepEqual(r.msgs, ["Save vervallen zonder uitslag: Wolfim CON 10 · concentratie blijft"]);
+  assert.equal(S.saves.length, 0);
 });

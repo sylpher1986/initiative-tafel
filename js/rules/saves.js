@@ -20,18 +20,28 @@ export function turnSaves(S, id) {
   for (const [n, e] of Object.entries(c.cd)) if (e && e.save && c.cond.includes(n)) addSave(S, { id, kind: "cond", n, ab: e.save.ab, dc: e.save.dc });
 }
 
-/** Beurtwissel vooruit: open saves verouderen; verlopen = niet afgehandeld (de deelnemer verandert niet) */
+/**
+ * Beurtwissel vooruit: open saves verouderen; verlopen = niet afgehandeld (de deelnemer verandert niet).
+ * RE12: niet meer stil: een melding per vervallen save, en de rij zei al "vervalt bij Volgende" (lastTurn).
+ */
 export function tickSaves(S) {
   const out = fx();
   if (!S.saves || !S.saves.length) return out;
   S.saves = S.saves.filter((s) => {
     s.ttl--;
     if (s.ttl > 0) return true;
-    if (isValid(S, s)) out.why.push({ t: `${label(s)} niet afgehandeld`, id: s.id });
+    const c = isValid(S, s) && S.list.find((x) => x.id === s.id);
+    if (c) {
+      out.why.push({ t: `${label(s)} niet afgehandeld, vervallen zonder gevolg`, id: s.id });
+      out.msgs.push(`Save vervallen zonder uitslag: ${c.name} ${s.ab} ${s.dc} · ${s.kind === "conc" ? "concentratie" : s.n} blijft`);
+    }
     return false;
   });
   return out;
 }
+
+/** Laatste beurt dat de save nog staat: bij de volgende beurtwissel vervalt hij (RE12) */
+export const lastTurn = (s) => s.ttl <= 1;
 
 /**
  * ‹ Vorige: de veroudering van de laatste beurtwissel terugdraaien (max TTL), anders vervalt een save een beurt eerder.

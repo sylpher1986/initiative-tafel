@@ -11,14 +11,15 @@ import { NO_ACT } from "./legendary.js";
 /**
  * Presets. eff = effect-preset (effects.js), conds = condities bij een gefaalde save (de eerste bepaalt immuniteit),
  * rep = herhaalsave aan het einde van de beurt (open save, saves.js), side = wie standaard aan staat ("own" = kant van de caster).
+ * max/lvl = aantal doelen op het laagste slot en dat slot (+1 doel per hoger slot; 2014 en 2024 gelijk); max 1 = geen voorselectie (RE8).
  * brk = condities vervallen per doel bij schade (combat.js applyDamage); then = gefaalde herhaalsave → deze conditie i.p.v. de eerste
  * (Sleep 2024: Incapacitated → Unconscious); auto = conditie-immuniteit waardoor de save vanzelf slaagt; ed = alleen bij die spellregels.
  * Index in deze lijst is stabiel (de UI bewaart hem): nieuwe presets achteraan, verbergen gaat via `ed`.
  */
 export const SPELLS = [
-  { n: "Bless", eff: "Bless", conc: true, side: "own", sub: "+1d4 · conc" },
-  { n: "Bane", eff: "Bane", ab: "CHA", conc: true, side: "other", sub: "CHA · −1d4" },
-  { n: "Hold Person", ab: "WIS", conds: ["Paralyzed"], rep: true, dur: "r10", conc: true, side: "other", humanoid: true, sub: "WIS · Paralyzed" },
+  { n: "Bless", eff: "Bless", conc: true, side: "own", max: 3, lvl: 1, sub: "+1d4 · conc" },
+  { n: "Bane", eff: "Bane", ab: "CHA", conc: true, side: "other", max: 3, lvl: 1, sub: "CHA · −1d4" },
+  { n: "Hold Person", ab: "WIS", conds: ["Paralyzed"], rep: true, dur: "r10", conc: true, side: "other", humanoid: true, max: 1, lvl: 2, sub: "WIS · Paralyzed" },
   { n: "Hypnotic Pattern", ab: "WIS", conds: ["Charmed", "Incapacitated"], dur: "r10", conc: true, side: "other", sub: "WIS · Charmed", brk: true,
     note: "vervalt vanzelf bij schade; ook als iemand een actie gebruikt om het doel wakker te schudden (conditie uitzetten)" },
   // Web duurt (concentratie) tot 1 uur: geen rondeteller, de concentratie van de caster beëindigt het
@@ -93,9 +94,12 @@ export function spellDefault(sp, caster, c, m) {
   if (c.hidden) tags.push("verborgen");
   const own = caster ? (caster.kind === "pc") === (c.kind === "pc") : false;
   const side = sp.side === "own" ? own : !own;
-  const sel = !!caster && side && c.id !== caster.id && !immune && human && !(c.kind === "pc" && c.max && c.hp <= 0);
+  const sel = !!caster && sp.max !== 1 && side && c.id !== caster.id && !immune && human && !(c.kind === "pc" && c.max && c.hp <= 0); // één doel: de DM kiest (RE8)
   return { sel, tags, immune, fit: !immune && human };
 }
+
+/** RE8: slot dat n doelen vraagt (max doelen op slot lvl, +1 per hoger slot); null zonder maximum of binnen het maximum */
+export const slotFor = (sp, n) => (sp && sp.max && n > sp.max ? sp.lvl + n - sp.max : null);
 
 /** Cast-sleutel: doelen in dezelfde beurt horen bij dezelfde cast (zelfde schema als effecten) */
 export const castKey = (round, active) => `${round || 0}:${active || ""}`;

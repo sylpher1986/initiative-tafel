@@ -10,7 +10,7 @@ import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax,
 import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
-import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant } from "../rules/turns.js";
+import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant, setInit } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, DTYPES, targetMode, drToggle, drKind, DR_LBL, cleanDr } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
@@ -33,6 +33,11 @@ import { pcReact, setPcReact } from "./pcreact.js";
 import { armTour, restartTour } from "./tour.js";
 
 /** Fx uit de regels: meldingen tonen en oorzaken doorgeven aan het logboek */
+/** RE17: nieuwe concentration saves uit schade, als staart voor de melding (bediening alleen in de beurtbalk) */
+const concNote = (f) => {
+  const C = ((f && f.saves) || []).filter((s) => s.kind === "conc");
+  return !C.length ? "" : C.length === 1 ? ` · concentratie-save CON ${C[0].dc} in de beurtbalk` : ` · ${C.length} concentratie-saves in de beurtbalk`;
+};
 const apply = (fx) => { if (!fx) return; addWhy(fx.why); show(fx); if (fx.saves) fx.saves.forEach((x) => addSave(app.S, x)); };
 
 /* ---------- monsters toevoegen ---------- */
@@ -155,8 +160,8 @@ const row = {
     const mx = parseInt(ed.max), extra = (c.max || 0) - baseMax(c);
     if (has("max") && Number.isFinite(mx) && mx > 0 && mx !== baseMax(c)) R.setMax(c, mx + extra); // effecten (Aid) blijven bovenop
     const ini = parseInit(ed.init);
-    if (has("init") && ini !== null) c.init = ini;
     because("bewerkt");
+    if (has("init") && ini !== null && ini !== c.init) apply(setInit(app.S, c, ini)); // RE9: al geweest / ingeschoven
     ui.edit = null; ui.panel = null;
   },
   /* ---- effecten ---- */
@@ -233,10 +238,11 @@ function sheetKey(k, v) {
   if (k === "apply") {
     const c = app.S.list.find((x) => x.id === s.id), n = parseInt(s.val) || 0;
     if (!c || !n) return;
-    apply(s.kind === "dmg" ? R.applyDamage(c, n, s.mode) : s.kind === "heal" ? R.heal(c, n) : R.giveTemp(c, n));
+    const f = s.kind === "dmg" ? R.applyDamage(c, n, s.mode) : s.kind === "heal" ? R.heal(c, n) : R.giveTemp(c, n);
+    apply(f);
     const before = { dmg: `−${Math.floor(n * s.mode)}`, heal: `+${n}`, thp: `+${n} temp` }[s.kind];
     ui.sheet = null;
-    return { back: s, undoToast: `${c.name} ${before} HP → ${c.hp}/${c.max}${c.temp ? ` (+${c.temp} temp)` : ""}` };
+    return { back: s, undoToast: `${c.name} ${before} HP → ${c.hp}/${c.max}${c.temp ? ` (+${c.temp} temp)` : ""}${concNote(f)}` };
   }
 }
 
@@ -594,7 +600,7 @@ function prepField(c, t) {
     const v = parseInit(raw);
     if (v === null) return back("Initiative moet een getal zijn.");
     if (v === c.init) return;
-    c.init = v; because("in Voorbereiden aangepast", c.id);
+    because("in Voorbereiden aangepast", c.id); apply(setInit(app.S, c, v)); // RE9: tijdens een gevecht
   } else if (k === "max") {
     if (!(n > 0)) return back("Max HP moet minstens 1 zijn.");
     if (n === baseMax(c)) return;
@@ -1079,9 +1085,17 @@ function rebuildAoe(focus) {
 /** Spell-velden (caster, DC, eigen spell). true = afgehandeld */
 function spellField(a, t) {
   const id = t.id;
-  if (id === "s-by") { a.by = t.value; a.s = {}; a.sdc = spellDC(a); rebuildAoe("#s-by"); return true; }
+  if (id === "s-by") { // RE8: de keuze per doel blijft; alleen de nieuwe caster gaat uit, gerolde saves gelden tegen de nieuwe DC
+    a.by = t.value;
+    const dc0 = a.sdc; a.sdc = spellDC(a);
+    if (a.by) a.s[a.by] = { ...(a.s[a.by] || {}), sel: false };
+    const dc = parseInt(a.sdc), rolled = Object.values(a.s).filter((x) => x.roll);
+    rolled.forEach((x) => { x.lr = false; x.ok = dc > 0 && x.roll.tot >= dc; });
+    a.redc = rolled.length && a.sdc && a.sdc !== dc0 ? a.sdc : ""; // melding in #s-info
+    rebuildAoe("#s-by"); return true;
+  }
   if (id === "s-dc") {
-    a.sdc = t.value;
+    a.sdc = t.value; a.redc = "";
     const dc = parseInt(a.sdc); // al gerolde saves opnieuw tegen de nieuwe DC leggen
     Object.values(a.s).forEach((x) => { if (x.roll) { x.lr = false; x.ok = dc > 0 && x.roll.tot >= dc; } });
     paintAoe(); return true;
@@ -1099,7 +1113,7 @@ const spellDC = (a) => { const c = app.S.list.find((x) => x.id === a.by); return
 function spellClick(a, k, b) {
   const sp = curSpell(a), id = b.dataset.id, caster = app.S.list.find((x) => x.id === a.by);
   const set = (patch) => { a.s[id] = { ...(a.s[id] || {}), ...patch }; };
-  if (k === "sp") { const v = b.dataset.v === "own" ? "own" : +b.dataset.v; if (a.sp !== v) { a.sp = v; a.s = {}; if (!a.sdc) a.sdc = spellDC(a); } rebuildAoe(`[data-ao="sp"][data-v="${b.dataset.v}"]`); return true; }
+  if (k === "sp") { const v = b.dataset.v === "own" ? "own" : +b.dataset.v; if (a.sp !== v) { a.sp = v; a.s = {}; a.redc = ""; if (!a.sdc) a.sdc = spellDC(a); } rebuildAoe(`[data-ao="sp"][data-v="${b.dataset.v}"]`); return true; }
   if (k === "sgo") { spellGo(); return true; }
   if (!sp) return k.startsWith("s");
   if (k === "ssave") set({ ok: b.dataset.v === "1", lr: false });
@@ -1235,7 +1249,7 @@ function aoeGo() {
   const down = picks.filter((x) => x.up && x.c.hp <= 0).length;
   ui.aoe = null;
   render();
-  toastHtml(`${esc(`${a.act || `AoE ${label}`}: ${L.length} doel${L.length === 1 ? "" : "en"}, ${r.hits.reduce((s, h) => s + h.dealt, 0)} schade${down ? `, ${down} neer` : ""}${rcUsed ? " · recharge op" : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  toastHtml(`${esc(`${a.act || `AoE ${label}`}: ${L.length} doel${L.length === 1 ? "" : "en"}, ${r.hits.reduce((s, h) => s + h.dealt, 0)} schade${down ? `, ${down} neer` : ""}${rcUsed ? " · recharge op" : ""}${concNote(r)}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
   const ab = $("#aoe"); if (ab) ab.focus();
 }
 
@@ -1304,12 +1318,13 @@ function atkGo() {
   if (!res.hit || !res.dealt) return;
   const before = c.hp;
   because(atkWhy(`${x.label} (${by.name})`, r, ac || null, x.parts, res), c.id);
-  apply(atkDamage(c, res));
+  const f = atkDamage(c, res);
+  apply(f);
   const la = atkLa(x, by); // na de schade: een monster dat zichzelf raakt en neergaat kan geen LA meer
   ui.atkPrev = { by: by.id, id: c.id };
   ui.atk = null;
   render();
-  toastHtml(`${esc(`${c.name}: −${res.dealt} HP${res.crit ? " (kritiek)" : ""} → ${n0(c.hp)}/${n0(c.max)}${before > 0 && c.hp <= 0 ? (c.kind === "pc" ? ", bewusteloos" : ", neer") : ""}${la}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  toastHtml(`${esc(`${c.name}: −${res.dealt} HP${res.crit ? " (kritiek)" : ""} → ${n0(c.hp)}/${n0(c.max)}${before > 0 && c.hp <= 0 ? (c.kind === "pc" ? ", bewusteloos" : ", neer") : ""}${la}${concNote(f)}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
   atkBack(x, false);
 }
 

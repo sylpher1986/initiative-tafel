@@ -77,6 +77,8 @@ export function cleanCombatant(c) {
     anon: kind === "monster" && Number.isInteger(c.anon) && c.anon > 0 && c.anon < 1000 ? c.anon : undefined, // naam onbekend voor spelers
     grp: kind === "monster" && typeof c.grp === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(c.grp) ? c.grp : undefined,
     sur: c.sur === true || c.sur === 2 ? c.sur : undefined, // surprise in ronde 1 (export midden in een gevecht)
+    skipR: Number.isInteger(c.skipR) && c.skipR > 0 ? c.skipR : undefined, // RE9: al geweest, deze ronde overgeslagen
+    nextR: obj(c.nextR) && Number.isInteger(c.nextR.r) && c.nextR.r > 0 ? { r: c.nextR.r, after: c.nextR.after ? str(c.nextR.after, 40) : null, ...(c.nextR.done ? { done: 1 } : {}) } : undefined, // RE9: ingeschoven beurt
     ac: num(c.ac), hp: num(c.hp), max: num(c.max), temp: num(c.temp), reaction: !!c.reaction,
     pid: c.pid ? str(c.pid, 40) : null, lvl: kind === "pc" ? cleanLvl(c.lvl) ?? undefined : undefined, ddbId: /^[1-9]\d{0,11}$/.test(String(c.ddbId)) ? String(c.ddbId) : undefined, race: typeof c.race === "string" ? str(c.race, 120) : undefined, img: (kind === "pc" && cleanImg(c.img)) || undefined, ref: c.ref ? str(c.ref, 120) : undefined, roll: c.roll != null ? num(c.roll) : undefined,
     initBonus: c.initBonus != null ? num(c.initBonus) : undefined, concSpell: c.concSpell ? str(c.concSpell, 120) : null,

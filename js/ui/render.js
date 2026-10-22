@@ -4,7 +4,7 @@ import { paintSetStat } from "./settings.js";
 import { $, esc, n0, spellLink } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
-import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf, isSurprised, canToggleSurprise, nextUp, freshRoll } from "../rules/turns.js";
+import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf, isSurprised, canToggleSurprise, nextUp, freshRoll, initPlan, initText } from "../rules/turns.js";
 import { PRESETS as PRESETS_14, presetsFor, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn } from "../rules/effects.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList, splitSpells, edFor, sheetEd } from "../rules/spells.js";
@@ -14,9 +14,9 @@ import { diceify, syncSB, monCard, isPhone } from "./statblock.js";
 import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
 import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
-import { openSaves } from "../rules/saves.js";
+import { openSaves, lastTurn } from "../rules/saves.js";
 import { avatar, icon, monType } from "./avatar.js";
-import { SPELLS, SPELL_CONDS, customSpell, spellTargets, spellDefault, condImmune, spellFor, rulesDiffer } from "../rules/spellcast.js";
+import { SPELLS, SPELL_CONDS, customSpell, spellTargets, spellDefault, condImmune, spellFor, rulesDiffer, slotFor } from "../rules/spellcast.js";
 import { rulesEd } from "./spellrules.js";
 import { initRoll } from "./initroll.js";
 import { ANON, anonName } from "../playerview.js";
@@ -297,6 +297,11 @@ export function editPreview(c) {
   }
   const ac = parseInt(ed.ac);
   if ((c.eff || []).some((e) => e.st === "ac")) parts.push(`basis-AC; nu ${effAc({ ...c, ac: Number.isFinite(ac) ? ac : c.ac })} met effecten`);
+  const ini = parseInit(ed.init);
+  if (ini !== null && ini !== c.init && (!ed.keys || ed.keys.includes("init"))) { // RE9: wat de nieuwe initiative deze ronde betekent
+    const t = initText(initPlan(app.S, c, ini), ini, (app.S.list.find((x) => x.id === app.S.active) || {}).name);
+    if (t) parts.push(`<b class="warn">${esc(t[0].toUpperCase() + t.slice(1))}</b>`);
+  }
   if (c.pid) parts.push("wijzigt ook de vaste party");
   if (!String(ed.name).trim()) parts.push(`<b class="bad">naam mag niet leeg zijn</b>`);
   else if (app.S.list.some((x) => x !== c && x.name.toLowerCase() === String(ed.name).trim().toLowerCase())) parts.push("let op: deze naam bestaat al");
@@ -584,7 +589,7 @@ function paintDock() {
     return;
   }
   if (prepRow) { // Voorbereiden tijdens een gevecht: geen beurtbalk, één knop terug (IN5: dock niet twee rijen hoog)
-    $("#dock").innerHTML = `${prepRow}<div class="row one">${undoBtn}<button class="nx" data-setmode="fight">Terug naar gevecht · ronde ${n0(S.round)}</button></div>`;
+    $("#dock").innerHTML = `${prepRow}${svBar(S)}<div class="row one">${undoBtn}<button class="nx" data-setmode="fight">Terug naar gevecht · ronde ${n0(S.round)}</button></div>`;
     return;
   }
   const i = L.findIndex((c) => c.id === S.active);
@@ -602,24 +607,32 @@ export const svBonus = (c, ab) => saveBonus(c.ref ? findMon(c.ref) : null, ab);
 export const selfRoll = (c, ab) => c.kind === "monster" && !saveKnown(c.ref ? findMon(c.ref) : null, ab);
 const SELF = ` <span class="tag">zelf rollen</span>`;
 
-function svRow(S, s) {
+/** Eén open save. full = in het paneel "Open saves" (met "einde beurt"); in de beurtbalk kort (RE12: past op 320 px naast Geslaagd/Gefaald) */
+function svRow(S, s, full = false) {
   const c = S.list.find((x) => x.id === s.id);
-  const what = s.kind === "conc" ? `concentratie${c.concSpell ? ` · ${c.concSpell}` : ""}` : `${s.n} · einde beurt`;
-  const self = selfRoll(c, s.ab);
+  const what = s.kind === "conc" ? `concentratie${c.concSpell ? ` · ${c.concSpell}` : ""}` : `${s.n}${full ? " · einde beurt" : ""}`;
+  const self = selfRoll(c, s.ab), end = lastTurn(s);
   const btns = c.kind === "monster" && !self
     ? `<button type="button" class="svroll" data-svroll="${esc(s.sid)}" aria-label="${esc(c.name)}: ${esc(s.ab)}-save rollen, DC ${s.dc}">Rol ${sgn(svBonus(c, s.ab))}</button>`
-    : `<button type="button" class="svok" data-svok="${esc(s.sid)}" data-v="1" aria-label="${esc(c.name)}: ${esc(s.ab)}-save geslaagd">✓</button><button type="button" class="svok bad" data-svok="${esc(s.sid)}" data-v="0" aria-label="${esc(c.name)}: ${esc(s.ab)}-save gefaald">✗</button>`;
-  return `<div class="svrow"><span class="svn"><b>${esc(c.name)}</b><small>${esc(`${s.ab} ${s.dc} · ${what}${self ? " · zelf rollen" : ""}`)}</small></span>${btns}</div>`;
+    : `<button type="button" class="svok" data-svok="${esc(s.sid)}" data-v="1" aria-label="${esc(c.name)}: ${esc(s.ab)}-save geslaagd">Geslaagd</button><button type="button" class="svok bad" data-svok="${esc(s.sid)}" data-v="0" aria-label="${esc(c.name)}: ${esc(s.ab)}-save gefaald">Gefaald</button>`;
+  return `<div class="svrow${end ? " svend" : ""}"><span class="svn"><b>${esc(c.name)}</b><small>${esc(`${s.ab} ${s.dc} · ${what}${self ? " · zelf rollen" : ""}`)}</small>${end ? `<small class="svx">vervalt bij Volgende</small>` : ""}</span>${btns}</div>`;
 }
 
 /** GV2: alle monsters op 0 HP (minstens één; lair telt niet): regel in de beurtbalk, de DM rondt zelf af */
 const allDown = (S) => { const M = S.list.filter((c) => c.kind === "monster"); return M.length > 0 && M.every(isOut); };
 
+/**
+ * Beurtbalk: ≤ 2 open saves als regels. Meer: concentratie-saves (RE17: komen uit de schade, de DM moet ze meteen zien)
+ * blijven regels (max 2) en de rest zit achter één knop; 3+ concentratie-saves: alles achter de knop.
+ * Ook in Voorbereiden tijdens een gevecht (paintDock), zodat een save uit de schade nooit onzichtbaar is.
+ */
 function svBar(S) {
   const O = openSaves(S);
   if (!O.length) return "";
-  if (O.length > 2) return `<div class="svbar"><button type="button" class="svall" data-svsheet="1">Saves · ${O.length} open <span aria-hidden="true">▸</span></button></div>`;
-  return `<div class="svbar">${O.map((s) => svRow(S, s)).join("")}</div>`;
+  if (O.length <= 2) return `<div class="svbar">${O.map((s) => svRow(S, s)).join("")}</div>`;
+  const C = O.filter((s) => s.kind === "conc"), btn = (t) => `<button type="button" class="svall" data-svsheet="1">${t} <span aria-hidden="true">▸</span></button>`;
+  if (!C.length || C.length > 2) return `<div class="svbar">${btn(`Saves · ${O.length} open${C.length ? ` · ${C.length} concentratie` : ""}`)}</div>`;
+  return `<div class="svbar">${C.map((s) => svRow(S, s)).join("")}${btn(`Saves · ${O.length - C.length} andere open`)}</div>`;
 }
 
 export function paintSv() {
@@ -633,7 +646,7 @@ export function paintSv() {
     <div class="sheet qsheet ssheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="s-title">
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3 id="s-title">Open saves</h3><button type="button" class="link" data-svsheet="0">Sluit</button></div>
-      <div class="svbar">${O.map((s) => svRow(app.S, s)).join("")}</div>
+      <div class="svbar">${O.map((s) => svRow(app.S, s, true)).join("")}</div>
       ${mons > 1 ? `<button type="button" class="btn primary qgo" data-svrollall="1">Rol alle monsters (${mons})</button>` : ""}
       ${self.length ? `<p class="hint">Zelf rollen (geen save bekend): ${esc(self.join(", "))}.</p>` : ""}
       <p class="hint">Niet afgehandeld vervalt na de volgende beurtwissel, zonder gevolg.</p>
@@ -1018,13 +1031,17 @@ function paintSpell(el, a) {
   const what = sp.eff ? effText(presetsFor(presetEd(caster, sp.n)).find((p) => p.n === sp.eff)) || "" : sp.conds.join(" + ");
   const bits = [what, sp.dur === "inf" && sp.conc ? "zolang de concentratie duurt" : durName(sp.eff ? "r10" : sp.dur), sp.conc ? "conc" : "", sp.rep ? `herhaalsave ${sp.ab} einde beurt` : "", sp.note || ""].filter(Boolean);
   const lose = caster && sp.conc && caster.cond.includes("Concentrating") && caster.concSpell && caster.concSpell !== sp.n ? caster.concSpell : "";
-  $("#s-info").innerHTML = `${esc(bits.join(" · "))}${lose ? `<br><b class="bad">${esc(caster.name)} concentreert nu op ${esc(lose)}: die vervalt.</b>` : ""}`;
+  $("#s-info").innerHTML = `${esc(bits.join(" · "))}${lose ? `<br><b class="bad">${esc(caster.name)} concentreert nu op ${esc(lose)}: die vervalt.</b>` : ""}${a.redc ? `<br>${esc(`Gerolde saves nu tegen DC ${a.redc} (nieuwe caster).`)}` : ""}`;
   $("#a-list").innerHTML = rows.map((x) => spellRow(a, sp, caster, x.c, x.p)).join("") || `<p class="hint">Niemand om te kiezen.</p>`;
-  $("#a-cnt").textContent = `Doelen · ${sel.length} gekozen`;
+  // RE8: maximum aantal doelen (Hold Person 1, Bless/Bane 3, +1 per hoger slot); niet blokkeren, slots komen later (RE1/RE2)
+  const need = slotFor(sp, sel.length), slot = need ? (need > 9 ? "meer doelen dan een 9th-level slot" : `${ORD[need]}-level slot`) : "";
+  const cnt = $("#a-cnt");
+  cnt.textContent = sp.max && !sp.custom ? `Doelen · ${sel.length} van ${sp.max}${slot ? ` · ${slot}` : ""}` : `Doelen · ${sel.length} gekozen`;
+  cnt.classList.toggle("over", !!slot);
   const hit = sel.filter((x) => !x.p.immune && !x.p.ok && !x.p.lr).length, ok = sel.length - hit;
   $("#a-sum").textContent = sp.ab && sel.length ? `${hit} ${sp.eff ? "geraakt" : sp.conds[0]}${ok ? ` · ${ok} geen effect` : ""}` : "";
   go.disabled = !caster || !sel.length;
-  go.textContent = !caster ? "Kies wie cast" : !sel.length ? "Kies doelen" : `${sp.n} op ${sel.length} doel${sel.length === 1 ? "" : "en"}`;
+  go.textContent = !caster ? "Kies wie cast" : !sel.length ? "Kies doelen" : `${sp.n} op ${sel.length} doel${sel.length === 1 ? "" : "en"}${slot ? ` · ${slot}` : ""}`;
 }
 
 /* ---------- aanval op één doel (to-hit-knop op de monsterkaart) ---------- */

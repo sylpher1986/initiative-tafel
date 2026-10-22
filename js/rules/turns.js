@@ -15,13 +15,98 @@ export const DURS = [
   ["r10", "1 minuut (10 rondes)"], ["r100", "10 minuten (100 rondes)"],
 ];
 
-/** init hoog→laag; lair verliest gelijke stand; dan Dex; dan spelers vóór monsters; dan naam */
-export const sortOrder = (list) => [...list].sort((a, b) =>
+/** Volgorde van twee deelnemers: init hoog→laag; lair verliest gelijke stand; dan Dex; dan spelers vóór monsters; dan naam */
+export const cmpOrder = (a, b) =>
   b.init - a.init
   || ((a.kind === "lair") - (b.kind === "lair"))
   || b.dex - a.dex
   || ((b.kind === "pc") - (a.kind === "pc"))
-  || a.name.localeCompare(b.name, undefined, { numeric: true })); // Bugbear 2 vóór Bugbear 10
+  || a.name.localeCompare(b.name, undefined, { numeric: true }); // Bugbear 2 vóór Bugbear 10
+
+export const sortOrder = (list) => [...list].sort(cmpOrder);
+
+/**
+ * RE9: beurtvolgorde voor beurtwissels (dezelfde objecten als L, anders gesorteerd).
+ * - Wijzigt wie aan de beurt is zijn eigen initiative, dan blijft de beurt op de oude plek (S.ai = zijn initiative bij
+ *   het begin van de beurt); anders zou Volgende iedereen tussen oud en nieuw overslaan.
+ * - Wie nog niet aan de beurt was en door een nieuwe initiative vóór de beurt kwam (nextR = { r: ronde, after: id }),
+ *   komt deze ronde direct na `after` (de beurt van toen), niet op zijn nieuwe plek. Volgende ronde gewoon op de nieuwe plek.
+ */
+export const pending = (c, S) => !!(c.nextR && c.nextR.r === S.round && S.round);
+export function turnOrder(S, L) {
+  const a = S.active ? L.find((c) => c.id === S.active) : null;
+  let M = L;
+  if (a && Number.isFinite(S.ai) && a.init !== S.ai && !pending(a, S)) {
+    const v = { ...a, init: S.ai };
+    M = [...L].sort((x, y) => cmpOrder(x === a ? v : x, y === a ? v : y));
+  }
+  const P = M.filter((c) => pending(c, S));
+  if (!P.length) return M;
+  const out = M.filter((c) => !pending(c, S)), ids = new Set(L.map((c) => c.id));
+  let todo = P;
+  while (todo.length) { // anker kan zelf ingeschoven zijn (ketting): invoegen zodra het anker staat
+    const left = [];
+    for (const p of todo) {
+      const i = out.findIndex((x) => x.id === p.nextR.after);
+      if (i >= 0) { let j = i + 1; while (out[j] && pending(out[j], S) && out[j].nextR.after === p.nextR.after) j++; out.splice(j, 0, p); }
+      else if (!ids.has(p.nextR.after) || p.nextR.after === p.id) { const k = out.findIndex((x) => cmpOrder(p, x) < 0); out.splice(k < 0 ? out.length : k, 0, p); } // anker weg: gewone plek
+      else left.push(p);
+    }
+    if (left.length === todo.length) { for (const p of left) out.push(p); break; } // kring (kan niet, maar nooit vastlopen)
+    todo = left;
+  }
+  return out;
+}
+
+/** Plek van de beurt: wie aan de beurt is (met zijn initiative bij het begin van de beurt), of het anker als hij er via nextR tussen kwam */
+function cursorOf(S) {
+  const a = S.list.find((c) => c.id === S.active);
+  if (!a) return null;
+  if (pending(a, S)) { const b = S.list.find((c) => c.id === a.nextR.after); if (b) return b; }
+  return { ...a, init: Number.isFinite(S.ai) ? S.ai : a.init };
+}
+
+/**
+ * RE9: wat een nieuwe initiative v voor c deze ronde betekent (puur, ook voor de live hint in ⋯).
+ * own = c is aan de beurt (beurt loopt door, nieuwe plek vanaf volgende ronde);
+ * skip = c was deze ronde al aan de beurt (of is het nu) en komt door v ná de beurt: deze ronde overgeslagen (skipR);
+ * next = c moest nog en komt door v vóór de beurt: speelt deze ronde direct na wie nu aan de beurt is (nextR);
+ * back = de eerdere skipR/nextR is niet meer nodig. Buiten een gevecht, of zonder verschil: alles false.
+ */
+export function initPlan(S, c, v) {
+  const no = { own: false, skip: false, next: false, back: false };
+  if (!S.round || !S.active || c.kind === "lair" || v === c.init) return no;
+  const cur = cursorOf(S);
+  if (!cur) return no;
+  const after = (x) => cmpOrder(cur, x) < 0, nu = { ...c, init: v };
+  const own = c.id === S.active;
+  if (pending(c, S) && !c.nextR.done && !own) return { ...no, next: !after(nu), back: after(nu) };
+  const acted = own || c.skipR === S.round || !after(c);
+  if (acted) return { ...no, own, skip: after(nu), back: c.skipR === S.round && !after(nu) };
+  return { ...no, next: !after(nu) && !skipsTurn(c, S.round) };
+}
+
+/** Initiative tijdens het spel aanpassen (⋯, kaartveld). Muteert c (init, skipR, nextR). Geeft { msgs, why, plan }. */
+export function setInit(S, c, v) {
+  const out = Object.assign(fx(), { plan: initPlan(S, c, v) }), p = out.plan;
+  if (v === c.init) return out;
+  const cur = S.list.find((x) => x.id === S.active);
+  c.init = v;
+  if (p.skip) c.skipR = S.round; else if (c.skipR != null) delete c.skipR;
+  if (p.next && !pending(c, S)) c.nextR = { r: S.round, after: S.active };
+  else if (!p.next && c.nextR && !(p.own && pending(c, S))) delete c.nextR;
+  const t = initText(p, v, cur && cur.name);
+  if (t) { out.msgs.push(`${c.name}: ${t}.`); out.why.push({ t: t.toLowerCase(), id: c.id }); }
+  return out;
+}
+
+/** Tekst bij een plan (melding en live hint in ⋯); "" als er niets bijzonders is */
+export function initText(p, v, curName) {
+  if (p.own) return `is aan de beurt: beurt loopt door, volgende ronde op ${v}`;
+  if (p.skip) return `al geweest deze ronde: speelt pas volgende ronde op ${v}`;
+  if (p.next) return `nog niet geweest: komt direct na ${curName || "de huidige beurt"}, daarna op ${v}`;
+  return "";
+}
 
 /** Ingevulde initiative ("14", 14, "-1") → heel getal binnen -10..40; leeg of ongeldig → null */
 export function parseInit(v) {
@@ -38,10 +123,11 @@ export const isOut = (c) => (c.kind === "monster" && c.hp <= 0) || !!(c.ds && c.
  * sur: true = nog verrast, 2 = beurt is overgeslagen (blijft in ronde 1 overgeslagen, ook bij ‹ Vorige).
  * Vanaf ronde 2 en bij Gevecht stoppen verdwijnt `sur`.
  */
-export const skipsTurn = (c, round) => isOut(c) || (round === 1 && !!c.sur);
+export const skipsTurn = (c, round) => isOut(c) || (round === 1 && !!c.sur) || (!!round && c.skipR === round); // skipR: RE9, al geweest deze ronde
 /** Nog verrast: geen reaction, geen legendary actions */
 export const isSurprised = (c, S) => c.sur === true && S.round === 1 && !isOut(c);
 const clearSur = (list) => { for (const c of list) delete c.sur; };
+const clearSkip = (list) => { for (const c of list) { delete c.skipR; delete c.nextR; } };
 
 /**
  * Bij Start gevecht (initiative-paneel): wie is verrast. who: "none" | "mon" | "pc".
@@ -64,7 +150,7 @@ export function canToggleSurprise(c, S) {
   if (S.round !== 1 || c.kind === "lair" || isOut(c) || c.id === S.active) return false;
   if (c.sur === true) return true;
   if (c.sur) return false; // beurt al overgeslagen
-  const L = sortOrder(S.list);
+  const L = turnOrder(S, sortOrder(S.list));
   return L.findIndex((x) => x.id === c.id) > L.findIndex((x) => x.id === S.active);
 }
 export function toggleSurprise(c, S) {
@@ -77,6 +163,7 @@ export function toggleSurprise(c, S) {
 
 /** Wie is na `id` aan de beurt (overslaan van wie neer is en, in ronde 1, wie verrast is). skip(c) = extra overslaan. */
 export function nextUp(S, L, id, skip = () => false) {
+  if (id === S.active) L = turnOrder(S, L); // RE9: beurt op de oude plek, ingeschoven deelnemers direct erna
   const i = L.findIndex((c) => c.id === id);
   for (let k = 1; k <= L.length; k++) {
     const j = i + k, c = L[j % L.length], r = S.round + (j >= L.length ? 1 : 0);
@@ -97,7 +184,7 @@ export function readAhead(S, L, ok) {
   const now = !!(a && ok(a) && !skipsTurn(a, S.round));
   const c = now ? a : nextUp(S, L, S.active, (x) => !ok(x));
   if (!c) return null;
-  const r = !now && L.indexOf(c) <= L.findIndex((x) => x.id === S.active) ? S.round + 1 : S.round; // na de rondegrens: verrast telt niet meer
+  const T = turnOrder(S, L), r = !now && T.indexOf(c) <= T.findIndex((x) => x.id === S.active) ? S.round + 1 : S.round; // na de rondegrens: verrast telt niet meer
   const g = groupOf(L, c.id, r);
   return { c, now, n: g ? g.live.length : 1 };
 }
@@ -179,9 +266,10 @@ export function turnBoundary(list, at, id) {
  */
 export function step(state, dir, rng = Math.random) {
   const out = fx();
-  const L = sortOrder(state.list);
+  let L = turnOrder(state, sortOrder(state.list));
   if (!L.length) return out;
   let i = L.findIndex((c) => c.id === state.active);
+  const was = L[i];
   const passed = [], sur = [];
   if (dir > 0 && state.active && i >= 0) passed.push(["end", state.active]);
   // met verraste deelnemers kan ronde 1 helemaal overgeslagen worden: dan nog één rondgang in ronde 2
@@ -190,11 +278,13 @@ export function step(state, dir, rng = Math.random) {
     i += dir;
     if (dir > 0 && n > 0) {
       const skipped = L[(i - 1 + L.length) % L.length];
-      passed.push(["start", skipped.id], ["end", skipped.id]);
+      // RE9: wie deze ronde al aan de beurt was en naar achteren is verplaatst, heeft zijn beurtgrenzen al gehad
+      if (skipped.skipR !== state.round) passed.push(["start", skipped.id], ["end", skipped.id]);
       if (skipped.sur === true) { skipped.sur = 2; skipped.reaction = false; if (!isOut(skipped)) sur.push(skipped); } // verrassing voorbij (ook als hij nu neer is en later geheald wordt): reaction weer beschikbaar
     }
-    if (i >= L.length) { i = 0; state.round++; if (state.round > 1) clearSur(state.list); }
-    else if (i < 0) { i = L.length - 1; state.round = Math.max(1, state.round - 1); }
+    // nieuwe (of vorige) ronde: gewone volgorde, zonder ingeschoven beurten (RE9)
+    if (i >= L.length) { i = 0; state.round++; clearSkip(state.list); if (state.round > 1) clearSur(state.list); L = sortOrder(state.list); }
+    else if (i < 0) { state.round = Math.max(1, state.round - 1); L = sortOrder(state.list); i = L.length - 1; }
     if (!skipsTurn(L[i], state.round)) break;
   }
   if (sur.length) {
@@ -202,11 +292,13 @@ export function step(state, dir, rng = Math.random) {
     for (const c of sur) out.why.push({ t: "verrast: eerste beurt overgeslagen", id: c.id });
   }
   const cur = L[i];
+  if (dir > 0 && was && was !== cur && pending(was, state)) was.nextR.done = 1; // ingeschoven beurt is gespeeld (RE9)
   state.active = cur.id;
+  state.ai = cur.init; // RE9: plek van de beurt, ook als hij tijdens zijn beurt zijn initiative wijzigt
   if (dir < 0) { untickSaves(state); return out; }
 
   passed.push(["start", cur.id]);
-  out.why.push(...tickSaves(state).why);
+  const ts = tickSaves(state); out.why.push(...ts.why); out.msgs.push(...ts.msgs); // RE12: vervallen saves melden
   for (const [at, id] of passed) {
     const r = turnBoundary(state.list, at, id);
     out.msgs.push(...r.msgs); out.why.push(...r.why);
@@ -235,6 +327,10 @@ export function step(state, dir, rng = Math.random) {
 export function removeCombatant(state, id, rng = Math.random) {
   let out = fx();
   if (state.round && state.active === id && state.list.some((c) => c.id !== id && !isOut(c))) out = step(state, 1, rng);
+  // RE9: ingeschoven beurten die direct na deze deelnemer kwamen, komen na zijn voorganger (anders vallen ze terug op hun plek vóór de beurt)
+  const T = turnOrder(state, sortOrder(state.list)), k = T.findIndex((c) => c.id === id);
+  const prev = T.slice(0, Math.max(0, k)).reverse().find((c) => !pending(c, state));
+  for (const c of state.list) if (pending(c, state) && c.nextR.after === id) c.nextR.after = prev ? prev.id : null;
   state.list = state.list.filter((c) => c.id !== id);
   if (state.active === id) state.active = null;
   return out;
@@ -254,8 +350,8 @@ export function startCombat(state, rng = Math.random) {
 /** Gevecht stoppen: ronde-effecten weg, geen ronde of beurt, open saves vervallen */
 export function stopCombat(state) {
   const out = endFightEffects(state.list);
-  state.round = 0; state.active = null; state.saves = [];
-  clearSur(state.list);
+  state.round = 0; state.active = null; state.saves = []; delete state.ai;
+  clearSur(state.list); clearSkip(state.list);
   return out;
 }
 

@@ -682,8 +682,11 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .svn small{font-size:.76rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dock .svrow button,.svrow button{flex:0 0 auto;min-height:44px;min-width:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:.95rem;color:var(--fg);padding:0 10px}
 .svrow .svroll{min-width:72px;color:var(--warn);border-color:var(--warn)}
-.svrow .svok{color:var(--good)}
-.svrow .svok.bad{color:var(--bad)}
+.svrow .svok.bad,.dock .svrow .svok.bad{color:var(--bad)}
+.svrow .svok,.dock .svrow .svok{font-size:.85rem;padding:0 8px;color:var(--good)} /* RE12: Geslaagd/Gefaald met tekst, past op 320 px */
+.svn .svx{color:var(--warn);font-weight:600}
+.qlbl.over{color:var(--warn)} /* RE8: meer doelen dan het maximum */
+.edprev .warn{color:var(--warn)}.edprev .bad{color:var(--bad)}
 .dock .svall{width:100%;min-height:44px;font-size:.95rem;border-color:var(--warn);color:var(--warn)}
 .ssheet{gap:10px}
 .ssheet .hint{margin:0}

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SPELLS, customSpell, castSpell, endConcConds, spellDefault, condImmune, casterDC, spellTargets, isHumanoid } from "../js/rules/spellcast.js";
+import { SPELLS, customSpell, castSpell, endConcConds, spellDefault, condImmune, casterDC, spellTargets, isHumanoid, slotFor } from "../js/rules/spellcast.js";
 import { step, startCombat, clearMonsters } from "../js/rules/turns.js";
 import { turnSaves, resolveSave } from "../js/rules/saves.js";
 import { dropConc, applyDamage } from "../js/rules/combat.js";
@@ -113,12 +113,14 @@ test("standaardkeuze: kant van de caster, caster zelf uit, 0 HP uit, immuun/geen
   assert.equal(self.sel, false); assert.deepEqual(self.tags, ["caster"]);
   assert.equal(spellDefault(SP("Bless"), cl, down, null).sel, false);
   assert.equal(spellDefault(SP("Bane"), cl, g, bugbear).sel, true);
-  assert.equal(spellDefault(SP("Hold Person"), cl, g, bugbear).sel, true);
+  const hp = spellDefault(SP("Hold Person"), cl, g, bugbear); // RE8: één doel, de DM kiest
+  assert.equal(hp.sel, false); assert.equal(hp.fit, true);
   const lx = spellDefault(SP("Hold Person"), cl, l, lich);
   assert.equal(lx.sel, false); assert.equal(lx.immune, true); assert.deepEqual(lx.tags, ["immuun Paralyzed", "geen humanoid", "verborgen"]);
   // monster als caster: spelers zijn de tegenpartij
-  assert.equal(spellDefault(SP("Hold Person"), g, a, bugbear).sel, true);
+  assert.equal(spellDefault(SP("Hold Person"), g, a, bugbear).fit, true);
   assert.equal(spellDefault(SP("Hold Person"), g, mon("G2"), bugbear).sel, false);
+  assert.equal(spellDefault(SP("Bane"), g, a, null).sel, true, "Bane (max 3) houdt de voorselectie");
   assert.equal(spellDefault(SP("Bless"), null, a, null).sel, false, "zonder caster niets aan");
   assert.equal(isHumanoid(a, null), true);
 });
@@ -193,4 +195,15 @@ test("fit: immuun of geen humanoid komt niet in aanmerking (knoppen Monsters/Spe
   assert.equal(spellDefault(SP("Hold Person"), cl, mon("U"), { meta: "Large undead" }).fit, false);
   assert.equal(spellDefault(SP("Hold Person"), cl, mon("B"), bugbear).fit, true);
   assert.equal(spellDefault(SP("Bless"), cl, mon("U"), lich).fit, true);
+});
+
+test("RE8: maximum aantal doelen → benodigd slot (Hold Person 1 op 2nd, Bless/Bane 3 op 1st, +1 per slot)", () => {
+  assert.equal(slotFor(SP("Hold Person"), 1), null);
+  assert.equal(slotFor(SP("Hold Person"), 2), 3);
+  assert.equal(slotFor(SP("Hold Person"), 4), 5);
+  assert.equal(slotFor(SP("Bless"), 3), null);
+  assert.equal(slotFor(SP("Bless"), 4), 2);
+  assert.equal(slotFor(SP("Bane"), 5), 3);
+  assert.equal(slotFor(SP("Web"), 12), null, "gebied: geen maximum");
+  assert.equal(slotFor(customSpell({ n: "Fear" }), 9), null);
 });
