@@ -183,12 +183,13 @@ function fitTv(force) {
   const n = $("#pv-list").children.length;
   const sig = [n, vis("#pv-mecard"), vis("#pv-down"), vis("#pv-net"), vis("#pv-wait"), vis("#pv-qr"), !!$("#pv-now").innerHTML, !!document.fullscreenElement, innerWidth, innerHeight].join();
   const doc = document.documentElement, over = () => doc.scrollHeight > innerHeight + 1;
-  if (!force && sig === tvSig && !over()) return;
-  tvSig = sig;
+  // past het niet eens op de kleinste maat, dan is overlopen geaccepteerd (geen nieuwe zoektocht bij elke stand)
+  if (!force && (sig === tvSig || sig + "|over" === tvSig) && (tvSig.endsWith("|over") || !over())) return;
   b.style.setProperty("--rows", Math.max(1, Math.ceil(n / 2)));
   const set = (f, cols) => { b.style.setProperty("--tvfs", f + "px"); b.classList.toggle("cols", cols); };
   const { f, cols } = tvPlan(innerHeight, (f, cols) => { set(f, cols); return !over(); });
   set(f, cols);
+  tvSig = over() ? sig + "|over" : sig;
 }
 let tvRaf = 0;
 const refit = () => { cancelAnimationFrame(tvRaf); tvRaf = requestAnimationFrame(() => fitTv(true)); };

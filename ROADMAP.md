@@ -18,8 +18,8 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 8. ~~SP4~~ · ~~AF7~~ · ~~AF15~~ klaar in 1.37.0 (WP4, zie Klaar)
 9. ~~GV8~~ klaar in 1.37.1 (WP5, zie Klaar)
 10. ~~SC4~~ · ~~SC5~~ klaar in 1.38.0 (WP6, zie Klaar)
-11. **SC6** Tv-weergave: HP en condities op 3 m leesbaar
-12. **SC7** Zelfde code na Stop met delen · **SC1** QR-code (omhoog uit P3)
+11. ~~SC6~~ klaar in 1.39.0 (WP7, zie Klaar)
+12. ~~SC7~~ · ~~SC1~~ klaar in 1.39.0 (WP7, zie Klaar)
 13. **RE10** Uitleg bij een tik op een conditie (DM én spelersscherm), met duur en DC
 14. ~~RE9~~ klaar in 1.36.0 (WP3, zie Klaar)
 15. ~~IN9~~ klaar in 1.35.1 (WP2, zie Klaar)
@@ -59,7 +59,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | ~~**WP4**~~ | Speler toevoegen en gevecht afronden (klaar) | SP4, GV7, AF9, AF15 | 1.37.0 |
 | ~~**WP5**~~ | Undo en toetsenbord (klaar) | GV8, GV10 | 1.37.1 |
 | ~~**WP6**~~ | Spelersscherm op de telefoon: sticky kop, "Dit ben ik", teksten, reaction zichtbaar (klaar) | SC4, SC5, SC8, GV12 | 1.38.0 |
-| **WP7** | Tv en koppelen: leesbaarheid, zelfde code, QR | SC6, SC7, SC1 | 1.39.0 |
+| ~~**WP7**~~ | Tv en koppelen: leesbaarheid, zelfde code, QR (klaar) | SC6, SC7, SC1 | 1.39.0 |
 | **WP8** | Condities en statussen aan tafel: uitleg, Exhaustion, Rage, Deadly/Verrast | RE10, RE11, RE16, AF8 | 1.40.0 |
 | **WP9** | Spells van spelers: schade-spells in AoE (Fireball), slots verbruiken, Pact Magic | RE18, RE1, RE2, RE3 | 1.41.0 |
 | **WP10** | Monsterregels en minder klikken | RE13, RE14, GV11 | 1.42.0 |
@@ -99,9 +99,6 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - Later, als het nodig blijkt: handmatige "Defenses" op de D&D Beyond-sheet (`customDefenseAdjustments`) inlezen; tijdelijke resistances (Rage, Absorb Elements, Protection from Energy) als effect-preset.
 
 ## Spelersscherm
-- [ ] **SC1 QR-code bij de kamercode** (P2, samen met SC7; alleen als een kleine zelf-gehoste lib past). Persona-test 3: op een con de iPad omdraaien en laten scannen.
-- [ ] **SC6 Tv-weergave** (P2): op 1920×1080 zijn HP-getallen (22 px, grijs) en condities (19 px) op 3 m niet leesbaar en blijft ±35 % leeg; kolommen lezen van boven naar beneden. Schalen tot de hoogte gevuld is, HP groter en met meer contrast; UX-agent kiest tussen één kolom en rij-voor-rij nummering.
-- [ ] **SC7 Zelfde code na Stop met delen** (P2): opnieuw delen geeft nu een nieuwe code, dus tv en telefoons moeten opnieuw koppelen. Code en token in `it-room` laten staan na Stop en de kamer hervatten zolang die nog bestaat (12 u); vaste code per campagne blijft fase 2.
 - [ ] **SC9 Mini-log voor spelers op afstand** (P3): optioneel een paar regels "wat gebeurde er net", alleen wat de DM vrijgeeft en altijd via `toPlayerView` (verborgen monsters en Onbekend wezen mogen niet lekken).
 
 ## Afwerking (klein)
@@ -266,3 +263,6 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **SC5** (1.38.0, WP6) "Dit ben ik": knop "Wie ben jij?" op het spelersscherm, keuze per apparaat (`it-pv-me`, geen account). Eigen kaart met HP, death saves, tags, slots, daily spells en resources; kop "Jij bent aan de beurt" / "Daarna jij"; eigen rij met "jij". Trillen bij aan de beurt en hierna (niet iOS Safari). Personage weg: "staat nu niet in de lijst" met Kies opnieuw; terug met een nieuwe id: op naam teruggevonden. Slots van spelers (`sl`) in de snapshot, monsters nooit.
 - **SC8** (1.38.0, WP6) Spelersscherm-teksten: speler op 0 HP zonder dubbele "Unconscious", death saves in woorden ("1 gelukt · 2 mislukt", "nog geen worp"), lange namen over twee regels.
 - **GV12** (1.38.0, WP6) Reaction gebruikt heet overal "Reaction op": chip op de dichte kaart en in het live-blok (tablet), de knop op de open kaart, en als tag op het spelersscherm (volgt Condities en GV4 "Spelers zelf"). Niet bij verrast of op 0 HP; niet in de beurtbalk (komt terug bij de eigen beurt).
+- **SC6** (1.39.0, WP7) Tv leesbaar op 3 m: één brede regel per deelnemer met condities en HP op dezelfde regel, HP vet en in tekstkleur; letter passend op de schermhoogte (26 px bij 12 regels op 1920×1080, 51 px bij 6), twee kolommen alleen als noodgreep. In volledig scherm geen titel en knoppen.
+- **SC7** (1.39.0, WP7) Stop met delen pauzeert de kamer: Opnieuw delen houdt dezelfde code (12 u), tv en telefoons blijven gekoppeld. "Nieuwe code…" (met bevestiging) heft de oude kamer pas op als de nieuwe er is.
+- **SC1** (1.39.0, WP7) QR-code (eigen kleine encoder, geen lib): schermvullend om te laten scannen, en op de tv vóór het gevecht.

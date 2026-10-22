@@ -4,7 +4,7 @@
 import { $ } from "./util.js";
 import { mode } from "./render.js";
 
-const panelOpen = () => !!document.querySelector(".sheet-wrap:not([hidden]), .tabstop");
+const panelOpen = () => !!document.querySelector(".sheet-wrap:not([hidden]), .tabstop, #qrfull");
 export const MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
 const MOD = MAC ? "⌘" : "Ctrl";
 
