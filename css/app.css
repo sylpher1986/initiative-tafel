@@ -788,8 +788,10 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .downbtn:focus-visible{outline:2px solid var(--active);outline-offset:2px}
 .pvdown{margin:0;color:var(--muted);padding:.4em .7em;border:1px dashed var(--line);border-radius:var(--r)}
 /* SC4: kop (verbinding + aan de beurt) vast bovenaan; de titel scrolt weg. Eén regel per naam, zodat de kop nooit groeit */
-.pvstick{position:sticky;top:0;z-index:5;background:var(--bg);padding-top:env(safe-area-inset-top,0px);display:grid;grid-template-columns:minmax(0,1fr);gap:.4em}
-.pvstick:has(.pvnow:empty):has(.pvnet[hidden]){display:none}
+.pvstick{position:sticky;top:0;z-index:5;background:var(--bg);display:grid;grid-template-columns:minmax(0,1fr);gap:.4em}
+.pvstick.off{display:none}
+/* als app op het beginscherm: de vaste kop niet onder de notch */
+@media (display-mode:standalone){.pvstick{top:env(safe-area-inset-top,0px)}.pvstick::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:env(safe-area-inset-top,0px);background:var(--bg)}}
 .pvstick .pvnow b,.pvstick .pvnow .r{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;max-width:100%}
 .pvstick .pvnow>div{min-width:0;max-width:100%}
 .pvstick .pvnow .r .l{display:inline;margin-right:.4em}

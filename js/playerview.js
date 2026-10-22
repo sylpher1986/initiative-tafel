@@ -1,7 +1,7 @@
 // Spelersscherm: wat spelers mogen zien. Puur (geen DOM), getest.
 // Alleen deze snapshot verlaat het DM-scherm, nooit de volledige toestand. Zo kan dezelfde snapshot
 // later ook via een server naar andere apparaten zonder dat er DM-info meegaat.
-import { sortOrder, isOut, groupOf, nextUp, isSurprised, skipsTurn, reactUsed } from "./rules/turns.js";
+import { sortOrder, isOut, groupOf, nextUp, isSurprised, skipsTurn, reactUsed, REACT_TAG } from "./rules/turns.js";
 import { iconId, cleanImg } from "./ui/avatar.js";
 import { esc } from "./ui/util.js";
 
@@ -67,8 +67,7 @@ function hpFor(c, how) {
   return { st: hpStatus(c) };
 }
 
-/** Tag voor GV12 (reaction gebruikt), letterlijk zoals op de DM-kaart */
-export const REACT_TAG = "Reaction op";
+export { REACT_TAG };
 
 function tagsFor(c, S, pcr) {
   const t = isSurprised(c, S) ? ["Verrast"] : [];

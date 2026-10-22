@@ -76,23 +76,40 @@ function paintMe(V, row0) {
   paintPick(pcs);
 }
 
+let pickSig = null; // handtekening van het open paneel: alleen opnieuw opbouwen als de spelers of de keuze veranderen
 function paintPick(pcs) {
   const el = $("#pv-mepick");
   el.hidden = !pickOpen;
-  if (!pickOpen) { el.innerHTML = ""; return; }
+  if (!pickOpen) { if (pickSig != null) { el.innerHTML = ""; pickSig = null; } return; }
+  const sig = pcs.map((c) => `${c.id}|${c.name}`).join("\n") + "\n" + (me ? me.id : "");
+  if (sig === pickSig) return; // focus, schermlezer en het vinkje Trillen blijven staan
+  const f = document.activeElement && el.contains(document.activeElement) ? document.activeElement.dataset.me : undefined;
+  const bz = $("#pv-buzz");
+  const buzzOn = bz ? bz.checked : !me || me.buzz;
+  pickSig = sig;
+  // alfabetisch, niet in initiative-volgorde: een wijziging tijdens het tikken verschuift de knoppen niet
+  const list = [...pcs].sort((a, b) => a.name.localeCompare(b.name, "nl"));
   el.innerHTML = `<h2 id="pv-mepick-h">Welk personage ben jij?</h2>
-    ${pcs.length ? pcs.map((c) => `<button type="button" class="btn tap pvpickb" data-me="${esc(c.id)}" aria-pressed="${!!me && me.id === c.id}">${av(c)}<span class="nm">${esc(c.name)}</span></button>`).join("")
+    ${list.length ? list.map((c) => `<button type="button" class="btn tap pvpickb" data-me="${esc(c.id)}" aria-pressed="${!!me && me.id === c.id}">${av(c)}<span class="nm">${esc(c.name)}</span></button>`).join("")
       : `<p class="hint">Er staan nog geen spelers in de lijst.</p>`}
     <button type="button" class="btn tap" data-me="">Niemand, ik kijk alleen mee</button>
-    ${canBuzz() ? `<label class="chk"><input type="checkbox" id="pv-buzz" ${!me || me.buzz ? "checked" : ""}> Trillen als ik bijna aan de beurt ben</label>` : ""}
+    ${canBuzz() ? `<label class="chk"><input type="checkbox" id="pv-buzz" ${buzzOn ? "checked" : ""}> Trillen als ik bijna aan de beurt ben</label>` : ""}
     <button type="button" class="link" data-mepick="0">Sluit</button>`;
+  if (f !== undefined) { const b = el.querySelector(`[data-me="${CSS.escape(f)}"]`); if (b) b.focus(); }
+}
+
+/** Focus naar de knop, of naar de wachttekst als die er niet is (geen spelers en geen keuze) */
+function focusBack() {
+  const b = $("#pv-me");
+  if (!b.hidden) b.focus();
+  else { const w = $("#pv-wait"); w.tabIndex = -1; w.focus(); }
 }
 
 function setPick(open) {
   pickOpen = open;
   paintMe(lastV, findMe(lastV, me));
-  if (open) $("#pv-mepick").querySelector("button").focus();
-  else $("#pv-me").focus();
+  if (open) { const el = $("#pv-mepick"); (el.querySelector('[aria-pressed="true"]') || el.querySelector("button")).focus(); }
+  else focusBack();
 }
 
 function bindMe() {
@@ -108,7 +125,7 @@ function bindMe() {
     prevMs = null; // geen trilling bij het kiezen zelf
     pickOpen = false;
     if (lastV) paint(lastV); else paintMe(null, null);
-    $("#pv-me").focus();
+    focusBack();
   });
   document.addEventListener("change", (e) => {
     if (e.target.id !== "pv-buzz" || !me) return;
@@ -123,16 +140,18 @@ function paint(V) {
   // over de DM: dat doet alleen dmnet.
   const j = JSON.stringify(V);
   if (j !== lastJson) { lastJson = j; lastAt = Date.now(); }
+  const wasLost = netLost; // vóór netOk(): na verbinding kwijt niet trillen om een oude overgang
   paused = false; netOk();
   lastV = V;
   const mine = findMe(V, me);
-  if (mine && mine.id !== me.id) { me.id = mine.id; saveMe(); } // gevonden op naam: id bijwerken
+  if (mine && (mine.id !== me.id || mine.name !== me.name)) { me.id = mine.id; me.name = mine.name; saveMe(); } // id (op naam gevonden) of naam (DM hernoemde) bijwerken
   const meId = mine ? mine.id : null, ms = meState(V, meId);
-  const pat = me && me.buzz && !netLost ? buzzFor(prevMs, ms) : null;
+  const pat = me && me.buzz && !wasLost ? buzzFor(prevMs, ms) : null;
   prevMs = ms;
   if (pat && canBuzz()) try { navigator.vibrate(pat); } catch { /* geen probleem */ }
   $("#pv-now").innerHTML = headHtml(V, meId);
   $("#pv-now").classList.toggle("me", ms === "turn");
+  stickOff();
   paintMe(V, mine);
   // dode monsters niet in de volgorde maar als één regel onderaan (zoals het blok "Neer" bij de DM)
   // (buiten de lijst, zodat hij bij twee kolommen onder beide kolommen staat)
@@ -207,7 +226,10 @@ function bar() {
   el.innerHTML = kind === "lost" ? `<b>Geen verbinding${since()}</b><span>Opnieuw verbinden…</span>`
     : kind === "dm" ? `<b>De DM is even weg${since()}</b><span>Het gevecht gaat hier verder zodra de DM terug is.</span>` : "";
   document.body.classList.toggle("stale", kind === "lost" && !!lastAt);
+  stickOff();
 }
+/** Lege vaste kop (geen beurt, geen balk) neemt geen ruimte in (geen :has, oudere iPads) */
+const stickOff = () => $("#pv-stick").classList.toggle("off", !$("#pv-now").innerHTML && $("#pv-net").hidden);
 function netLostNow() {
   if (netLost) return;
   netLost = true; prevMs = null; bar(); // na herverbinden niet trillen om een oude overgang
@@ -257,7 +279,10 @@ function clear() {
   clearTimeout(lostT); clearTimeout(dmT); dmT = 0; netLost = dmGone = false; lastAt = 0; lastJson = ""; bar();
   $("#pv-now").innerHTML = ""; $("#pv-list").innerHTML = "";
   $("#pv-down").hidden = true; $("#pv-down").innerHTML = ""; document.body.classList.remove("two");
+  const had = $("#pv-mepick").contains(document.activeElement);
   $("#pv-now").classList.remove("me"); lastV = null; prevMs = null; pickOpen = false; paintMe(null, null);
+  stickOff();
+  if (had) focusBack();
 }
 
 /**

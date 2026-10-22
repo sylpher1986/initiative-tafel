@@ -114,3 +114,23 @@ test("SC5 buzzFor: alleen bij een overgang, nooit bij de eerste stand", () => {
   assert.deepEqual(buzzFor("", "next"), [60]);
   assert.equal(buzzFor("turn", ""), null);
 });
+
+test("SC5 randgevallen: dubbele namen, anoniem monster met slots, groep, zonder opts", () => {
+  const V = { v: 1, round: 1, list: [{ id: "a", kind: "pc", name: "Kim" }, { id: "b", kind: "pc", name: "Kim" }] };
+  assert.equal(findMe(V, { id: "weg", name: "Kim" }).id, "a", "dubbele naam: de eerste (id wint als die er is)");
+  assert.equal(findMe(V, { id: "b", name: "Kim" }).id, "b");
+  const W = toPlayerView(S([mon({ id: "m", name: "Mage", anon: 1, casting: { slots: [{ lvl: 1, max: 4, left: 4 }], daily: [] } })]));
+  assert.equal(W.list[0].sl, undefined);
+  const G = { v: 1, round: 1, active: "g1", group: ["g1", "a"], gname: "Groep ×2", list: [{ id: "g1", kind: "monster", name: "X" }, { id: "a", kind: "pc", name: "Aria" }] };
+  assert.match(headHtml(G, "a"), /Jij bent aan de beurt/);
+  const list = [pc({ id: "a", name: "A", reaction: true })];
+  assert.deepEqual(toPlayerView(S(list)).list[0].tags, toPlayerView(S(list), undefined, VIS, null, { pcReact: true }).list[0].tags);
+});
+
+test("SC5 + SC2b: verborgen beurt na 'jij' houdt de kop vast, zonder vlag die het verraadt", () => {
+  const list = [pc({ id: "a", name: "A", init: 20 }), mon({ id: "h", name: "Lurker", init: 15, hidden: true }), pc({ id: "b", name: "B", init: 10 })];
+  const V = toPlayerView(S(list, { active: "h" }), undefined, VIS, { id: "a", round: 1 });
+  assert.equal(V.active, "a");
+  assert.equal(meState(V, "a"), "turn");
+  assert.deepEqual(Object.keys(V).sort(), ["active", "list", "next", "round", "v"], "geen extra veld dat een verborgen beurt verraadt");
+});

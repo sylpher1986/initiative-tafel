@@ -153,9 +153,11 @@ export const isOut = (c) => (c.kind === "monster" && c.hp <= 0) || !!(c.ds && c.
 export const skipsTurn = (c, round) => isOut(c) || (round === 1 && !!c.sur) || (!!round && c.skipR === round); // skipR: RE9, al geweest deze ronde
 /** Nog verrast: geen reaction, geen legendary actions */
 export const isSurprised = (c, S) => c.sur === true && S.round === 1 && !isOut(c);
+/** GV12: label overal gelijk (dichte kaart, knop, live-blok, spelersscherm) */
+export const REACT_TAG = "Reaction op";
 /** GV12: reaction gebruikt en nog niet terug (begin eigen beurt). Verrast heeft een eigen badge; pcr = false (GV4 "Spelers
  *  zelf"): niet bij spelers. Eén voorwaarde voor kaart, live-blok en spelersscherm. */
-export const reactUsed = (c, S, pcr = true) => !!c.reaction && !(c.max && c.hp <= 0) && !(c.ds && c.ds.dead) && !isSurprised(c, S) && (c.kind !== "pc" || pcr);
+export const reactUsed = (c, S, pcr = true) => !!c.reaction && !(c.max && c.hp <= 0) && !(c.ds && c.ds.dead) /* dood = 0 HP; verdediging tegen rare data */ && !isSurprised(c, S) && (c.kind !== "pc" || pcr);
 const clearSur = (list) => { for (const c of list) delete c.sur; };
 const clearSkip = (list) => { for (const c of list) { delete c.skipR; delete c.nextR; delete c.atR; } };
 
