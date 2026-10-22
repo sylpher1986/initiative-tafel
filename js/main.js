@@ -14,6 +14,7 @@ import { VERSION } from "./version.js";
 import { bindEnc } from "./ui/encounters.js";
 import { bindEnd } from "./ui/einde.js";
 import { bindSettings } from "./ui/settings.js";
+import { bindKeys } from "./ui/keys.js";
 import { onClick, onChange, onKey, onToggle, bindForms, bindParty, bindLog, bindBackup, bindQadd, bindAoe, bindAtk, bindInit, normalize, scrollToCard, resetMons } from "./ui/actions.js";
 
 function start(boot = false) {
@@ -91,7 +92,7 @@ async function boot() {
     sync = true;
     if (!down) resync();
   });
-  bindForms(); bindParty(); bindLog(); bindQadd(); bindAoe(); bindAtk(); bindInit(); bindEnc(); bindEnd(resetMons); bindSettings();
+  bindForms(); bindParty(); bindLog(); bindQadd(); bindAoe(); bindAtk(); bindInit(); bindEnc(); bindEnd(resetMons); bindSettings(); bindKeys();
   bindBackup(start);
   // echte hoogte van de beurtbalk: het statblock op de telefoon staat er precies boven
   if ("ResizeObserver" in window) new ResizeObserver(([e]) => document.documentElement.style.setProperty("--dock-h", Math.ceil(e.target.getBoundingClientRect().height) + "px")).observe($("#dock"));

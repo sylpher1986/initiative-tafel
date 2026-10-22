@@ -80,3 +80,35 @@ export function logText(log) {
   return (log || []).map((e) => e.type === "round" ? `\n== ${e.msg} ==` : e.type === "turn" ? `-- ${e.msg} --`
     : `${logRound(e.r)}${e.turn ? ` [${e.turn}]` : ""} ${e.msg}${e.why ? ` (${e.why})` : ""}${e.note ? ` | ${e.note}` : ""}`).join("\n").trim();
 }
+
+/** Logregels van één stap: wat in newer staat en niet in older (op id; inkorten tot 600 haalt alleen oude regels weg). */
+export function stepEntries(newer, older) {
+  const seen = new Set((older || []).map((e) => e && e.id));
+  return (newer || []).filter((e) => e && !seen.has(e.id));
+}
+
+const CUT = 70; // ± twee regels in een melding op 320 px
+const cut = (s) => (s.length > CUT ? s.slice(0, CUT - 1).trimEnd() + "…" : s);
+
+/**
+ * Melding na Ongedaan of Opnieuw (GV8, puur). entries = logregels van de stap (stepEntries), S = stand ná de actie,
+ * verb = "Ongedaan" | "Opnieuw". Beurtwissel: waar je nu staat ("Terug naar beurt van Aram (ronde 2)"), want "beurt
+ * van Noor ongedaan" laat de DM terugrekenen. Anders de eerste regel van de stap met "+N meer" (AoE: het eerste doel).
+ * Geeft { text, more } (more = aantal regels dat niet getoond wordt).
+ */
+export function stepText(entries, S, verb) {
+  const L = (entries || []).filter((e) => e && typeof e.msg === "string");
+  const back = verb === "Ongedaan";
+  if (L.some((e) => e.type === "turn" || e.type === "round")) {
+    const act = S && S.round ? (S.list || []).find((c) => c.id === S.active) : null;
+    const at = act ? `beurt van ${act.name} (ronde ${S.round})` : "";
+    if (L.some((e) => e.type === "round" && e.msg === "Gevecht gestopt")) // Gevecht afronden
+      return { text: back ? (at ? `Gevecht loopt weer · ${at}` : "Ongedaan: Gevecht gestopt") : "Opnieuw: Gevecht gestopt", more: 0 };
+    if (at) return { text: back ? `Terug naar ${at}` : `Opnieuw: ${at}`, more: 0 };
+    if (back && L.some((e) => e.type === "round" && /^Ronde 1 /.test(e.msg))) return { text: "Ongedaan: Start gevecht", more: 0 };
+  }
+  const lines = L.filter((e) => !e.type);
+  const pick = lines.length ? lines : L;
+  if (!pick.length) return { text: back ? "Ongedaan gemaakt." : "Opnieuw gedaan.", more: 0 };
+  return { text: `${verb}: ${cut(pick[0].msg)}`, more: pick.length - 1 };
+}

@@ -1,7 +1,7 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { openSettings } from "./settings.js";
 import { $, esc, n0, toast, toastHtml, closeToast, show } from "./util.js";
-import { app, because, addWhy, commit, undo, historySize, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
+import { app, because, addWhy, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
 import { render, ui, openId, mode, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
@@ -20,7 +20,7 @@ import { initRoll, setInitRoll } from "./initroll.js";
 import { visNow, setVis } from "./playervis.js";
 import { nextAnon } from "../playerview.js";
 import { spellClick as spellInfoClick, spellOpen, closeSpell } from "./spellinfo.js";
-import { logText } from "../log.js";
+import { logText, stepEntries, stepText } from "../log.js";
 import { readSheetPdf, fetchDdb, ddbMsg } from "../ddb.js";
 import { parseDdbLink, findMember, mergeSheet, partyUpdate, seatPlan } from "../ddbjson.js";
 import { RACE_OPTS, raceKey, pickRace, cleanImg } from "./avatar.js";
@@ -31,6 +31,7 @@ import { startFight, oldMons, dropOld } from "../rules/fight.js";
 import { finishFight, closeEnd } from "./einde.js";
 import { pcReact, setPcReact } from "./pcreact.js";
 import { armTour, restartTour } from "./tour.js";
+import { keysKey, keysOpen, closeKeys, openKeys } from "./keys.js";
 
 /** Fx uit de regels: meldingen tonen en oorzaken doorgeven aan het logboek */
 /** RE17: nieuwe concentration saves uit schade, als staart voor de melding (bediening alleen in de beurtbalk) */
@@ -290,6 +291,14 @@ function rowData(c, b) {
   return false;
 }
 
+/** GV8: melding na Ongedaan/Opnieuw: wat er terugging (eerste logregel of de beurt), met de knop voor de andere kant op */
+function stepToast(verb, entries) {
+  const { text, more } = stepText(entries, app.S, verb);
+  const last = verb === "Ongedaan" && !canUndo() ? " Dit was de laatste stap." : "";
+  const btn = (id, l) => `<button class="tundo" id="${id}">${l}</button>`;
+  toastHtml(`${esc(text)}${more ? ` <span class="tmore">+${more} meer</span>` : ""}${esc(last)} ${verb === "Opnieuw" ? btn("toast-undo", "Ongedaan") : ""}${canRedo() ? btn("toast-redo", "Opnieuw") : ""}`);
+}
+
 /* ---------- algemene acties (op id) ---------- */
 const global = {
   "toast-undo"() { closeToast(); return global.undo(); },
@@ -305,11 +314,20 @@ const global = {
   "toast-svadv"() { svRetry((c, sid) => svRoll(sid, true)); },
   undo() {
     const np = ui.addPid && ui.addPid.step === stepNo() ? ui.addPid.pid : null; ui.addPid = null; // AF9: net toegevoegd met vaste party
+    const log0 = app.S.log;
     if (!undo()) return;
-    if (np && !app.S.list.some((c) => c.pid === np)) { app.party = app.party.filter((m) => m.pid !== np); saveParty(); } // syncParty maakte het lid; Ongedaan haalt het weg
+    if (np && !app.S.list.some((c) => c.pid === np)) { app.party = app.party.filter((m) => m.pid !== np); saveParty(); clearRedo(); } // syncParty maakte het lid; Ongedaan haalt het weg (Opnieuw zou het half terugzetten)
     ui.confirmReset = false; ui.startAsk = false; ui.oldGo = null; // GV7: geen hangende vraag of "oude wissen" na een stap terug
-    toast(`Ongedaan gemaakt${historySize() ? ` (nog ${historySize()} stappen terug)` : ""}.`);
+    stepToast("Ongedaan", stepEntries(log0, app.S.log));
   },
+  /** GV8: Opnieuw, alleen in het geheugen (leeg na een nieuwe wijziging of herladen) */
+  redo() {
+    const log0 = app.S.log;
+    if (!redoStep()) return false;
+    ui.addPid = null; ui.confirmReset = false; ui.startAsk = false; ui.oldGo = null;
+    stepToast("Opnieuw", stepEntries(app.S.log, log0));
+  },
+  "toast-redo"() { closeToast(); return global.redo(); },
   // na starten of stoppen volgt de modus weer het gevecht (ui.mode = null)
   start() {
     // GV7: monsters uit het vorige gevecht nog in de lijst? Eerst vragen (vóór het initiative-paneel, ook zonder spelers)
@@ -383,6 +401,7 @@ const global = {
   "welcome-sample"() { loadSample(); ui.welcome = false; armTour("p"); },
   "welcome-empty"() { ui.welcome = false; armTour("p"); },
   // OB2: rondleiding opnieuw (Instellingen → Hulp): paneel dicht, het deel van de huidige modus start na de render
+  "keys-open"() { closePrep(); openKeys(); return false; }, // GV10: Instellingen dicht, overzicht open
   "tour-again"() { stopPUpd(); ui.prep = null; ui.prepLast = null; ui.mode = null; restartTour(); },
   /** DA1: strook "Geen recente export" in Voorbereiden */
   "exp-now"() { exportFile().then((ok) => { if (ok) { render(); focusAfterStrip(); } }); return false; },
@@ -649,6 +668,7 @@ function prepField(c, t) {
 export function onKey(e) {
   if (e.key === "Enter" && e.target.dataset && e.target.dataset.pf) { e.preventDefault(); e.target.blur(); return; } // veld op de kaart: klaar = opslaan
   if (spellOpen()) { if (e.key === "Escape") { e.preventDefault(); closeSpell(); } return; } // ligt boven alle andere panelen: toetsen niet naar het cijferpad eronder
+  if (keysOpen()) { if (e.key === "Escape" || e.key === "?") { e.preventDefault(); closeKeys(); } return; } // overzicht sneltoetsen (GV10)
   if (ui.end && e.key === "Escape") { e.preventDefault(); closeEnd(); return; }
   if (ui.logSheet && e.key === "Escape") { e.preventDefault(); closeLogSheet(); return; }
   if (ui.prep && e.key === "Escape") { e.preventDefault(); closePrep(); return; }
@@ -665,7 +685,19 @@ export function onKey(e) {
   if (ui.la && e.key === "Escape") { e.preventDefault(); closeLa(); return; }
   if (ui.sv && e.key === "Escape") { e.preventDefault(); ui.sv = false; paintSv(); return; }
   if (ui.startAsk && e.key === "Escape") { e.preventDefault(); global["old-no"](); return; } // GV7: vraag boven Start
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); ui.qadd = null; ui.aoe = null; ui.atk = null; ui.initDraft = null; global.undo(); render(); return; }
+  const typing = /INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.target.isContentEditable;
+  const kz = e.key.toLowerCase();
+  // ⌘Z/Ctrl+Z = Ongedaan; ⌘⇧Z/Ctrl+Shift+Z/Ctrl+Y = Opnieuw (GV8: Shift deed eerst nóg een undo)
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !typing && (kz === "z" || (kz === "y" && e.ctrlKey && !e.shiftKey))) {
+    e.preventDefault();
+    if (e.repeat) return;
+    const fwd = kz === "y" || e.shiftKey;
+    if (fwd ? !canRedo() : !canUndo()) return;
+    ui.qadd = null; ui.aoe = null; ui.atk = null; ui.initDraft = null;
+    if (fwd) { closeToast(); global.redo(); } else global.undo();
+    render(); return;
+  }
+  if (keysKey(e, typing)) return; // GV10: "?" = overzicht, N/spatie = Volgende, Shift+N = Vorige
   if (ui.sheet && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
     const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" && !e.target.closest?.("#sheet button") ? ["apply"] : null;
     if (k) { e.preventDefault(); const res = sheetKey(...k); render(); if (ui.sheet) $("#sheet .sheet")?.focus({ preventScroll: true }); sheetDone(res); }

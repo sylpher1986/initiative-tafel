@@ -594,10 +594,11 @@ function oldAsk(S) {
     <div class="bar">${onlyOld ? `<button type="button" class="btn primary tap" id="old-wipe">Oude monsters wissen</button>` : `<button type="button" class="btn primary tap" id="old-start">Oude wissen en starten</button>`}<button type="button" class="btn tap" id="old-go">Toch starten</button><button type="button" class="link" id="old-no">Annuleer</button></div></div>`;
 }
 
+const MOD_Z = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "") ? "⌘Z" : "Ctrl+Z";
 function paintDock() {
   const S = app.S;
   const L = sortOrder(S.list);
-  const undoBtn = `<button id="undo" ${canUndo() ? "" : "disabled"} aria-label="Ongedaan maken" title="Ongedaan maken">↶</button>`;
+  const undoBtn = `<button id="undo" ${canUndo() ? "" : "disabled"} aria-label="Ongedaan maken" title="Ongedaan maken (${MOD_Z})" aria-keyshortcuts="Meta+Z Control+Z">↶</button>`;
   const pb = (k, l, al) => `<button type="button" data-prep="${k}" aria-pressed="${ui.prep === k || (k === "mon" && MONTABS.includes(ui.prep))}"${al ? ` aria-label="${al}" title="${al}"` : ""}>${l}</button>`;
   const prepRow = mode() === "prep" ? `<div class="prow">${pb("mon", `<span class="pp">+&nbsp;</span>Monster`, "")}${pb("pc", `<span class="pp">+&nbsp;</span>Speler`, "")}${pb("party", "Party", "")}${pb("data", GEAR, "Instellingen")}</div>` : "";
   if (!S.round) {
@@ -614,7 +615,7 @@ function paintDock() {
   const nxt = nextUp(S, L, S.active); // slaat neer en (ronde 1) verrast over
   const g = act ? groupOf(L, act.id, S.round) : null; // groepsbeurt: "Bugbear 2 · 2/3"
   $("#dock").innerHTML = `<div class="who"><span><span class="l">Aan de beurt</span><br><b>${act ? esc(act.name) : "–"}</b>${g ? ` <span class="gk" title="Groepsbeurt: lid ${g.k} van ${g.live.length}">· ${g.k}/${g.live.length}</span>` : ""}</span><span class="r">${nxt ? `volgende: ${esc(nxt.name)}` : ""}</span></div>
-    ${svBar(S)}${allDown(S) ? `<div class="svbar"><div class="svrow endrow"><span>Alle monsters neer</span><button type="button" id="fin">Gevecht afronden</button></div></div>` : ""}${laBar(S, L)}<div class="row">${undoBtn}<button id="prev" class="pv" aria-label="Vorige beurt"><span aria-hidden="true">‹</span><span class="pvl" aria-hidden="true">Vorige</span></button><button class="aoeb" id="aoe" aria-label="Area of effect: schade of een spell op meerdere doelen" ${spellTargets(app.S.list).length ? "" : "disabled"}>AoE</button><button class="nx" id="next">Volgende<span class="nb"> beurt</span> ›</button></div>`;
+    ${svBar(S)}${allDown(S) ? `<div class="svbar"><div class="svrow endrow"><span>Alle monsters neer</span><button type="button" id="fin">Gevecht afronden</button></div></div>` : ""}${laBar(S, L)}<div class="row">${undoBtn}<button id="prev" class="pv" aria-label="Vorige beurt" title="Vorige beurt (Shift+N)" aria-keyshortcuts="Shift+N"><span aria-hidden="true">‹</span><span class="pvl" aria-hidden="true">Vorige</span></button><button class="aoeb" id="aoe" aria-label="Area of effect: schade of een spell op meerdere doelen" ${spellTargets(app.S.list).length ? "" : "disabled"}>AoE</button><button class="nx" id="next" title="Volgende beurt (N of spatie)" aria-keyshortcuts="N Space">Volgende<span class="nb"> beurt</span> ›</button></div>`;
 }
 
 /* ---------- open saves: regels in de beurtbalk (max 2) of één knop met paneel ---------- */

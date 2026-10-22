@@ -7,7 +7,7 @@
 <meta name="description" content="Initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.">
 <meta name="theme-color" content="#8a1f14" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#13161d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="1.37.0">
+<meta name="it-version" content="1.37.1">
 <script src="js/theme.js"></script>
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
 <script>
@@ -149,7 +149,7 @@
       </div></details>
       <details class="setsec" data-sec="help"><summary><h2 class="sethead">Hulp</h2><span class="sstat" data-sstat="help"></span><span class="schev" aria-hidden="true"></span></summary>
       <div class="setbody">
-      <div class="bar"><button type="button" class="btn tap" id="tour-again">Rondleiding opnieuw</button></div>
+      <div class="bar"><button type="button" class="btn tap" id="tour-again">Rondleiding opnieuw</button><button type="button" class="btn tap kbonly" id="keys-open" aria-keyshortcuts="?">Sneltoetsen</button></div>
       <p class="hint">Uitleg van de knoppen, bijvoorbeeld voor een co-DM. Tijdens een gevecht krijg je het gevecht-deel, anders het voorbereiden-deel; dat van het gevecht volgt bij Start gevecht.</p>
       </div></details>
       <details class="setsec" data-sec="store"><summary><h2 class="sethead">Opslag</h2><span class="sstat" data-sstat="store"></span><span class="schev" aria-hidden="true"></span></summary>
@@ -197,6 +197,7 @@
 <div class="sheet-wrap" id="ssheet" hidden></div>
 <div class="sheet-wrap" id="esheet" hidden></div>
 <div class="sheet-wrap" id="gsheet" hidden></div>
+<div class="sheet-wrap" id="hsheet" hidden></div>
 <div class="sheet-wrap rwrap" id="rsheet" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <noscript><p style="padding:16px">Initiative Tafel heeft JavaScript nodig.</p></noscript>

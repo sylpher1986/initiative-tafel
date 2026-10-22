@@ -31,6 +31,9 @@ const snap = () => pack(app.S, known);
 const full = (j, refs) => unpack(j, (k) => refs.get(k));
 
 let hist = [], lastJSON = null, prevObj = null, pendingWhy = [], pendingSum = null, pendingKey = null, steps = 0;
+/* Opnieuw (GV8): stappen die net ongedaan zijn gemaakt, { j, refs } zoals lastJSON/cur. Alleen in het geheugen (UX-keuze):
+   leeg bij elke nieuwe wijziging, bij een nieuw vertrekpunt en na herladen. */
+let redos = [], redoing = false;
 let warn = () => {}, warned = false;
 export const setWarn = (fn) => { warn = fn; };
 
@@ -43,6 +46,9 @@ export const addWhy = (arr) => pendingWhy.push(...arr);
  */
 export const logAs = (msg, key) => { pendingSum = msg; pendingKey = key || null; };
 export const canUndo = () => hist.length > 0;
+export const canRedo = () => redos.length > 0;
+/** Opnieuw onmogelijk maken (bv. Ongedaan haalde ook buiten S iets weg dat Opnieuw niet terugzet) */
+export const clearRedo = () => { redos = []; };
 export const historySize = () => hist.length;
 /** Aantal apart bewaarde sheets/portretten in de geschiedenis (TS2, voor tests) */
 export const histBlobs = () => blobs.size;
@@ -118,7 +124,7 @@ function persist(ops) {
  */
 export function resetBaseline(boot = false) {
   tidy(app.S); // zelfde normalisatie als commit(), anders wordt die de eerste (onuitwisbare) undo-stap
-  blobs = new Map(); cur = new Map();
+  blobs = new Map(); cur = new Map(); redos = [];
   const p = snap();
   lastJSON = p.j; cur = p.refs; prevObj = full(p.j, cur); pendingWhy = []; pendingSum = pendingKey = null;
   let ops;
@@ -146,10 +152,13 @@ export function resetBaseline(boot = false) {
  */
 export function commit() {
   // effecten en condities (Hold Person) van een caster die geen concentratie meer heeft (0 HP, nieuwe spell, verwijderd) horen bij deze stap
-  pendingWhy.push(...endConcEffects(app.S.list, app.S.active).why, ...endConcConds(app.S.list).why);
-  tidy(app.S); // wie neer ging (GV2), ingeladen encounter vergeten zonder monsters (VB2)
+  if (!redoing) { // een stap van Opnieuw is al genormaliseerd en heeft zijn logregels al
+    pendingWhy.push(...endConcEffects(app.S.list, app.S.active).why, ...endConcConds(app.S.list).why);
+    tidy(app.S); // wie neer ging (GV2), ingeladen encounter vergeten zonder monsters (VB2)
+  }
   let p = snap();
   if (p.j === lastJSON) { pendingWhy = []; pendingSum = pendingKey = null; return false; }
+  if (!redoing) redos = []; // nieuwe wijziging: wat ongedaan was, komt niet meer terug
   const ops = [];
   if (lastJSON !== null) {
     const k = hk(++seq), b = [...cur.keys()];
@@ -162,7 +171,7 @@ export function commit() {
     hist.push(lastJSON); hkeys.push(k); hrefs.push(b);
     ops.push(["put", k, { k, v: VERSION, t: Date.now(), s: lastJSON, b }]);
     if (hist.length > HIST_MAX) { hist.shift(); ops.push(["del", hkeys.shift()]); unref(hrefs.shift(), ops); }
-    if (writeLog(prevObj)) p = snap();
+    if (!redoing && writeLog(prevObj)) p = snap();
   }
   pendingWhy = []; pendingSum = pendingKey = null; steps++;
   lastJSON = p.j; cur = p.refs; prevObj = full(p.j, cur);
@@ -183,13 +192,27 @@ export function undo() {
   const j = hist.pop(), k = hkeys.pop(), b = hrefs.pop() || [];
   const refs = new Map(b.map((x) => [x, known(x)]));
   const S = full(j, refs);
-  if (!S) { hist = []; hkeys = []; hrefs = []; blobs = new Map(); persist([["delRange", HLO, HHI], ["delRange", BLO, BHI]]); return false; } // vangnet, hoort niet te gebeuren
+  if (!S) { hist = []; hkeys = []; hrefs = []; redos = []; blobs = new Map(); persist([["delRange", HLO, HHI], ["delRange", BLO, BHI]]); return false; } // vangnet, hoort niet te gebeuren
+  redos.push({ j: lastJSON, refs: cur });
+  if (redos.length > HIST_MAX) redos.shift();
   app.S = S;
   lastJSON = j; cur = refs; prevObj = full(j, refs); pendingWhy = []; steps++;
   const ops = k ? [["del", k]] : [];
   unref(b, ops);
   persist(ops);
   syncParty();
+  return true;
+}
+
+/** Opnieuw (GV8): de laatst ongedaan gemaakte stap terug, als gewone stap (opslag, undo, party-sync), zonder nieuwe logregels */
+export function redo() {
+  const r = redos.pop();
+  if (!r) return false;
+  const S = full(r.j, r.refs);
+  if (!S) { redos = []; return false; }
+  app.S = S; pendingWhy = []; pendingSum = pendingKey = null;
+  redoing = true;
+  try { commit(); } finally { redoing = false; }
   return true;
 }
 
