@@ -294,3 +294,35 @@ test("DA3: niet meer de eigenaar (ander tabblad) = niet opnieuw verbinden, ook n
   T.run(); // herverbind-timer gaat af vóór visibilitychange
   assert.equal(socks.length, 1, "geen nieuwe DM-verbinding die de kamer van het nieuwe tabblad afpakt");
 });
+
+test("SC3: spelers pingen elke 10 s en zijn na 20 s stilte kwijt; de DM blijft op 25/60 s", async () => {
+  for (const [token, ping, dead] of [[undefined, 10000, 20000], ["tok", 25000, 60000]]) {
+    const T = timers(); let iv = null;
+    T.setInterval = (f, ms) => { iv = { f, ms }; return 1; };
+    const { got } = await chan(token, T);
+    const t0 = Date.now(), now = Date.now;
+    socks[0].open();
+    assert.equal(iv.ms, ping);
+    try {
+      Date.now = () => t0 + dead - 1; iv.f();
+      assert.ok(!got.some((m) => m.t === "net" && m.s === "kwijt"), "nog niet dood");
+      Date.now = () => t0 + dead + 1; iv.f();
+      assert.ok(got.some((m) => m.t === "net" && m.s === "kwijt"), `${token ? "DM" : "speler"} na ${dead} ms kwijt`);
+    } finally { Date.now = now; }
+  }
+});
+
+test("SC3: 'offline' van de browser = meteen kwijt (niet op de heartbeat wachten); close haalt de listener weg", async () => {
+  const subs = {}, had = globalThis.addEventListener;
+  globalThis.addEventListener = (n, f) => { subs[n] = f; };
+  globalThis.removeEventListener = (n, f) => { if (subs[n] === f) delete subs[n]; };
+  try {
+    const { ch, got } = await chan();
+    socks[0].open();
+    subs.offline();
+    assert.equal(got.at(-1).s, "kwijt");
+    assert.equal(socks[0].readyState, 3);
+    ch.close();
+    assert.equal(subs.offline, undefined); assert.equal(subs.online, undefined);
+  } finally { if (had) globalThis.addEventListener = had; else { delete globalThis.addEventListener; delete globalThis.removeEventListener; } }
+});

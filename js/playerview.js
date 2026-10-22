@@ -1,8 +1,9 @@
 // Spelersscherm: wat spelers mogen zien. Puur (geen DOM), getest.
 // Alleen deze snapshot verlaat het DM-scherm, nooit de volledige toestand. Zo kan dezelfde snapshot
 // later ook via een server naar andere apparaten zonder dat er DM-info meegaat.
-import { sortOrder, isOut, groupOf, nextUp, isSurprised } from "./rules/turns.js";
+import { sortOrder, isOut, groupOf, nextUp, isSurprised, skipsTurn } from "./rules/turns.js";
 import { iconId, cleanImg } from "./ui/avatar.js";
+import { esc } from "./ui/util.js";
 
 /**
  * Wat spelers zien (standaard). Instelbaar per apparaat (Instellingen → Spelersscherm, js/ui/playervis.js).
@@ -74,20 +75,51 @@ function tagsFor(c, S) {
 }
 
 /**
+ * Zichtbare beurt voor spelers (SC2b, puur). Is een verborgen deelnemer aan de beurt, dan blijft de laatste zichtbare
+ * beurt ervóór staan (met zijn ronde): dat leest als "die denkt nog even na", terwijl een lege beurt verraadt dat er iets
+ * meedoet. prev = { id, round } van de vorige snapshot met een zichtbare beurt (het DM-scherm onthoudt hem): die wint als
+ * hij nog bestaat en vóór de verborgen beurt ligt (dezelfde ronde eerder in de volgorde, of de vorige ronde erna), want
+ * achteraf terugrekenen ziet niet wie intussen neerging of in ronde 1 verrast was (sur wordt in ronde 2 gewist).
+ * Zonder bruikbare hint (na herladen): terug in de volgorde zoals step() vooruit loopt.
+ * → { id, round, guess? }; id null = geen zichtbare beurt (verborgen monster opent het gevecht); guess = teruggerekend.
+ */
+export function shownTurn(S, all, seen, prev = null) {
+  const i = all.findIndex((c) => c.id === S.active);
+  if (i < 0 || seen(all[i])) return { id: i < 0 ? null : S.active, round: S.round || 0 };
+  if (prev && prev.id) {
+    const ip = all.findIndex((c) => c.id === prev.id);
+    if (ip >= 0 && seen(all[ip]) && (prev.round === S.round ? ip < i : prev.round === S.round - 1 && prev.round >= 1 && ip > i)) return { id: prev.id, round: prev.round };
+  }
+  let r = S.round, j = i;
+  for (let n = 1; n < all.length; n++) {
+    if (--j < 0) { j = all.length - 1; r--; } // rondgang terug
+    if (r < 1) break;
+    const c = all[j];
+    if (seen(c) && !skipsTurn(c, r)) return { id: c.id, round: r, guess: true };
+  }
+  return { id: null, round: S.round };
+}
+
+/**
  * Snapshot voor het spelersscherm.
  * metaOf(c): creature type-tekst van een monster (voor het icoon); vis: zie VIS.
- * Verborgen deelnemers (c.hidden) bestaan niet voor spelers: ook hun beurt niet.
+ * Verborgen deelnemers (c.hidden) bestaan niet voor spelers: ook hun beurt niet (shownTurn, prev = vorige zichtbare beurt).
+ * Zonder gevecht (round 0) alleen spelers (SC2a): klaargezette monsters verraden de hinderlaag. end = rondes van het
+ * net afgeronde gevecht (S.endSum, tot Start of monsters wissen), voor de kop "Gevecht voorbij".
  */
-export function toPlayerView(S, metaOf = () => "", vis = VIS) {
+export function toPlayerView(S, metaOf = () => "", vis = VIS, prev = null) {
   const all = sortOrder(S.list || []);
-  const seen = (c) => !c.hidden;
+  const fight = !!S.round;
+  const seen = (c) => !c.hidden && (fight || c.kind === "pc");
   const shown = all.filter(seen);
-  const active = shown.some((c) => c.id === S.active) ? S.active : null;
+  const vt = fight ? shownTurn(S, all, seen, prev) : { id: null, round: 0 };
+  let active = vt.id;
   // groepsbeurt: spelers zien de zichtbare levende leden samen aan de beurt, "volgende" ligt voorbij de groep
-  const g = S.round && active ? groupOf(all, active, S.round) : null;
+  const g = active ? groupOf(all, active, vt.round) : null;
   const inTurn = new Set(g ? g.live.filter(seen).map((c) => c.id) : []);
   const nx = S.round && S.active ? nextUp(S, all, S.active, (c) => inTurn.has(c.id) || !seen(c)) : null; // ook verrast in ronde 1 overslaan
   const next = nx ? nx.id : null;
+  if (vt.guess && active === next) active = null; // teruggerekend en gelijk aan Daarna: waarschijnlijk mis, dan liever geen naam
   const anonMany = anonSeen(all) > 1; // één keer per snapshot, niet per rij
   const list = shown.map((c) => {
     if (c.kind === "lair") return { id: c.id, kind: "lair", name: "Lair", init: vis.init ? c.init : null };
@@ -101,7 +133,8 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS) {
     if (pc && c.max && c.hp <= 0 && !d.dead && !d.stable) r.ds = { s: d.s || 0, f: d.f || 0 };
     return r;
   });
-  const out = { v: 1, round: S.round || 0, active, next, list };
+  const out = { v: 1, round: vt.round, active, next, list };
+  if (!fight && S.endSum) out.end = Math.max(0, S.endSum.r | 0);
   if (inTurn.size > 1) Object.assign(out, { group: [...inTurn], gname: groupName(list.filter((c) => inTurn.has(c.id))) });
   return out;
 }
@@ -110,6 +143,17 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS) {
 export function groupName(rows) {
   const base = rows.map((c) => c.name.replace(/ \d+$/, ""));
   return base.every((b) => b === base[0]) ? `${base[0]} ×${rows.length}` : rows.map((c) => c.name).join(", ");
+}
+
+/** Kop: wie aan de beurt is. Zonder zichtbare beurt in ronde 1 (verborgen monster begint): "Gevecht begint" (SC2b). */
+export function headHtml(V) {
+  const act = V.list.find((c) => c.id === V.active), nxt = V.list.find((c) => c.id === V.next);
+  const daarna = nxt ? `<div class="r"><span class="l">Daarna</span>${esc(nxt.name)}</div>` : "";
+  if (V.round) return V.gname || act
+    ? `<div><span class="l">Ronde ${V.round} · aan de beurt</span><b>${esc(V.gname || act.name)}</b></div>${daarna}`
+    : `<div><span class="l">${V.round === 1 ? "Ronde 1" : "Gevecht"}</span><b>${V.round === 1 ? "Gevecht begint" : `Ronde ${V.round}`}</b></div>${daarna}`;
+  if (V.end != null) return `<div><span class="l">Gevecht voorbij</span><b>${V.end ? `Na ${V.end} ronde${V.end === 1 ? "" : "s"}` : "Klaar"}</b></div>`;
+  return `<div><span class="l">Nog geen gevecht</span><b>Wacht op de DM</b></div>`;
 }
 
 /* ---------- ontvangen: snapshot opschonen (nu uit een ander venster, later uit het netwerk) ---------- */
@@ -140,6 +184,7 @@ export function cleanView(d) {
   const ids = new Set(list.map((c) => c.id));
   const pick = (v) => (typeof v === "string" && ids.has(v) ? v : null);
   const out = { v: 1, round: Math.max(0, int(d.round)), active: pick(d.active), next: pick(d.next), list };
+  if (!out.round && d.end != null) out.end = Math.max(0, Math.min(9999, int(d.end)));
   const group = Array.isArray(d.group) ? [...new Set(d.group.map(pick).filter(Boolean))].slice(0, 20) : [];
   if (out.active && group.length > 1 && group.includes(out.active)) Object.assign(out, { group, gname: str(d.gname, 200) || null });
   return out;

@@ -103,8 +103,15 @@ async function boot() {
   // spelersscherm: krijgt alleen de gefilterde snapshot. Twee wegen: een ander venster op dit apparaat (lokaal)
   // en andere apparaten via een kamer (Instellingen → Delen met spelers). Eén snapshot per render, ook met beide.
   const links = new Set();
-  let view = null;
-  const getView = () => (view ||= toPlayerView(app.S, (c) => (c.ref ? findMon(c.ref)?.meta : ""), visNow()));
+  let view = null, prevTurn = null; // prevTurn: laatste zichtbare beurt, zodat een verborgen beurt hem laat staan (SC2b)
+  const getView = () => {
+    if (view) return view;
+    const S = app.S;
+    if (!S.round) prevTurn = null;
+    view = toPlayerView(S, (c) => (c.ref ? findMon(c.ref)?.meta : ""), visNow(), prevTurn);
+    if (view.active && view.active === S.active) prevTurn = { id: view.active, round: view.round };
+    return view;
+  };
   setAfterRender(() => { view = null; links.forEach((l) => l.update()); tourTick(); });
   const ch = localChannel();
   if (ch) links.add(dmLink(ch, getView));

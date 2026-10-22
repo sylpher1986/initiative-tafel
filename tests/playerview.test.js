@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toPlayerView, cleanView, hpStatus, VIS, cleanVis, nextAnon, anonName, groupName, dedupeAnon } from "../js/playerview.js";
+import { toPlayerView, cleanView, hpStatus, VIS, cleanVis, nextAnon, anonName, groupName, dedupeAnon, headHtml } from "../js/playerview.js";
 import { cleanCombatant, parseImport } from "../js/backup.js";
 import { diffLog } from "../js/log.js";
 
@@ -91,9 +91,9 @@ test("groep met een verborgen lid: alleen zichtbare leden aan de beurt, volgende
   assert.equal(V.next, "p");
   assert.ok(!V.list.some((c) => c.id === "b2"));
   const W = toPlayerView(S(L, { active: "b2" }));
-  assert.equal(W.active, null, "verborgen lid aan de beurt: spelers zien geen beurt");
-  assert.equal(W.group, undefined);
-  assert.equal(W.next, "b3");
+  assert.equal(W.active, "b1", "verborgen lid aan de beurt: de groepsbeurt blijft staan (SC2b)");
+  assert.deepEqual(W.group, ["b1", "b3"]);
+  assert.equal(W.next, "p");
 });
 
 test("tags \"pc\": Verrast alleen bij spelers", () => {
@@ -190,4 +190,105 @@ test("naam onbekend: dubbele nummers na import worden hernummerd, wisselen komt 
   const a = { list: [mon({ id: "m", name: "M" })] }, b = { list: [mon({ id: "m", name: "M", anon: 1 })] };
   assert.match(diffLog(a, b)[0].msg, /naam onbekend voor spelers/);
   assert.match(diffLog(b, a)[0].msg, /naam bekend voor spelers/);
+});
+
+/* ---------- WP1: SC2 spelersscherm verraadt niets ---------- */
+test("SC2a: zonder gevecht alleen spelers (ook geen lair); vanaf Start alles volgens VIS", () => {
+  const L = [mon({ id: "m", name: "Bandit", init: 15 }), pc({ id: "a", name: "A", init: 12 }), { id: "l", kind: "lair", name: "Lair", init: 20, cond: [] }];
+  const V = toPlayerView(S(L, { round: 0, active: null }));
+  assert.deepEqual(V.list.map((c) => c.id), ["a"]);
+  assert.equal(V.active, null); assert.equal(V.next, null); assert.equal(V.end, undefined);
+  assert.doesNotMatch(JSON.stringify(V), /Bandit/, "naam komt nergens in de snapshot");
+  const F = toPlayerView(S(L, { active: "l" }));
+  assert.deepEqual(F.list.map((c) => c.id).sort(), ["a", "l", "m"]);
+});
+
+test("SC2a: na Gevecht afronden end = rondes, alleen spelers; cleanView laat end alleen zonder ronde door", () => {
+  const L = [mon({ id: "m", name: "Draak", init: 15, hp: 0 }), pc({ id: "a", name: "A", init: 12 })];
+  const V = toPlayerView(S(L, { round: 0, active: null, endSum: { r: 4 } }));
+  assert.equal(V.end, 4); assert.deepEqual(V.list.map((c) => c.id), ["a"]);
+  assert.equal(cleanView(V).end, 4);
+  assert.equal(cleanView({ ...V, end: "x" }).end, 0);
+  assert.equal(cleanView({ ...V, round: 2, end: 4 }).end, undefined);
+  assert.equal(toPlayerView(S(L, { endSum: { r: 4 } })).end, undefined, "tijdens een gevecht geen end");
+});
+
+test("SC2b: verborgen monster aan de beurt → vorige zichtbare beurt blijft staan, Daarna klopt", () => {
+  const L = [pc({ id: "a", name: "A", init: 20 }), mon({ id: "h", name: "Assassin", init: 15, hidden: true }), pc({ id: "b", name: "B", init: 10 })];
+  const V = toPlayerView(S(L, { round: 2, active: "h" }));
+  assert.equal(V.active, "a"); assert.equal(V.round, 2); assert.equal(V.next, "b");
+  const plain = toPlayerView(S(L, { round: 2, active: "a" }));
+  assert.deepEqual({ ...V }, { ...plain }, "niet te onderscheiden van een gewone beurt van A");
+});
+
+test("SC2b: verborgen monster opent de ronde → laatste zichtbare van de vorige ronde, met die ronde", () => {
+  const L = [mon({ id: "h", name: "X", init: 20, hidden: true }), pc({ id: "a", name: "A", init: 15 }), mon({ id: "g", name: "G", init: 10, hp: 0 }), pc({ id: "b", name: "B", init: 5 })];
+  const V = toPlayerView(S(L, { round: 3, active: "h" }));
+  assert.equal(V.active, "b", "g is neer: had geen beurt"); assert.equal(V.round, 2); assert.equal(V.next, "a");
+});
+
+test("SC2b: verborgen monster begint ronde 1 → geen beurt, kop Gevecht begint; verrast in ronde 1 telt niet", () => {
+  const L = [mon({ id: "h", name: "X", init: 20, hidden: true }), pc({ id: "a", name: "A", init: 15 })];
+  const V = toPlayerView(S(L, { round: 1, active: "h" }));
+  assert.equal(V.active, null); assert.equal(V.round, 1); assert.equal(V.next, "a");
+  assert.match(headHtml(V), /Ronde 1<\/span><b>Gevecht begint/);
+  assert.match(headHtml(V), /Daarna<\/span>A/);
+  const L2 = [pc({ id: "s", name: "S", init: 25, sur: 2 }), mon({ id: "h", name: "X", init: 20, hidden: true }), pc({ id: "a", name: "A", init: 15 })];
+  assert.equal(toPlayerView(S(L2, { round: 1, active: "h" })).active, null, "verraste speler had in ronde 1 geen beurt");
+});
+
+test("headHtml: aan de beurt, groep, geen gevecht, gevecht voorbij; namen geëscaped", () => {
+  const V = (o) => ({ round: 0, active: null, next: null, list: [{ id: "a", name: "<A>" }, { id: "b", name: "B" }], ...o });
+  assert.match(headHtml(V({ round: 2, active: "a", next: "b" })), /Ronde 2 · aan de beurt<\/span><b>&lt;A&gt;<\/b>.*Daarna<\/span>B/);
+  assert.match(headHtml(V({ round: 2, active: "a", gname: "Bugbear ×2" })), /<b>Bugbear ×2<\/b>/);
+  assert.match(headHtml(V()), /Nog geen gevecht<\/span><b>Wacht op de DM/);
+  assert.match(headHtml(V({ end: 4 })), /Gevecht voorbij<\/span><b>Na 4 rondes/);
+  assert.match(headHtml(V({ end: 1 })), /Na 1 ronde</);
+  assert.doesNotMatch(headHtml(V()), /Rol initiative/);
+});
+
+/* review WP1: de hint (vorige zichtbare beurt) zoals main.js hem bijhoudt */
+import { startCombat, step } from "../js/rules/turns.js";
+const live = (S) => { let prev = null; return () => { if (!S.round) prev = null; const V = toPlayerView(S, () => "", VIS, prev); if (V.active && V.active === S.active) prev = { id: V.active, round: V.round }; return V; }; };
+const rng0 = () => 0.5;
+
+test("review: verraste speler in ronde 1 + verborgen monster opent ronde 2 → niet de verraste als aan de beurt", () => {
+  const L = [mon({ id: "H", name: "H", init: 20, hidden: true }), mon({ id: "M", name: "M", init: 15 }), pc({ id: "A", name: "A", init: 5, sur: true })];
+  const S = { list: L, round: 0, active: null, saves: [] }, view = live(S);
+  startCombat(S, rng0); let V = view();
+  assert.equal(V.active, null); assert.equal(V.round, 1);
+  step(S, 1, rng0); V = view(); assert.equal(V.active, "M");
+  step(S, 1, rng0); V = view();
+  assert.equal(S.active, "H"); assert.equal(S.round, 2);
+  assert.equal(V.active, "M", "A was verrast en had geen beurt"); assert.equal(V.round, 1);
+  assert.equal(V.next, "M");
+});
+
+test("review: zichtbaar monster sterft in zijn eigen beurt → die beurt blijft staan, niet terug naar de speler", () => {
+  const L = [pc({ id: "P", name: "P", init: 20 }), mon({ id: "M", name: "M", init: 15 }), mon({ id: "H", name: "H", init: 10, hidden: true })];
+  const S = { list: L, round: 0, active: null, saves: [] }, view = live(S);
+  startCombat(S, rng0); view();
+  step(S, 1, rng0); assert.equal(view().active, "M");
+  L[1].hp = 0; view(); // opportunity attack
+  step(S, 1, rng0); const V = view();
+  assert.equal(S.active, "H");
+  assert.equal(V.active, "M"); assert.equal(V.next, "P");
+  assert.notEqual(V.active, V.next);
+});
+
+test("review: hint die niet meer klopt (na ‹ Vorige, verwijderd, verborgen) valt terug op terugrekenen; nooit active = next", () => {
+  const L = [pc({ id: "A", name: "A", init: 20 }), mon({ id: "H", name: "H", init: 15, hidden: true }), pc({ id: "B", name: "B", init: 10 })];
+  const V = toPlayerView(S(L, { round: 2, active: "H" }), () => "", VIS, { id: "B", round: 2 }); // B ligt ná H: ‹ Vorige
+  assert.equal(V.active, "A");
+  assert.equal(toPlayerView(S(L, { round: 2, active: "H" }), () => "", VIS, { id: "weg", round: 2 }).active, "A");
+  assert.equal(toPlayerView(S(L, { round: 3, active: "H" }), () => "", VIS, { id: "A", round: 1 }).active, "A", "oude hint: terugrekenen");
+  // alleen verborgen + één speler die neer is en niet meer aan de beurt komt: terugrekenen zou de volgende geven
+  const L2 = [pc({ id: "A", name: "A", init: 20, ds: { dead: true }, hp: 0 }), mon({ id: "H", name: "H", init: 15, hidden: true }), pc({ id: "B", name: "B", init: 10 })];
+  const W = toPlayerView(S(L2, { round: 2, active: "H" }));
+  assert.ok(!W.active || W.active !== W.next);
+});
+
+test("headHtml: geen zichtbare beurt na ronde 1 → 'Ronde N', niet 'Gevecht begint'", () => {
+  const h = headHtml({ round: 3, active: null, next: "b", list: [{ id: "b", name: "B" }] });
+  assert.match(h, /<b>Ronde 3<\/b>/); assert.doesNotMatch(h, /Gevecht begint/); assert.match(h, /Daarna/);
 });

@@ -7,8 +7,8 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 
 **P1: nu (fouten en spoilers)**
 1. ~~GV6~~ klaar in 1.34.1 (zie Klaar)
-2. **SC2** Spelersscherm verraadt monsters: vóór Start de hele encounter, en "…" bij de beurt van een verborgen monster
-3. **SC3** Verbinding kwijt pas na 25–60 s zichtbaar op het spelersscherm
+2. ~~SC2~~ klaar in 1.35.0 (WP1, zie Klaar)
+3. ~~SC3~~ klaar in 1.35.0 (WP1, zie Klaar)
 4. **RE8** Hold Person vinkt alle humanoïden aan; caster wisselen zet de selectie terug
 5. **AF6** Tapdoelen onder 44 px (conditiechips, death saves, slots, LA, Sluit, Uit party)
 
@@ -45,7 +45,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 
 | WP | Inhoud | Codes | Versie |
 |---|---|---|---|
-| **WP1** | Spelersscherm: niets verraden, verbinding kwijt zichtbaar | SC2, SC3 | 1.35.0 |
+| ~~**WP1**~~ | Spelersscherm: niets verraden, verbinding kwijt zichtbaar (klaar) | SC2, SC3 | 1.35.0 |
 | **WP2** | Tikken op de telefoon: tikdoelen, verspringen, hoofdknop, minteken | AF6, IN8, IN9, AF7 | 1.35.x |
 | **WP3** | Regels in het gevecht: Hold Person, initiative na eigen beurt, open saves | RE8, RE9, RE12 | 1.36.0 |
 | **WP4** | Speler toevoegen en gevecht afronden | SP4, GV7, AF9 | 1.37.0 |
@@ -98,13 +98,11 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 
 ## Spelersscherm
 - [ ] **SC1 QR-code bij de kamercode** (P2, samen met SC7; alleen als een kleine zelf-gehoste lib past). Persona-test 3: op een con de iPad omdraaien en laten scannen.
-- [ ] **SC2 Spelersscherm verraadt monsters** (P1): (a) vóór Start gevecht staan alle klaargezette monsters al op tv en telefoons ("Nog geen gevecht · Rol initiative" met 4 Bandits, Captain, Mastiffs): hinderlaag verraden. Vóór Start alleen spelers tonen, monsters vanaf Start; eventueel instelbaar onder "Wat spelers zien". (b) Is een verborgen monster aan de beurt, dan toont het spelersscherm "Aan de beurt: …" (`speler.js`: `active` is dan leeg); de vorige zichtbare actieve laten staan. Allebei in `toPlayerView`/`speler.js`, met test.
-- [ ] **SC3 Verbinding kwijt sneller zichtbaar** (P1): `roomChannel` pingt elke 25 s en verklaart de verbinding dood na 60 s; daarom kwam de melding na 6–35 s of niet. Op het spelersscherm: `offline`-event direct tonen, kortere heartbeat (bijv. 10/20 s), en de lijst gedimd met "Stand van 21:14". Kamer meldt spelers als de DM-verbinding wegvalt ("De DM is even weg"), na een korte grace.
 - [ ] **SC4 Sticky kop op de telefoon** (P2): "Aan de beurt / Daarna" scrolt weg bij landscape en groot lettertype; kop compact en vast bovenaan, kaarten compacter onder 500 px.
 - [ ] **SC5 "Dit ben ik"** (P2): speler kiest op zijn eigen toestel een personage (per apparaat, `localStorage`, geen account): eigen kaart bovenaan met HP en slots, balk "Jij bent hierna / aan de beurt", trillen waar de browser dat kan (niet iOS Safari). Slots van spelers gaan dan mee in de snapshot (geen geheim).
 - [ ] **SC6 Tv-weergave** (P2): op 1920×1080 zijn HP-getallen (22 px, grijs) en condities (19 px) op 3 m niet leesbaar en blijft ±35 % leeg; kolommen lezen van boven naar beneden. Schalen tot de hoogte gevuld is, HP groter en met meer contrast; UX-agent kiest tussen één kolom en rij-voor-rij nummering.
 - [ ] **SC7 Zelfde code na Stop met delen** (P2): opnieuw delen geeft nu een nieuwe code, dus tv en telefoons moeten opnieuw koppelen. Code en token in `it-room` laten staan na Stop en de kamer hervatten zolang die nog bestaat (12 u); vaste code per campagne blijft fase 2.
-- [ ] **SC8 Teksten op het spelersscherm** (P3): na het gevecht staat er weer "Nog geen gevecht · Rol initiative" (eigen status "Gevecht voorbij"); 0 HP toont "Bewusteloos" én de conditie "Unconscious" (één label); "Death saves ✓0 ✗0" zonder uitleg; "Rol initiative" zegt niet hoe ("d20 + Dex-mod"); lange namen afgekapt.
+- [ ] **SC8 Teksten op het spelersscherm** (P3): 0 HP toont "Bewusteloos" én de conditie "Unconscious" (één label); "Death saves ✓0 ✗0" zonder uitleg; lange namen afgekapt. ("Gevecht voorbij" en geen "Rol initiative" meer: klaar in WP1.)
 - [ ] **SC9 Mini-log voor spelers op afstand** (P3): optioneel een paar regels "wat gebeurde er net", alleen wat de DM vrijgeeft en altijd via `toPlayerView` (verborgen monsters en Onbekend wezen mogen niet lekken).
 
 ## Afwerking (klein)
@@ -236,6 +234,8 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **SP3** (1.33.1) + Speler met een bestaand partylid: geen nieuw lid met volle HP meer maar aan tafel met de bewaarde stand (met sheet: eerst bijgewerkt), nooit dubbel aan tafel; item-spells alleen als het item gedragen/geattuned is; een trage PDF overschrijft een net opgehaalde link-sheet niet meer.
 - **VB3** (1.34.0) Monsters met een veel lagere CR (XP < 1/10 van het sterkste monster, DMG 2014) tellen niet mee voor de multiplier, hun XP wel; uitleg noemt ze, met **Toch meetellen** (lijst: één undo-stap; per encounter in de bibliotheek, gaat mee bij opslaan/inladen). Level via ⋯ niet gebouwd: al afgedekt door het levelveld op de kaart (IN2) en in de uitleg (VB1).
 - **SP2** (1.34.0) Resistances per speler: ⋯ → "Resistances · Wijzig ▸" met Resist | Immuun | Kwetsb. en 13 type-knoppen (in beide modi, ook buiten de party); uit de D&D Beyond-link (bijwerken houdt eigen toevoegingen en meldt "Resist +fire −cold"). Automatisch in AoE ("resistant (opgeslagen)") en het aanvalspaneel; hint in het schadepaneel en het live-blok.
+- **SC2** (1.35.0, WP1) Spelersscherm verraadt niets: zonder gevecht alleen spelers (kop "Nog geen gevecht · Wacht op de DM", na afronden "Gevecht voorbij · Na N rondes"); verborgen monster aan de beurt = vorige zichtbare beurt blijft staan (begint hij ronde 1: "Gevecht begint").
+- **SC3** (1.35.0, WP1) Verbinding kwijt: spelers pingen 10 s/dood na 20 s, `offline` meteen; amberkleurige balk "Geen verbinding · stand van 21:14" met gedimde lijst, na 2 min lijst weg. DM weg (kamer meldt `dmnet`): na 45 s neutrale balk "De DM is even weg".
 - **GV6** (1.34.1) Verwijderen van wie aan de beurt is (⋯ → Verwijder tijdens een gevecht) beëindigt zijn beurt: eerst door naar de volgende (beurtgrenzen, ronde erbij als de volgorde rondgaat), dan weg (`removeCombatant` in `js/rules/turns.js`). Eerder ging de beurt naar de eerste in de volgorde zonder nieuwe ronde.
 - **IN3** Geen lege Gevecht-modus en geen "Gevecht vóór Start" meer; geen leeg logboek; uitleg onder een uitgeschakelde Start.
 

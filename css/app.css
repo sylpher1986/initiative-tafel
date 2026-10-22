@@ -802,6 +802,15 @@ html.kamer-lost .dock .prow [data-prep="data"]::after,html.kamer-pauze .dock .pr
 .pvjoin .hint{margin:0}
 .pvjoin .err{color:var(--bad)}
 .pvnet{background:var(--sunk);border:1px solid var(--line);border-radius:var(--r);padding:.35em .8em;font-size:.75em;color:var(--muted);text-align:center}
+/* SC3: verbinding kwijt (amber, lijst gedimd) en DM weg (neutraal); zo groot als de kop zodat het op een tv op 3 m leesbaar is */
+.pvnet.lost,.pvnet.dm{font-size:1em;padding:.5em .9em;text-align:left;display:flex;flex-direction:column;gap:.1em}
+.pvnet b{font-family:var(--display);font-size:1.15em;line-height:1.2}
+.pvnet span{font-size:.75em}
+.pvnet.lost{background:var(--warn-soft);border:2px solid var(--warn);color:var(--fg)}
+.pvnet.lost b{color:var(--warn)}
+.pvnet.dm{background:var(--sunk);border:1px solid var(--line);color:var(--fg)}
+.pvnet.dm span{color:var(--muted)}
+body.pv.stale #pv-now,body.pv.stale #pv-list,body.pv.stale #pv-down{opacity:.4}
 .pvcode{font-size:.6em;color:var(--muted);letter-spacing:.08em}
 
 /* Instellingen → Spelersscherm → Wat spelers zien; "Verborgen voor spelers" bij toevoegen */
