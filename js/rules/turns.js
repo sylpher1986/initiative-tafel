@@ -15,9 +15,13 @@ export const DURS = [
   ["r10", "1 minuut (10 rondes)"], ["r100", "10 minuten (100 rondes)"],
 ];
 
-/** Volgorde van twee deelnemers: init hoog→laag; lair verliest gelijke stand; dan Dex; dan spelers vóór monsters; dan naam */
+/**
+ * Volgorde van twee deelnemers: init hoog→laag; lair verliest gelijke stand; dan Dex; dan spelers vóór monsters; dan naam.
+ * Zonder initiative (init null: speler toegevoegd vóór het gevecht, SP4) onderaan; die vult zijn worp in bij Start.
+ */
 export const cmpOrder = (a, b) =>
-  b.init - a.init
+  (a.init == null) - (b.init == null)
+  || (b.init ?? 0) - (a.init ?? 0)
   || ((a.kind === "lair") - (b.kind === "lair"))
   || b.dex - a.dex
   || ((b.kind === "pc") - (a.kind === "pc"))
@@ -388,14 +392,21 @@ export function clearMonsters(state) {
   delete state.endSum; delete state.enc; // samenvatting en ingeladen encounter horen bij de vorige encounter
   const gone = new Set(state.list.filter((c) => c.kind === "monster" || c.kind === "lair").map((c) => c.id));
   const n = state.list.filter((c) => c.kind === "monster").length;
-  state.list = state.list.filter((c) => !gone.has(c.id));
-  // conditieduur die aan de beurt van een gewist monster hing telt nooit meer af: conditie blijft, zonder duur
-  for (const c of state.list) for (const [k, e] of Object.entries(c.cd || {})) if (e && gone.has(e.who)) {
-    const { kind, who, at, count, ...keep } = e; // save en concentratie-koppeling (by/spell/cast) blijven
-    if (Object.keys(keep).length) c.cd[k] = { kind: "inf", ...keep }; else delete c.cd[k];
-  }
+  dropIds(state, gone);
   out.why.push({ t: "volgende encounter: monsters gewist", id: null });
   return Object.assign(out, { n, lairs: gone.size - n });
+}
+
+/**
+ * Deelnemers weghalen buiten een gevecht (monsters wissen, GV7 oude monsters). Conditieduur die aan de beurt van een
+ * weggehaalde hing telt nooit meer af: conditie blijft, zonder duur (save en concentratie-koppeling blijven).
+ */
+export function dropIds(state, gone) {
+  state.list = state.list.filter((c) => !gone.has(c.id));
+  for (const c of state.list) for (const [k, e] of Object.entries(c.cd || {})) if (e && gone.has(e.who)) {
+    const { kind, who, at, count, ...keep } = e;
+    if (Object.keys(keep).length) c.cd[k] = { kind: "inf", ...keep }; else delete c.cd[k];
+  }
 }
 
 /** Levend monster met een worp die niemand heeft aangeraakt (niet ingevuld, niet via ⋯ of de kaart aangepast) */

@@ -69,7 +69,7 @@ export function cleanCombatant(c) {
   const kind = ["pc", "monster", "lair"].includes(c.kind) ? c.kind : "monster";
   const out = {
     id: str(c.id, 40) || Math.random().toString(36).slice(2, 9), name: str(c.name, 120), kind,
-    init: num(c.init), dex: num(c.dex), cond: arr(c.cond).filter((x) => CONDS.includes(x)),
+    init: kind === "pc" && c.init == null ? null : num(c.init), dex: num(c.dex), cond: arr(c.cond).filter((x) => CONDS.includes(x)), // SP4: speler zonder initiative tot Start
   };
   if (kind === "lair") return { ...out, key: str(c.key || c.name, 120), last: c.last ? str(c.last, 120) : null, ...(c.hidden ? { hidden: true } : {}) };
   Object.assign(out, {

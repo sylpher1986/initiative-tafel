@@ -290,7 +290,7 @@ function liveHtml(c, chips) {
   return `<div class="livest">
       <div><span class="lk">AC</span><b class="${ac !== c.ac ? "acx" : ""}">${ac ? n0(ac) : "–"}</b></div>
       <div><span class="lk">HP</span><b>${c.max ? `${n0(c.hp)}/${n0(c.max)}` : "?"}</b>${c.temp ? ` <span class="thp">+${n0(c.temp)}</span>` : ""}</div>
-      <div><span class="lk">Init</span><b>${n0(c.init)}</b></div>
+      <div><span class="lk">Init</span><b>${c.init == null ? "–" : n0(c.init)}</b></div>
       <div><span class="lk">Dex</span><b>${sgn(n0(c.dex))}</b></div>
     </div>
     ${br ? `<p class="hint">AC: ${esc(br)}</p>` : ""}

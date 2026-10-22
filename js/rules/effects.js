@@ -214,3 +214,13 @@ export function endFightEffects(list) {
   }
   return out;
 }
+
+/**
+ * Eigen effect uit het formulier (AF15): keuze k = ac+ | ac- | ac= | acmin | max | max- | txt, waarde altijd positief ingetikt.
+ * Geeft { st, op, v }; AC − en Max HP − slaan een negatieve v op, zoals voorheen ("AC +/−" met −2).
+ */
+export function effSpec(k, v) {
+  const n = Math.abs(parseInt(v) || 0), neg = k === "ac-" || k === "max-";
+  const st = /^ac/.test(k) ? "ac" : /^max/.test(k) ? "max" : "";
+  return { st, op: k === "ac=" ? "=" : k === "acmin" ? "min" : "+", v: neg ? -n : n };
+}

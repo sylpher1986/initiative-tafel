@@ -1,10 +1,10 @@
 // GV2: samenvatting bij Gevecht afronden (paneel #esheet) en de strook "Laatste gevecht" in Voorbereiden.
 // Regels puur in js/rules/fight.js; de samenvatting staat in app.S.endSum (undo: Ongedaan na afronden laat het gevecht doorlopen).
-import { $, esc, toast } from "./util.js";
-import { app, logAs, relog } from "../state.js";
+import { $, esc, toast, toastHtml } from "./util.js";
+import { app, logAs, relog, because, stepNo } from "../state.js";
 import { render, ui } from "./render.js";
 import { findMon } from "../data/monsters.js";
-import { endSummary, endCalc, endText, toggleFlip, byText } from "../rules/fight.js";
+import { endSummary, endCalc, endText, toggleFlip, byText, leftConds, wipeConds } from "../rules/fight.js";
 
 const fmt = (n) => Math.round(n).toLocaleString("nl-NL");
 
@@ -14,7 +14,7 @@ export function finishFight() {
   S.endSum = endSummary(S, findMon, Date.now());
   delete S.fight;
   logAs(endText(S.endSum), "end");
-  ui.end = true;
+  ui.end = true; ui.endPick = {}; ui.condDone = null;
 }
 
 /** Strook in Voorbereiden na het afronden; weg bij Start gevecht of monsters wissen */
@@ -23,6 +23,10 @@ export function endBanner(S, calm) {
   return `<li class="sbanner endb"><span>Laatste gevecht · ${fmt(endCalc(S.endSum).xp)} XP</span><button type="button" class="btn small" data-end="open">Samenvatting</button></li>`;
 }
 
+/** GV7: condities van spelers (standaard aan: Prone/Grappled/Restrained en condities met een duur) */
+const cchip = (x, on) => `<button type="button" class="echip" data-end="cpick" data-k="${esc(x.k)}" aria-pressed="${on}">${on ? "✓ " : "+ "}${esc(`${x.name}: ${x.cond}`)}</button>`;
+const picked = (x) => (ui.endPick || {})[x.k] ?? x.on;
+const condList = () => (ui.condDone === stepNo() ? [] : leftConds(app.S.list)); // na Wis: weg, tot er een stap (Ongedaan) bij komt
 const chip = (id, on, label) => `<button type="button" class="echip" data-end="flip" data-id="${esc(id)}" aria-pressed="${on}">${on ? "✓ " : "+ "}${esc(label)}</button>`;
 
 export function paintEnd() {
@@ -46,11 +50,19 @@ export function paintEnd() {
       ${es.pcs.length ? `<p class="elbl">Delen</p><div class="echips">${es.pcs.map((p) => chip(p.id, k.share.includes(p), `${p.name}${p.dead ? " (dood)" : ""}`)).join("")}</div>` : ""}
       ${line("Neer geweest:", esc(k.down.map((x) => `${x.name}${x.up ? " (stond weer op)" : ""}`).join(", ")))}
       ${k.dead.length ? line("Gestorven:", esc(k.dead.join(", "))) : ""}
+      ${condBlock()}
       <div class="ifoot"><button type="button" class="btn" data-end="copy">Kopieer samenvatting</button>${app.S.list.some((c) => c.kind !== "pc") ? `<button type="button" class="btn primary" data-end="clear">Monsters wissen</button>` : ""}</div>
       <p class="hint">De samenvatting staat ook in het logboek.</p>
     </div>`;
   el.hidden = false;
   el.querySelector(".esheet").scrollTop = top;
+}
+
+function condBlock() {
+  const L = condList(); if (!L.length) return "";
+  const n = L.filter(picked).length;
+  return `<p class="elbl">Condities van spelers</p><div class="echips">${L.map((x) => cchip(x, picked(x))).join("")}</div>
+      <div class="bar"><button type="button" class="btn tap" data-end="wipe"${n ? "" : " disabled"}>Wis gekozen (${n})</button></div>`;
 }
 
 async function copy() {
@@ -70,11 +82,26 @@ export function bindEnd(resetMons) {
     if (e.target.closest(".eflee summary")) { e.preventDefault(); ui.endFlee = !ui.endFlee; render(); return; }
     const b = e.target.closest("[data-end]"); if (!b) return;
     const a = b.dataset.end, es = app.S.endSum;
-    if (a === "open") { ui.end = true; render(); $("#esheet .esheet")?.focus(); return; }
+    if (a === "open") { ui.end = true; ui.condDone = null; render(); $("#esheet .esheet")?.focus(); return; }
     if (a === "close") { closeEnd(); return; }
     if (!es) return;
     if (a === "flip") { toggleFlip(es, b.dataset.id); relog("end", endText(es)); render(); $("#esheet .esheet")?.focus({ preventScroll: true }); return; }
     if (a === "copy") { copy(); return; }
+    if (a === "cpick") { // UI-keuze, geen undo-stap
+      const x = condList().find((y) => y.k === b.dataset.k); if (!x) return;
+      ui.endPick = { ...(ui.endPick || {}), [x.k]: !picked(x) };
+      render(); $(`#esheet [data-end="cpick"][data-k="${CSS.escape(x.k)}"]`)?.focus({ preventScroll: true });
+      return;
+    }
+    if (a === "wipe") { // één eigen undo-stap; het logboek noemt per speler "Prone voorbij" met deze reden
+      const keys = condList().filter(picked).map((x) => x.k); if (!keys.length) return;
+      because("na het gevecht gewist");
+      const done = wipeConds(app.S.list, keys);
+      render(); ui.condDone = stepNo(); paintEnd();
+      toastHtml(`${esc(`Gewist: ${done.join(", ")}.`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+      $("#esheet .esheet")?.focus({ preventScroll: true });
+      return;
+    }
     if (a === "clear") { ui.end = false; resetMons(); ($("#start") || document.body).focus?.(); }
   });
 }

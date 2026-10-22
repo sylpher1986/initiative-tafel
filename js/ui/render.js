@@ -24,6 +24,7 @@ import { paintEnc, encBanner, encStrip } from "./encounters.js";
 import { paintEnd, endBanner } from "./einde.js";
 import { pcReact } from "./pcreact.js";
 import { clsLevel } from "../rules/encounters.js";
+import { oldMons, oldText } from "../rules/fight.js";
 import { logRound } from "../log.js";
 import { exportDue, nudgeState, lastExportText } from "../exportnudge.js";
 
@@ -32,8 +33,12 @@ export const ui = {
   open: null,          // id van de open kaart; null = volg wie aan de beurt is; "" = geen
   panel: null,         // "conds" of "more" binnen de open kaart
   sheet: null,         // { id, kind: "dmg"|"heal"|"thp", val: "", mode: 1|0.5|2 }
-  condOpt: {}, openCast: new Set(), castPick: null, confirmReset: false, confirmDel: null,
+  condOpt: {}, openCast: new Set(), castPick: null, confirmReset: false,
   logOpen: false, editLog: null, partyInit: {},
+  startAsk: false,     // GV7: vraag "Nog N monsters uit het vorige gevecht" boven Start
+  oldGo: null,         // GV7: antwoord daarop tot het gevecht echt start: "drop" (oude wissen) | "keep" (toch starten)
+  endPick: {},         // GV7: condities in de samenvatting die de DM aan/uit zette ({ "id|cond": bool })
+  condDone: null,      // GV7: stepNo() na "Wis gekozen" (blok weg tot er een stap bij komt)
   pUpd: null,          // SP1: Bijwerken per partylid ({ pid, st: "busy"|"ask"|"err", f, ch, kept, msg })
   mode: null,          // "prep" | "fight"; null = volg het gevecht (loopt → Gevecht, anders Voorbereiden)
   qadd: null,          // { q, sel, n, init: "roll"|"fixed", fix, full } = snel-toevoegen-paneel open (full = statblock in de preview)
@@ -312,7 +317,6 @@ export function editPreview(c) {
 export const editKeys = (c, prep) => (!prep ? ["name", "ac", "max", "init"] : c.kind === "pc" ? (c.max ? ["name", "max"] : ["name"]) : ["name", "ac"]);
 
 function morePanel(c, prep) {
-  const del = ui.confirmDel === c.id;
   const ed = ui.edit && ui.edit.id === c.id ? ui.edit : { name: c.name, ac: c.ac || "", max: baseMax(c) || "", init: c.init };
   const keys = editKeys(c, prep), hpd = (c.max || 0) - baseMax(c);
   const fld = {
@@ -331,7 +335,7 @@ function morePanel(c, prep) {
     ${canToggleSurprise(c, app.S) ? `<button class="btn small" data-a="sur" aria-pressed="${c.sur === true}">${c.sur === true ? "Verrast ✓" : "Verrast"}</button>` : ""}
     ${c.kind === "monster" ? `${prep ? "" : `<button class="btn small" data-a="hide" aria-pressed="${!!c.hidden}">${c.hidden ? "Tonen aan spelers" : "Verbergen voor spelers"}</button>`}
       <button class="btn small" data-a="anon" aria-pressed="${!!c.anon}">${c.anon ? "Naam tonen aan spelers" : "Naam verbergen voor spelers"}</button>` : ""}
-    <button class="btn small danger" data-a="del">${del ? "Zeker? Tik nogmaals" : "Verwijder uit gevecht"}</button></div></div>`;
+    <button class="btn small danger" data-a="del">${app.S.round ? "Verwijder uit gevecht" : "Verwijder"}</button></div></div>`;
 }
 
 /**
@@ -348,6 +352,9 @@ function drBox(c) {
     <button type="button" class="link tap" data-a="dr-open" aria-expanded="${open}">${open ? "Klaar ▾" : "Wijzig ▸"}</button></div>${body}</div>`;
 }
 
+/** AF15: het teken zit in de keuze, de waarde is altijd positief (iOS-cijferpad heeft geen minteken) */
+export const EFF_OPS = [["ac+", "AC +"], ["ac-", "AC −"], ["ac=", "AC wordt"], ["acmin", "AC minimaal"], ["max", "Max HP +"], ["max-", "Max HP −"], ["txt", "Alleen tekst"]];
+
 /** Effectpaneel: presets (1 tik), "Wie cast?" voor concentratie zonder beurt, of een eigen effect */
 function effPanel(c) {
   const S = app.S;
@@ -362,8 +369,8 @@ function effPanel(c) {
   const custom = ui.effCustom ? `<div class="effform">
       <label>Naam<input data-f="ef-n" value="${esc(f.n || "")}" placeholder="bijv. Life Drain" maxlength="60"></label>
       <div class="ed3">
-        <label>Op<select data-f="ef-k">${[["ac+", "AC +/−"], ["ac=", "AC wordt"], ["acmin", "AC minimaal"], ["max", "Max HP +/−"], ["txt", "Alleen tekst"]].map(([v, l]) => `<option value="${v}" ${(f.k || "ac+") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
-        <label>Waarde<input data-f="ef-v" type="number" value="${esc(f.v ?? "")}"></label>
+        <label>Op<select data-f="ef-k">${EFF_OPS.map(([v, l]) => `<option value="${v}" ${(f.k || "ac+") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+        <label>Waarde<input data-f="ef-v" type="number" inputmode="numeric" min="0" autocomplete="off" value="${esc(f.v ?? "")}"></label>
         <label>Duur<select data-f="ef-dur">${[...DURS, ["lr", "Tot long rest"]].map(([v, l]) => `<option value="${v}" ${(f.dur || "inf") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
       </div>
       <label>Notitie<input data-f="ef-txt" value="${esc(f.txt || "")}" placeholder="bijv. +1d4 op saves" maxlength="120"></label>
@@ -504,7 +511,7 @@ function row(c, S, down = false) {
   const turn = c.id === S.active, hp = c.max && !down, fhp = hp && !prep;
   return `<li class="c k ${c.kind === "pc" ? "pc" : "mon"} ${open ? "open" : ""} ${turn ? "turn" : ""} ${isOut(c) ? "out" : ""}${down ? " down" : ""}${fhp ? " fhp" : ""}" data-id="${esc(c.id)}"${down ? ` data-down="1"` : ""}>
     <button class="khead" data-a="open" aria-expanded="${open}" aria-label="${esc(c.name)}${effAc(c) && !(isOut(c) && c.kind === "monster") ? `, AC ${n0(effAc(c))}` : ""}${open ? ", sluiten" : ", openen"}">
-      <span class="i">${n0(c.init)}${turn ? `<span class="tri" aria-hidden="true">▶</span>` : ""}</span>
+      <span class="i">${c.init == null ? "–" : n0(c.init)}${turn ? `<span class="tri" aria-hidden="true">▶</span>` : ""}</span>
       <span class="n">${avatar(c, c.ref ? findMon(c.ref)?.meta : "")}<span class="nm">${esc(c.name)}</span></span>
       <span class="meta">${isOut(c) && c.kind === "monster" ? "neer" : acMeta(c)}</span>
       ${hp && prep ? hpBar(c) : ""}
@@ -577,6 +584,15 @@ function emptyState(S, prep) {
 
 const GEAR = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`;
 
+/** GV7: vraag boven Start als er monsters uit het vorige gevecht staan (ui.startAsk na een tik op Start) */
+function oldAsk(S) {
+  const L = ui.startAsk ? oldMons(S) : [];
+  if (!L.length) { ui.startAsk = false; return ""; }
+  const onlyOld = !S.list.some((c) => c.kind === "monster" && !L.includes(c));
+  return `<div class="confirmbox oldask" role="group" aria-label="Monsters uit het vorige gevecht"><p>${esc(oldText(L))}</p>
+    <div class="bar">${onlyOld ? `<button type="button" class="btn primary tap" id="old-wipe">Oude monsters wissen</button>` : `<button type="button" class="btn primary tap" id="old-start">Oude wissen en starten</button>`}<button type="button" class="btn tap" id="old-go">Toch starten</button><button type="button" class="link" id="old-no">Annuleer</button></div></div>`;
+}
+
 function paintDock() {
   const S = app.S;
   const L = sortOrder(S.list);
@@ -584,7 +600,7 @@ function paintDock() {
   const pb = (k, l, al) => `<button type="button" data-prep="${k}" aria-pressed="${ui.prep === k || (k === "mon" && MONTABS.includes(ui.prep))}"${al ? ` aria-label="${al}" title="${al}"` : ""}>${l}</button>`;
   const prepRow = mode() === "prep" ? `<div class="prow">${pb("mon", `<span class="pp">+&nbsp;</span>Monster`, "")}${pb("pc", `<span class="pp">+&nbsp;</span>Speler`, "")}${pb("party", "Party", "")}${pb("data", GEAR, "Instellingen")}</div>` : "";
   if (!S.round) {
-    $("#dock").innerHTML = `${prepRow}${svBar(S)}<div class="row one">${undoBtn}<button class="nx" id="start" ${L.length ? "" : `disabled aria-describedby="start-why"`}>Start gevecht</button></div>
+    $("#dock").innerHTML = `${prepRow}${svBar(S)}${oldAsk(S)}<div class="row one">${undoBtn}<button class="nx" id="start" ${L.length ? "" : `disabled aria-describedby="start-why"`}>Start gevecht</button></div>
       ${L.length ? "" : `<p class="why" id="start-why">Voeg eerst iemand toe</p>`}`;
     return;
   }
@@ -1195,6 +1211,7 @@ const ENC_LINK = `<button type="button" class="btn tap enclink" data-prep="enc">
 export function paintParty() {
   const el = $("#party-panel");
   const at = new Set(app.S.list.filter((c) => c.pid).map((c) => c.pid));
+  const fight = !!app.S.round; // SP4: initiative pas bij Start gevecht; tijdens een gevecht meteen (het paneel opent niet meer)
   if (!app.party.length) {
     el.innerHTML = `<p class="hint">Nog geen vaste party. Spelers die je toevoegt met "Ook opslaan in vaste party" komen hier, inclusief geïmporteerde sheets. HP, spell slots en resources lopen dan door van gevecht naar gevecht tot een rust.</p>${ENC_LINK}`;
     return;
@@ -1212,10 +1229,11 @@ export function paintParty() {
         <p class="hint">${esc([...u.ch, ...u.kept].join(" · "))}. Schade en verbruik blijven staan.</p>
         <div class="bar"><button type="button" class="btn primary tap" data-pupdok="${esc(m.pid)}">Bijwerken</button><button type="button" class="btn tap" data-pupdno="${esc(m.pid)}">Annuleer</button></div></div>`;
     return `<div class="pm">${avatar({ ...m, kind: "pc" })}<div><div class="pn">${esc(m.name)}</div><div class="pi">${m.sheet && m.sheet.cls ? esc(m.sheet.cls) + " · " : ""}${m.ac ? `AC ${n0(m.ac)} · ` : ""}${m.max ? `HP ${n0(m.hp)}/${n0(m.max)}${m.temp ? ` +${n0(m.temp)}` : ""}` : ""}${sl}${rs}</div>${lv}${upd}</div>
-      <div class="pc">${at.has(m.pid) ? `<span class="here">aan tafel</span>` : `<input data-pinit="${esc(m.pid)}" type="number" inputmode="numeric" placeholder="init" aria-label="Initiative ${esc(m.name)}" value="${esc(ui.partyInit[m.pid] ?? "")}"><button type="button" class="btn small" data-proll="${esc(m.pid)}">Rol</button>`}
+      <div class="pc">${at.has(m.pid) ? `<span class="here">aan tafel</span>` : !fight ? "" : `<input data-pinit="${esc(m.pid)}" type="number" inputmode="numeric" placeholder="init" aria-label="Initiative ${esc(m.name)}" value="${esc(ui.partyInit[m.pid] ?? "")}"><button type="button" class="btn small" data-proll="${esc(m.pid)}">Rol</button>`}
         <button type="button" class="link" data-pdel="${esc(m.pid)}">Uit party</button></div>${box}</div>`;
   }).join("")}</div>
-    <div class="bar"><button type="button" class="btn small" id="p-rollall">Rol voor iedereen</button><button type="button" class="btn primary" id="p-add">Party aan tafel zetten</button></div>
+    <div class="bar">${fight ? `<button type="button" class="btn small" id="p-rollall">Rol voor iedereen</button>` : ""}<button type="button" class="btn primary" id="p-add">Party aan tafel zetten</button></div>
+    ${fight ? "" : `<p class="hint">Initiative vullen ze in bij Start gevecht.</p>`}
     <div class="bar"><button type="button" class="btn small" id="p-short">Short rest</button><button type="button" class="btn small" id="p-long">Long rest</button></div>
     <p class="hint">Rust geldt voor de hele party, ook wie aan tafel zit. Long rest: volle HP, slots en resources. Short rest: resources met "per short rest".</p>${ENC_LINK}`;
 }

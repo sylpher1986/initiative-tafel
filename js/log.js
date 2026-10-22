@@ -14,12 +14,12 @@ export function diffLog(prev, cur) {
 
   for (const [id, c] of C) {
     const o = P.get(id);
-    if (!o) { out.push({ who: id, msg: `${nm(c)} doet mee${c.kind === "lair" ? "" : ` (initiative ${c.init})`}${c.hidden ? " · verborgen voor spelers" : ""}${c.anon ? " · naam onbekend voor spelers" : ""}` }); continue; }
+    if (!o) { out.push({ who: id, msg: `${nm(c)} doet mee${c.kind === "lair" || c.init == null ? "" : ` (initiative ${c.init})`}${c.hidden ? " · verborgen voor spelers" : ""}${c.anon ? " · naam onbekend voor spelers" : ""}` }); continue; }
     const m = [];
     if (o.name !== c.name) m.push(`heette ${o.name}`);
     if ((o.ac || 0) !== (c.ac || 0)) m.push(`AC ${o.ac || 0} → ${c.ac || 0}`);
     if ((o.max || 0) !== (c.max || 0)) m.push(`max HP ${o.max || 0} → ${c.max || 0}`);
-    if (o.init !== c.init) m.push(`initiative ${o.init} → ${c.init}`);
+    if (o.init !== c.init) m.push(`initiative ${o.init ?? "–"} → ${c.init ?? "–"}`);
     const oe = o.eff || [], ce = c.eff || [], has = (L, e) => L.some((x) => x.id === e.id), same = (L, e) => L.some((x) => x.n === e.n);
     ce.filter((e) => !has(oe, e)).forEach((e) => m.push(same(oe.filter((x) => !has(ce, x)), e) ? `${e.n} vernieuwd` : `krijgt ${e.n}${e.st ? ` (${effText(e)})` : ""}`));
     oe.filter((e) => !has(ce, e) && !same(ce.filter((x) => !has(oe, x)), e)).forEach((e) => m.push(`${e.n} voorbij`));

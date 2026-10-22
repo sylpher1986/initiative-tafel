@@ -6,7 +6,7 @@ import { render, ui, openId, mode, paintLog, paintParty, paintQadd, monListHtml,
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
-import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc } from "../rules/effects.js";
+import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc, effSpec } from "../rules/effects.js";
 import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
@@ -27,7 +27,7 @@ import { RACE_OPTS, raceKey, pickRace, cleanImg } from "./avatar.js";
 import { buildExport, parseImport } from "../backup.js";
 import { markExported, snoozeNudge } from "../exportnudge.js";
 import { cleanLvl } from "../rules/encounters.js";
-import { startFight } from "../rules/fight.js";
+import { startFight, oldMons, dropOld } from "../rules/fight.js";
 import { finishFight, closeEnd } from "./einde.js";
 import { pcReact, setPcReact } from "./pcreact.js";
 import { armTour, restartTour } from "./tour.js";
@@ -76,7 +76,7 @@ export function addMonsters(name, n, hpmode, initmode, silent, fixed = null, hid
 export const newLair = (key, hidden = false) => ({ id: uid(), name: key, key, kind: "lair", init: 20, dex: -99, cond: [], last: null, ...(hidden ? { hidden: true } : {}) });
 /** UI-toestand die na monsters wissen (ook encounter vervangen) niet meer klopt */
 export const CLEAR_UI = { confirmReset: false, open: null, panel: null, edit: null, atk: null, aoe: null, la: null, sv: false,
-  effWho: null, castPick: null, atkOpen: null, atkRx: null, atkAdv: null, atkPrev: null, svRetry: null, confirmDel: null };
+  effWho: null, castPick: null, atkOpen: null, atkRx: null, atkAdv: null, atkPrev: null, svRetry: null, startAsk: false, oldGo: null };
 
 /** Vult ontbrekende velden aan bij deelnemers uit oudere versies of imports */
 export function normalize(c) {
@@ -130,19 +130,20 @@ const row = {
   "atk-open"(c) { ui.atkOpen = c.id; },
   "atk-close"() { ui.atkOpen = null; },
   "atk-rx"(c) { ui.atkRx = ui.atkRx === c.id ? null : c.id; },
+  /** AF9: één tik, met Ongedaan in de melding (undo is betrouwbaar, ook na herladen); "Uit party" houdt zijn bevestiging */
   del(c) {
-    if (c.kind !== "lair" && ui.confirmDel !== c.id) { ui.confirmDel = c.id; return; }
-    apply(removeCombatant(app.S, c.id)); ui.confirmDel = null; ui.panel = null;
+    apply(removeCombatant(app.S, c.id)); ui.panel = null;
+    return { undoToast: `${c.kind === "lair" ? "Lair" : c.name} verwijderd.` };
   },
   open(c, b, li) {
     const isOpen = openId() === c.id;
     ui.open = isOpen ? "" : c.id;
     ui.fromDown = !isOpen && li && li.dataset.down ? c.id : null; // uit het blok "Neer" geopend: blijft daar staan
-    ui.panel = null; ui.confirmDel = null; ui.castPick = null; ui.edit = null; ui.effWho = null; ui.effCustom = false; ui.effForm = {}; ui.drOpen = null;
+    ui.panel = null; ui.castPick = null; ui.edit = null; ui.effWho = null; ui.effCustom = false; ui.effForm = {}; ui.drOpen = null;
     return "scroll";
   },
   panel(c, b) {
-    ui.panel = ui.panel === b.dataset.p ? null : b.dataset.p; ui.confirmDel = null; ui.effWho = null;
+    ui.panel = ui.panel === b.dataset.p ? null : b.dataset.p; ui.effWho = null;
     // keys: alleen wat het paneel toont, zodat Opslaan niets terugzet wat intussen direct op de kaart is aangepast
     ui.edit = ui.panel === "more" ? { id: c.id, name: c.name, ac: c.ac || "", max: baseMax(c) || "", init: c.init, dirty: false, keys: editKeys(c, mode() === "prep") } : null;
   },
@@ -182,8 +183,8 @@ const row = {
   effcustom() { ui.effCustom = !ui.effCustom; },
   "eff-add"(c) {
     const f = ui.effForm, k = f.k || "ac+";
-    const st = k.startsWith("ac") ? "ac" : k === "max" ? "max" : "";
-    const spec = { n: String(f.n || "").trim() || "Effect", st, op: k === "ac=" ? "=" : k === "acmin" ? "min" : "+", v: parseInt(f.v) || 0, txt: f.txt || "" };
+    const { st, op, v } = effSpec(k, f.v);
+    const spec = { n: String(f.n || "").trim() || "Effect", st, op, v, txt: f.txt || "" };
     if (st === "ac" && spec.op === "+" && !c.ac) { toast("Vul eerst AC in (⋯)."); return false; }
     if (st && !spec.v) { toast("Vul een waarde in."); return false; }
     if (!st && !spec.txt && !f.n) { toast("Geef het effect een naam of notitie."); return false; }
@@ -305,15 +306,34 @@ const global = {
   undo() { if (undo()) { ui.confirmReset = false; toast(`Ongedaan gemaakt${historySize() ? ` (nog ${historySize()} stappen terug)` : ""}.`); } },
   // na starten of stoppen volgt de modus weer het gevecht (ui.mode = null)
   start() {
+    // GV7: monsters uit het vorige gevecht nog in de lijst? Eerst vragen (vóór het initiative-paneel, ook zonder spelers)
+    if (!app.S.round && !ui.oldGo && oldMons(app.S).length) { ui.startAsk = true; render(); $("#old-start, #old-wipe")?.focus(); return false; }
     // spelers eerst hun initiative (paneel); vanuit het paneel komt start terug met initSkip
-    if (!ui.initSkip && !app.S.round && initPcs(app.S.list).length) { openInit(); return false; }
-    ui.initSkip = false;
+    if (!ui.initSkip && !app.S.round && initPcs(app.S.list).length) { ui.startAsk = false; openInit(); return false; }
+    ui.initSkip = false; ui.startAsk = false;
+    const drop = ui.oldGo === "drop"; ui.oldGo = null;
+    const gone = drop ? dropOld(app.S) : 0; // zelfde undo-stap als de start
+    if (gone) because(`${gone} oude monster${gone === 1 ? "" : "s"} gewist bij Start gevecht`);
     startFight(app.S, Date.now()); // GV2: duur en wie neer ging; oude samenvatting weg
     // GV5: onaangeroerde monsterworpen opnieuw (keuze in het paneel; zonder spelers de onthouden keuze), zelfde undo-stap;
     // !round is een vangnet (#start bestaat alleen vóór het gevecht)
     const rr = !app.S.round && initRoll() === "roll" ? rerollMonsters(app.S.list) : null;
     apply(rr ? R.merge(rr, startCombat(app.S)) : startCombat(app.S)); ui.mode = null; rekeyEdit();
     armTour("f"); // OB1: tweede deel van de rondleiding bij de eerste keer Gevecht (alleen als deel f nog niet gezien is)
+  },
+  /** GV7: antwoorden op "Nog N monsters uit het vorige gevecht" boven Start */
+  "old-start"() { ui.oldGo = "drop"; return global.start(); },
+  "old-go"() { ui.oldGo = "keep"; return global.start(); },
+  "old-no"() { ui.startAsk = false; ui.oldGo = null; render(); $("#start")?.focus(); return false; },
+  /** Alleen oude monsters in de lijst: wissen en in Voorbereiden blijven */
+  "old-wipe"() {
+    ui.startAsk = false;
+    because("oude monsters gewist");
+    const n = dropOld(app.S);
+    render();
+    toastHtml(`${esc(`${n} oude monster${n === 1 ? "" : "s"} gewist.`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+    $("#start:not([disabled])")?.focus();
+    return false;
   },
   next() { apply(step(app.S, 1)); ui.laPulse = true; },
   "down-tog"() { ui.downOpen = !ui.downOpen; },
@@ -506,7 +526,8 @@ export function onClick(e) {
   if (b.dataset.lause) { laUse(b.dataset.lause, +b.dataset.i); return; }
   if (b.id && global[b.id]) {
     if (global[b.id]() === false) return;
-    if (["start", "next", "prev"].includes(b.id)) {
+    const turnish = ["start", "next", "prev", "old-start", "old-go"].includes(b.id); // old-*: Start na de GV7-vraag
+    if (turnish) {
       // een niet-opgeslagen bewerking blijft open staan; anders volgt de open kaart de beurt
       if (ui.edit && ui.edit.dirty) { ui.open = ui.edit.id; rekeyEdit(); } else { ui.open = null; ui.panel = null; ui.edit = null; }
       ui.fromDown = null;
@@ -514,7 +535,7 @@ export function onClick(e) {
     }
     render();
     ui.laPulse = false; // alleen de render direct na Volgende laat de legendary-knoppen oplichten
-    if (["start", "next", "prev"].includes(b.id)) scrollToCard(app.S.active);
+    if (turnish) scrollToCard(app.S.active);
     // focus in de dialog, maar niet op het zoekveld: dat zou op de telefoon meteen het toetsenbord openen
     if (b.id === "qadd") $("#qsheet .qsheet").focus();
     if (b.id === "aoe") (ui.aoe && ui.aoe.tab === "spell" ? $("#asheet .asheet") : $("#a-dmg"))?.focus();
@@ -654,6 +675,52 @@ export function onToggle(e) {
 // UI-toestand van het spelersformulier (geen data: hoort niet in undo/opslag)
 let pendingSheet = null, pendingCheck = null, pendingImg = null, pendingDdb = null, pendingNew = false, ddbBusy = null, pdfSeq = 0, selMon = "Goblin";
 
+/* ---------- + Speler: init-bonus (stepper, AF15), foutregels (SP4), vaste party onthouden (AF9) ---------- */
+const BON = [-5, 15];
+let pcBonus = 0;
+/** "+2", "0", "−1" (echt minteken) */
+export const fmtBonus = (v) => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : "0");
+/** Stepper zetten; een waarde uit een sheet buiten het bereik blijft staan (alleen de knoppen gaan uit) */
+function setBonus(v) {
+  pcBonus = Number.isFinite(v) ? Math.trunc(v) : 0;
+  $("#pc-bonv").textContent = fmtBonus(pcBonus);
+  const [lo, hi] = $("#pc-bon").querySelectorAll("button");
+  lo.disabled = pcBonus <= BON[0]; hi.disabled = pcBonus >= BON[1];
+}
+function stepBonus(dv) {
+  const v = Math.min(BON[1], Math.max(BON[0], pcBonus + dv));
+  if (v !== pcBonus) setBonus(v);
+}
+const PTY_KEY = "it-pc-party";
+const ptyPref = () => { try { return localStorage.getItem(PTY_KEY) !== "0"; } catch { return true; } };
+const savePty = (on) => { try { localStorage.setItem(PTY_KEY, on ? "1" : "0"); } catch { /* privémodus: niet onthouden */ } };
+/** Initiative-veld alleen tijdens een gevecht (daarna opent het paneel bij Start niet meer), niet bij Bijwerken van wie al aan tafel zit */
+const needInit = (plan) => !!app.S.round && plan !== "upd" && plan !== "none";
+const FERR = ["name", "init", "ac", "hp", "lvl"];
+function setErr(k, msg) {
+  const e = $(`#pc-${k}-e`), inp = $(`#pc-${k}`);
+  e.hidden = !msg; e.textContent = msg || "";
+  if (msg) inp.setAttribute("aria-invalid", "true"); else inp.removeAttribute("aria-invalid");
+}
+const clearErrs = () => FERR.forEach((k) => setErr(k, ""));
+/** Leeg of een geheel getal in [lo, hi] */
+const inRange = (v, lo, hi) => { const t = String(v).trim(); if (t === "") return true; const n = Number(t); return Number.isInteger(n) && n >= lo && n <= hi; };
+/** SP4: eigen controle i.p.v. de browser-bubbel ("Please fill out this field"). Eerste fout veld krijgt de focus. */
+function pcValid(plan) {
+  const errs = [];
+  if (!$("#pc-name").value.trim()) errs.push(["name", "Vul een naam in."]);
+  if (needInit(plan) && parseInit($("#pc-init").value) === null) errs.push(["init", "Vul initiative in of tik op Rol."]);
+  if (!inRange($("#pc-ac").value, 1, 30)) errs.push(["ac", "AC tussen 1 en 30, of leeg laten."]);
+  if (!inRange($("#pc-hp").value, 1, 999)) errs.push(["hp", "Max HP tussen 1 en 999, of leeg laten."]);
+  if (!inRange($("#pc-lvl").value, 1, 20)) errs.push(["lvl", "Level tussen 1 en 20, of leeg laten."]);
+  clearErrs();
+  for (const [k, m] of errs) setErr(k, m);
+  if (errs.length) { const f = $(`#pc-${errs[0][0]}`); f.focus(); f.scrollIntoView({ block: "center" }); }
+  return !errs.length;
+}
+/** AF9: "Sanne toegevoegd (4 spelers aan tafel)." */
+const pcCount = () => { const n = app.S.list.filter((c) => c.kind === "pc" && !(c.ds && c.ds.dead)).length; return `${n} speler${n === 1 ? "" : "s"} aan tafel`; };
+
 /** Bijwerken toepassen: partylid én wie aan tafel zit (zelfde pid). Eén undo-stap voor de tafel; geeft de wijzigingen terug */
 function updMember(m, f) {
   for (const c of app.S.list) if (c.pid === m.pid) mergeSheet(c, structuredClone(f));
@@ -684,10 +751,12 @@ function clearPending() {
 function fillSheet(h, img) {
   if ($("#pc-name").value.trim().toLowerCase() !== h.name.toLowerCase()) $("#pc-init").value = ""; // ander character: oude worp weg
   pendingSheet = h; pendingImg = cleanImg(img);
-  $("#pc-name").value = h.name; $("#pc-ac").value = h.ac || ""; $("#pc-hp").value = h.max || ""; $("#pc-dex").value = h.dex;
+  $("#pc-name").value = h.name; $("#pc-ac").value = h.ac || ""; $("#pc-hp").value = h.max || ""; setBonus(h.initBonus ?? h.dex ?? 0);
+  $("#pc-bonh").hidden = true; // Dex voor gelijke stand komt uit de sheet
+  clearErrs();
   $("#pc-race").value = RACE_OPTS.find((r) => raceKey(r) === raceKey(h.race)) || "";
   const sl = h.casting ? h.casting.slots.map((x) => `${x.lvl}e: ${x.max}`).join(", ") : "geen";
-  $("#pc-sheetinfo").innerHTML = `<b>${esc(h.name)}</b> geladen (${esc([h.race, h.cls].filter(Boolean).join(", "))})${pendingImg ? `, met portret <img class="pv" src="${esc(pendingImg)}" alt="">` : ""}. Spell slots: ${esc(sl)}${h.res.length ? `. Resources: ${esc(h.res.map((r) => r.n + " " + r.max).join(", "))}` : ""}. Vul initiative in of tik op Rol.`;
+  $("#pc-sheetinfo").innerHTML = `<b>${esc(h.name)}</b> geladen (${esc([h.race, h.cls].filter(Boolean).join(", "))})${pendingImg ? `, met portret <img class="pv" src="${esc(pendingImg)}" alt="">` : ""}. Spell slots: ${esc(sl)}${h.res.length ? `. Resources: ${esc(h.res.map((r) => r.n + " " + r.max).join(", "))}` : ""}.${app.S.round ? " Vul initiative in of tik op Rol." : ""}`;
 }
 
 /** Wat Bijwerken overneemt: formulierwaarden (de DM kan AC/HP gecorrigeerd hebben) + sheet */
@@ -695,8 +764,8 @@ function formUpdate() {
   const sh = pendingSheet;
   return {
     name: $("#pc-name").value.trim() || sh.name, race: pickRace($("#pc-race").value, sh.race),
-    ac: parseInt($("#pc-ac").value) || 0, max: parseInt($("#pc-hp").value) || 0, dex: parseInt($("#pc-dex").value) || 0,
-    initBonus: sh.initBonus, sheet: sh, ddbId: pendingDdb || undefined, img: pendingImg, // PDF: geen id, het bestaande blijft casting: sh.casting || null, res: sh.res || [],
+    ac: parseInt($("#pc-ac").value) || 0, max: parseInt($("#pc-hp").value) || 0, dex: sh.dex ?? pcBonus,
+    initBonus: pcBonus, sheet: sh, // init-bonus uit de stepper: de DM kan hem aangepast hebben (Alert, homebrew) ddbId: pendingDdb || undefined, img: pendingImg, // PDF: geen id, het bestaande blijft casting: sh.casting || null, res: sh.res || [],
   };
 }
 
@@ -712,11 +781,12 @@ function curMatch() {
  * zit hij al aan tafel = nooit een tweede deelnemer.
  */
 function showMatch() {
-  const m = curMatch(), btn = $("#pc-add"), init = $("#pc-init");
+  const m = curMatch(), btn = $("#pc-add");
   const here = !!m && app.S.list.some((c) => c.pid === m.pid), plan = seatPlan(!!m, here, !!pendingSheet);
   btn.disabled = plan === "none";
   btn.textContent = PLAN_LBL[plan];
-  init.required = !here;
+  $("#pc-initl").hidden = !needInit(plan); // SP4: buiten een gevecht komt initiative bij Start
+  if ($("#pc-initl").hidden) setErr("init", "");
   if (!m) { $("#pc-match").innerHTML = dupHint(); return; }
   const nm = `<b>${esc(m.name)}</b>`;
   let txt;
@@ -780,19 +850,25 @@ function stopDdb() {
 }
 
 function resetPcForm() {
-  stopDdb(); pdfSeq++; $("#f-pc").reset(); clearPending(); $("#pc-dex").value = 0; $("#pc-sheetinfo").textContent = "";
+  stopDdb(); pdfSeq++; $("#f-pc").reset();
+  $("#pc-party").checked = ptyPref(); // AF9: vóór clearPending (showMatch hangt aan dit vinkje)
+  setBonus(0); $("#pc-bonh").hidden = false; clearErrs();
+  clearPending(); $("#pc-sheetinfo").textContent = "";
 }
 
 export function bindForms() {
   $("#pc-race").insertAdjacentHTML("beforeend", RACE_OPTS.map((r) => `<option>${esc(r)}</option>`).join(""));
   $("#f-pc").addEventListener("submit", (e) => {
     e.preventDefault();
-    const sh = pendingSheet, nm = $("#pc-name").value.trim(), init = parseInt($("#pc-init").value) || 0;
-    let lvl = cleanLvl($("#pc-lvl").value);
+    const sh = pendingSheet, nm = $("#pc-name").value.trim();
     const ex = curMatch(); // zelfde regel als het vak hierboven
+    const here = !!ex && app.S.list.some((c) => c.pid === ex.pid), plan = seatPlan(!!ex, here, !!sh);
+    if (plan === "none") return; // knop staat uit: zit al aan tafel
+    if (!pcValid(plan)) return;
+    // SP4: tijdens een gevecht verplicht ingevuld; daarvoor null = invullen bij Start gevecht (paneel)
+    const init = needInit(plan) ? parseInit($("#pc-init").value) : null;
+    let lvl = cleanLvl($("#pc-lvl").value);
     if (ex) { // SP3: bestaand partylid nooit met volle HP opnieuw aanmaken (dat overschreef de bewaarde stand)
-      const here = app.S.list.some((c) => c.pid === ex.pid), plan = seatPlan(true, here, !!sh);
-      if (plan === "none") return; // knop staat uit: zit al aan tafel
       let ch = [];
       if (sh) ch = updMember(ex, formUpdate()); else because("uit de party aan tafel gezet");
       if (lvl) ex.lvl = lvl;
@@ -811,33 +887,42 @@ export function bindForms() {
       return sl.length ? { slots: sl, daily: [] } : null;
     })();
     const pid = $("#pc-party").checked ? uid() : null;
-    const dex = parseInt($("#pc-dex").value) || 0;
+    const dex = sh ? sh.dex ?? pcBonus : pcBonus; // zonder sheet is de bonus ook de tiebreak
     const race = pickRace($("#pc-race").value, sh && sh.race);
     app.S.list.push({
       id: uid(), pid, name: nm, kind: "pc", race, img: pendingImg, init, dex, ac: parseInt($("#pc-ac").value) || 0, hp: max, max, cond: [],
-      casting: manual || (sh && sh.casting ? structuredClone(sh.casting) : null), res: sh ? structuredClone(sh.res || []) : [], sheet: sh || null, initBonus: sh ? sh.initBonus : dex,
+      casting: manual || (sh && sh.casting ? structuredClone(sh.casting) : null), res: sh ? structuredClone(sh.res || []) : [], sheet: sh || null, initBonus: pcBonus,
       ...(pendingDdb && !pendingNew ? { ddbId: pendingDdb } : {}), // "Als nieuwe speler": geen tweede koppeling aan hetzelfde character
       ...(lvl ? { lvl } : {}), // voor de moeilijkheid (anders uit de klasse-string van de sheet)
       ...(sh && cleanDr(sh.dr) ? { dr: cleanDr(sh.dr) } : {}), // resistances uit de D&D Beyond-link (SP2)
     });
     app.S.sample = false; ui.prepLast = app.S.list[app.S.list.length - 1].id;
     resetPcForm(); render(); $("#pc-name").focus();
+    toastHtml(`${esc(`${nm} toegevoegd${init != null ? ` op initiative ${init}` : ""} (${pcCount()}).`)} <button class="tundo" id="toast-undo">Ongedaan</button>`); // AF9
     // level hoort bij de party (syncParty neemt lvl niet over: het Party-paneel is de bron)
     const pm = pid && lvl && app.party.find((x) => x.pid === pid);
     if (pm && pm.lvl !== lvl) { pm.lvl = lvl; saveParty(); render(); }
   });
   $("#pc-roll").addEventListener("click", () => {
-    const b = pendingSheet ? pendingSheet.initBonus : parseInt($("#pc-dex").value) || 0, r = d(20);
-    $("#pc-init").value = r + b; toastHtml(`Initiative: d20 [${r}] ${sgn(b)} = <b>${r + b}</b>`);
+    const b = pcBonus, r = d(20);
+    $("#pc-init").value = r + b; setErr("init", ""); toastHtml(`Initiative: d20 [${r}] ${sgn(b)} = <b>${r + b}</b>`);
   });
+  $("#pc-bon").addEventListener("click", (e) => { const b = e.target.closest("[data-bon]"); if (b) stepBonus(+b.dataset.bon); });
+  $("#pc-bon").addEventListener("keydown", (e) => { // pijltoetsen op de stepper (toetsenbord)
+    const dv = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key];
+    if (dv) { e.preventDefault(); stepBonus(dv); }
+  });
+  for (const k of FERR) $("#pc-" + k).addEventListener("input", () => setErr(k, "")); // fout weg zodra de DM typt
+  $("#pc-party").checked = ptyPref();
+  setBonus(0);
   $("#pc-ddbgo").addEventListener("click", ddbFetch);
   $("#pc-ddb").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); ddbFetch(); } }); // niet de submit (initiative is verplicht)
   for (const k of ["ac", "hp"]) $("#pc-" + k).addEventListener("input", (e) => e.target.closest("label").classList.remove("warn"));
   $("#pc-match").addEventListener("click", (e) => {
-    if (e.target.closest("#pc-new")) { pendingNew = true; showMatch(); toast("Wordt als nieuwe speler toegevoegd. Vul initiative in."); }
+    if (e.target.closest("#pc-new")) { pendingNew = true; showMatch(); toast(`Wordt als nieuwe speler toegevoegd.${app.S.round ? " Vul initiative in." : ""}`); }
   });
   $("#pc-name").addEventListener("input", () => showMatch());
-  $("#pc-party").addEventListener("change", () => showMatch());
+  $("#pc-party").addEventListener("change", (e) => { savePty(e.target.checked); showMatch(); }); // AF9: alleen een keuze van de DM onthouden
   $("#pc-pdf").addEventListener("change", async (e) => {
     const f = e.target.files[0]; if (!f) return;
     e.target.value = ""; // zelfde bestand opnieuw kiezen moet weer werken, ook na een fout
@@ -1376,7 +1461,7 @@ function openInit() {
   render();
   $("#isheet .isheet")?.focus();
 }
-function closeInit() { ui.initDraft = null; paintInit(); $("#start")?.focus(); }
+function closeInit() { ui.initDraft = null; ui.oldGo = null; paintInit(); $("#start")?.focus(); } // GV7: volgende Start vraagt het opnieuw
 
 /** Volgende speler in het paneel (op de laatste blijft hij staan) */
 function initNext(x) {
@@ -1518,10 +1603,11 @@ export function bindParty() {
     if (b.id === "p-rollall") { toastHtml(app.party.filter((m) => !at.has(m.pid)).map(rollFor).join("<br>") || "Iedereen zit al aan tafel."); paintParty(); return; }
     if (b.id === "p-add") {
       const todo = app.party.filter((m) => !at.has(m.pid));
-      const missing = todo.filter((m) => ui.partyInit[m.pid] === undefined || ui.partyInit[m.pid] === "");
+      const fight = !!app.S.round; // SP4: vóór het gevecht null, het paneel bij Start vraagt het
+      const missing = fight ? todo.filter((m) => parseInit(ui.partyInit[m.pid]) === null) : [];
       if (missing.length) { toast(`Nog geen initiative voor: ${missing.map((m) => m.name).join(", ")}. Vul in of tik op "Rol voor iedereen".`); return; }
       because("party aan tafel gezet");
-      todo.forEach((m) => { seatMember(m, parseInt(ui.partyInit[m.pid]) || 0); delete ui.partyInit[m.pid]; });
+      todo.forEach((m) => { seatMember(m, fight ? parseInit(ui.partyInit[m.pid]) : null); delete ui.partyInit[m.pid]; });
       app.S.sample = false; ui.prepLast = app.S.list[app.S.list.length - 1].id; toast(`${todo.length} speler${todo.length === 1 ? "" : "s"} aan tafel gezet.`);
       if (ui.prep === "party") closePrep(); else render();
       return;

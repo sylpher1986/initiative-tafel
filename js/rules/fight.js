@@ -3,7 +3,7 @@
 // S.fight   = { t0, down: [{ id, name }] }: loopt vanaf Start gevecht; wie van de spelers op 0 HP kwam
 // S.endSum  = samenvatting van het laatst afgeronde gevecht (blijft tot Start gevecht of monsters wissen)
 import { crXp } from "./encounters.js";
-import { isOut } from "./turns.js";
+import { isOut, dropIds } from "./turns.js";
 
 const MAX_ENC = 5;
 const str = (v, max) => (v == null ? "" : String(v)).slice(0, max);
@@ -54,7 +54,8 @@ export function endSummary(S, find, now) {
   });
   const pcs = S.list.filter((c) => c.kind === "pc").map((c) => ({ id: c.id, name: c.name, dead: !!(c.ds && c.ds.dead), up: !!c.max && c.hp > 0 }));
   const min = f && f.t0 ? Math.round((now - f.t0) / 60000) : 0;
-  return { r: S.round || 0, min: min >= 1 && min < 24 * 60 ? min : 0, enc: encName(S), mons, pcs, down: f ? f.down.map((x) => ({ ...x })) : [], flip: [] };
+  const all = S.list.filter((c) => c.kind === "monster").map((c) => c.id); // GV7: ook levende verborgen monsters (restant bij de volgende Start)
+  return { r: S.round || 0, min: min >= 1 && min < 24 * 60 ? min : 0, enc: encName(S), mons, pcs, down: f ? f.down.map((x) => ({ ...x })) : [], flip: [], all };
 }
 
 /** Wat telt: { mons, xp, noXp, by: [[naam, n]], share: [pcs], per, down: [{ name, up }], dead: [namen] } */
@@ -91,4 +92,58 @@ export function endText(es) {
 export function toggleFlip(es, id) {
   const fl = es.flip || (es.flip = []), i = fl.indexOf(id);
   if (i < 0) fl.push(id); else fl.splice(i, 1);
+}
+
+/* ---------- GV7: restanten van het vorige gevecht ---------- */
+
+/** Monsters die er bij het afronden al stonden (S.endSum bestaat tot Start gevecht of monsters wissen) */
+export function oldMons(S) {
+  const es = S.endSum; if (!es) return [];
+  const ids = new Set(Array.isArray(es.all) ? es.all : (es.mons || []).map((m) => m.id)); // samenvatting van vóór 1.37.0: zonder all
+  return S.list.filter((c) => c.kind === "monster" && ids.has(c.id));
+}
+/** "Nog 3 monsters uit het vorige gevecht: Adult Red Dragon 83/178 HP, Goblin 1, Goblin 2 +1." (max 3 namen) */
+export function oldText(L) {
+  const nm = (c) => (c.max && c.hp < c.max ? `${c.name} ${Math.max(0, c.hp)}/${c.max} HP` : c.name);
+  return `Nog ${L.length} monster${L.length === 1 ? "" : "s"} uit het vorige gevecht: ${L.slice(0, 3).map(nm).join(", ")}${L.length > 3 ? ` +${L.length - 3}` : ""}.`;
+}
+/** Oude monsters weghalen (vóór Start of los); geeft het aantal */
+export function dropOld(S) {
+  const L = oldMons(S);
+  if (L.length) dropIds(S, new Set(L.map((c) => c.id)));
+  return L.length;
+}
+
+/** Condities die na een gevecht meestal niet doorlopen: standaard aan in "Condities van spelers" */
+const END_ON = ["Prone", "Grappled", "Restrained"];
+const END_KEEP = ["Concentrating"]; // kan doorlopen, nooit standaard aan
+const END_HIDE = ["Unconscious"]; // hangt aan HP
+/**
+ * Condities van levende spelers na het afronden: [{ k: "id|cond", id, name, cond, on }].
+ * on = standaard aanvinken: Prone/Grappled/Restrained, of een conditie met een duur in beurten of rondes (Frightened van een spell).
+ */
+export function leftConds(list) {
+  const out = [];
+  for (const c of list) {
+    if (c.kind !== "pc" || (c.ds && c.ds.dead)) continue;
+    for (const n of c.cond || []) {
+      if (END_HIDE.includes(n)) continue;
+      const e = c.cd && c.cd[n], timed = !!(e && e.kind && e.kind !== "inf");
+      out.push({ k: `${c.id}|${n}`, id: c.id, name: c.name, cond: n, on: !END_KEEP.includes(n) && (END_ON.includes(n) || timed) });
+    }
+  }
+  return out;
+}
+/** Gekozen condities weghalen (keys "id|cond"); geeft ["Thalia Prone", …] */
+export function wipeConds(list, keys) {
+  const done = [];
+  for (const k of keys) {
+    const i = k.indexOf("|"), id = k.slice(0, i), n = k.slice(i + 1), c = list.find((x) => x.id === id);
+    if (!c || !(c.cond || []).includes(n) || END_HIDE.includes(n)) continue;
+    c.cond = c.cond.filter((x) => x !== n);
+    if (c.cd) delete c.cd[n];
+    if (n === "Concentrating") c.concSpell = null; // zoals breakConc: effecten van deze caster vervallen in commit()
+    done.push(`${c.name} ${n}`);
+  }
+  return done;
 }

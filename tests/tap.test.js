@@ -46,12 +46,16 @@ test("AF6: knoppen en invoervelden hebben minstens 44 px", () => {
   assert.ok(rules.some(([sel, d]) => sel.startsWith("label input") && px(d, "min-height") >= 44), "label input");
 });
 
-test("AF7: velden die negatief mogen zijn hebben geen numeriek toetsenbord (iOS heeft daar geen minteken)", () => {
-  for (const id of ["pc-dex", "pc-init"]) {
-    const tag = html.match(new RegExp(`<input id="${id}"[^>]*>`));
-    assert.ok(tag, id);
-    assert.ok(!/inputmode=/.test(tag[0]), `${id} zonder inputmode`);
-  }
+test("AF15: negatieve getallen zonder lettertoetsenbord en zonder contact-autofill", () => {
+  // init-bonus is een stepper (geen invoerveld), Dex-mod bestaat niet meer apart
+  assert.ok(!/id="pc-dex"/.test(html), "pc-dex is weg (init-bonus vervangt hem)");
+  assert.match(html, /class="stepper"[^>]*id="pc-bon"/, "init-bonus als stepper");
+  // effectwaarde: teken in de keuze, het veld zelf alleen cijfers (iOS-cijferpad)
   const ef = render.match(/<input data-f="ef-v"[^>]*>/);
-  assert.ok(ef && !/inputmode=/.test(ef[0]), "ef-v zonder inputmode");
+  assert.ok(ef && /inputmode="numeric"/.test(ef[0]) && /min="0"/.test(ef[0]), "ef-v met cijferpad en min 0");
+  assert.match(render, /\["ac-", "AC −"\]/); assert.match(render, /\["max-", "Max HP −"\]/);
+  // + Speler: nergens contact-autofill (iOS biedt die aan op naamvelden)
+  const form = html.slice(html.indexOf('<form class="form" id="f-pc"'), html.indexOf("</form>", html.indexOf('id="f-pc"')));
+  assert.match(form, /<form[^>]*novalidate[^>]*autocomplete="off"/);
+  for (const t of form.match(/<input [^>]*>/g)) if (!/type="(file|checkbox)"/.test(t)) assert.match(t, /autocomplete="off"/, t);
 });

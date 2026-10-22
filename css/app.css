@@ -299,6 +299,12 @@ textarea{min-height:120px;resize:vertical}
 /* Opslag-tab */
 #imp-text{min-height:110px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.8rem}
 .confirmbox{border:1px solid var(--warn);border-radius:8px;padding:10px 12px;display:grid;gap:8px}
+/* GV7: vraag boven Start in de dock */
+.oldask{margin-bottom:8px;background:var(--warn-soft)}
+.oldask p{margin:0;font-size:.9rem}
+.oldask .bar{flex-wrap:wrap;align-items:center}
+.dock .oldask .link{border:0;background:none;font-weight:400;padding:0 8px;min-height:44px} /* geen dock-knoprand: Annuleer is een link */
+.dock .oldask .btn{min-height:44px;font-size:1rem}
 
 /* ===== Compacte kaarten (één open), beurtbalk onderaan, schade-paneel ===== */
 :root{--pc:#2f6fb5;--mon:#b3261e;--dock-h:118px}
@@ -548,6 +554,12 @@ label .cw{display:none;color:var(--warn);font-weight:700}
 label.warn .cw{display:inline}
 label.warn .opt{display:none}
 .f2>label{align-content:end} /* velden op één lijn, ook als een label over twee regels loopt */
+/* SP4/AF15: veld zonder input (stepper) dat eruitziet als een label; foutregel onder een veld (formulier zonder browser-bubbels) */
+.lab{display:grid;gap:3px;font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;align-content:end}
+.lab .stepper{text-transform:none;letter-spacing:0;color:var(--fg)}
+.lhint{font-size:.75rem;text-transform:none;letter-spacing:0}
+.ferr{color:var(--bad);font-size:.85rem;text-transform:none;letter-spacing:0;line-height:1.3}
+input[aria-invalid="true"]{border-color:var(--bad)} /* geen :has (oudere iPads) */
 label.warn input{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
 .warnline{color:var(--warn)}
 
