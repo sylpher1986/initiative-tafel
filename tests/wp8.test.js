@@ -1,8 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { condInfo, CINFO, exhLevel, exhRows } from "../js/rules/conditions.js";
+import { condInfo, CINFO, exhLevel, exhRows, exhSummary } from "../js/rules/conditions.js";
 import { setExh, startRage, endRage, rageOf, barbLevel, rageDmg, rageRes, effName, removeEffect, endFightEffects, baseMax } from "../js/rules/effects.js";
-import { restMember, applyDamage, startConc } from "../js/rules/combat.js";
+import { restMember, applyDamage, startConc, setMax } from "../js/rules/combat.js";
+import { addEffect, PRESETS } from "../js/rules/effects.js";
+import { step, startCombat } from "../js/rules/turns.js";
 import { targetMode, rollSave, rollText, saveAdv } from "../js/rules/aoe.js";
 import { atkAdv } from "../js/rules/attacks.js";
 import { CONDS, makeDur } from "../js/rules/turns.js";
@@ -35,7 +37,7 @@ test("RE11: niveau zetten, max HP ½ vanaf 4 en terug, chipnaam", () => {
   assert.equal(exhLevel(c), 0); assert.equal(c.eff.length, 0); assert.match(r.msgs[0], /Exhaustion voorbij/);
   assert.equal(setExh(c, 0).why.length, 0, "zelfde niveau: niets");
   const odd = pc({ hp: 31, max: 31 }); setExh(odd, 4);
-  assert.equal(odd.max, 16, "31 → 15 eraf, 16 over");
+  assert.equal(odd.max, 15, "PHB: gehalveerd, naar beneden afgerond");
 });
 
 test("RE11: niveau 6 = dood (speler 3 failures, monster neer), concentratie weg", () => {
@@ -181,4 +183,48 @@ test("RE10: snapshot geeft duur en herhaalsave per tag, zonder verborgen namen; 
   assert.equal(bad.list[0].td, undefined, "niet parallel: weg");
   const none = toPlayerView(S, () => "", { monHp: "status", init: false, tags: "none" });
   assert.equal(none.list.find((x) => x.id === "p").td, undefined, "Verbergen: niets mee");
+});
+
+test("RE11 (review): halvering loopt mee met Aid, bewerken en onbekende max HP", () => {
+  const aid = PRESETS.find((p) => p.n === "Aid");
+  const a = pc(); addEffect(a, aid, null); setExh(a, 4);
+  assert.equal(a.max, 22, "(40 + 5) / 2");
+  removeEffect(a, a.eff.find((e) => e.n === "Aid").id);
+  assert.equal(a.max, 20, "Aid weg: 40 / 2");
+  const b = pc(); setExh(b, 4); addEffect(b, aid, null);
+  assert.equal(b.max, 22, "zelfde in de andere volgorde");
+  const c = pc(); setExh(c, 4);
+  setMax(c, 60 + (c.max - baseMax(c)));
+  assert.equal(c.max, 30, "basis 40 → 60 bij Exhaustion 4");
+  assert.equal(baseMax(c), 60);
+  const m = gob({ hp: 0, max: 0 }); setExh(m, 4);
+  assert.equal(m.max, 0);
+  setMax(m, 40);
+  assert.equal(m.max, 20, "max HP ingevuld: nu gehalveerd");
+  assert.equal(exhSummary(5), "Niveau 5: disadvantage op checks · disadvantage op attacks en saves · max HP ½ · speed 0");
+  assert.equal(exhSummary(0), "Niveau 0: geen exhaustion");
+});
+
+test("RE16 (review): geen rage als hij Unconscious of Incapacitated is", () => {
+  const c = pc({ hp: 20, cond: ["Unconscious"], res: [{ n: "Rage", left: 2, max: 2 }] });
+  const r = startRage(c, null, { frz: true });
+  assert.equal(rageOf(c), null); assert.equal(c.res[0].left, 2); assert.match(r.msgs[0], /Unconscious/);
+});
+
+test("RE16 (review): einde beurt meldt 'loopt door', ‹ Vorige zet de schade-markering terug", () => {
+  const b = pc({ init: 20 }), g = gob({ init: 10 });
+  const S = { list: [b, g], round: 0, active: null };
+  startCombat(S);
+  assert.equal(S.active, "b");
+  startRage(b, makeDur(b, { dur: "r10" }, "b"));
+  applyDamage(b, 3);
+  let o = step(S, 1);
+  assert.ok(!o.msgs.some((m) => /loopt door/.test(m)), "geraakt: geen melding");
+  assert.ok(!rageOf(b).hit, "markering gewist voor de volgende ronde");
+  step(S, -1);
+  assert.equal(rageOf(b).hit, 1, "terug in zijn beurt: markering terug");
+  o = step(S, 1); o = step(S, 1);
+  assert.equal(S.active, "b");
+  o = step(S, 1);
+  assert.ok(o.msgs.some((m) => /Rage Brom loopt door/.test(m)), "niet geraakt: melding");
 });

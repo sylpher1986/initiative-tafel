@@ -7,7 +7,7 @@ import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
 import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf, isSurprised, reactUsed, REACT_TAG, canToggleSurprise, nextUp, freshRoll, initPlan, initText } from "../rules/turns.js";
 import { PRESETS as PRESETS_14, presetsFor, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn, effName, isRage, rageOf, rageRes, barbLevel, rageDmg } from "../rules/effects.js";
-import { isExh, exhLevel, EXH } from "../rules/conditions.js";
+import { isExh, exhLevel, exhSummary } from "../rules/conditions.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList, splitSpells, edFor, sheetEd } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus, saveKnown, targetMode, drText, drKind, DR_LBL, saveAdv } from "../rules/aoe.js";
@@ -321,14 +321,12 @@ function condPanel(c) {
     ${ui.exhOpen ? exhRow(c) : ""}</div>`;
 }
 
-/** RE11: niveau 0–6 met − en +; wat er bij dit niveau geldt (opgeteld) */
-const EXH_SHORT = ["", "disadvantage op checks", "speed ½", "disadvantage op attacks en saves", "max HP ½", "speed 0", "dood"];
-export const exhSummary = (x) => (x ? `Niveau ${x}: ${EXH_SHORT.slice(1, x + 1).filter((t, i) => !(x >= 5 && i === 1)).join(" · ")}` : "Niveau 0: geen exhaustion");
+/** RE11: niveau 0–6 met − en +; wat er bij dit niveau geldt (opgeteld). Dood: − uit (Ongedaan is de weg terug) */
 function exhRow(c) {
-  const x = exhLevel(c);
-  return `<div class="exhrow"><button type="button" class="btn" data-a="exh" data-v="-1" ${x ? "" : "disabled"} aria-label="Exhaustion een niveau lager">−</button>
+  const x = exhLevel(c), dead = c.kind === "pc" ? !!(c.ds && c.ds.dead) : c.max > 0 && c.hp <= 0;
+  return `<div class="exhrow"><button type="button" class="btn" data-a="exh" data-v="-1" ${x && !dead ? "" : "disabled"} aria-label="Exhaustion een niveau lager">−</button>
     <b aria-live="polite">Exhaustion ${x}</b><button type="button" class="btn" data-a="exh" data-v="1" ${x >= 6 ? "disabled" : ""} aria-label="Exhaustion een niveau hoger">+</button></div>
-    <p class="hint exhtxt">${esc(exhSummary(x))}. Long rest: één niveau minder.</p>`;
+    <p class="hint exhtxt">${esc(exhSummary(x))}. ${dead && x ? "Terug: Ongedaan." : "Long rest: één niveau minder."}</p>`;
 }
 
 
@@ -439,7 +437,7 @@ function presetOrder(c) {
 
 /** RE16: bevestigstap vóór Rage (kost een resource, stopt concentratie): samenvatting, Bear Totem / Frenzy, Start */
 function rageBox(c) {
-  const o = ui.rage, r = rageRes(c), lvl = rageLvl(c), b = rageDmg(lvl);
+  const o = ui.rage, r = rageRes(c), lvl = rageLvl(c), b = rageDmg(lvl), on = !!rageOf(c);
   const res = r ? `${r.n} ${n0(r.left)} van ${n0(r.max)} over` : "Geen Rage-teller op de sheet: houd het aantal zelf bij.";
   const conc = c.cond.includes("Concentrating") ? `<p class="hint rgwarn">⚠ Concentratie${c.concSpell ? ` op ${esc(c.concSpell)}` : ""} stopt.</p>` : "";
   const tg = (k, l) => `<button type="button" class="btn tap" data-a="rage-opt" data-k="${k}" aria-pressed="${!!o[k]}">${l}</button>`;
@@ -449,7 +447,8 @@ function rageBox(c) {
     <p class="hint">${esc(res)}</p>${conc}
     <div class="effgrid rgopt">${tg("bear", "Bear Totem")}${tg("frz", "Frenzy")}</div>
     ${o.frz ? `<p class="hint">Frenzy: na afloop één niveau exhaustion.</p>` : ""}
-    <div class="bar"><button type="button" class="btn tap" data-a="rage-no">Annuleer</button><button type="button" class="btn primary tap" data-a="rage-go">Start Rage${r && r.left <= 0 ? " (0 over)" : ""}</button></div></div>`;
+    ${on ? `<p class="hint rgwarn">Rage loopt al. Beëindigen: ✕ op de chip.</p>` : ""}
+    <div class="bar"><button type="button" class="btn tap" data-a="rage-no">Annuleer</button><button type="button" class="btn primary tap" data-a="rage-go" ${on ? "disabled" : ""}>Start Rage${r && r.left <= 0 ? " (0 over)" : ""}</button></div></div>`;
 }
 
 function actionsBlock(c) {

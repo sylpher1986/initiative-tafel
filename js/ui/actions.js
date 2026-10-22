@@ -211,6 +211,8 @@ const row = {
     const spec = { n: String(f.n || "").trim() || "Effect", st, op, v, txt: f.txt || "" };
     if (st === "ac" && spec.op === "+" && !c.ac) { toast("Vul eerst AC in (⋯)."); return false; }
     if (st && !spec.v) { toast("Vul een waarde in."); return false; }
+    // RE11/RE16: deze namen horen bij Conditie → Exhaustion en de preset Rage (niveau, Frenzy, resource)
+    if (/^(exhaustion|rage)$/i.test(spec.n)) { toast(/^e/i.test(spec.n) ? "Exhaustion zet je via Conditie → Exhaustion." : "Gebruik de preset Rage."); return false; }
     if (!st && !spec.txt && !f.n) { toast("Geef het effect een naam of notitie."); return false; }
     const by = f.by && app.S.list.some((x) => x.id === f.by) ? f.by : null;
     ui.effForm = {}; ui.effCustom = false;
@@ -221,7 +223,7 @@ const row = {
   "rage-opt"(c, b) { if (!ui.rage || ui.rage.id !== c.id) return false; ui.rage[b.dataset.k] = !ui.rage[b.dataset.k]; saveRageOpts(c, ui.rage); },
   "rage-no"() { ui.rage = null; },
   "rage-go"(c) {
-    const o = ui.rage; if (!o || o.id !== c.id) return false;
+    const o = ui.rage; if (!o || o.id !== c.id || rageOf(c)) return false; // loopt al: geen tweede resource
     ui.rage = null; ui.panel = null;
     because("Rage");
     const out = startRage(c, makeDur(c, { dur: "r10" }, app.S.active), { bear: o.bear, frz: o.frz });

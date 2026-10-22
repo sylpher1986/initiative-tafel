@@ -64,9 +64,15 @@ const cleanEff = (e) => {
     op: st === "ac" && ["+", "=", "min"].includes(e.op) ? e.op : "+", v: st === "ac" ? lim(e.v, -20, 40) : st ? lim(e.v, -999, 999) : 0, txt: str(e.txt, 120), end: str(e.end, 120),
     d: obj(e.d) ? cleanDur(e.d) : null, lr: !!e.lr, by: e.by ? str(e.by, 40) : null, spell: e.spell ? str(e.spell, 120) : null, ...(e.by && e.cast ? { cast: str(e.cast, 60) } : {}), hpd: st === "max" ? lim(e.hpd, -9999, 9999) : 0,
     ...(obj(e.af) && e.af.n ? { af: { n: str(e.af.n, 60), txt: str(e.af.txt, 120), ...(CONDS.includes(e.af.cond) && e.af.cond !== "Concentrating" ? { cond: e.af.cond } : {}) } } : {}), // vervolg (Lethargy)
-    ...(e.n === "Exhaustion" ? { x: lim(e.x, 1, 6) || 1 } : {}), // RE11: niveau
-    ...(cleanRs(e.rs) ? { rs: cleanRs(e.rs) } : {}), // RE16: tijdelijke resistance (Rage)
-    ...(e.rg ? { rg: 1, ...(e.frz ? { frz: 1 } : {}), ...(e.bear ? { bear: 1 } : {}), ...(e.hit ? { hit: 1 } : {}) } : {}) };
+    ...exhRage(e) };
+};
+/** RE11/RE16: niveau (halvering alleen vanaf 4), tijdelijke resistance en rage-vlaggen */
+const exhRage = (e) => {
+  const o = {}, rs = cleanRs(e.rs);
+  if (e.n === "Exhaustion") { o.x = lim(e.x, 1, 6) || 1; if (o.x < 4) Object.assign(o, { st: "", v: 0, hpd: 0 }); }
+  if (rs) o.rs = rs;
+  if (e.rg) Object.assign(o, { rg: 1 }, e.frz ? { frz: 1 } : {}, e.bear ? { bear: 1 } : {}, e.hit ? { hit: 1 } : {}, e.ph != null ? { ph: e.ph ? 1 : 0 } : {});
+  return o;
 };
 
 export function cleanCombatant(c) {

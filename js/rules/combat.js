@@ -170,6 +170,7 @@ export function setMax(c, nMax) {
   if (!c.max) c.hp = nMax;
   else if (c.hp > 0) c.hp = Math.max(1, nMax - Math.max(0, c.max - c.hp));
   c.max = nMax;
+  reExh(c); // Exhaustion 4+: halvering op de nieuwe max
 }
 
 /**
@@ -204,13 +205,27 @@ export function revertMax(c, hpd) {
  */
 export function exhEffect(c, x) {
   const e = { id: Math.random().toString(36).slice(2, 9), n: EXH_NAME, x, st: "", op: "+", v: 0, txt: EXH[x], end: "", d: null, lr: false, by: null, spell: null, hpd: 0 };
-  if (x >= 4 && c.max > 0) {
-    const nm = Math.max(1, c.max - Math.floor(c.max / 2));
-    e.st = "max"; e.v = e.hpd = nm - c.max;
-    c.max = nm; c.hp = Math.min(c.hp, c.max);
-  }
   c.eff = [...(c.eff || []).filter((y) => !isExh(y)), e];
+  reExh(c);
   return e;
+}
+
+/**
+ * Exhaustion 4+: max HP gehalveerd (PHB: naar beneden afgerond) op de huidige max, ook na Aid, bewerken of een
+ * bijgewerkte sheet. Eerst de oude halvering terug, dan opnieuw rekenen; aanroepen na elke wijziging van max HP.
+ * Zonder bekende max HP (0) alleen het niveau; de halvering volgt zodra max HP bekend is.
+ */
+export function reExh(c) {
+  const e = (c.eff || []).find(isExh);
+  if (!e) return;
+  if (e.hpd) c.max = Math.max(1, (c.max || 0) - e.hpd);
+  e.st = ""; e.v = 0; e.hpd = 0;
+  if ((e.x | 0) >= 4 && c.max > 0) {
+    const nm = Math.max(1, Math.floor(c.max / 2));
+    e.st = "max"; e.v = e.hpd = nm - c.max;
+    c.max = nm;
+  }
+  if (c.max > 0) c.hp = Math.min(c.hp, c.max);
 }
 
 /** Short of long rest voor een speler (party-lid of deelnemer aan tafel) */

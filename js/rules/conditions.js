@@ -26,6 +26,9 @@ export const CINFO = {
 export const EXH = ["", "Disadvantage op ability checks", "Speed gehalveerd", "Disadvantage op aanvallen en saves", "Max HP gehalveerd", "Speed 0", "Dood"];
 export const EXH_NAME = "Exhaustion";
 export const isExh = (e) => !!e && e.n === EXH_NAME;
+/** Kort, voor de rij in het Conditie-paneel; speed 0 (5) vervangt speed ½ (2) */
+const EXH_SHORT = ["", "disadvantage op checks", "speed ½", "disadvantage op attacks en saves", "max HP ½", "speed 0", "dood"];
+export const exhSummary = (x) => (x ? `Niveau ${x}: ${EXH_SHORT.slice(1, x + 1).filter((t, i) => !(x >= 5 && i === 1)).join(" · ")}` : "Niveau 0: geen exhaustion");
 /** Niveau 0–6 uit de effecten */
 export const exhLevel = (c) => { const e = (c && c.eff || []).find(isExh); return e ? Math.max(1, Math.min(6, e.x | 0 || 1)) : 0; };
 /** Wat er bij dit niveau geldt, opgeteld: ["1 Disadvantage op ability checks", …] */

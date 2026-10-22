@@ -1,7 +1,7 @@
 // Tijdelijke effecten op een deelnemer (5e 2014): op AC (+N, =N, minimaal N), op max HP (±N) of alleen een herinnering.
 // Duur zoals bij condities (zie makeDur in turns.js), "tot long rest", en optioneel gekoppeld aan de concentratie van een caster.
 // De basis-AC blijft in c.ac; de kaart toont effAc(c). Max HP-effecten passen c.max echt aan en onthouden hun verschil (hpd).
-import { fx, applyPcHp, revertMax, newDs, setUncon, dropConc, merge, exhEffect } from "./combat.js";
+import { fx, applyPcHp, revertMax, newDs, setUncon, dropConc, merge, exhEffect, reExh } from "./combat.js";
 import { DTYPES } from "./aoe.js";
 import { EXH, isExh, exhLevel } from "./conditions.js";
 
@@ -109,6 +109,7 @@ export function addEffect(c, spec, d, opt = {}) {
       if (zero && !was) return merge(out, dieByMax(c, n));
     }
   }
+  if (st === "max") reExh(c); // Aid bij Exhaustion 4+: de halvering op de nieuwe max
   out.msgs.push(`${c.name}: ${n}${st ? ` (${effText(e)})` : e.txt ? ` (${e.txt})` : ""}.`);
   return out;
 }
@@ -162,7 +163,7 @@ export function removeEffect(c, id, why = "handmatig", opt = {}) {
   const e = (c.eff || []).find((x) => x.id === id);
   if (!e) return out;
   c.eff = c.eff.filter((x) => x !== e);
-  if (e.hpd) revertMax(c, e.hpd);
+  if (e.hpd) { revertMax(c, e.hpd); if (!isExh(e)) reExh(c); }
   if (why === null) return out;
   if (e.frz) { // Frenzy (Path of the Berserker): na afloop één niveau exhaustion, ook als het gevecht stopt
     const r = setExh(c, exhLevel(c) + 1, "Frenzy voorbij");
@@ -268,6 +269,7 @@ export const effName = (e) => (isExh(e) ? `Exhaustion ${Math.max(1, e.x | 0)}` :
 
 /* ---------- Rage (RE16, barbarian 2014) ---------- */
 
+const NO_RAGE = ["Incapacitated", "Paralyzed", "Petrified", "Stunned", "Unconscious"];
 const RS_ALL = DTYPES.filter((t) => t !== "psychic"); // Bear Totem: alles behalve psychic
 /** Geldige damage types of undefined */
 export function cleanRs(a) {
@@ -290,6 +292,8 @@ export const rageRes = (c) => (c && c.res || []).find((r) => /^rage\b/i.test(Str
 export function startRage(c, d, opt = {}) {
   const out = fx();
   if (c.max && c.hp <= 0) { out.msgs.push(`${c.name} ligt op 0 HP en kan niet ragen.`); return out; }
+  const inc = c.cond.find((k) => NO_RAGE.includes(k)); // Rage is een bonus action
+  if (inc) { out.msgs.push(`${c.name} is ${inc} en kan niet ragen.`); return out; }
   const p = preset("Rage");
   merge(out, addEffect(c, { ...p, rs: opt.bear ? RS_ALL : p.rs, txt: opt.bear ? "resist alles behalve psychic, adv. STR, geen spells" : p.txt, bear: !!opt.bear, frz: !!opt.frz }, d));
   const r = rageRes(c);

@@ -342,7 +342,7 @@ export function step(state, dir, rng = Math.random) {
   if (dir > 0 && was && was !== cur && pending(was, state)) was.nextR.done = 1; // ingeschoven beurt is gespeeld (RE9)
   state.active = cur.id;
   state.ai = cur.init; // RE9: plek van de beurt, ook als hij tijdens zijn beurt zijn initiative wijzigt
-  if (dir < 0) { untickSaves(state); return out; }
+  if (dir < 0) { untickSaves(state); rageTurnBack(cur); return out; }
 
   passed.push(["start", cur.id]);
   if (was && was !== cur) rageTurnEnd(was, out);
@@ -375,7 +375,15 @@ function rageTurnEnd(c, out) {
   const e = rageOf(c);
   if (!e) return;
   if (!e.hit) out.msgs.push(`Rage ${c.name} loopt door.`);
+  e.ph = e.hit ? 1 : 0; // ‹ Vorige terug in zijn beurt: de schade-markering komt terug
   delete e.hit;
+}
+/** ‹ Vorige: terug in de beurt van een barbarian in rage → markering van vóór Volgende */
+function rageTurnBack(c) {
+  const e = rageOf(c);
+  if (!e || !("ph" in e)) return;
+  if (e.ph) e.hit = 1; else delete e.hit;
+  delete e.ph;
 }
 
 /**

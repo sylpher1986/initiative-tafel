@@ -20,26 +20,26 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 10. ~~SC4~~ · ~~SC5~~ klaar in 1.38.0 (WP6, zie Klaar)
 11. ~~SC6~~ klaar in 1.39.0 (WP7, zie Klaar)
 12. ~~SC7~~ · ~~SC1~~ klaar in 1.39.0 (WP7, zie Klaar)
-13. **RE10** Uitleg bij een tik op een conditie (DM én spelersscherm), met duur en DC
+13. ~~RE10~~ klaar in 1.40.0 (WP8, zie Klaar)
 14. ~~RE9~~ klaar in 1.36.0 (WP3, zie Klaar)
 15. ~~IN9~~ klaar in 1.35.1 (WP2, zie Klaar)
 16. ~~RE12~~ klaar in 1.36.0 (WP3, zie Klaar)
 17. **RE1/RE2** Spell slots verbruiken bij Shield, AoE en Spell (omhoog uit P3)
-18. **RE11** Exhaustion (2014, niveau 1–6)
+18. ~~RE11~~ klaar in 1.40.0 (WP8, zie Klaar)
 19. **SP5** Passive Perception / Insight / Investigation per speler
 20. **RE13** Hints voor monsterregels die je vergeet (Undead Fortitude, Prone bij Wolf Bite, Parry)
 
 **Eigen test Michiel (21-10-2026, aan tafel)**, ingedeeld in P2 en verdeeld over de werkpakketten:
 - **RE18** Schade-spells (Fireball) in AoE: spell kiezen, schade rollen, upcasten (hoog binnen P2)
 - ~~**RE17** Concentration save meteen afhandelen vanuit de schade~~ klaar in 1.36.0
-- **RE16** Rage (barbarian) als status met alle voordelen
+- ~~**RE16** Rage (barbarian) als status met alle voordelen~~ klaar in 1.40.0
 - ~~**GV12** Reaction gebruikt zichtbaar in de overzichten tot hij terug is~~ klaar in 1.38.0
 - ~~**AF13** AC groter op de kaarten van het DM-scherm~~ klaar in 1.35.1
 - ~~**SC10** HP-balken op het spelersscherm even lang~~ klaar in 1.35.1
 
 **P3: later**
 - Spelersscherm: ~~SC8~~ (klaar in 1.38.0), **SC9** (mini-log)
-- Afwerking: **AF8**, **AF10–AF12**
+- Afwerking: ~~AF8~~ (klaar in 1.40.0), **AF10–AF12**
 - Regels: **RE3–RE6**, **RE14** (eigen monster beter inlezen), **RE15** (eigen death save-worp)
 - Voorbereiding: **VB4** (zoeken NL/typfouten), **VB5** (lege encounter maken)
 - Gevecht: ~~GV10~~ (klaar in 1.37.1), **GV11** (minder klikken na een misser)
@@ -60,7 +60,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | ~~**WP5**~~ | Undo en toetsenbord (klaar) | GV8, GV10 | 1.37.1 |
 | ~~**WP6**~~ | Spelersscherm op de telefoon: sticky kop, "Dit ben ik", teksten, reaction zichtbaar (klaar) | SC4, SC5, SC8, GV12 | 1.38.0 |
 | ~~**WP7**~~ | Tv en koppelen: leesbaarheid, zelfde code, QR (klaar) | SC6, SC7, SC1 | 1.39.0 |
-| **WP8** | Condities en statussen aan tafel: uitleg, Exhaustion, Rage, Deadly/Verrast | RE10, RE11, RE16, AF8 | 1.40.0 |
+| ~~**WP8**~~ | Condities en statussen aan tafel: uitleg, Exhaustion, Rage, Deadly/Verrast (klaar) | RE10, RE11, RE16, AF8 | 1.40.0 |
 | **WP9** | Spells van spelers: schade-spells in AoE (Fireball), slots verbruiken, Pact Magic | RE18, RE1, RE2, RE3 | 1.41.0 |
 | **WP10** | Monsterregels en minder klikken | RE13, RE14, GV11 | 1.42.0 |
 | **WP11** | Voorbereiding: passives, zoeken, lege encounter | SP5, VB4, VB5 | 1.43.0 |
@@ -85,12 +85,9 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - [ ] **RE3 Pact Magic-slots apart bijhouden** (komen terug na een short rest); nu opgeteld bij de gewone slots
 - [ ] **RE4 2024-regels buiten spells** (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen
 - [ ] **RE5 Surprise:** keuze ook zonder spelers aan tafel (paneel opent dan niet)
-- [ ] **RE10 Uitleg bij een conditie** (P2): tik op een conditiechip/badge opent een kort paneel met 2–3 regels Nederlandse uitleg (eigen samenvatting van de SRD, de naam blijft Engels), plus duur en herhaalsave met DC. Op het DM-scherm én het spelersscherm (spelers: duur en DC volgen de zichtbaarheidsinstelling Condities). Vervangt de wens van Fatima (duur en DC).
-- [ ] **RE11 Exhaustion (2014)** (P2): conditie met niveau 1–6 en de effecten per niveau (dis op checks, speed ½, dis op attacks en saves, max HP ½, speed 0, dood); weg met één niveau per long rest. Raakt RE4 (2024-exhaustion) en de effecten in het aanvalspaneel.
 - [ ] **RE13 Monsterregels die je vergeet** (P2): prompt zoals de concentration save: Undead Fortitude ("CON DC 5 + schade"), save-riders na een treffer (Wolf Bite "STR DC 11 of Prone?"), Parry als reaction met +AC. Herkenning in `js/rules/attacks.js` uit de statblocktekst, alleen de bekende SRD-patronen.
 - [ ] **RE14 Eigen monster beter inlezen** (P3): geplakt statblock krijgt geen aanvalsknoppen, geen LA en geen resistances; losse "+6 to hit" zonder crit-knop. Zelfde parser als voor SRD-monsters.
 - [ ] **RE15 Eigen death save-worp invoeren** (P3): getal typen (nat 20 = 1 HP, nat 1 = twee fails), zoals het cijferpad bij initiative.
-- [ ] **RE16 Rage (2014)** (P2, eigen test Michiel): effect-preset op een speler met alle voordelen: resistance tegen bludgeoning/piercing/slashing (tijdelijk, naast SP2-resistances; automatisch in AoE, aanvalspaneel en hint in het schadepaneel), advantage op STR-checks en STR-saves (AoE/Spell-saves), +2/+3/+4 rage damage op melee STR-aanvallen (hint, uit level), geen spells casten en geen concentratie (lopende concentratie stopt bij starten). Duur 10 rondes; eindigt eerder als hij bewusteloos raakt of zijn beurt eindigt zonder aanval of schade sinds zijn vorige beurt (vraag aan het einde van de beurt: "Rage loopt door?", schade sinds de vorige beurt vanzelf ja). Gebruik telt af op de resource "Rage" uit de D&D Beyond-sheet (`c.res`) als die er is. Bear Totem (resistance tegen alles behalve psychic) en Frenzy (exhaustion, RE11) als optie. Regels puur in `js/rules/effects.js`, met test.
 - [ ] **RE18 Schade-spells in AoE (Fireball)** (P2, hoog; eigen test Michiel): de tab Spell kent alleen condities en effecten (Bless … Web) en de tab Schade alleen een getal. Gevonden: ± 50 SRD-spells in `data/spells.json` hebben schadedobbelstenen + save in de tekst (Fireball "8d6 fire … dexterity saving throw … half", upcast "+1d6 per slot level above 3rd"). Voorstel: (a) in Schade een veld "Spell" dat zoekt in die spells en type, save, half/geen schade en dobbelstenen invult, met caster (spell save DC uit de sheet of statblock), slotlevel (upcast) en **Rol 8d6** (uitkomst aanpasbaar, worp in het logboek); (b) los daarvan altijd een dobbelsteenveld "Rol XdY+Z" voor homebrew en niet-SRD. Parser puur in `js/rules/`, tabel vooraf gegenereerd en getest (niet bij elke tik parsen). UX-agent kiest of damage-spells ook in de tab Spell verschijnen (Michiel zocht daar) en hoe het samengaat met slots verbruiken (RE1/RE2, zelfde pakket).
 - [ ] **RE6 Spell-uitleg:** link vanuit AoE-Spell en Effect-presets; eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie)
 
@@ -104,7 +101,6 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 ## Afwerking (klein)
 - AF4 is opgegaan in **OB1/OB2** (rondleiding, zie Eerste gebruik)
 - [ ] **AF14 Dobbelstenen in de statblocktekst** (P3, gevonden in WP2): de tikbare worpen in lopende tekst (`.dice`, "+11 to hit", "2d10 + 6") zijn 23 px hoog. Inline in zinnen, dus niet zomaar 44 px (regels zouden uit elkaar vallen; een `::after` naar boven en onder overlapt de regel erboven). UX-agent kiest: ruimere regelafstand in het statblock, of de worpen als knoppen uit de zin halen.
-- [ ] **AF8 Uitleg bij Deadly en Verrast** (P3): één zin Nederlandse uitleg met advies ("haal 1 monster weg voor Hard"); bij Verrast wanneer iemand verrast is.
 - [ ] **AF10 Kleine haperingen** (P3): focus in het naamveld bij + Speler; rondleiding pas tikbaar na de animatie; "Zeker?" bij Stop met delen; tik op een open Instellingen-sectie klapt hem dicht (nalopen of dat bedoeld is); import ook op de welkomstkaart; hint "(bijv. uit de Claude-versie)" weg.
 - [ ] **AF11 Kleine fouten** (P3): exportbestandsnaam gebruikt UTC (`toISOString` in `js/ui/actions.js`) → lokale tijd; dode wezens uit de lijst "concentratie van"; nalopen of verborgen monsters in de XP-lijst komen (vermoeden, volgens GV2 tellen ze mee).
 - [ ] **AF12 Toegankelijkheid** (P3): slots als "1st level slot 1 van 4, beschikbaar"; `aria-current` op wie aan de beurt is; monster/speler niet alleen via kleur.
@@ -266,3 +262,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **SC6** (1.39.0, WP7) Tv leesbaar op 3 m: één brede regel per deelnemer met condities en HP op dezelfde regel, HP vet en in tekstkleur; letter passend op de schermhoogte (26 px bij 12 regels op 1920×1080, 51 px bij 6), twee kolommen alleen als noodgreep. In volledig scherm geen titel en knoppen.
 - **SC7** (1.39.0, WP7) Stop met delen pauzeert de kamer: Opnieuw delen houdt dezelfde code (12 u), tv en telefoons blijven gekoppeld. "Nieuwe code…" (met bevestiging) heft de oude kamer pas op als de nieuwe er is.
 - **SC1** (1.39.0, WP7) QR-code (eigen kleine encoder, geen lib): schermvullend om te laten scannen, en op de tv vóór het gevecht.
+- **RE10** (1.40.0, WP8) Tik op een conditie geeft uitleg: paneel met 1–3 regels Nederlands, duur en herhaalsave (DM ook de bron). Op het spelersscherm tikbare tags (niet op de tv); duur en save gaan mee in de snapshot, zonder namen van verborgen of anonieme deelnemers.
+- **RE11** (1.40.0, WP8) Exhaustion (2014) niveau 1–6 via Conditie → Exhaustion (−/+): disadvantage op aanvallen en monster-saves vanaf 3, max HP gehalveerd vanaf 4 (loopt mee met Aid en bewerken), 6 = dood; long rest één niveau minder.
+- **RE16** (1.40.0, WP8) Rage (2014) als preset bij spelers met bevestigstap: resistance B/P/S (Bear Totem: alles behalve psychic) automatisch in AoE en aanvalspaneel, advantage op STR-saves, rage damage in de chip, concentratie stopt, Rage-teller van de sheet telt af. "Rage loopt door?" in de beurtbalk als hij geen schade nam; voorbij bij bewusteloos; Frenzy geeft exhaustion.
+- **AF8** (1.40.0, WP8) Deadly: eerste regel in de uitleg met advies ("Met 1 Goblin minder wordt het Hard"). Verrast: uitleg onder de keuze in het initiative-paneel.
