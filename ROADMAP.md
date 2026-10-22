@@ -17,7 +17,7 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 7. ~~GV7~~ klaar in 1.37.0 (WP4, zie Klaar)
 8. ~~SP4~~ · ~~AF7~~ · ~~AF15~~ klaar in 1.37.0 (WP4, zie Klaar)
 9. ~~GV8~~ klaar in 1.37.1 (WP5, zie Klaar)
-10. **SC4** Sticky "Aan de beurt / Daarna" op de telefoon · **SC5** "Dit ben ik" op het spelersscherm
+10. ~~SC4~~ · ~~SC5~~ klaar in 1.38.0 (WP6, zie Klaar)
 11. **SC6** Tv-weergave: HP en condities op 3 m leesbaar
 12. **SC7** Zelfde code na Stop met delen · **SC1** QR-code (omhoog uit P3)
 13. **RE10** Uitleg bij een tik op een conditie (DM én spelersscherm), met duur en DC
@@ -33,12 +33,12 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 - **RE18** Schade-spells (Fireball) in AoE: spell kiezen, schade rollen, upcasten (hoog binnen P2)
 - ~~**RE17** Concentration save meteen afhandelen vanuit de schade~~ klaar in 1.36.0
 - **RE16** Rage (barbarian) als status met alle voordelen
-- **GV12** Reaction gebruikt zichtbaar in de overzichten tot hij terug is
+- ~~**GV12** Reaction gebruikt zichtbaar in de overzichten tot hij terug is~~ klaar in 1.38.0
 - ~~**AF13** AC groter op de kaarten van het DM-scherm~~ klaar in 1.35.1
 - ~~**SC10** HP-balken op het spelersscherm even lang~~ klaar in 1.35.1
 
 **P3: later**
-- Spelersscherm: **SC8** (teksten), **SC9** (mini-log)
+- Spelersscherm: ~~SC8~~ (klaar in 1.38.0), **SC9** (mini-log)
 - Afwerking: **AF8**, **AF10–AF12**
 - Regels: **RE3–RE6**, **RE14** (eigen monster beter inlezen), **RE15** (eigen death save-worp)
 - Voorbereiding: **VB4** (zoeken NL/typfouten), **VB5** (lege encounter maken)
@@ -58,7 +58,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | ~~**WP3**~~ | Regels in het gevecht: Hold Person, initiative na eigen beurt, open saves, concentration save vanuit de schade (klaar) | RE8, RE9, RE12, RE17 | 1.36.0 |
 | ~~**WP4**~~ | Speler toevoegen en gevecht afronden (klaar) | SP4, GV7, AF9, AF15 | 1.37.0 |
 | ~~**WP5**~~ | Undo en toetsenbord (klaar) | GV8, GV10 | 1.37.1 |
-| **WP6** | Spelersscherm op de telefoon: sticky kop, "Dit ben ik", teksten, reaction zichtbaar | SC4, SC5, SC8, GV12 | 1.38.0 |
+| ~~**WP6**~~ | Spelersscherm op de telefoon: sticky kop, "Dit ben ik", teksten, reaction zichtbaar (klaar) | SC4, SC5, SC8, GV12 | 1.38.0 |
 | **WP7** | Tv en koppelen: leesbaarheid, zelfde code, QR | SC6, SC7, SC1 | 1.39.0 |
 | **WP8** | Condities en statussen aan tafel: uitleg, Exhaustion, Rage, Deadly/Verrast | RE10, RE11, RE16, AF8 | 1.40.0 |
 | **WP9** | Spells van spelers: schade-spells in AoE (Fireball), slots verbruiken, Pact Magic | RE18, RE1, RE2, RE3 | 1.41.0 |
@@ -73,7 +73,6 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - Geen open punten (IN8 en IN9 klaar in 1.35.1, zie Klaar).
 
 ## Gevecht aan tafel
-- [ ] **GV12 Reaction gebruikt zichtbaar** (P2, eigen test Michiel): nu alleen een badge op een dichte kaart; open kaart, live-blok (tablet), beurtbalk en spelersscherm tonen niets. Tonen tot de reaction terug is (begin van de eigen beurt, bestaande regel in `step`). Spelersscherm via `toPlayerView` (alleen zichtbare deelnemers; monsters volgens de instelling Condities). Met GV4 "Spelers zelf" niet bij spelers. UX-agent kiest de vorm (chip, icoon bij de naam) en of het op de tv mag.
 - [ ] **GV11 Minder klikken na een misser** (P3): misser sluit vanzelf of biedt "Volgende aanval" (multiattack); "+ meer doelen" bij concentratie-effecten. UX-agent kiest.
 
 ## Voorbereiding en encounters
@@ -101,11 +100,8 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 
 ## Spelersscherm
 - [ ] **SC1 QR-code bij de kamercode** (P2, samen met SC7; alleen als een kleine zelf-gehoste lib past). Persona-test 3: op een con de iPad omdraaien en laten scannen.
-- [ ] **SC4 Sticky kop op de telefoon** (P2): "Aan de beurt / Daarna" scrolt weg bij landscape en groot lettertype; kop compact en vast bovenaan, kaarten compacter onder 500 px.
-- [ ] **SC5 "Dit ben ik"** (P2): speler kiest op zijn eigen toestel een personage (per apparaat, `localStorage`, geen account): eigen kaart bovenaan met HP en slots, balk "Jij bent hierna / aan de beurt", trillen waar de browser dat kan (niet iOS Safari). Slots van spelers gaan dan mee in de snapshot (geen geheim).
 - [ ] **SC6 Tv-weergave** (P2): op 1920×1080 zijn HP-getallen (22 px, grijs) en condities (19 px) op 3 m niet leesbaar en blijft ±35 % leeg; kolommen lezen van boven naar beneden. Schalen tot de hoogte gevuld is, HP groter en met meer contrast; UX-agent kiest tussen één kolom en rij-voor-rij nummering.
 - [ ] **SC7 Zelfde code na Stop met delen** (P2): opnieuw delen geeft nu een nieuwe code, dus tv en telefoons moeten opnieuw koppelen. Code en token in `it-room` laten staan na Stop en de kamer hervatten zolang die nog bestaat (12 u); vaste code per campagne blijft fase 2.
-- [ ] **SC8 Teksten op het spelersscherm** (P3): 0 HP toont "Bewusteloos" én de conditie "Unconscious" (één label); "Death saves ✓0 ✗0" zonder uitleg; lange namen afgekapt. ("Gevecht voorbij" en geen "Rol initiative" meer: klaar in WP1.)
 - [ ] **SC9 Mini-log voor spelers op afstand** (P3): optioneel een paar regels "wat gebeurde er net", alleen wat de DM vrijgeeft en altijd via `toPlayerView` (verborgen monsters en Onbekend wezen mogen niet lekken).
 
 ## Afwerking (klein)
@@ -266,3 +262,7 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - [x] Spells per speler volgens de versie op zijn D&D Beyond-sheet (bronnen per spell), tag "2024 · sheet" waar het afwijkt van de instelling (1.22.0)
 - **GV8** (1.37.1, WP5) Undo: ⌘⇧Z/Ctrl+Shift+Z deed nóg een undo, nu Opnieuw (ook Ctrl+Y). Melding na ↶ noemt wat er terugging ("Ongedaan: Goblin 2: 30 → 0 HP (−30) +2 meer", bij een beurtwissel "Terug naar beurt van Aram (ronde 2)"), met knop **Opnieuw**; Opnieuw alleen in het geheugen (weg na een nieuwe wijziging of herladen).
 - **GV10** (1.37.1, WP5) Sneltoetsen in Gevecht (geen paneel open, niet in een veld): N of spatie = Volgende, Shift+N = Vorige, "?" = overzicht (ook Instellingen → Hulp → Sneltoetsen, alleen met muis/toetsenbord).
+- **SC4** (1.38.0, WP6) Spelersscherm: kop "Aan de beurt / Daarna" plus de verbindingsbalk vast bovenaan (`.pvstick`), namen in de kop op één regel met ellipsis; lage schermen (max-height 500 px: telefoon liggend, groot lettertype) een kop op één regel en compactere kaarten. Scrollen naar de beurt houdt rekening met de vaste kop.
+- **SC5** (1.38.0, WP6) "Dit ben ik": knop "Wie ben jij?" op het spelersscherm, keuze per apparaat (`it-pv-me`, geen account). Eigen kaart met HP, death saves, tags, slots, daily spells en resources; kop "Jij bent aan de beurt" / "Daarna jij"; eigen rij met "jij". Trillen bij aan de beurt en hierna (niet iOS Safari). Personage weg: "staat nu niet in de lijst" met Kies opnieuw; terug met een nieuwe id: op naam teruggevonden. Slots van spelers (`sl`) in de snapshot, monsters nooit.
+- **SC8** (1.38.0, WP6) Spelersscherm-teksten: speler op 0 HP zonder dubbele "Unconscious", death saves in woorden ("1 gelukt · 2 mislukt", "nog geen worp"), lange namen over twee regels.
+- **GV12** (1.38.0, WP6) Reaction gebruikt heet overal "Reaction op": chip op de dichte kaart en in het live-blok (tablet), de knop op de open kaart, en als tag op het spelersscherm (volgt Condities en GV4 "Spelers zelf"). Niet bij verrast of op 0 HP; niet in de beurtbalk (komt terug bij de eigen beurt).
