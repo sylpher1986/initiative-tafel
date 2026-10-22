@@ -15,7 +15,7 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 **P2: volgende (tempo en leesbaarheid aan tafel)**
 6. ~~IN8~~ klaar in 1.35.1 (WP2, zie Klaar)
 7. **GV7** Gevecht afronden: restanten (oude monsters, Prone) in het volgende gevecht
-8. **SP4** + Speler: initiative-bonus i.p.v. verplichte worp, eigen validatie · ~~AF7~~ klaar in 1.35.1
+8. **SP4** + Speler: initiative-bonus i.p.v. verplichte worp, eigen validatie · ~~AF7~~ klaar in 1.35.1 · **AF15** Dex-mod zonder lettertoetsenbord
 9. **GV8** Undo: ⌘⇧Z draait nog een stap terug; melding noemt niet wat er terugging
 10. **SC4** Sticky "Aan de beurt / Daarna" op de telefoon · **SC5** "Dit ben ik" op het spelersscherm
 11. **SC6** Tv-weergave: HP en condities op 3 m leesbaar
@@ -56,7 +56,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | ~~**WP1**~~ | Spelersscherm: niets verraden, verbinding kwijt zichtbaar (klaar) | SC2, SC3 | 1.35.0 |
 | ~~**WP2**~~ | Tikken en lezen op de telefoon: tikdoelen, verspringen, hoofdknop, minteken, AC groter, HP-balken gelijk (klaar) | AF6, IN8, IN9, AF7, AF13, SC10 | 1.35.1 |
 | **WP3** | Regels in het gevecht: Hold Person, initiative na eigen beurt, open saves, concentration save vanuit de schade | RE8, RE9, RE12, RE17 | 1.36.0 |
-| **WP4** | Speler toevoegen en gevecht afronden | SP4, GV7, AF9 | 1.37.0 |
+| **WP4** | Speler toevoegen en gevecht afronden | SP4, GV7, AF9, AF15 | 1.37.0 |
 | **WP5** | Undo en toetsenbord | GV8, GV10 | 1.37.x |
 | **WP6** | Spelersscherm op de telefoon: sticky kop, "Dit ben ik", teksten, reaction zichtbaar | SC4, SC5, SC8, GV12 | 1.38.0 |
 | **WP7** | Tv en koppelen: leesbaarheid, zelfde code, QR | SC6, SC7, SC1 | 1.39.0 |
@@ -119,6 +119,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 ## Afwerking (klein)
 - AF4 is opgegaan in **OB1/OB2** (rondleiding, zie Eerste gebruik)
 - [ ] **AF14 Dobbelstenen in de statblocktekst** (P3, gevonden in WP2): de tikbare worpen in lopende tekst (`.dice`, "+11 to hit", "2d10 + 6") zijn 23 px hoog. Inline in zinnen, dus niet zomaar 44 px (regels zouden uit elkaar vallen; een `::after` naar boven en onder overlapt de regel erboven). UX-agent kiest: ruimere regelafstand in het statblock, of de worpen als knoppen uit de zin halen.
+- [ ] **AF15 Getallen die negatief mogen zonder lettertoetsenbord** (P2, eigen test Michiel op de iPhone, 22-10-2026): de AF7-oplossing (1.35.1, `inputmode` weg) geeft op iOS de 123-laag van het gewone toetsenbord: wel een "−", maar ook ABC, leestekens en de balk "Vul contact automatisch in". Niet goed genoeg. Velden: Dex-mod (`pc-dex`), initiative-bonus (wordt nieuw in SP4), effectwaarde (`ef-v`); eventueel ook initiative-totalen (zie AF7-keuze). UX-agent kiest opnieuw; kandidaten: een stepper −/+ zonder toetsenbord (Dex-mod en bonus hebben een klein bereik, −5…+10), het cijferpad met een ±-knop ernaast, of een eigen cijferpad met "−" zoals het initiative-paneel. Hoe dan ook `autocomplete="off"` op de formuliervelden, zodat iOS geen contact-autofill aanbiedt. Test op een echte iPhone.
 - [ ] **AF8 Uitleg bij Deadly en Verrast** (P3): één zin Nederlandse uitleg met advies ("haal 1 monster weg voor Hard"); bij Verrast wanneer iemand verrast is.
 - [ ] **AF9 Bevestiging bij toevoegen en verwijderen** (P3): na Speler toevoegen een melding "Sanne toegevoegd (4 aan tafel)"; bij verwijderen een melding met Ongedaan. "Ook opslaan in vaste party": laatste keuze onthouden i.p.v. altijd aan (con-tafels).
 - [ ] **AF10 Kleine haperingen** (P3): focus in het naamveld bij + Speler; rondleiding pas tikbaar na de animatie; "Zeker?" bij Stop met delen; tik op een open Instellingen-sectie klapt hem dicht (nalopen of dat bedoeld is); import ook op de welkomstkaart; hint "(bijv. uit de Claude-versie)" weg.
