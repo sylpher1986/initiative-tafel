@@ -1,7 +1,7 @@
 // Spelersscherm: wat spelers mogen zien. Puur (geen DOM), getest.
 // Alleen deze snapshot verlaat het DM-scherm, nooit de volledige toestand. Zo kan dezelfde snapshot
 // later ook via een server naar andere apparaten zonder dat er DM-info meegaat.
-import { sortOrder, isOut, groupOf, nextUp, isSurprised, skipsTurn } from "./rules/turns.js";
+import { sortOrder, isOut, groupOf, nextUp, isSurprised, skipsTurn, reactUsed } from "./rules/turns.js";
 import { iconId, cleanImg } from "./ui/avatar.js";
 import { esc } from "./ui/util.js";
 
@@ -67,11 +67,27 @@ function hpFor(c, how) {
   return { st: hpStatus(c) };
 }
 
-function tagsFor(c, S) {
+/** Tag voor GV12 (reaction gebruikt), letterlijk zoals op de DM-kaart */
+export const REACT_TAG = "Reaction op";
+
+function tagsFor(c, S, pcr) {
   const t = isSurprised(c, S) ? ["Verrast"] : [];
-  t.push(...(c.cond || []).map((x) => (x === "Concentrating" && c.kind === "pc" && c.concSpell ? `Concentrating · ${c.concSpell}` : x)));
+  // SC8: speler op 0 HP heeft al de status Bewusteloos/Stabiel/Dood; "Unconscious" ernaast is dubbel
+  const down = c.kind === "pc" && c.max && c.hp <= 0;
+  t.push(...(c.cond || []).filter((x) => !(down && x === "Unconscious"))
+    .map((x) => (x === "Concentrating" && c.kind === "pc" && c.concSpell ? `Concentrating · ${c.concSpell}` : x)));
   for (const e of c.eff || []) if (!t.includes(e.n)) t.push(e.n);
+  if (reactUsed(c, S, pcr)) t.push(REACT_TAG);
   return t;
+}
+
+/** SC5: slots, daily spells en resources van een speler (geen geheim; alleen de eigen kaart toont ze). null = niets */
+function slotsFor(c) {
+  const k = c.casting || {}, n = (v) => Math.max(0, v | 0);
+  const s = (k.slots || []).filter((x) => x && x.max > 0).map((x) => ({ l: x.lvl | 0, left: n(x.left), max: n(x.max) }));
+  const d = (k.daily || []).flatMap((g) => (g && g.items) || []).filter((x) => x && x.max > 0).map((x) => ({ n: String(x.n || ""), left: n(x.left), max: n(x.max) }));
+  const r = (c.res || []).filter((x) => x && x.max > 0).map((x) => ({ n: String(x.n || ""), left: n(x.left), max: n(x.max) }));
+  return s.length || d.length || r.length ? { s, d, r } : null;
 }
 
 /**
@@ -107,7 +123,8 @@ export function shownTurn(S, all, seen, prev = null) {
  * Zonder gevecht (round 0) alleen spelers (SC2a): klaargezette monsters verraden de hinderlaag. end = rondes van het
  * net afgeronde gevecht (S.endSum, tot Start of monsters wissen), voor de kop "Gevecht voorbij".
  */
-export function toPlayerView(S, metaOf = () => "", vis = VIS, prev = null) {
+export function toPlayerView(S, metaOf = () => "", vis = VIS, prev = null, opts = {}) {
+  const pcr = opts.pcReact !== false; // GV4 "Spelers zelf": geen "Reaction op" bij spelers
   const all = sortOrder(S.list || []);
   const fight = !!S.round;
   const seen = (c) => !c.hidden && (fight || c.kind === "pc");
@@ -127,8 +144,10 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS, prev = null) {
     const r = {
       id: c.id, kind: pc ? "pc" : "monster", name: anon ? anonLabel(c, anonMany) : c.name, init: vis.init ? c.init : null,
       icon: anon ? "m-unknown" : iconId(c, pc ? "" : metaOf(c)), img: pc ? cleanImg(c.img) : null,
-      out: isOut(c), hp: hpFor(c, pc ? "exact" : vis.monHp), tags: vis.tags === "all" || (pc && vis.tags === "pc") ? tagsFor(c, S) : [],
+      out: isOut(c), hp: hpFor(c, pc ? "exact" : vis.monHp), tags: vis.tags === "all" || (pc && vis.tags === "pc") ? tagsFor(c, S, pcr) : [],
     };
+    const sl = pc ? slotsFor(c) : null;
+    if (sl) r.sl = sl;
     const d = c.ds || {}; // zonder ds-object nog geen worpen (zoals de DM-kaart met newDs())
     if (pc && c.max && c.hp <= 0 && !d.dead && !d.stable) r.ds = { s: d.s || 0, f: d.f || 0 };
     return r;
@@ -145,10 +164,38 @@ export function groupName(rows) {
   return base.every((b) => b === base[0]) ? `${base[0]} ×${rows.length}` : rows.map((c) => c.name).join(", ");
 }
 
-/** Kop: wie aan de beurt is. Zonder zichtbare beurt in ronde 1 (verborgen monster begint): "Gevecht begint" (SC2b). */
-export function headHtml(V) {
+/* ---------- "Dit ben ik" (SC5): keuze per spelerstoestel, puur lokaal ---------- */
+/** Gekozen speler in de snapshot: eerst op id, anders op exacte naam (DM herlaadde of zette hem opnieuw aan tafel). null = niet zichtbaar */
+export function findMe(V, me) {
+  if (!V || !me) return null;
+  const pcs = V.list.filter((c) => c.kind === "pc");
+  return pcs.find((c) => c.id === me.id) || (me.name ? pcs.find((c) => c.name === me.name) : null) || null;
+}
+/** "turn" (aan de beurt, ook in een groep), "next" (Daarna) of "" */
+export function meState(V, id) {
+  if (!V || !id || !V.round) return "";
+  if (V.active === id || (V.group || []).includes(id)) return "turn";
+  return V.next === id ? "next" : "";
+}
+/** Trillen bij een overgang (niet bij de eerste stand na laden: prev null). Patroon of null. */
+export function buzzFor(prev, now) {
+  if (prev == null || prev === now) return null;
+  return now === "turn" ? [200, 100, 200] : now === "next" ? [60] : null;
+}
+
+/** SC8: death saves in woorden ("✓0 ✗0" zegt spelers niets) */
+export const dsText = (d) => (!d.s && !d.f ? "Death saves: nog geen worp" : `Death saves: ${d.s} gelukt · ${d.f} mislukt`);
+
+/**
+ * Kop: wie aan de beurt is. Zonder zichtbare beurt in ronde 1 (verborgen monster begint): "Gevecht begint" (SC2b).
+ * meId (SC5): "Jij bent aan de beurt" / "Daarna jij".
+ */
+export function headHtml(V, meId = null) {
   const act = V.list.find((c) => c.id === V.active), nxt = V.list.find((c) => c.id === V.next);
-  const daarna = nxt ? `<div class="r"><span class="l">Daarna</span>${esc(nxt.name)}</div>` : "";
+  const ms = meState(V, meId);
+  const daarna = ms === "next" ? `<div class="r me"><span class="l">Daarna</span>jij</div>`
+    : nxt ? `<div class="r"><span class="l">Daarna</span>${esc(nxt.name)}</div>` : "";
+  if (ms === "turn") return `<div><span class="l">Ronde ${V.round}</span><b>Jij bent aan de beurt</b></div>${daarna}`;
   if (V.round) return V.gname || act
     ? `<div><span class="l">Ronde ${V.round} · aan de beurt</span><b>${esc(V.gname || act.name)}</b></div>${daarna}`
     : `<div><span class="l">${V.round === 1 ? "Ronde 1" : "Gevecht"}</span><b>${V.round === 1 ? "Gevecht begint" : `Ronde ${V.round}`}</b></div>${daarna}`;
@@ -163,6 +210,16 @@ const ICON_RE = /^[rm]-[a-z]{2,20}$/;
 /** Alle statussen uit hpStatus; iets anders komt niet door */
 export const STATUS = ["Ongedeerd", "Gewond", "Bloodied", "Bijna dood", "Neer", "Bewusteloos", "Stabiel", "Dood"];
 const st = (v) => (STATUS.includes(v) ? v : "");
+
+const cnt = (v) => Math.max(0, Math.min(99, int(v)));
+const items = (a, f) => (Array.isArray(a) ? a.slice(0, 12).filter((x) => x && typeof x === "object").map(f) : []);
+/** Slots (l 1–9), daily spells en resources; namen max 40 tekens */
+function cleanSl(o) {
+  const s = items(o.s, (x) => ({ l: int(x.l), left: cnt(x.left), max: cnt(x.max) })).filter((x) => x.l >= 1 && x.l <= 9);
+  const d = items(o.d, (x) => ({ n: str(x.n, 40), left: cnt(x.left), max: cnt(x.max) })).filter((x) => x.n);
+  const r = items(o.r, (x) => ({ n: str(x.n, 40), left: cnt(x.left), max: cnt(x.max) })).filter((x) => x.n);
+  return s.length || d.length || r.length ? { s, d, r } : null;
+}
 
 /** Onbetrouwbare snapshot → schone snapshot, of null als het geen snapshot is */
 export function cleanView(d) {
@@ -179,6 +236,10 @@ export function cleanView(d) {
       tags: Array.isArray(c.tags) ? c.tags.slice(0, 20).map((t) => str(t, 80)).filter(Boolean) : [],
     });
     if (c.ds && typeof c.ds === "object") r.ds = { s: Math.max(0, Math.min(3, int(c.ds.s))), f: Math.max(0, Math.min(3, int(c.ds.f))) };
+    if (kind === "pc" && c.sl && typeof c.sl === "object") {
+      const sl = cleanSl(c.sl);
+      if (sl) r.sl = sl;
+    }
     return r;
   });
   const ids = new Set(list.map((c) => c.id));

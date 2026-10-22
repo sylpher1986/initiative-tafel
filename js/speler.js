@@ -1,5 +1,6 @@
 // Spelersscherm: toont alleen de snapshot die het DM-scherm stuurt (js/playerview.js), nooit eigen data.
-import { cleanView, headHtml } from "./playerview.js";
+import { cleanView, headHtml, findMe, meState, buzzFor, dsText } from "./playerview.js";
+import { ORD } from "./rules/spells.js";
 import { localChannel, roomChannel, normCode, fmtCode } from "./share.js";
 import { esc } from "./ui/util.js";
 import { icon } from "./ui/avatar.js";
@@ -24,16 +25,96 @@ function hp(c) {
     <span class="hpn">${h.hp}/${h.max}${h.temp ? ` <span class="thp">+${h.temp}</span>` : ""}</span></div>${h.hp <= 0 ? st : ""}`;
 }
 
-function row(c, V) {
-  const turn = c.id === V.active || (V.group || []).includes(c.id), nxt = c.id === V.next;
-  const ds = c.ds ? `<span class="bd r">Death saves ✓${c.ds.s} ✗${c.ds.f}</span>` : "";
-  const tags = (c.tags || []).map((t) => `<span class="bd cc">${esc(t)}</span>`).join("");
-  return `<li class="pvc ${c.kind} ${turn ? "turn" : ""} ${c.out ? "out" : ""}">
+const dsB = (c) => (c.ds ? `<span class="bd r">${dsText(c.ds)}</span>` : "");
+const tagsB = (c) => (c.tags || []).map((t) => `<span class="bd cc">${esc(t)}</span>`).join("");
+
+function row(c, V, meId) {
+  const turn = c.id === V.active || (V.group || []).includes(c.id), nxt = c.id === V.next, me = c.id === meId;
+  const ds = dsB(c), tags = tagsB(c);
+  return `<li class="pvc ${c.kind} ${turn ? "turn" : ""} ${c.out ? "out" : ""}${me ? " me" : ""}">
     <span class="pvi">${c.init != null ? c.init : ""}${turn ? `<span class="tri" aria-hidden="true">▶</span>` : ""}</span>
-    <span class="pvn">${av(c)}<span class="nm">${esc(c.name)}</span>${nxt ? `<span class="pvnext">volgende</span>` : ""}</span>
+    <span class="pvn">${av(c)}<span class="nm">${esc(c.name)}</span>${me ? `<span class="pvnext">jij</span>` : nxt ? `<span class="pvnext">volgende</span>` : ""}</span>
     <span class="pvhp">${hp(c)}</span>
     ${tags || ds ? `<div class="badges">${ds}${tags}</div>` : ""}
   </li>`;
+}
+
+/* ---------- "Dit ben ik" (SC5): per apparaat, geen account; de DM weet er niets van ---------- */
+const ME_KEY = "it-pv-me";
+let me = readMe(), lastV = null, prevMs = null, pickOpen = false;
+function readMe() {
+  try {
+    const o = JSON.parse(localStorage.getItem(ME_KEY) || "null");
+    return o && typeof o.id === "string" ? { id: o.id.slice(0, 40), name: typeof o.name === "string" ? o.name.slice(0, 120) : "", buzz: o.buzz !== false } : null;
+  } catch { return null; }
+}
+function saveMe() {
+  try { me ? localStorage.setItem(ME_KEY, JSON.stringify(me)) : localStorage.removeItem(ME_KEY); } catch { /* privémodus: alleen deze sessie */ }
+}
+const canBuzz = () => typeof navigator.vibrate === "function";
+
+/** Eigen kaart: HP, death saves, tags, slots/daily/resources. Alleen-lezen. */
+function meCard(c) {
+  if (!c) return `<p class="pvmiss">${esc(me.name || "Je personage")} staat nu niet in de lijst. <button type="button" class="link" data-mepick="1">Kies opnieuw</button></p>`;
+  const sl = c.sl || { s: [], d: [], r: [] }, b = (t, x) => `<span class="bd b">${esc(t)} ${x.left}/${x.max}</span>`;
+  const slots = [...sl.s.map((x) => b(ORD[x.l] || `${x.l}th`, x)), ...sl.d.map((x) => b(x.n, x)), ...sl.r.map((x) => b(x.n, x))].join("");
+  const ds = dsB(c), tags = tagsB(c);
+  return `<div class="pvmehead">${av(c)}<b class="nm">${esc(c.name)}</b></div>
+    <div class="pvhp">${hp(c)}</div>
+    ${ds || tags ? `<div class="badges">${ds}${tags}</div>` : ""}
+    ${slots ? `<div class="badges pvsl"><span class="l">Slots</span>${slots}</div>` : ""}`;
+}
+
+function paintMe(V, row0) {
+  const btn = $("#pv-me"), card = $("#pv-mecard");
+  const pcs = V ? V.list.filter((c) => c.kind === "pc") : [];
+  btn.hidden = !pcs.length && !me;
+  btn.textContent = me ? `Jij: ${me.name || "?"}` : "Wie ben jij?";
+  btn.setAttribute("aria-expanded", String(pickOpen));
+  card.hidden = !me || !V;
+  card.innerHTML = me && V ? meCard(row0) : "";
+  paintPick(pcs);
+}
+
+function paintPick(pcs) {
+  const el = $("#pv-mepick");
+  el.hidden = !pickOpen;
+  if (!pickOpen) { el.innerHTML = ""; return; }
+  el.innerHTML = `<h2 id="pv-mepick-h">Welk personage ben jij?</h2>
+    ${pcs.length ? pcs.map((c) => `<button type="button" class="btn tap pvpickb" data-me="${esc(c.id)}" aria-pressed="${!!me && me.id === c.id}">${av(c)}<span class="nm">${esc(c.name)}</span></button>`).join("")
+      : `<p class="hint">Er staan nog geen spelers in de lijst.</p>`}
+    <button type="button" class="btn tap" data-me="">Niemand, ik kijk alleen mee</button>
+    ${canBuzz() ? `<label class="chk"><input type="checkbox" id="pv-buzz" ${!me || me.buzz ? "checked" : ""}> Trillen als ik bijna aan de beurt ben</label>` : ""}
+    <button type="button" class="link" data-mepick="0">Sluit</button>`;
+}
+
+function setPick(open) {
+  pickOpen = open;
+  paintMe(lastV, findMe(lastV, me));
+  if (open) $("#pv-mepick").querySelector("button").focus();
+  else $("#pv-me").focus();
+}
+
+function bindMe() {
+  $("#pv-me").addEventListener("click", () => setPick(!pickOpen));
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-me],[data-mepick]");
+    if (!t) return;
+    if (t.dataset.mepick != null) { setPick(t.dataset.mepick === "1"); return; }
+    const id = t.dataset.me, c = lastV && lastV.list.find((x) => x.id === id);
+    const buzz = $("#pv-buzz") ? $("#pv-buzz").checked : true;
+    me = id && c ? { id, name: c.name, buzz } : null;
+    saveMe();
+    prevMs = null; // geen trilling bij het kiezen zelf
+    pickOpen = false;
+    if (lastV) paint(lastV); else paintMe(null, null);
+    $("#pv-me").focus();
+  });
+  document.addEventListener("change", (e) => {
+    if (e.target.id !== "pv-buzz" || !me) return;
+    me.buzz = e.target.checked; saveMe();
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && pickOpen) setPick(false); });
 }
 
 function paint(V) {
@@ -43,21 +124,30 @@ function paint(V) {
   const j = JSON.stringify(V);
   if (j !== lastJson) { lastJson = j; lastAt = Date.now(); }
   paused = false; netOk();
-  $("#pv-now").innerHTML = headHtml(V);
+  lastV = V;
+  const mine = findMe(V, me);
+  if (mine && mine.id !== me.id) { me.id = mine.id; saveMe(); } // gevonden op naam: id bijwerken
+  const meId = mine ? mine.id : null, ms = meState(V, meId);
+  const pat = me && me.buzz && !netLost ? buzzFor(prevMs, ms) : null;
+  prevMs = ms;
+  if (pat && canBuzz()) try { navigator.vibrate(pat); } catch { /* geen probleem */ }
+  $("#pv-now").innerHTML = headHtml(V, meId);
+  $("#pv-now").classList.toggle("me", ms === "turn");
+  paintMe(V, mine);
   // dode monsters niet in de volgorde maar als één regel onderaan (zoals het blok "Neer" bij de DM)
   // (buiten de lijst, zodat hij bij twee kolommen onder beide kolommen staat)
   const down = V.list.filter((c) => c.kind === "monster" && c.out);
   const rows = V.list.filter((c) => !down.includes(c));
   const L = $("#pv-list");
-  L.innerHTML = rows.map((c) => row(c, V)).join("");
+  L.innerHTML = rows.map((c) => row(c, V, meId)).join("");
   // tv/tablet liggend: vanaf 7 regels twee kolommen (eerst links van boven naar beneden, dan rechts); CSS bepaalt wanneer
   document.body.classList.toggle("two", rows.length >= 7);
   $("#pv-down").hidden = !down.length;
   $("#pv-down").innerHTML = down.length ? `<span class="l">Neer</span> ${down.map((c) => esc(c.name)).join(", ")}` : "";
   const el = document.querySelector(".pvc.turn");
   if (el) {
-    const r = el.getBoundingClientRect();
-    if (r.top < 0 || r.bottom > innerHeight) el.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    const r = el.getBoundingClientRect(), top = $("#pv-stick").getBoundingClientRect().bottom; // onder de vaste kop (SC4)
+    if (r.top < top || r.bottom > innerHeight) el.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }
 }
 
@@ -76,6 +166,13 @@ function boot() {
     else document.documentElement.requestFullscreen().catch(() => {});
   });
   keepAwake();
+  bindMe();
+  paintMe(null, null);
+  // SC4: hoogte van de vaste kop, zodat scrollIntoView de beurt er niet onder zet (scroll-margin-top)
+  const stick = $("#pv-stick");
+  const setStick = () => document.documentElement.style.setProperty("--stick", `${Math.ceil(stick.getBoundingClientRect().height)}px`);
+  if ("ResizeObserver" in window) new ResizeObserver(setStick).observe(stick);
+  setStick();
 
   // lokaal (ander venster op dit apparaat) luistert altijd mee; een kamercode (?k= of invoeren) verbindt via internet
   const ch = localChannel();
@@ -113,7 +210,7 @@ function bar() {
 }
 function netLostNow() {
   if (netLost) return;
-  netLost = true; bar();
+  netLost = true; prevMs = null; bar(); // na herverbinden niet trillen om een oude overgang
   clearTimeout(lostT);
   lostT = setTimeout(() => {
     if (!netLost || paused || !lastAt) return;
@@ -160,6 +257,7 @@ function clear() {
   clearTimeout(lostT); clearTimeout(dmT); dmT = 0; netLost = dmGone = false; lastAt = 0; lastJson = ""; bar();
   $("#pv-now").innerHTML = ""; $("#pv-list").innerHTML = "";
   $("#pv-down").hidden = true; $("#pv-down").innerHTML = ""; document.body.classList.remove("two");
+  $("#pv-now").classList.remove("me"); lastV = null; prevMs = null; pickOpen = false; paintMe(null, null);
 }
 
 /**

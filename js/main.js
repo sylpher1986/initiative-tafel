@@ -5,6 +5,7 @@ import { render, ui, setAfterRender, mode } from "./ui/render.js";
 import { initTour, tourTick, tourKey, killTour } from "./ui/tour.js";
 import { toPlayerView } from "./playerview.js";
 import { visNow } from "./ui/playervis.js";
+import { pcReact } from "./ui/pcreact.js";
 import { localChannel, dmLink } from "./share.js";
 import { bindSharing, dropSharing } from "./ui/kamer.js";
 import { setWriteGuard } from "./storage.js";
@@ -109,7 +110,7 @@ async function boot() {
     if (view) return view;
     const S = app.S;
     if (!S.round) prevTurn = null;
-    view = toPlayerView(S, (c) => (c.ref ? findMon(c.ref)?.meta : ""), visNow(), prevTurn);
+    view = toPlayerView(S, (c) => (c.ref ? findMon(c.ref)?.meta : ""), visNow(), prevTurn, { pcReact: pcReact() });
     if (view.active && view.active === S.active) prevTurn = { id: view.active, round: view.round };
     return view;
   };

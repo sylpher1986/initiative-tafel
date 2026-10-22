@@ -5,7 +5,7 @@ import { paintSetStat } from "./settings.js";
 import { $, esc, n0, spellLink } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
-import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf, isSurprised, canToggleSurprise, nextUp, freshRoll, initPlan, initText } from "../rules/turns.js";
+import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf, isSurprised, reactUsed, canToggleSurprise, nextUp, freshRoll, initPlan, initText } from "../rules/turns.js";
 import { PRESETS as PRESETS_14, presetsFor, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn } from "../rules/effects.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList, splitSpells, edFor, sheetEd } from "../rules/spells.js";
@@ -202,7 +202,9 @@ function effChips(c, S, interactive) {
 }
 
 /** Conditie- en effect-chips (alleen tekst) voor de speler-sheet in het zijpaneel */
-const sbChips = (c) => condChips(c, app.S, false) + effChips(c, app.S, false);
+const sbChips = (c) => condChips(c, app.S, false) + effChips(c, app.S, false) + reactChip(c, app.S);
+/** GV12: reaction gebruikt tot hij terug is (begin eigen beurt); dichte kaart en live-blok */
+const reactChip = (c, S) => (reactUsed(c, S, pcReact()) ? `<span class="bd">Reaction op</span>` : "");
 
 const hidBadge = (c) => (c.hidden ? `<span class="bd hid" title="Spelers zien deze deelnemer niet">verborgen</span>` : "")
   + (c.kind === "monster" && c.anon ? `<span class="bd hid" title="Spelers zien: ${esc(anonName(c, app.S.list))}">onbekend</span>` : "");
@@ -220,7 +222,7 @@ function badges(c, S) {
   (c.rc || []).forEach((r) => out.push(`<span class="bd ${r.ready ? "g" : ""}">${esc(r.n)} ${r.ready ? "klaar" : "op"}</span>`));
   if (c.la) out.push(`<span class="bd r">LA ${n0(c.la.left)}</span>`);
   if (c.lr) out.push(`<span class="bd r">LR ${n0(c.lr.left)}/dag</span>`);
-  if (c.reaction && !isSurprised(c, S) && (c.kind !== "pc" || pcReact())) out.push(`<span class="bd">Reaction gebruikt</span>`);
+  out.push(reactChip(c, S));
   const html = out.join("");
   return html ? `<div class="badges">${html}</div>` : "";
 }
@@ -395,7 +397,7 @@ function actionsBlock(c) {
   const react = c.kind !== "pc" || pcReact(); // GV4: spelers houden hun reaction zelf bij (instelling); Heal neemt de plek over
   return `<div class="acts">
     ${c.max ? `<button class="dmg2 wide" data-a="sheet-open" data-kind="dmg">− Schade</button><button class="heal2${react ? "" : " wide"}" data-a="sheet-open" data-kind="heal">+ Heal</button>` : ""}
-    ${!react ? "" : isSurprised(c, app.S) ? `<button disabled title="Verrast: geen reaction tot de eigen beurt voorbij is">Verrast</button>` : `<button data-a="react" aria-pressed="${!!c.reaction}">${c.reaction ? "Reaction ✓" : "Reaction"}</button>`}
+    ${!react ? "" : isSurprised(c, app.S) ? `<button disabled title="Verrast: geen reaction tot de eigen beurt voorbij is">Verrast</button>` : `<button data-a="react" aria-pressed="${!!c.reaction}"${c.reaction ? ` title="Reaction gebruikt · tik om terug te zetten"` : ""}>${c.reaction ? "Reaction op" : "Reaction"}</button>`}
     <button data-a="panel" data-p="conds" aria-pressed="${ui.panel === "conds"}">Conditie</button>
     <button data-a="panel" data-p="eff" aria-pressed="${ui.panel === "eff"}" ${gone ? "disabled" : ""}>Effect</button>
     ${sideBtn}

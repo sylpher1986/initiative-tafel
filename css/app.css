@@ -787,6 +787,62 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .downbtn{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;width:100%;min-height:44px;padding:0 12px;border:1px dashed var(--line);border-radius:var(--r);color:var(--muted);font-weight:700;font-size:.9rem;cursor:pointer}
 .downbtn:focus-visible{outline:2px solid var(--active);outline-offset:2px}
 .pvdown{margin:0;color:var(--muted);padding:.4em .7em;border:1px dashed var(--line);border-radius:var(--r)}
+/* SC4: kop (verbinding + aan de beurt) vast bovenaan; de titel scrolt weg. Eén regel per naam, zodat de kop nooit groeit */
+.pvstick{position:sticky;top:0;z-index:5;background:var(--bg);padding-top:env(safe-area-inset-top,0px);display:grid;grid-template-columns:minmax(0,1fr);gap:.4em}
+.pvstick:has(.pvnow:empty):has(.pvnet[hidden]){display:none}
+.pvstick .pvnow b,.pvstick .pvnow .r{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;max-width:100%}
+.pvstick .pvnow>div{min-width:0;max-width:100%}
+.pvstick .pvnow .r .l{display:inline;margin-right:.4em}
+.pvstick .pvnow b{display:block}
+@media (max-width:360px){.pvstick .pvnow b{font-size:1.3em}}
+.pvc{scroll-margin-top:calc(var(--stick,0px) + .5em)}
+/* SC5: "Dit ben ik" */
+.pvtools{display:flex;gap:.4em;flex-wrap:wrap}
+#pv-me{max-width:12em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;line-height:44px;padding-block:0}
+.pvpick{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:.6em .8em;display:grid;gap:.4em}
+.pvpick h2{font-size:1em;margin:0}
+.pvpickb{display:flex;align-items:center;gap:.5em;justify-content:flex-start;text-align:left;width:100%;min-height:44px}
+.pvpickb .av{width:1.6em;height:1.6em;flex:0 0 auto}
+.pvpickb .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.pvpickb[aria-pressed="true"]{border-color:var(--active);box-shadow:0 0 0 2px var(--active) inset}
+.pvpick .chk{font-size:.8em}
+.pvpick .link{justify-self:start}
+.pvnow.me{background:var(--active);border-color:var(--active)}
+.pvnow.me b,.pvnow.me .l,.pvnow.me .r{color:var(--surface)}
+.pvnow .r.me{color:var(--active);font-weight:700}
+.pvnow.me .r.me{color:var(--surface)}
+.pvme{background:var(--surface);border:2px solid var(--active);border-radius:var(--r);padding:.5em .8em;display:grid;grid-template-columns:minmax(0,1fr);gap:.35em}
+.pvme>*{grid-column:1/-1}
+.pvmehead{display:flex;align-items:center;gap:.5em;min-width:0}
+.pvmehead .av{width:1.9em;height:1.9em;flex:0 0 auto;background:var(--active-soft);color:var(--active)}
+.pvmehead .av .ic{width:1.25em;height:1.25em}
+.pvmehead .nm{font-family:var(--display);font-size:1.05em;line-height:1.2;min-width:0;overflow-wrap:anywhere}
+.pvme>.pvhp{display:flex;flex-direction:row;align-items:center;gap:.5em}
+.pvme .pvhp .hpw{width:auto;flex:1}
+.pvme .bd{font-size:.7em}
+.pvme .badges{padding:0;margin:0}
+.pvsl .l{font-size:.6em;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);align-self:center;margin-right:.2em}
+.pvmiss{margin:0;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:0 .5em}
+.pvc.me{box-shadow:inset 4px 0 0 var(--active)}
+.pvc.me.turn{box-shadow:inset 4px 0 0 var(--active),0 0 0 2px var(--active) inset}
+/* SC8: lange namen over twee regels in de lijst (de vaste kop houdt één regel) */
+.pvn{align-items:flex-start}
+.pvn .av,.pvn .pvnext{align-self:center}
+.pvn .nm{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere;hyphens:auto;align-self:center}
+/* SC4: lage schermen (telefoon liggend, groot lettertype): compacte kop op één regel en compactere kaarten */
+@media (max-height:500px){
+  body.pv{font-size:clamp(14px,1rem + .6vw,22px)}
+  .pvwrap{gap:.4em}
+  .pvnow{padding:.3em .7em;align-items:center;flex-wrap:nowrap}
+  .pvnow .l{display:inline;margin-right:.4em}
+  .pvnow b,.pvstick .pvnow b{font-size:1.15em;display:inline}
+  .pvnow .r{font-size:.95em;flex:0 1 auto;min-width:0}
+  .pvnow>div:first-child{flex:1 1 auto}
+  ol.pvlist{gap:.25em}
+  .pvc{padding-block:.25em}
+  .pvc .av{width:1.5em;height:1.5em}
+  .pvc .bd{font-size:.58em}
+}
 /* tv en tablet liggend: letter schaalt met de hoogte, vanaf 7 regels twee kolommen (body.two uit speler.js) */
 @media (orientation:landscape) and (min-width:900px){
   body.pv{font-size:clamp(14px,3vh,30px)}

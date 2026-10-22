@@ -17,11 +17,16 @@
   <header class="pvtop">
     <h1>Initiative <span>Tafel</span></h1>
     <div class="pvtools">
+      <button type="button" class="btn small" id="pv-me" aria-controls="pv-mepick" aria-expanded="false" hidden>Wie ben jij?</button>
       <button type="button" class="btn small" id="pv-full">Volledig scherm</button>
     </div>
   </header>
-  <p class="pvnet" id="pv-net" role="status" hidden></p>
-  <section class="pvnow" id="pv-now" aria-live="polite"></section>
+  <section class="pvpick" id="pv-mepick" aria-labelledby="pv-mepick-h" hidden></section>
+  <div class="pvstick" id="pv-stick">
+    <p class="pvnet" id="pv-net" role="status" hidden></p>
+    <section class="pvnow" id="pv-now" aria-live="polite"></section>
+  </div>
+  <section class="pvme" id="pv-mecard" aria-label="Jouw personage" hidden></section>
   <ol class="pvlist" id="pv-list"></ol>
   <p class="pvdown" id="pv-down" hidden></p>
   <p class="hint pvwait" id="pv-wait">Wacht op het DM-scherm…</p>
