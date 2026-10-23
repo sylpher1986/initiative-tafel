@@ -62,6 +62,8 @@ button{cursor:pointer}
 header.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;justify-content:space-between}
 h1{font-family:var(--brand);font-weight:800;font-size:1.6rem;margin:0;letter-spacing:0;line-height:1.15;text-wrap:balance}
 h1 span{color:var(--act-ink)}
+/* WP16 (HS5): embleem vóór het woordmerk, merk en geen knop (geen vlak, rand of tikvlak); schaalt met de h1 (34 px bij 1.6rem) */
+h1 .emb{width:1.33em;height:1.33em;vertical-align:-.28em;margin-right:.3em;color:var(--act-ink)}
 .round{display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
 .round b{font-family:var(--display);font-size:1.15rem}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;min-height:44px;min-width:44px}
@@ -642,6 +644,9 @@ body.pv{font-size:clamp(16px,1.1rem + .9vw,30px);padding-bottom:max(24px,env(saf
 .pvwrap{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:.8em}
 .pvtop{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .pv h1{font-size:1.3em}
+/* WP16: tagline alleen in de wachtstand (geen gevecht), Inter en gedempt: het wachtbericht blijft de hoofdboodschap */
+.pvbrand{min-width:0}
+.pvtag{margin:.15em 0 0;font-size:1rem;color:var(--muted)}
 .pvnow{background:var(--act-soft);border:1px solid var(--sel);border-radius:var(--r);padding:.6em .9em;display:flex;justify-content:space-between;align-items:flex-end;gap:.4em 1.2em;flex-wrap:wrap}
 .pvnow:empty{display:none}
 .pvnow .l{display:block;font-size:.6em;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
@@ -903,6 +908,7 @@ body.tv .pvlog{min-height:calc(3 * 1.35em)}
 body.pv.tv{font-size:var(--tvfs,30px);padding-bottom:0}
 body.pv.tv .pvwrap{max-width:none;padding:0 2vw;gap:.35em}
 body.pv.tv .pvtop h1{font-size:.7em;margin:0}
+body.pv.tv .pvtag{font-size:.45em;margin:0}
 :root:fullscreen body.pv.tv .pvtop{display:none}
 :root:-webkit-full-screen body.pv.tv .pvtop{display:none}
 body.pv.tv .pvnow{padding:.3em .8em}

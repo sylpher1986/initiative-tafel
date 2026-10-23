@@ -42,7 +42,7 @@ function serve() {
 }
 
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
-const START = { speler: "/speler" };
+const START = { speler: "/speler", tagline: "/speler" };
 const tap = (page, sel) => page.locator(sel).first().tap();
 
 // Scenario's. Elk begint op een verse pagina (rondleiding uit, lege opslag).
@@ -84,6 +84,15 @@ const SCEN = {
     await page.waitForSelector(".sb h2", { state: "visible" });
   },
   speler: null, // eigen startpagina, zie START
+  // WP16: embleem ±34 px vóór het woordmerk, samen op één regel; tagline alleen op het spelersscherm in de wachtstand
+  async logo(page) {
+    await SCEN.prep(page);
+    const r = await page.evaluate(async () => { await document.fonts.ready; const h = document.querySelector("h1"), e = h.querySelector(".emb"), b = e.getBoundingClientRect();
+      return { w: Math.round(b.width), top: Math.round(b.top), ht: Math.round(h.getBoundingClientRect().top), hh: Math.round(h.getBoundingClientRect().height), lh: parseFloat(getComputedStyle(h).lineHeight) }; });
+    if (r.w < 30 || r.w > 38) throw new Error("embleem " + r.w + " px");
+    if (r.hh > 1.6 * r.lh) throw new Error("h1 over meer regels: " + JSON.stringify(r));
+  },
+  async tagline(page) { if (!(await page.locator("#pv-tag").isVisible())) throw new Error("tagline niet zichtbaar in de wachtstand"); },
 };
 
 // Meting in de pagina: horizontaal scrollen en zichtbare tikdoelen kleiner dan 44 px.
@@ -127,7 +136,7 @@ async function main() {
       page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource/.test(m.text())) errs.push(m.text()); });
       try {
         await page.goto(base + (START[name] || "/"));
-        if (SCEN[name]) { await page.waitForSelector("#dock"); await SCEN[name](page, base); }
+        if (SCEN[name]) { if (!START[name]) await page.waitForSelector("#dock"); await SCEN[name](page, base); }
         else await page.waitForLoadState("networkidle");
         if (process.env.BC_PROBE) await page.evaluate(() => document.body.insertAdjacentHTML("afterbegin", '<button id="probe" style="width:30px;height:30px">x</button>'));
         await page.evaluate(() => document.fonts.ready); // Inter is breder dan de terugvalletter: meten met de echte letter

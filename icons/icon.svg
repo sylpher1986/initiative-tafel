@@ -1,7 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#8a1f14"/>
-  <polygon points="256,72 416,164 416,348 256,440 96,348 96,164" fill="none" stroke="#fff" stroke-width="22" stroke-linejoin="round"/>
-  <polygon points="256,150 352,318 160,318" fill="none" stroke="#fff" stroke-width="18" stroke-linejoin="round"/>
-  <path d="M256 72 256 150 M416 164 352 318 M96 164 160 318 M256 440 352 318 M256 440 160 318 M96 348 160 318 M416 348 352 318 M96 164 256 150 M416 164 256 150" stroke="#fff" stroke-width="12" stroke-linecap="round" opacity=".7"/>
-  <text x="256" y="292" font-family="Georgia,serif" font-size="78" font-weight="700" fill="#fff" text-anchor="middle">20</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#3b2f26"/><path d="M32 3 57 17.5v29L32 61 7 46.5v-29Z" fill="#d4a44b"/><g fill="#3b2f26"><path d="M29 15a3 3 0 0 1 6 0v2h-2v-2a1 1 0 0 0-2 0v2h-2Z"/><path d="M23 18h18l-3 5H26Z"/><path d="M25 24h14l3 4v15H22V28Z"/><rect x="20" y="45" width="24" height="4" rx="1"/></g><path d="M32 29c-3.5 4-3.5 7.5 0 10 3.5-2.5 3.5-6 0-10Z" fill="#d4a44b"/></svg>

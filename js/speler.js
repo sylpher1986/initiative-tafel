@@ -217,7 +217,7 @@ function fitTv(force) {
   b.classList.toggle("tv", tv);
   if (!tv) { b.classList.remove("cols"); b.style.removeProperty("--tvfs"); tvSig = ""; return; }
   const n = $("#pv-list").children.length;
-  const sig = [n, vis("#pv-mecard"), vis("#pv-log"), vis("#pv-down"), vis("#pv-net"), vis("#pv-wait"), vis("#pv-qr"), !!$("#pv-now").innerHTML, !!document.fullscreenElement, innerWidth, innerHeight].join();
+  const sig = [n, vis("#pv-mecard"), vis("#pv-log"), vis("#pv-down"), vis("#pv-net"), vis("#pv-wait"), vis("#pv-tag"), vis("#pv-qr"), !!$("#pv-now").innerHTML, !!document.fullscreenElement, innerWidth, innerHeight].join();
   const doc = document.documentElement, over = () => doc.scrollHeight > innerHeight + 1;
   // past het niet eens op de kleinste maat, dan is overlopen geaccepteerd (geen nieuwe zoektocht bij elke stand)
   if (!force && (sig === tvSig || sig + "|over" === tvSig) && (tvSig.endsWith("|over") || !over())) return;
@@ -230,10 +230,12 @@ function fitTv(force) {
 let tvRaf = 0;
 const refit = () => { cancelAnimationFrame(tvRaf); tvRaf = requestAnimationFrame(() => fitTv(true)); };
 
-/** QR op de tv: alleen via een kamer (het lokale kanaal heeft geen code), zonder gevecht of tijdens de pauze */
+/** QR op de tv (en de tagline, overal): alleen via een kamer (het lokale kanaal heeft geen code), zonder gevecht of tijdens de pauze */
 let qrFor = "";
 function tvQr() {
-  const el = $("#pv-qr"), on = TV_MQ.matches && !!room && !!code && (paused || !lastV || !lastV.round);
+  const idle = paused || !lastV || !lastV.round;
+  $("#pv-tag").hidden = !idle; // WP16: tagline alleen in de wachtstand, weg zodra er een gevecht is
+  const el = $("#pv-qr"), on = TV_MQ.matches && !!room && !!code && idle;
   el.hidden = !on;
   document.body.classList.toggle("qr", on);
   if (!on || qrFor === code) return;
