@@ -30,10 +30,10 @@ const PAIRS = [
   ["fg", "bg", TEXT, "tekst"], ["fg", "surface", TEXT, "tekst op kaart"], ["fg", "sunk", TEXT, "tekst op verzonken vlak"],
   ["muted", "bg", TEXT, "secundaire tekst"], ["muted", "surface", TEXT, "secundaire tekst op kaart"], ["muted", "sunk", TEXT, "secundaire tekst verzonken"],
   ["act-fg", "act", TEXT, "tekst op gouden knop / beurtvlak"], ["act-ink", "bg", TEXT, "goud als tekst/link"], ["act-ink", "surface", TEXT, "goud als tekst op kaart"],
-  ["act-ink", "act-soft", TEXT, "goud op geselecteerd vlak"], ["fg", "act-soft", TEXT, "tekst op geselecteerd vlak"],
-  ["good", "surface", TEXT, "gelukt"], ["good", "bg", TEXT, "gelukt op pagina"], ["good-fg", "good", TEXT, "tekst op Heal-knop"],
-  ["warn", "surface", TEXT, "waarschuwing"], ["warn", "bg", TEXT, "waarschuwing op pagina"], ["warn", "warn-soft", TEXT, "waarschuwing op zacht vlak"], ["fg", "warn-soft", TEXT, "tekst op amber vlak"],
-  ["bad", "surface", TEXT, "fout/destructief"], ["bad", "bg", TEXT, "fout op pagina"], ["bad", "bad-soft", TEXT, "Deadly-chip"], ["bad-fg", "bad", TEXT, "tekst op rood vlak"],
+  ["act-ink", "act-soft", TEXT, "goud op geselecteerd vlak"], ["fg", "act-soft", TEXT, "tekst op geselecteerd vlak"], ["muted", "act-soft", TEXT, "label in beurtvlak"],
+  ["good", "surface", TEXT, "gelukt"], ["good", "bg", TEXT, "gelukt op pagina"], ["good-fg", "good", TEXT, "tekst op Heal-knop"], ["good", "sunk", TEXT, "gelukt op verzonken vlak"],
+  ["warn", "surface", TEXT, "waarschuwing"], ["warn", "bg", TEXT, "waarschuwing op pagina"], ["warn", "warn-soft", TEXT, "waarschuwing op zacht vlak"], ["fg", "warn-soft", TEXT, "tekst op amber vlak"], ["warn", "sunk", TEXT, "waarschuwing op verzonken vlak"], ["bg", "warn", TEXT, "conditieknop hover"],
+  ["bad", "surface", TEXT, "fout/destructief"], ["bad", "bg", TEXT, "fout op pagina"], ["bad", "bad-soft", TEXT, "Deadly-chip"], ["bad", "sunk", TEXT, "fout op verzonken vlak (lair)"],
   ["info", "surface", TEXT, "info/delen"], ["info", "bg", TEXT, "info op pagina"], ["bg", "info", TEXT, "temp HP-knop"],
   ["fg", "mon-soft", TEXT, "monster-avatar/tag"], ["fg", "pc-soft", TEXT, "speler-avatar"],
   ["bg", "fg", TEXT, "Schade-knop, melding"], ["t-link", "fg", TEXT, "knop op melding"], ["t-good", "fg", TEXT, "crit op melding"], ["t-bad", "fg", TEXT, "fumble op melding"],
@@ -66,9 +66,17 @@ test("donker thema staat twee keer gelijk (systeem en vaste keuze)", () => {
   assert.deepEqual(Object.keys(darkSys).sort(), Object.keys(light).sort());
 });
 
-test("op goud nooit wit", () => {
+test("op goud alleen --act-fg als voorgrond (nooit wit)", () => {
   for (const T of [light, darkSys]) assert.notEqual(T["act-fg"], "#ffffff");
-  assert.doesNotMatch(css, /background:var\(--act\)[^}]*color:#fff/);
+  // elke regel met een gouden vlak zet zelf --act-fg, of erft hem via een regel die dat doet (.pvnow.me)
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*background:var\(--act\)[^{}]*)\}/g)];
+  assert.ok(rules.length >= 5);
+  for (const [, sel, body] of rules) {
+    const own = /(^|;)color:var\(--act-fg\)/.test(body);
+    const kids = sel.trim().split(",").every((x) => new RegExp(x.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + " [^{]*\\{[^}]*color:var\\(--act-fg\\)").test(css));
+    assert.ok(own || kids, `gouden vlak zonder --act-fg: ${sel.trim()}`);
+  }
+  assert.doesNotMatch(css, /\.pvnow\.me[^{]*\{[^}]*color:var\(--(surface|bg)\)/);
 });
 
 test("geen oude accenttokens en geen hex in componenten", () => {

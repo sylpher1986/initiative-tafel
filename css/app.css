@@ -24,8 +24,8 @@ img{max-width:100%}
   --bg:#f7f6f2; --surface:#ffffff; --sunk:#eceae3; --line:#d6d5cd; --line-strong:#8a8a8a;
   --fg:#1f1f1f; --muted:#5b5b5b;
   --act:#d4a44b; --act-fg:#3b2f26; --act-ink:#7a5714; --act-soft:#f5ead0; --focus:#7a5714; --sel:#7a5714;
-  --good:#2e7d32; --good-fg:#ffffff; --warn:#9a6200; --warn-soft:#fbf3e4;
-  --bad:#c62828; --bad-fg:#ffffff; --bad-soft:#fbe9e7; --info:#1f5fbf; --info-soft:#e3ecf9;
+  --good:#286b2c; --good-fg:#ffffff; --warn:#8f5a00; --warn-soft:#fbf3e4;
+  --bad:#c62828; --bad-soft:#fbe9e7; --info:#1f5fbf;
   --mon:#5b5b5b; --mon-soft:#e2e0da; --pc-soft:#ebdcc6; --sb-ink:#8a1f14;
   --fight-bg:#3b2f26; --fight-fg:#ffffff; --fight-muted:#d9cfc2; --fight-btn:#4a3c31; --fight-btn-line:#a08c78;
   --t-link:#e0b565; --t-good:#7fe08f; --t-bad:#ff9a90; /* op de melding (achtergrond --fg) */
@@ -38,7 +38,7 @@ img{max-width:100%}
   --fg:#ede8e0; --muted:#b5ada2;
   --act:#d4a44b; --act-fg:#2a2019; --act-ink:#e0b565; --act-soft:#3a2f1c; --focus:#e0b565; --sel:#d4a44b;
   --good:#6cc287; --good-fg:#0f2414; --warn:#e3a944; --warn-soft:#2e2614;
-  --bad:#f28b82; --bad-fg:#2a0f0c; --bad-soft:#3a2321; --info:#8ab4f8; --info-soft:#1c2a40;
+  --bad:#f28b82; --bad-soft:#3a2321; --info:#8ab4f8;
   --mon:#b5ada2; --mon-soft:#34312d; --pc-soft:#3b3226; --sb-ink:#e0705f;
   --fight-bg:#3a322b; --fight-fg:#ede8e0; --fight-muted:#c9c0b4; --fight-btn:#4a4038; --fight-btn-line:#9a8e80;
   --t-link:#7a5714; --t-good:#276a3a; --t-bad:#b3261e; color-scheme:dark }}
@@ -47,7 +47,7 @@ img{max-width:100%}
   --fg:#ede8e0; --muted:#b5ada2;
   --act:#d4a44b; --act-fg:#2a2019; --act-ink:#e0b565; --act-soft:#3a2f1c; --focus:#e0b565; --sel:#d4a44b;
   --good:#6cc287; --good-fg:#0f2414; --warn:#e3a944; --warn-soft:#2e2614;
-  --bad:#f28b82; --bad-fg:#2a0f0c; --bad-soft:#3a2321; --info:#8ab4f8; --info-soft:#1c2a40;
+  --bad:#f28b82; --bad-soft:#3a2321; --info:#8ab4f8;
   --mon:#b5ada2; --mon-soft:#34312d; --pc-soft:#3b3226; --sb-ink:#e0705f;
   --fight-bg:#3a322b; --fight-fg:#ede8e0; --fight-muted:#c9c0b4; --fight-btn:#4a4038; --fight-btn-line:#9a8e80;
   --t-link:#7a5714; --t-good:#276a3a; --t-bad:#b3261e; color-scheme:dark }
@@ -136,7 +136,7 @@ ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .rcs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .rc{font-size:.8rem;min-height:44px;padding:0 12px;border-radius:99px;border:1px solid var(--good);color:var(--good);background:transparent}
 .rc[aria-pressed="false"]{border-color:var(--line-strong);color:var(--muted);border-style:dashed}
-.tag.l{background:var(--sunk);color:var(--fg)}
+.tag.l{background:var(--surface);color:var(--fg)}
 .c.lair{background:var(--sunk);border-style:dashed}
 .chip{font-size:.78rem;padding:2px 8px;border-radius:99px;border:1px solid var(--warn);color:var(--warn);background:transparent}
 .link{border:0;background:none;padding:2px 4px;color:var(--muted);font-size:.85rem;text-decoration:underline;text-underline-offset:2px}
@@ -166,7 +166,7 @@ details.conds summary::-webkit-details-marker{display:none}
 .pm .pn{font-weight:700}
 .pm .pi{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .pm .pc{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
-.pm .pc input{width:64px;min-height:44px;padding:4px;text-align:center;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+.pm .pc input{width:64px;min-height:44px;padding:4px;text-align:center;border:1px solid var(--line-strong);border-radius:6px;background:var(--bg)}
 .pm .here{font-size:.8rem;color:var(--good);font-weight:700}
 .logbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px}
 .logbox summary{cursor:pointer;font-family:var(--display);font-weight:700;font-size:1.05rem;display:flex;gap:8px;align-items:center;min-height:44px}
@@ -183,7 +183,7 @@ details.conds summary::-webkit-details-marker{display:none}
 .gsheet .lglist{max-height:none;overflow:visible}
 .lg-why{font-size:.85rem;color:var(--muted);font-style:italic}
 .lg-note{position:relative;z-index:1;justify-self:start;border:0;background:var(--sunk);color:var(--fg);border-radius:6px;padding:2px 8px;font-size:.85rem;text-align:left}
-.lg-in{position:relative;z-index:1;width:100%;border:1px solid var(--line);border-radius:6px;background:var(--bg);padding:6px 8px;margin-top:2px}
+.lg-in{position:relative;z-index:1;width:100%;border:1px solid var(--line-strong);border-radius:6px;background:var(--bg);padding:6px 8px;margin-top:2px}
 .lg-round{font-family:var(--display);font-weight:700;color:var(--fg);padding:10px 0 2px;border-bottom:1px solid var(--line-strong)}
 .lg-turn{font-size:.78rem;color:var(--muted);padding:4px 0 0;text-transform:uppercase;letter-spacing:.06em}
 @media (max-width:420px){.lg{grid-template-columns:minmax(0,1fr)}.lg-meta{grid-row:auto}}
@@ -339,8 +339,10 @@ ol.order{gap:6px}
 .c.k::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:transparent}
 .c.k.mon::before{background:var(--mon)}
 .c.k.open{border-color:var(--sel);box-shadow:0 0 0 2px var(--sel) inset}
-/* WP14: aan de beurt = gouden vlak achter initiative en ▶ (plek, geen rand); geopend = ring (--sel). Samen op één kaart: vlak + ring. */
-.c.k.turn .i{align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;background:var(--act);color:var(--act-fg);padding:6px 0}
+/* WP14: aan de beurt = gouden vlak achter initiative en ▶ (plek, geen rand); geopend = ring (--sel). Samen op één kaart: vlak + ring.
+   Het vlak zelf is 2,3:1 tegen de kaart (licht): toegestaan, want ▶ (walnoot op goud, 5,7:1) en aria-current dragen de betekenis.
+   .c.k.lair.turn>.i wint van de lair-reset (.c.k.lair>.i{all:unset} en display:inline-block verderop). */
+.c.k.turn .i,.c.k.lair.turn>.i{align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;background:var(--act);color:var(--act-fg);padding:6px 0}
 .c.k.out{opacity:.55}
 .c.k.out .n span{text-decoration:line-through}
 .khead,.c.k.lair>.i,.c.k.lair>.n,.c.k.lair>.meta{all:unset}
@@ -386,7 +388,7 @@ ol.order{gap:6px}
 .kbody{padding:0 12px 12px 48px;display:grid;gap:8px}
 .acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .acts button{min-height:46px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-weight:700;font-size:.85rem;padding:4px;color:var(--fg)}
-.acts button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.acts button[aria-pressed="true"]{background:var(--act-soft);color:var(--fg);border-color:var(--sel);box-shadow:inset 0 0 0 1px var(--sel)}
 .acts .dmg2{background:var(--fg);border-color:var(--fg);color:var(--bg)}
 .acts .heal2{color:var(--good)}
 .acts .wide{grid-column:span 2}
@@ -541,7 +543,7 @@ body:has(.sheet-wrap:not([hidden])) .toast{top:calc(8px + env(safe-area-inset-to
 .adice{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
 .adice .btn{min-width:64px}
 .asave{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--sunk)}
-.asave select,.asave input{min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:0 8px;font-size:1rem}
+.asave select,.asave input{min-height:44px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);padding:0 8px;font-size:1rem}
 .asave input{width:72px;text-align:center}
 .asave .btn{margin-left:auto}
 .asel{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
@@ -852,9 +854,9 @@ body.tv .pvlog{min-height:calc(3 * 1.35em)}
 .pvpick .chk{font-size:.8em}
 .pvpick .link{justify-self:start}
 .pvnow.me{background:var(--act);border-color:var(--act)}
-.pvnow.me b,.pvnow.me .l,.pvnow.me .r{color:var(--surface)}
+.pvnow.me b,.pvnow.me .l,.pvnow.me .r{color:var(--act-fg)}
 .pvnow .r.me{color:var(--act-ink);font-weight:700}
-.pvnow.me .r.me{color:var(--surface)}
+.pvnow.me .r.me{color:var(--act-fg)}
 .pvme{background:var(--surface);border:2px solid var(--line-strong);border-radius:var(--r);padding:.5em .8em;display:grid;grid-template-columns:minmax(0,1fr);gap:.35em}
 .pvme>*{grid-column:1/-1}
 .pvmehead{display:flex;align-items:center;gap:.5em;min-width:0}
@@ -868,7 +870,6 @@ body.tv .pvlog{min-height:calc(3 * 1.35em)}
 .pvsl .l{font-size:.6em;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);align-self:center;margin-right:.2em}
 .pvmiss{margin:0;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:0 .5em}
 .pvc.me{box-shadow:inset 4px 0 0 var(--fg)}
-.pvc.me.turn{box-shadow:inset 4px 0 0 var(--fg)}
 /* SC8: lange namen over twee regels in de lijst (de vaste kop houdt één regel) */
 .pvn{align-items:flex-start}
 .pvn .av,.pvn .pvnext{align-self:center}
@@ -1019,7 +1020,7 @@ button.dchip{min-height:44px;cursor:pointer}
 .pm .pupd{display:block;min-height:44px;padding:0 8px;margin-left:-8px;text-align:left}
 .pm .pupd[aria-disabled="true"]:not([aria-busy]){opacity:.55;cursor:default}
 .pm .pupdbox{grid-column:1/-1;margin:0}
-.pm .plvl input{width:64px;min-height:44px;padding:4px;text-align:center;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+.pm .plvl input{width:64px;min-height:44px;padding:4px;text-align:center;border:1px solid var(--line-strong);border-radius:6px;background:var(--bg);color:var(--fg)}
 
 /* VB2: ingeladen encounter boven de lijst, notitie (tactiek) ingeklapt */
 .order .encn{list-style:none;display:grid;gap:4px}

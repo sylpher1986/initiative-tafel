@@ -197,7 +197,7 @@ function condChips(c, S, interactive, info = interactive) {
 const cinfoBtn = (c, key, html, cls = "bd cc") => `<button type="button" class="${cls} cinf" data-cinfo="${esc(key)}" data-cid="${esc(c.id)}" aria-label="${esc(key)}: uitleg">${html}</button>`;
 
 /** Samenvatting voor een gesloten kaart */
-/** AC in de kop (AF13): schildje met het effectieve getal, in accentkleur met vulling als effecten hem veranderen */
+/** AC in de kop (AF13): schildje met het effectieve getal, gestippeld op een verzonken vlak als effecten hem veranderen (WP14) */
 function acMeta(c) {
   const ac = effAc(c);
   return ac ? `<span class="acv${ac !== c.ac ? " acx" : ""}" title="Armor Class"><span class="vh">AC </span>${n0(ac)}</span>` : "";
@@ -590,8 +590,8 @@ function percLine() {
 function lairRow(c, S) {
   const acts = app.lairs[c.key] || [];
   const keys = [...new Set([c.key, ...Object.keys(app.lairs), ...S.list.filter((x) => x.la).map((x) => "Lair: " + x.ref)])];
-  return `<li class="c k lair ${c.id === S.active ? "turn" : ""}" data-id="${esc(c.id)}">
-    <div class="i">${n0(c.init)}</div>
+  return `<li class="c k lair ${c.id === S.active ? "turn" : ""}" data-id="${esc(c.id)}"${c.id === S.active ? ' aria-current="true"' : ""}>
+    <div class="i">${n0(c.init)}${c.id === S.active ? `<span class="tri" aria-hidden="true">▶</span>` : ""}</div>
     <div class="n"><select class="lairsel" data-f="lairkey" aria-label="Welke lair">${keys.map((k) => `<option ${k === c.key ? "selected" : ""}>${esc(k)}</option>`).join("")}</select></div>
     <div class="meta">lair</div>
     ${c.hidden ? `<div class="badges">${hidBadge(c)}</div>` : ""}
