@@ -7,7 +7,7 @@
 <meta name="description" content="Initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.">
 <meta name="theme-color" content="#8a1f14" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#13161d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="1.43.0">
+<meta name="it-version" content="1.44.0">
 <script src="js/theme.js"></script>
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
 <script>
@@ -139,8 +139,10 @@
         <div class="seg" role="group" aria-labelledby="vis-init" data-vis="init"><button type="button" data-v="false" aria-pressed="true">Volgorde</button><button type="button" data-v="true" aria-pressed="false">Getallen</button></div>
         <p class="vlbl" id="vis-tags">Condities en effecten</p>
         <div class="seg" role="group" aria-labelledby="vis-tags" data-vis="tags"><button type="button" data-v="all" aria-pressed="true">Tonen</button><button type="button" data-v="pc" aria-pressed="false">Alleen spelers</button><button type="button" data-v="none" aria-pressed="false">Verbergen</button></div>
+        <p class="vlbl" id="vis-log">Wat er net gebeurde</p>
+        <div class="seg" role="group" aria-labelledby="vis-log" data-vis="log"><button type="button" data-v="true" aria-pressed="true">Aan</button><button type="button" data-v="false" aria-pressed="false">Uit</button></div>
       </div>
-      <p class="hint">Status = Ongedeerd, Gewond, Bloodied, Bijna dood. Geldt op dit apparaat, voor alle spelersschermen.</p>
+      <p class="hint">Status = Ongedeerd, Gewond, Bloodied, Bijna dood. "Wat er net gebeurde": de laatste 2 regels (tv 3), alleen wat de lijst zelf ook toont. Geldt op dit apparaat, voor alle spelersschermen.</p>
       <h3 class="subhead">Op andere apparaten</h3>
       <div id="kamer-box" class="kamerbox"><p class="hint">Delen met spelers is niet gestart. Ververs de pagina.</p></div>
       <h3 class="subhead">Op dit apparaat</h3>
@@ -158,7 +160,7 @@
       <div class="bar"><button type="button" class="btn primary" id="exp-file">Exporteer als bestand</button><button type="button" class="btn small" id="exp-copy">Kopieer als tekst</button></div>
       <p class="hint" id="exp-last"></p>
       <div class="bar"><button type="button" class="btn tap" data-file="imp-backup">Export importeren…</button><input id="imp-backup" type="file" accept=".json,application/json" hidden></div>
-      <details class="cast"><summary class="link">Of plak de tekst van een export (bijv. uit de Claude-versie)</summary>
+      <details class="cast"><summary class="link">Of plak de tekst van een export</summary>
         <div class="form" style="margin-top:8px"><textarea id="imp-text" placeholder='{"format":"initiative-tafel", …}'></textarea>
         <button type="button" class="btn small" id="imp-text-go">Importeren</button></div></details>
       <div id="imp-confirm"></div>

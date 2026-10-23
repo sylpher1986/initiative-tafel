@@ -83,11 +83,18 @@ export function applyPcHp(c, delta) {
   return merge(out, checkDs(c));
 }
 
-export function rollDs(c, rng = Math.random) {
+export const rollDs = (c, rng = Math.random) => dsResult(c, d(20, rng), true);
+
+/**
+ * Death save met een worp (RE15: ook een getypte worp van de speler; own = de app rolde). 20 = 1 HP, 1 = twee failures,
+ * 10+ = success. Een worp buiten 1–20 doet niets.
+ */
+export function dsResult(c, r, own = false) {
   const out = fx();
+  if (!Number.isInteger(r) || r < 1 || r > 20) return out;
   c.ds = c.ds || newDs();
-  const r = d(20, rng);
-  out.why.push({ t: `death save d20 [${r}]${r === 1 ? ", telt dubbel" : r === 20 ? ", natuurlijke 20" : ""}`, id: c.id });
+  if (c.ds.dead || c.ds.stable || c.hp > 0) return out;
+  out.why.push({ t: `death save ${own ? "d20 " : "speler rolde "}[${r}]${r === 1 ? ", telt dubbel" : r === 20 ? ", natuurlijke 20" : ""}`, id: c.id });
   if (r === 20) { c.hp = 1; c.ds = null; setUncon(c, false); out.msgs.push(`Death save ${c.name}: 20! Staat op met 1 HP.`); return out; }
   if (r === 1) { c.ds.f = Math.min(3, c.ds.f + 2); out.msgs.push(`Death save ${c.name}: 1, twee failures.`); }
   else if (r >= 10) { c.ds.s++; out.msgs.push(`Death save ${c.name}: ${r}, success.`); }

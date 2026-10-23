@@ -97,10 +97,9 @@ function show(fresh) {
   t.box.querySelector('[data-tour="next"]').textContent = last ? "Klaar" : "Volgende";
   if (fresh) {
     // vaste balken (beurtbalk, kop) staan al in beeld; de rest naar het midden scrollen
-    if (!els[0].closest("#dock")) {
-      const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
-      els[0].scrollIntoView({ block: "center", behavior: calm ? "auto" : "smooth" });
-    }
+    // AF10: direct, niet smooth: anders schuift het vak mee en is Volgende pas na de animatie te raken
+    if (!els[0].closest("#dock")) els[0].scrollIntoView({ block: "center", behavior: "auto" });
+    t.box.classList.remove("fade"); void t.box.offsetWidth; t.box.classList.add("fade");
     t.box.querySelector('[data-tour="next"]').focus({ preventScroll: true });
   }
   place();

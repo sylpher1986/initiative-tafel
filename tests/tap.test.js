@@ -41,6 +41,14 @@ test("AF6: pip en death save zijn zelf 44×44 (het bolletje is ::before)", () =>
   }
 });
 
+test("AF14: worpen in de statblocktekst blijven inline (uitzondering), met ruimte eromheen", () => {
+  // Bewuste uitzondering op 44 px: targets in een zin (WCAG 2.5.8); aanvallen hebben op de kaart eigen knoppen van 44 px.
+  const d = rules.find(([sel]) => sel === ".dice");
+  assert.ok(d && /padding:\s*4px/.test(d[1]), ".dice heeft verticale padding");
+  const p = rules.find(([sel]) => sel === ".sb p,.sbx p");
+  assert.ok(p && /line-height:\s*1\.9/.test(p[1]), "ruimere regel in het statblock (padding overlapt de regel erboven niet)");
+});
+
 test("AF6: knoppen en invoervelden hebben minstens 44 px", () => {
   for (const s of [".btn", ".btn.small"]) assert.ok(px(rules.find(([sel]) => sel === s)[1], "min-height") >= 44, s);
   assert.ok(rules.some(([sel, d]) => sel.startsWith("label input") && px(d, "min-height") >= 44), "label input");

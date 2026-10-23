@@ -88,6 +88,7 @@ export const ui = {
   logSheet: false,     // logboek als paneel (IN7, alleen in Gevecht; geopend via het rondeblok in de kop)
   drOpen: null,        // id van de speler waarvan de resistances in ⋯ open staan (SP2)
   drKind: "r",         // gekozen soort bij het wijzigen: "r" resist | "i" immuun | "v" kwetsbaar
+  dsPad: null,         // { id, v } = cijferpad voor een eigen death save-worp open (RE15)
 };
 export const openId = () => (ui.open === null ? app.S.active : ui.open);
 /** Modus volgt het gevecht: zonder gevecht altijd Voorbereiden; tijdens een gevecht kan de DM tussendoor naar Voorbereiden (✎) */
@@ -259,10 +260,13 @@ function badges(c, S) {
   return html ? `<div class="badges">${html}</div>` : "";
 }
 
+/** AF12: "1st-level slot 1 van 4, beschikbaar"; geen aria-pressed (CSS stijlt op data-used) */
+const pipState = (label, i, o) => `data-used="${i >= o.left}" aria-label="${esc(`${label} ${i + 1} van ${n0(o.max)}, ${i >= o.left ? "gebruikt" : "beschikbaar"}`)}"`;
+
 function pips(o, key, label) {
   if (!o) return "";
   return `<div class="pips"><span class="lbl">${label} ${n0(o.left)}/${n0(o.max)}</span><span class="pg">${Array.from({ length: n0(o.max) }, (_, i) =>
-    `<button class="pip ${key}" data-pip="${key}" data-i="${i}" aria-pressed="${i >= o.left}" aria-label="${label} ${i + 1}"></button>`).join("")}</span></div>`;
+    `<button class="pip ${key}" data-pip="${key}" data-i="${i}" ${pipState(label, i, o)}></button>`).join("")}</span></div>`;
 }
 
 function defLine(c) {
@@ -278,11 +282,24 @@ function defLine(c) {
 function dsBlock(c) {
   if (c.kind !== "pc" || !c.max || c.hp > 0) return "";
   const d = c.ds || R.newDs();
-  const p = (k, n, l) => Array.from({ length: 3 }, (_, i) => `<button class="dsp ${k}" data-ds="${k}" data-i="${i}" aria-pressed="${i < n}" aria-label="${l} ${i + 1}"></button>`).join("");
+  // AF12: toestand in het label (geen aria-pressed: "aangevinkt, ingedrukt" spreekt elkaar tegen); CSS stijlt op data-on
+  const p = (k, n, l) => Array.from({ length: 3 }, (_, i) => `<button class="dsp ${k}" data-ds="${k}" data-i="${i}" data-on="${i < n}" aria-label="${l} ${i + 1} van 3, ${i < n ? "aangevinkt" : "niet aangevinkt"}"></button>`).join("");
+  const pad = ui.dsPad && ui.dsPad.id === c.id;
   const st = d.dead ? `<span class="st dead">Dood</span>` : d.stable ? `<span class="st ok">Stabiel</span>`
-    : `<button class="btn small primary" data-a="ds-roll">Rol death save</button><button class="link" data-a="ds-crit">Kritiek geraakt (+2)</button>`;
+    : `<button class="btn small primary" data-a="ds-roll">Rol death save</button><button class="btn small" data-a="ds-own" aria-expanded="${pad}">Eigen worp</button><button class="link" data-a="ds-crit">Kritiek geraakt (+2)</button>`;
   return `<div class="ds"><span class="lbl">Death saves</span>
-    <span class="dsg">Success ${p("s", d.s, "Success")}</span><span class="dsg">Failure ${p("f", d.f, "Failure")}</span>${st}</div>`;
+    <span class="dsg">Success ${p("s", d.s, "Success")}</span><span class="dsg">Failure ${p("f", d.f, "Failure")}</span>${st}</div>${pad && !d.dead && !d.stable ? dsPadHtml(c) : ""}`;
+}
+
+/** RE15: cijferpad voor de worp van de speler. Alleen cijfers die nog tot 1–20 kunnen leiden; 3–9 gaat meteen door. */
+function dsPadHtml(c) {
+  const v = ui.dsPad.v, ok = (n) => (v === "" ? n > 0 : v === "1" || (v === "2" && n === 0));
+  const dg = (n) => `<button type="button" data-a="ds-k" data-v="${n}" ${ok(n) ? "" : "disabled"}>${n}</button>`;
+  return `<div class="dspad" role="group" aria-label="${esc(`Death save van ${c.name}`)}">
+    <p class="dsv"><span>Worp van ${esc(c.name)}</span><b aria-live="polite">${v || "—"}</b></p>
+    <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(dg).join("")}<button type="button" data-a="ds-k" data-v="back" aria-label="Wissen" ${v ? "" : "disabled"}>⌫</button>${dg(0)}<button type="button" class="ok" data-a="ds-k" data-v="ok" ${v === "1" || v === "2" ? "" : "disabled"}>OK</button></div>
+    <p class="hint">1 = twee failures, 10+ = success, 20 = staat op met 1 HP.</p>
+    <button type="button" class="link" data-a="ds-own">Annuleer</button></div>`;
 }
 
 /** Spellnamen bij een slot of x/day als tikbare namen ("cure wounds (3rd level)" → naam tikbaar, annotatie niet) */
@@ -297,16 +314,16 @@ const slotSum = (k, sep) => [...(k.pact ? [sep === "·" ? `P${n0(k.pact.left)}` 
 function castBlock(c) {
   const k = c.casting;
   if (!k || (!k.slots.length && !k.daily.length && !k.pact)) return "";
-  const pp = (o, attr) => Array.from({ length: n0(o.max) }, (_, i) => `<button class="pip" ${attr} data-i="${i}" aria-pressed="${i >= o.left}" aria-label="slot ${i + 1}"></button>`).join("");
+  const pp = (o, attr, l) => Array.from({ length: n0(o.max) }, (_, i) => `<button class="pip" ${attr} data-i="${i}" ${pipState(l, i, o)}></button>`).join("");
   const sum = k.slots.length || k.pact ? slotSum(k, " · ") : k.daily.map((g) => esc(g.label)).join(", ");
   const pick = (x, p = false) => ui.castPick && ui.castPick.id === c.id && ui.castPick.lvl === x.lvl && !!ui.castPick.p === p
     ? `<div class="pick"><span class="hint">Welke spell?</span>${pickList(c, x.lvl, rulesEd()).map((sp) =>
       `<button class="btn small ${sp.conc ? "conc" : ""}" data-pickspell="${esc(sp.n)}" data-conc="${sp.conc ? 1 : ""}">${esc(sp.n)}${sp.lv < x.lvl ? ` (${sp.lv}e, upcast)` : ""}${sp.conc ? " · conc." : ""}</button>`).join("")}<button class="link" data-pickspell="">Andere / overslaan</button></div>` : "";
   return `<details class="cast" data-cast ${ui.openCast.has(c.id) || ui.castPick?.id === c.id ? "open" : ""}><summary class="link strong">Spells <span style="font-weight:400">(${sum})</span></summary>
     <div class="castbox">${rageOf(c) ? `<p class="hint">Rage: geen spells casten.</p>` : ""}
-      ${k.pact ? `<div class="slotrow"><span class="lv">Pact ${ORD[k.pact.lvl] || ""}</span><span class="pp">${pp(k.pact, `data-slot="p"`)}</span><span class="sp">${spLinks(k.pact.spells || "", c)}</span></div>${pick(k.pact, true)}` : ""}
-      ${k.slots.map((x, i) => `<div class="slotrow"><span class="lv">${ORD[x.lvl] || ""}</span><span class="pp">${pp(x, `data-slot="${i}"`)}</span><span class="sp">${spLinks(x.spells, c)}</span></div>${pick(x)}`).join("")}
-      ${k.daily.map((g, gi) => g.items.map((it, ii) => `<div class="slotrow"><span class="lv">${esc(g.label.split(" ")[0])}</span><span class="pp">${pp(it, `data-daily="${gi}.${ii}"`)}</span><span class="sp">${spLinks(it.n, c)}</span></div>`).join("")).join("")}
+      ${k.pact ? `<div class="slotrow"><span class="lv">Pact ${ORD[k.pact.lvl] || ""}</span><span class="pp">${pp(k.pact, `data-slot="p"`, `Pact-slot (${ORD[k.pact.lvl] || ""})`)}</span><span class="sp">${spLinks(k.pact.spells || "", c)}</span></div>${pick(k.pact, true)}` : ""}
+      ${k.slots.map((x, i) => `<div class="slotrow"><span class="lv">${ORD[x.lvl] || ""}</span><span class="pp">${pp(x, `data-slot="${i}"`, `${ORD[x.lvl] || ""}-level slot`)}</span><span class="sp">${spLinks(x.spells, c)}</span></div>${pick(x)}`).join("")}
+      ${k.daily.map((g, gi) => g.items.map((it, ii) => `<div class="slotrow"><span class="lv">${esc(g.label.split(" ")[0])}</span><span class="pp">${pp(it, `data-daily="${gi}.${ii}"`, it.n)}</span><span class="sp">${spLinks(it.n, c)}</span></div>`).join("")).join("")}
       <div><button class="link" data-a="cast-reset">Alles herstellen (long rest)</button></div>
     </div></details>`;
 }
@@ -314,7 +331,7 @@ function castBlock(c) {
 function resBlock(c) {
   if (!c.res || !c.res.length) return "";
   return `<div class="castbox">${c.res.map((o, i) => `<div class="resrow"><span class="rn">${esc(o.n)}</span>
-    <span class="pp">${o.max <= 10 ? Array.from({ length: n0(o.max) }, (_, j) => `<button class="pip" data-res="${i}" data-i="${j}" aria-pressed="${j >= o.left}" aria-label="${esc(o.n)} ${j + 1}"></button>`).join("")
+    <span class="pp">${o.max <= 10 ? Array.from({ length: n0(o.max) }, (_, j) => `<button class="pip" data-res="${i}" data-i="${j}" ${pipState(o.n, j, o)}></button>`).join("")
       : `<button class="btn small" data-res="${i}" data-step="-1">−</button><b style="font-variant-numeric:tabular-nums;padding:0 6px">${n0(o.left)}/${n0(o.max)}</b><button class="btn small" data-res="${i}" data-step="1">+</button>`}</span>
     <span class="sp">${o.max <= 10 ? `${n0(o.left)}/${n0(o.max)} · ` : ""}per ${o.rest === "Short Rest" ? "short rest" : "long rest"}</span></div>`).join("")}</div>`;
 }
@@ -418,7 +435,7 @@ function effPanel(c) {
   if (ui.effWho && ui.effWho.id === c.id) {
     const p = PRESETS_14[ui.effWho.i];
     return `<div class="kpanel"><p class="hint">Wie cast <b>${esc(p.n)}</b>?</p>
-      <div class="effgrid">${S.list.filter((x) => x.kind !== "lair").map((x) => `<button class="btn tap" data-a="effby" data-by="${esc(x.id)}">${esc(x.name)}</button>`).join("")}</div>
+      <div class="effgrid">${spellTargets(S.list).map((x) => `<button class="btn tap" data-a="effby" data-by="${esc(x.id)}">${esc(x.name)}</button>`).join("")}</div>
       <button class="link" data-a="effwho-no">Annuleer</button></div>`;
   }
   if (ui.rage && ui.rage.id === c.id) return rageBox(c);
@@ -432,7 +449,7 @@ function effPanel(c) {
         <label>Duur<select data-f="ef-dur">${[...DURS, ["lr", "Tot long rest"]].map(([v, l]) => `<option value="${v}" ${(f.dur || "inf") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
       </div>
       <label>Notitie<input data-f="ef-txt" value="${esc(f.txt || "")}" placeholder="bijv. +1d4 op saves" maxlength="120"></label>
-      <label>Concentratie van<select data-f="ef-by"><option value="">geen</option>${S.list.filter((x) => x.kind !== "lair").map((x) => `<option value="${esc(x.id)}" ${f.by === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label>
+      <label>Concentratie van<select data-f="ef-by"><option value="">geen</option>${S.list.filter((x) => x.id === f.by || spellTargets([x]).length).map((x) => `<option value="${esc(x.id)}" ${f.by === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label>
       <button class="btn primary tap" data-a="eff-add">Toevoegen</button></div>` : "";
   return `<div class="kpanel">
     <div class="effgrid">${presetOrder(c).map((i) => {
@@ -598,7 +615,7 @@ function row(c, S, down = false) {
   const open = openId() === c.id, prep = mode() === "prep";
   const turn = c.id === S.active, hp = c.max && !down, fhp = hp && !prep;
   return `<li class="c k ${c.kind === "pc" ? "pc" : "mon"} ${open ? "open" : ""} ${turn ? "turn" : ""} ${isOut(c) ? "out" : ""}${down ? " down" : ""}${fhp ? " fhp" : ""}" data-id="${esc(c.id)}"${down ? ` data-down="1"` : ""}>
-    <button class="khead" data-a="open" aria-expanded="${open}" aria-label="${esc(c.name)}${effAc(c) && !(isOut(c) && c.kind === "monster") ? `, AC ${n0(effAc(c))}` : ""}${open ? ", sluiten" : ", openen"}">
+    <button class="khead" data-a="open" aria-expanded="${open}"${turn ? ` aria-current="true"` : ""} aria-label="${esc(c.name)}, ${c.kind === "pc" ? "speler" : c.kind === "lair" ? "lair" : "monster"}${effAc(c) && !(isOut(c) && c.kind === "monster") ? `, AC ${n0(effAc(c))}` : ""}${open ? ", sluiten" : ", openen"}">
       <span class="i">${c.init == null ? "–" : n0(c.init)}${turn ? `<span class="tri" aria-hidden="true">▶</span>` : ""}</span>
       <span class="n">${avatar(c, c.ref ? findMon(c.ref)?.meta : "")}<span class="nm">${esc(c.name)}</span></span>
       <span class="meta">${isOut(c) && c.kind === "monster" ? "neer" : acMeta(c)}</span>
@@ -666,6 +683,7 @@ function emptyState(S, prep) {
   if (ui.welcome) return `<li class="welcome"><h2>Welkom aan tafel</h2>
     <p>Houd initiative, HP, condities en spell slots bij voor D&amp;D 5e (2014). Alles blijft op dit apparaat en werkt ook offline.</p>
     <div class="wbtns"><button type="button" class="btn primary tap" id="welcome-sample">Start met voorbeeld</button><button type="button" class="btn tap" id="welcome-empty">Begin leeg</button></div>
+    <button type="button" class="link wimp" data-impw="1">Heb je een export? Importeren…</button>
     <p class="hint">Voorbeeld: 2 spelers, 2 Goblins en een Hobgoblin. Probeer daarna Start gevecht. Encounters zet je klaar onder + Monster.</p></li>`;
   return `<li class="hint empty">Nog niemand aan tafel. Voeg spelers en monsters toe met de knoppen onderaan.</li>`;
 }
