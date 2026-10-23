@@ -24,13 +24,13 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 14. ~~RE9~~ klaar in 1.36.0 (WP3, zie Klaar)
 15. ~~IN9~~ klaar in 1.35.1 (WP2, zie Klaar)
 16. ~~RE12~~ klaar in 1.36.0 (WP3, zie Klaar)
-17. **RE1/RE2** Spell slots verbruiken bij Shield, AoE en Spell (omhoog uit P3)
+17. ~~RE1/RE2~~ klaar in 1.41.0 (WP9, zie Klaar)
 18. ~~RE11~~ klaar in 1.40.0 (WP8, zie Klaar)
 19. **SP5** Passive Perception / Insight / Investigation per speler
 20. **RE13** Hints voor monsterregels die je vergeet (Undead Fortitude, Prone bij Wolf Bite, Parry)
 
 **Eigen test Michiel (21-10-2026, aan tafel)**, ingedeeld in P2 en verdeeld over de werkpakketten:
-- **RE18** Schade-spells (Fireball) in AoE: spell kiezen, schade rollen, upcasten (hoog binnen P2)
+- ~~**RE18** Schade-spells (Fireball) in AoE: spell kiezen, schade rollen, upcasten~~ klaar in 1.41.0
 - ~~**RE17** Concentration save meteen afhandelen vanuit de schade~~ klaar in 1.36.0
 - ~~**RE16** Rage (barbarian) als status met alle voordelen~~ klaar in 1.40.0
 - ~~**GV12** Reaction gebruikt zichtbaar in de overzichten tot hij terug is~~ klaar in 1.38.0
@@ -61,7 +61,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | ~~**WP6**~~ | Spelersscherm op de telefoon: sticky kop, "Dit ben ik", teksten, reaction zichtbaar (klaar) | SC4, SC5, SC8, GV12 | 1.38.0 |
 | ~~**WP7**~~ | Tv en koppelen: leesbaarheid, zelfde code, QR (klaar) | SC6, SC7, SC1 | 1.39.0 |
 | ~~**WP8**~~ | Condities en statussen aan tafel: uitleg, Exhaustion, Rage, Deadly/Verrast (klaar) | RE10, RE11, RE16, AF8 | 1.40.0 |
-| **WP9** | Spells van spelers: schade-spells in AoE (Fireball), slots verbruiken, Pact Magic | RE18, RE1, RE2, RE3 | 1.41.0 |
+| ~~**WP9**~~ | Spells van spelers: schade-spells in AoE (Fireball), slots verbruiken, Pact Magic (klaar) | RE18, RE1, RE2, RE3 | 1.41.0 |
 | **WP10** | Monsterregels en minder klikken | RE13, RE14, GV11 | 1.42.0 |
 | **WP11** | Voorbereiding: passives, zoeken, lege encounter | SP5, VB4, VB5 | 1.43.0 |
 | **WP12** | Afwerking: haperingen, kleine fouten, toegankelijkheid, death save-worp, mini-log, dobbelstenen in statblocktekst | AF10, AF11, AF12, AF14, RE15, SC9 | 1.43.x |
@@ -80,15 +80,11 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - [ ] **VB5 Lege encounter maken** (P3): opslaan kan nu alleen vanuit de lijst. "+ Nieuwe encounter" in de tab opent het bestaande Bewerken-subscherm leeg; aantal ook typbaar. Na typen van een exacte naam die naam selecteren (bleef op Bandit Captain staan).
 
 ## Spelregels
-- [ ] **RE1 Slots en effecten** (P2, samen met RE2; persona-test 3: Shield, Fireball en Hold Person schrijven geen slot af; voorstel daar: "Slot gebruiken? 1st / 2nd …" bij een spell van een speler, overslaan mogelijk): Bless via Effect verbruikt geen slot. Voorstel: niet koppelen maar spelers-slots optioneel maken (spelers houden die vaak zelf bij)
-- [ ] **RE2 Spell op doelen:** slots verbruiken en maximaal aantal doelen
-- [ ] **RE3 Pact Magic-slots apart bijhouden** (komen terug na een short rest); nu opgeteld bij de gewone slots
 - [ ] **RE4 2024-regels buiten spells** (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen
 - [ ] **RE5 Surprise:** keuze ook zonder spelers aan tafel (paneel opent dan niet)
 - [ ] **RE13 Monsterregels die je vergeet** (P2): prompt zoals de concentration save: Undead Fortitude ("CON DC 5 + schade"), save-riders na een treffer (Wolf Bite "STR DC 11 of Prone?"), Parry als reaction met +AC. Herkenning in `js/rules/attacks.js` uit de statblocktekst, alleen de bekende SRD-patronen.
 - [ ] **RE14 Eigen monster beter inlezen** (P3): geplakt statblock krijgt geen aanvalsknoppen, geen LA en geen resistances; losse "+6 to hit" zonder crit-knop. Zelfde parser als voor SRD-monsters.
 - [ ] **RE15 Eigen death save-worp invoeren** (P3): getal typen (nat 20 = 1 HP, nat 1 = twee fails), zoals het cijferpad bij initiative.
-- [ ] **RE18 Schade-spells in AoE (Fireball)** (P2, hoog; eigen test Michiel): de tab Spell kent alleen condities en effecten (Bless … Web) en de tab Schade alleen een getal. Gevonden: ± 50 SRD-spells in `data/spells.json` hebben schadedobbelstenen + save in de tekst (Fireball "8d6 fire … dexterity saving throw … half", upcast "+1d6 per slot level above 3rd"). Voorstel: (a) in Schade een veld "Spell" dat zoekt in die spells en type, save, half/geen schade en dobbelstenen invult, met caster (spell save DC uit de sheet of statblock), slotlevel (upcast) en **Rol 8d6** (uitkomst aanpasbaar, worp in het logboek); (b) los daarvan altijd een dobbelsteenveld "Rol XdY+Z" voor homebrew en niet-SRD. Parser puur in `js/rules/`, tabel vooraf gegenereerd en getest (niet bij elke tik parsen). UX-agent kiest of damage-spells ook in de tab Spell verschijnen (Michiel zocht daar) en hoe het samengaat met slots verbruiken (RE1/RE2, zelfde pakket).
 - [ ] **RE6 Spell-uitleg:** link vanuit AoE-Spell en Effect-presets; eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie)
 
 ## Spelers en D&D Beyond
@@ -266,3 +262,6 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **RE11** (1.40.0, WP8) Exhaustion (2014) niveau 1–6 via Conditie → Exhaustion (−/+): disadvantage op aanvallen en monster-saves vanaf 3, max HP gehalveerd vanaf 4 (loopt mee met Aid en bewerken), 6 = dood; long rest één niveau minder.
 - **RE16** (1.40.0, WP8) Rage (2014) als preset bij spelers met bevestigstap: resistance B/P/S (Bear Totem: alles behalve psychic) automatisch in AoE en aanvalspaneel, advantage op STR-saves, rage damage in de chip, concentratie stopt, Rage-teller van de sheet telt af. "Rage loopt door?" in de beurtbalk als hij geen schade nam; voorbij bij bewusteloos; Frenzy geeft exhaustion.
 - **AF8** (1.40.0, WP8) Deadly: eerste regel in de uitleg met advies ("Met 1 Goblin minder wordt het Hard"). Verrast: uitleg onder de keuze in het initiative-paneel.
+- **RE18** (1.41.0, WP9) Schade-spells in AoE: tab Schade met caster, chips met de schade-spells van de caster en een zoekveld (38 SRD-spells met save, tabel gegenereerd uit `data/spells.json`), slot-segment, veld "Dobbelstenen" (ook XdY+Z voor homebrew) met Rol; type, save, half en DC worden ingevuld, upcast en cantrip-schaling in de dobbelstenen, worp in het logboek. Tab Spell heeft een tegel "Schade-spell". Concentratie-spells starten concentratie; herhaalschade (Moonbeam) kost geen nieuw slot.
+- **RE1/RE2** (1.41.0, WP9) Slots verbruiken in dezelfde stap (één Ongedaan): AoE-schade-spell en tab Spell met een slot-segment (standaard laagste vrije slot, Pact eerst; meer doelen = hoger slot), Shield en een nieuwe cast via Effect automatisch. "Zelf" per caster onthouden (alleen als de DM het tikt). Niets meer over: niet blokkeren, wel melden. Monsters: statblock-slots en x/day.
+- **RE3** (1.41.0, WP9) Pact Magic apart (`casting.pact`): eigen regel "Pact 3rd" op de kaart, terug na short en long rest. Bestaande warlocks: opnieuw ophalen via D&D Beyond.

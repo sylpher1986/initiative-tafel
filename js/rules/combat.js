@@ -1,6 +1,7 @@
 // Gevechtsregels (5e 2014). Elke functie past de deelnemer aan en geeft een Fx terug:
 //   msgs: korte meldingen voor de gebruiker (platte tekst)
 //   why:  oorzaken voor het logboek, [{t, id}]
+import { pactRest } from "./slots.js";
 import { d } from "./dice.js";
 import { EXH, EXH_NAME, isExh, exhLevel } from "./conditions.js";
 
@@ -242,6 +243,6 @@ export function restMember(m, long) {
       (m.casting.daily || []).forEach((g) => g.items.forEach((x) => (x.left = x.max)));
     }
   }
-  if (m.casting && m.casting.pact) m.casting.pact.left = m.casting.pact.max; // RE3: Pact Magic terug na elke rust
+  pactRest(m); // RE3: Pact Magic terug na elke rust
   (m.res || []).forEach((r) => { if (long || r.rest === "Short Rest") r.left = r.max; });
 }

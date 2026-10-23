@@ -2,11 +2,11 @@
 import { openSettings } from "./settings.js";
 import { $, esc, n0, toast, toastHtml, closeToast, show } from "./util.js";
 import { app, because, addWhy, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
-import { render, ui, openId, mode, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintDmgSugg, dmgSp, aoeCaster, dmgSlot, dmgDice, spellSlot, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
+import { render, ui, openId, mode, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintDmgSugg, dmgSp, aoeCaster, dmgSlot, dmgDice, dmgLevel, spellSlot, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { DMG_SPELLS } from "../rules/dmgtable.js";
 import { rollDice, diceText, normDice } from "../rules/dmgspells.js";
-import { spendSlot, autoSpend, slotLevel as slotLevelOf } from "../rules/slots.js";
+import { spendSlot, autoSpend } from "../rules/slots.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
 import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc, effSpec, setExh, startRage, rageOf } from "../rules/effects.js";
@@ -1285,7 +1285,7 @@ function spellField(a, t) {
   const id = t.id;
   if (id === "s-by") { // RE8: de keuze per doel blijft; alleen de nieuwe caster gaat uit, gerolde saves gelden tegen de nieuwe DC
     a.by = t.value; a.sslot = null; a.slot = null;
-    if (a.dsp) a.dsp = null; // schade-spell hoort bij de vorige caster (DC, slots)
+    if (a.dsp) chooseDmg(a, dmgSp(a), true); // zelfde gedrag als in de tab Schade: spell blijft, nieuwe DC en dobbelstenen
     const dc0 = a.sdc; a.sdc = spellDC(a);
     if (a.by) a.s[a.by] = { ...(a.s[a.by] || {}), sel: false };
     const dc = parseInt(a.sdc), rolled = Object.values(a.s).filter((x) => x.roll);
@@ -1345,7 +1345,7 @@ function spellGo() {
   if (!picks.length) return;
   const k = spellSlot(a, sp, caster, picks.length); // RE2: zelfde stap
   const r = castSpell(S.list, sp, caster, picks, { round: S.round, active: S.active, dc: a.sdc, ed: edFor(caster, sp.n, rulesEd()) });
-  const sl = spendSlot(caster, k, sp.n, sp.lvl);
+  const sl = spendSlot(caster, k, sp.n, sp.lvl, !!a.sslot);
   addWhy([...r.why, ...sl.why]);
   ui.aoe = null;
   render();
@@ -1363,7 +1363,7 @@ function rollNow(a, e) {
 }
 
 /** RE18: schade-spell kiezen (of null = weg): type, save, half en DC invullen, slot terug naar de standaard, meteen rollen */
-function chooseDmg(a, sp) {
+function chooseDmg(a, sp, sameSpell = false) {
   const c = aoeCaster(a);
   a.dsp = sp ? sp.n : null; a.slot = null; a.dq = "";
   Object.values(a.t).forEach((t) => { t.roll = null; t.lr = false; }); // andere save of DC: oude worpen gelden niet meer
@@ -1373,7 +1373,7 @@ function chooseDmg(a, sp) {
   const dc = c ? casterDC(c, c.ref ? findMon(c.ref) : null) : "";
   if (dc) a.dc = ui.aoeLast.dc = dc;
   a.extra = sp.x.map((x) => `${x.dice} ${x.type}`).join(", "); a.alt = sp.alt || "";
-  Object.values(a.t).forEach((t) => { if (t.save === "half" || t.save === "none") t.save = "fail"; });
+  if (!sameSpell) Object.values(a.t).forEach((t) => { if (t.save === "half" || t.save === "none") t.save = "fail"; }); // Evasion e.d. blijft bij een andere caster
   rollNow(a, dmgDice(a, c, sp));
 }
 
@@ -1383,7 +1383,7 @@ export function bindAoe() {
     const a = ui.aoe; if (!a) return;
     if (a.tab === "spell") { spellField(a, e.target); return; }
     const id = e.target.id;
-    if (id === "a-by") { a.by = e.target.value; a.sslot = null; a.slot = null; a.sdc = spellDC(a); if (a.dsp) chooseDmg(a, dmgSp(a)); rebuildAoe("#a-by"); return; }
+    if (id === "a-by") { a.by = e.target.value; a.sslot = null; a.slot = null; a.sdc = spellDC(a); if (a.dsp) chooseDmg(a, dmgSp(a), true); rebuildAoe("#a-by"); return; }
     if (id === "a-q") { a.dq = e.target.value; paintDmgSugg(a); return; }
     if (id === "a-dice") { a.dice = e.target.value; return; }
     if (id === "a-dmg") a.dmg = e.target.value;
@@ -1411,7 +1411,7 @@ export function bindAoe() {
     const k = b.dataset.ao, id = b.dataset.id;
     if (k === "close") { closeAoe(); return; }
     if (k === "tab") { const v = b.dataset.v === "spell" ? "spell" : "dmg"; if ((a.tab || "dmg") !== v) { a.tab = ui.aoeLast.tab = v; rebuildAoe(`[data-ao="tab"][data-v="${v}"]`); } return; }
-    if (k === "todmg") { a.tab = ui.aoeLast.tab = "dmg"; rebuildAoe("#a-q"); return; }
+    if (k === "todmg") { a.tab = ui.aoeLast.tab = "dmg"; rebuildAoe(a.dsp ? '[data-ao="dspx"]' : ".acast .dchips [data-ao=dsp]") ; if (!a.dsp && !document.querySelector(".acast .dchips [data-ao=dsp]")) $("#a-q")?.focus(); return; } // chips van de caster: geen toetsenbord
     if (a.tab === "spell" && spellClick(a, k, b)) return;
     if (k === "go") { aoeGo(); return; }
     if (k === "dsp") { chooseDmg(a, DMG_SPELLS.find((x) => x.n === b.dataset.v) || null); rebuildAoe('[data-ao="dspx"]'); return; }
@@ -1477,16 +1477,16 @@ function aoeGo() {
   const L = picks.map((x) => x.c);
   // RE18/RE1: schade-spell van een caster: slot afschrijven, concentratie, worp in het logboek (alles in dezelfde stap)
   const sp = !a.src && dmgSp(a), c = !a.src && aoeCaster(a), k = sp ? dmgSlot(a, c, sp) : "";
-  const lv = sp ? (k ? slotLevelOf(c, k, sp.lv) : sp.lv) : 0;
+  const lv = sp ? (c ? dmgLevel(a, c, sp) : sp.lv) : 0;
   const name = sp ? `${sp.n}${sp.lv ? ` (${ORD[lv]})` : ""}${c ? ` · ${c.name}` : ""}: ` : "";
   const label = `${a.act ? `${a.srcName}: ${a.act} ` : name}${n}${a.type ? " " + a.type : ""}${dc > 0 ? ` (${a.ab} DC ${dc})` : ""}`;
   const r = applyAoe(picks, n, label);
   apply(r);
-  const sl = c && sp ? spendSlot(c, k, sp.n, sp.lv) : { why: [], txt: "" };
+  const sl = c && sp ? spendSlot(c, k, sp.n, sp.lv, !!a.slot) : { why: [], txt: "" };
   if (!a.src && a.roll) addWhy([{ t: `${c ? `${c.name} cast ` : ""}${a.roll}${a.rtot != null && a.rtot !== n ? `, aangepast naar ${n}` : ""}${a.type ? ` ${a.type}` : ""}`, id: (c || L[0]).id }]);
   addWhy(sl.why);
   let conc = "";
-  if (c && sp && isConc(sp.n, edFor(c, sp.n, rulesEd())) && !(c.cond.includes("Concentrating") && c.concSpell === sp.n)) { apply(R.startConc(c, sp.n)); conc = " · conc"; }
+  if (c && sp && isConc(sp.n, edFor(c, sp.n, rulesEd())) && (a.slot || !(c.cond.includes("Concentrating") && c.concSpell === sp.n))) { apply(R.startConc(c, sp.n)); c.concLvl = lv; conc = " · conc"; } // concLvl: herhaalschade op hetzelfde level
   // recharge-actie: pas bij toepassen op "op", in dezelfde stap (één keer Ongedaan)
   const src = a.src && app.S.list.find((x) => x.id === a.src), ri = src ? rcIndex(src.rc, a.act) : -1;
   const rcUsed = ri >= 0 && src.rc[ri].ready;

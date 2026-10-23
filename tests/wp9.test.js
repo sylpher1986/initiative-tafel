@@ -4,7 +4,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { buildDmgTable, parseDmgSpell, spellDice, addDice, cantripMul, normDice, rollDice, diceText, findDmgSpells, casterLevel } from "../js/rules/dmgspells.js";
 import { DMG_SPELLS } from "../js/rules/dmgtable.js";
-import { slotChoices, defaultSlot, slotLevel, spendSlot, autoSpend, pactSlots, pactRest, dailyFor, slotName, hasSlots } from "../js/rules/slots.js";
+import { slotChoices, defaultSlot, slotLevel, spendSlot, autoSpend, pactSlots, pactRest, dailyFor, slotName } from "../js/rules/slots.js";
+import { mergeSheet } from "../js/ddbjson.js";
+import { parseImport } from "../js/backup.js";
 import { restMember } from "../js/rules/combat.js";
 import { cleanCombatant } from "../js/backup.js";
 
@@ -85,7 +87,8 @@ test("RE1/RE2: keuzes en standaardslot", () => {
   assert.equal(defaultSlot(c, 3), "s4", "3rd op → 4th");
   assert.equal(defaultSlot(c, 2, "", 4), "s4", "RE8: meer doelen vraagt een hoger slot");
   c.casting.slots.forEach((s) => (s.left = 0));
-  assert.equal(defaultSlot(c, 3), "self", "alles op");
+  assert.equal(defaultSlot(c, 3), "s3", "alles op: laagste passende slot (UI zegt 'geen … meer over'), niet stil Zelf");
+  assert.equal(defaultSlot(c, 2, "", 7), "s5", "meer doelen dan het hoogste slot: hoogste");
   c.casting.slots.forEach((s) => (s.left = 2));
   c.slotSelf = true;
   assert.equal(defaultSlot(c, 3), "self", "onthouden: zelf bijhouden");
@@ -99,17 +102,23 @@ test("RE1: afschrijven, zelf bijhouden onthouden, niets over = niet blokkeren", 
   let r = spendSlot(c, "s3", "Fireball", 3);
   assert.equal(c.casting.slots[2].left, 1);
   assert.equal(r.txt, "3rd-level slot (1 over)");
-  assert.equal(r.why[0].id, "w");
+  assert.deepEqual(r.why, [], "afschrijven staat al in het logboek via de toestandsvergelijking");
   spendSlot(c, "s3", "Fireball", 3); r = spendSlot(c, "s3", "Fireball", 3);
   assert.equal(c.casting.slots[2].left, 0);
   assert.equal(r.txt, "geen 3rd-level slot meer over");
-  r = spendSlot(c, "self", "Fireball", 3);
+  assert.equal(r.why[0].id, "w", "niets afgeschreven: oorzaak bij de caster");
+  assert.equal(c.slotSelf, undefined, "slot op maakt de caster niet stil 'Zelf' (review)");
+  spendSlot(c, "self", "Fireball", 3);
+  assert.equal(c.slotSelf, undefined, "standaard Zelf zonder tik: niet onthouden");
+  r = spendSlot(c, "self", "Fireball", 3, true);
   assert.equal(c.slotSelf, true);
   assert.equal(r.txt, "");
-  spendSlot(c, "s4", "Fireball", 3);
-  assert.equal(c.slotSelf, undefined, "level gekozen = weer bijhouden");
+  spendSlot(c, "run", "Fireball", 3, true);
+  assert.equal(c.slotSelf, true, "loopt al: niets veranderd");
+  spendSlot(c, "s4", "Fireball", 3, true);
+  assert.equal(c.slotSelf, undefined, "level getikt = weer bijhouden");
   const none = { id: "x", kind: "pc" };
-  spendSlot(none, "self", "Fireball", 3);
+  spendSlot(none, "self", "Fireball", 3, true);
   assert.equal(none.slotSelf, undefined, "niets te kiezen: niets onthouden");
   const sh = wiz(); r = autoSpend(sh, "Shield", 1);
   assert.equal(sh.casting.slots[0].left, 1);
@@ -123,7 +132,6 @@ test("RE3: Pact Magic per warlock-level, keuze, rust", () => {
   assert.deepEqual(pactSlots(20), { lvl: 5, max: 4 });
   assert.equal(pactSlots(0), null);
   const c = { id: "a", kind: "pc", casting: { slots: [{ lvl: 1, max: 4, left: 4 }, { lvl: 2, max: 3, left: 3 }], daily: [], pact: { lvl: 3, max: 2, left: 2, spells: "Hex" } } };
-  assert.ok(hasSlots(c));
   assert.deepEqual(slotChoices(c, 1).map((o) => o.k), ["s1", "s2", "p"]);
   assert.equal(defaultSlot(c, 1), "p", "Pact eerst: komt terug na een short rest");
   assert.equal(defaultSlot(c, 4), "", "pact 3rd past niet voor een 4th-level spell");
@@ -150,6 +158,23 @@ test("RE1: x/day van een monster", () => {
   assert.equal(defaultSlot(m, 3, "Fireball"), "d0.1");
   spendSlot(m, "d0.1", "Fireball", 3);
   assert.equal(m.casting.daily[0].items[1].left, 0);
-  assert.equal(defaultSlot(m, 3, "Fireball"), "self", "op");
+  assert.equal(defaultSlot(m, 3, "Fireball"), "d0.1", "op: blijft de regel, er wordt niets afgeschreven");
+  assert.equal(spendSlot(m, "d0.1", "Fireball", 3).txt, "geen 1/day meer over");
   assert.deepEqual(slotChoices(m, 3, "Lightning Bolt"), [], "niet in de x/day-lijst, geen slots");
+});
+
+test("RE3: opnieuw ophalen houdt Pact-verbruik; oude sheet met Pact bij de gewone slots; import zonder pact", () => {
+  const t = { id: "a", kind: "pc", name: "W", casting: { slots: [{ lvl: 3, max: 2, left: 0, spells: "" }], daily: [] } }; // oud: pact opgeteld
+  const f = { name: "W", sheet: { name: "W" }, casting: { slots: [], daily: [], pact: { lvl: 3, max: 2, left: 2, spells: "Hex" } } };
+  mergeSheet(t, f);
+  assert.deepEqual(t.casting.slots, []);
+  assert.deepEqual([t.casting.pact.max, t.casting.pact.left], [2, 2], "geen oude pact: vol");
+  t.casting.pact.left = 1;
+  mergeSheet(t, { ...f, casting: { slots: [], daily: [], pact: { lvl: 3, max: 2, left: 2, spells: "Hex" } } });
+  assert.equal(t.casting.pact.left, 1, "verbruik blijft");
+  mergeSheet(t, { ...f, casting: { slots: [], daily: [], pact: { lvl: 4, max: 3, left: 3, spells: "Hex" } } });
+  assert.deepEqual([t.casting.pact.lvl, t.casting.pact.left], [4, 2], "level-up: één verbruikt blijft verbruikt");
+  const r = parseImport({ format: "initiative-tafel", version: 2, state: { list: [{ id: "x", kind: "pc", name: "Oud", casting: { slots: [{ lvl: 1, max: 2, left: 1 }], daily: [] } }] } });
+  assert.equal(r.S.list[0].casting.pact, undefined);
+  assert.equal(r.S.list[0].slotSelf, undefined);
 });

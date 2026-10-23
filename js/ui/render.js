@@ -1008,10 +1008,17 @@ function aoeRow(a, c, p, o, n) {
 export const dmgSp = (a) => (a && a.dsp ? DMG_SPELLS.find((s) => s.n === a.dsp) || null : null);
 /** Caster in het AoE-paneel (geen lair) of null */
 export const aoeCaster = (a) => app.S.list.find((x) => x.id === a.by && x.kind !== "lair") || null;
-/** Slotkeuze: wat de DM tikte, anders de standaard ("" = niets te kiezen: geen caster, geen slots, cantrip) */
-export const dmgSlot = (a, c, sp) => (!sp || !c || !sp.lv || !slotChoices(c, sp.lv, sp.n).length ? "" : a.slot || defaultSlot(c, sp.lv, sp.n));
+/** Concentratie-spell die al loopt (Moonbeam in een latere beurt): schade zonder nieuw slot */
+export const dmgRuns = (c, sp) => !!(c && sp && sp.conc && c.cond.includes("Concentrating") && c.concSpell === sp.n);
+/**
+ * Slotkeuze: wat de DM tikte, anders "run" (concentratie loopt al: geen slot) of de standaard.
+ * "" = niets te kiezen: geen caster, geen slots, cantrip.
+ */
+export const dmgSlot = (a, c, sp) => (!sp || !c || !sp.lv || !slotChoices(c, sp.lv, sp.n).length ? "" : a.slot || (dmgRuns(c, sp) ? "run" : defaultSlot(c, sp.lv, sp.n)));
+/** Slot-level van deze cast: bij "run" het level waarop hij gecast werd (c.concLvl), anders uit de keuze */
+export const dmgLevel = (a, c, sp) => { const k = dmgSlot(a, c, sp); return k === "run" ? Math.max(sp.lv, c.concLvl | 0) : slotLevel(c, k, sp.lv); };
 /** Dobbelstenen voor de gekozen spell, caster en slot */
-export const dmgDice = (a, c, sp) => spellDice(sp, slotLevel(c, dmgSlot(a, c, sp), sp.lv), casterLevel(c, c && c.ref ? findMon(c.ref) : null));
+export const dmgDice = (a, c, sp) => spellDice(sp, dmgLevel(a, c, sp), casterLevel(c, c && c.ref ? findMon(c.ref) : null));
 
 /** Segment "Slot: 3rd ·2 | 4th ·1 | Pact ·2 | Zelf" (gedeeld met de tab Spell); ao = data-ao van de knoppen */
 function slotSeg(c, lv, n, k, ao) {
@@ -1019,7 +1026,7 @@ function slotSeg(c, lv, n, k, ao) {
   if (!opts.length) return "";
   const cur = opts.find((o) => o.k === k), empty = cur && !(cur.left > 0);
   return `<div class="aslot"><span class="qlbl">Slot</span><div class="seg2 sm" role="group" aria-label="Slot van ${esc(c.name)}">${opts.map((o) => `<button type="button" data-ao="${ao}" data-v="${o.k}" aria-pressed="${k === o.k}" aria-label="${esc(o.k === "p" ? slotName(c, "p") : o.k[0] === "d" ? o.l : `${o.l}-level slot`)}, ${o.left} over">${esc(o.l)} <small>·${o.left}</small></button>`).join("")}<button type="button" data-ao="${ao}" data-v="self" aria-pressed="${k === "self"}" title="Slots zelf bijhouden (onthouden voor ${esc(c.name)})">Zelf</button></div></div>
-    ${empty ? `<p class="hint"><b class="bad">Geen ${esc(slotName(c, k))} meer over</b>: er wordt niets afgeschreven.</p>` : k === "self" ? `<p class="hint">${esc(c.name)} houdt de slots zelf bij: er wordt niets afgeschreven.</p>` : ""}`;
+    ${empty ? `<p class="hint"><b class="bad">Geen ${esc(slotName(c, k))} meer over</b>: er wordt niets afgeschreven.</p>` : k === "run" ? `<p class="hint">${esc(`${n} loopt al (concentratie): geen slot. Tik een slot voor een nieuwe cast.`)}</p>` : k === "self" ? `<p class="hint">${esc(c.name)} houdt de slots zelf bij: er wordt niets afgeschreven.</p>` : ""}`;
 }
 
 /** Suggestieknoppen (zoeken of de spells van de caster) */
@@ -1042,9 +1049,11 @@ function dmgCastHtml(a) {
       <div class="dchips" id="a-sugg"></div></div>`;
   }
   const lvl = casterLevel(c, c && c.ref ? findMon(c.ref) : null);
-  const meta = [sp.lv ? ORD[slotLevel(c, dmgSlot(a, c, sp), sp.lv)] : "cantrip", `${sp.ab} ${sp.half ? "½" : "0"}`, sp.type].join(" · ");
+  const meta = [sp.lv ? ORD[dmgLevel(a, c, sp)] : "cantrip", `${sp.ab} ${sp.half ? "½" : "0"}`, sp.type].join(" · ");
   const cant = !sp.lv && sp.cant ? `<p class="hint">${lvl ? `Cantrip · level ${lvl} → ${esc(dmgDice(a, c, sp))}` : `Cantrip · level onbekend: ${esc(sp.dice)}`}</p>` : "";
+  const lose = c && sp.conc && c.cond.includes("Concentrating") && c.concSpell && c.concSpell !== sp.n ? c.concSpell : ""; // zoals in de tab Spell
   return `${casterSel}<div class="aspell"><div class="dsel"><span><b>${esc(sp.n)}</b> · ${esc(meta)}${sp.conc ? " · conc" : ""}</span><button type="button" class="link" data-ao="dspx" aria-label="Andere spell kiezen">✕</button></div>${cant}
+    ${lose ? `<p class="hint"><b class="bad">${esc(`${c.name} concentreert nu op ${lose}: die vervalt.`)}</b></p>` : ""}
     ${c && sp.lv ? slotSeg(c, sp.lv, sp.n, dmgSlot(a, c, sp), "slot") : ""}</div>`;
 }
 
@@ -1093,7 +1102,7 @@ export function paintAoe() {
   const go = el.querySelector(".ago");
   go.disabled = !n || !sel.length;
   const sp = !a.src && dmgSp(a), c = sp && aoeCaster(a), k = sp ? dmgSlot(a, c, sp) : "";
-  const slotT = k && k !== "self" ? ` · ${slotName(c, k)}` : "";
+  const slotT = slotName(c, k) ? ` · ${slotName(c, k)}` : "";
   go.textContent = !n ? "Vul de schade in" : !sel.length ? "Kies doelwitten" : `${n}${a.type ? " " + a.type : ""} op ${sel.length} doel${sel.length === 1 ? "" : "en"}${slotT}`;
 }
 

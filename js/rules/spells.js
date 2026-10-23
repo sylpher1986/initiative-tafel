@@ -111,7 +111,7 @@ export function spellsAtLevel(c, lvl, ed = "2014") {
   const sh = c.sheet && c.sheet.levels && c.sheet.levels.find((l) => l.lvl === lvl);
   if (sh) return sh.spells.map((sp) => ({ n: sp.n, conc: /concentration/i.test(sp.dur || "") }))
     .filter((v, i, a) => a.findIndex((x) => x.n === v.n) === i);
-  const sl = c.casting && c.casting.slots.find((x) => x.lvl === lvl);
+  const P = c.casting && c.casting.pact, sl = c.casting && (c.casting.slots.find((x) => x.lvl === lvl) || (P && P.lvl === lvl ? P : null)); // RE3: pure warlock
   return sl && sl.spells ? splitSpells(sl.spells).map((n) => ({ n: n.replace(/\*/g, "").trim(), conc: isConc(n, ed) })) : [];
 }
 
