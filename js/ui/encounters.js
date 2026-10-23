@@ -1,6 +1,7 @@
 // Encounters klaarzetten (tab in het Monster-paneel) en XP-moeilijkheid. Regels puur in js/rules/encounters.js.
 // UI-toestand (concept, menu, uitleg) staat in `ui` (render.js); de encounters zelf in app.encounters (IndexedDB, niet in undo).
 import { APP } from "../version.js";
+import { ico, chev } from "./icons.js";
 import { $, esc, toast, toastHtml, closeToast } from "./util.js";
 import { app, because, addWhy, logAs, commit, saveEncounters, saveLairs, saveLibrary } from "../state.js";
 import { render, ui, monListHtml } from "./render.js";
@@ -96,7 +97,7 @@ export function encBanner(S, prep) {
   if (!n) return S.list.length && !hasLair(S.list) && app.encounters.length
     ? `<li class="sbanner encb"><span>Geen monsters</span><button type="button" class="btn small primary" data-prep="enc">Encounter inladen</button></li>` : "";
   const r = diffList();
-  return `<li class="dbanner"><button type="button" class="dbtn" data-enc="difftog" aria-expanded="${!!ui.diffOpen}">Moeilijkheid <b class="dchip ${chipCls(r)}">${esc(chipLbl(r))}</b> · ${fmt(r.adj)} XP <span aria-hidden="true">${ui.diffOpen ? "▾" : "▸"}</span></button>${ui.diffOpen ? diffWhy(r, hasLair(S.list), `data-enc="allmon"`, E.listMons(app.S.list, findMon)) : ""}</li>`;
+  return `<li class="dbanner"><button type="button" class="dbtn" data-enc="difftog" aria-expanded="${!!ui.diffOpen}">Moeilijkheid <b class="dchip ${chipCls(r)}">${esc(chipLbl(r))}</b> · ${fmt(r.adj)} XP ${chev(ui.diffOpen)}</button>${ui.diffOpen ? diffWhy(r, hasLair(S.list), `data-enc="allmon"`, E.listMons(app.S.list, findMon)) : ""}</li>`;
 }
 
 /**
@@ -109,7 +110,7 @@ export function encStrip(S, prep) {
   const name = `<b class="ennm">${esc(encName(S))}</b>`;
   if (!notes.length) return `<li class="encn"><span class="encnb">${name}</span></li>`;
   const open = !!ui.encOpen;
-  return `<li class="encn"><button type="button" class="encnb" data-enc="notes" aria-expanded="${open}">${name}<span class="entac">Tactiek <span aria-hidden="true">${open ? "▾" : "▸"}</span></span></button>${open
+  return `<li class="encn"><button type="button" class="encnb" data-enc="notes" aria-expanded="${open}">${name}<span class="entac">Tactiek ${chev(open)}</span></button>${open
     ? `<div class="entxt">${notes.map((e) => `${E2.length > 1 ? `<p class="enh">${esc(e.name)}</p>` : ""}<p>${esc(e.notes.trim())}</p>`).join("")}</div>` : ""}</li>`;
 }
 
@@ -156,7 +157,7 @@ function rowHtml(e) {
     <div class="ehead"><div class="einfo"><b>${esc(e.name)}</b><small>${esc(encSummary(e))} · ${esc(dateTxt(e.updatedAt))}</small>${e.notes ? `<small class="enote">${esc(e.notes)}</small>` : ""}</div>
       ${e.monsters.length ? `<button type="button" class="dchip ${chipCls(r)}" data-enc="why" data-id="${id}" aria-expanded="${ui.encWhy === e.id}" aria-label="Moeilijkheid ${esc(chipLbl(r))}, ${fmt(r.adj)} XP: uitleg">${esc(chipLbl(r))}</button>` : ""}</div>
     ${ui.encWhy === e.id ? diffWhy(r, !!e.lair, `data-enc="encall" data-id="${id}"`, E.encMons(e, findMon)) : ""}${ask}
-    <div class="ebtns"><button type="button" class="btn primary" data-enc="load" data-id="${id}">Inladen</button><button type="button" class="btn emore" data-enc="menu" data-id="${id}" aria-expanded="${ui.encMenu === e.id}" aria-label="Meer acties voor ${esc(e.name)}">⋯</button></div>
+    <div class="ebtns"><button type="button" class="btn primary" data-enc="load" data-id="${id}">Inladen</button><button type="button" class="btn emore" data-enc="menu" data-id="${id}" aria-expanded="${ui.encMenu === e.id}" aria-label="Meer acties voor ${esc(e.name)}">${ico("more")}</button></div>
     ${menu}</div>`;
 }
 

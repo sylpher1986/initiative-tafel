@@ -1,6 +1,7 @@
 // Tekent de encounter (compacte kaarten, één tegelijk open), de beurtbalk, het schade-paneel,
 // de party en het logboek. Render past de data niet aan.
 import { MAC } from "./keys.js";
+import { ico, chev } from "./icons.js";
 import { paintSetStat } from "./settings.js";
 import { $, esc, n0, spellLink } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
@@ -139,7 +140,7 @@ function paintMode() {
   document.body.dataset.mode = m;
   if (S.round) document.body.dataset.run = "1"; else delete document.body.dataset.run;
   $("#modes").innerHTML = m === "fight"
-    ? `<div class="fhead"><button type="button" class="ft" id="logopen" aria-haspopup="dialog"><span class="l">Gevecht · <span class="lk">Logboek <span aria-hidden="true">▸</span></span></span><span class="rn">Ronde ${n0(S.round)}</span><span class="fsum">${sumHtml(S, false, " · ")}</span></button>
+    ? `<div class="fhead"><button type="button" class="ft" id="logopen" aria-haspopup="dialog"><span class="l">Gevecht · <span class="lk">Logboek ${chev(false)}</span></span><span class="rn">Ronde ${n0(S.round)}</span><span class="fsum">${sumHtml(S, false, " · ")}</span></button>
       <button type="button" class="fb" data-setmode="prep" aria-label="Voorbereiden: lijst aanpassen"><span class="fi">${PEN}</span><span class="fl">Voorbereiden</span></button>
       <button type="button" class="fb ic" id="qadd" aria-label="Monster toevoegen aan het gevecht" title="Monster toevoegen aan het gevecht">${PLUS}</button></div>`
     : S.round
@@ -423,7 +424,7 @@ function drBox(c) {
     <div class="drgrid">${DTYPES.map((t) => { const at = drKind(c.dr, t); return `<button type="button" class="drt${at && at !== k ? " other" : ""}" data-a="dr-t" data-t="${t}" aria-pressed="${at === k}"${at && at !== k ? ` aria-label="${t}, nu ${DR_LBL[at]}"` : ""}>${t}${at && at !== k ? `<small aria-hidden="true">${{ r: "R", i: "I", v: "V" }[at]}</small>` : ""}</button>`; }).join("")}</div>
     <p class="hint">Tik zet het type bij ${DR_LBL[k]}; nog een tik zet het uit.${c.sheet && c.sheet.dr ? " Bijwerken via D&D Beyond houdt wat je hier toevoegt." : ""}${c.pid ? " Geldt ook in de vaste party." : ""}</p>`;
   return `<div class="drbox"><div class="drhead"><span><span class="qlbl">Resistances</span> ${sum ? esc(sum) : "geen"}</span>
-    <button type="button" class="link tap" data-a="dr-open" aria-expanded="${open}">${open ? "Klaar ▾" : "Wijzig ▸"}</button></div>${body}</div>`;
+    <button type="button" class="link tap" data-a="dr-open" aria-expanded="${open}">${open ? "Klaar" : "Wijzig"} ${chev(open)}</button></div>${body}</div>`;
 }
 
 /** AF15: het teken zit in de keuze, de waarde is altijd positief (iOS-cijferpad heeft geen minteken) */
@@ -486,7 +487,7 @@ function rageBox(c) {
 }
 
 function actionsBlock(c) {
-  const sideBtn = c.ref ? `<button data-a="sb">Statblock</button>` : c.sheet ? `<button data-a="sheet">Sheet</button>` : `<button data-a="panel" data-p="more" aria-pressed="${ui.panel === "more"}">⋯</button>`;
+  const sideBtn = c.ref ? `<button data-a="sb">Statblock</button>` : c.sheet ? `<button data-a="sheet">Sheet</button>` : `<button data-a="panel" data-p="more" aria-pressed="${ui.panel === "more"}" aria-label="Meer">${ico("more")}</button>`;
   const gone = (c.ds && c.ds.dead) || (c.kind === "monster" && isOut(c));
   const react = c.kind !== "pc" || pcReact(); // GV4: spelers houden hun reaction zelf bij (instelling); Heal neemt de plek over
   return `<div class="acts">
@@ -495,7 +496,7 @@ function actionsBlock(c) {
     <button data-a="panel" data-p="conds" aria-pressed="${ui.panel === "conds"}">Conditie</button>
     <button data-a="panel" data-p="eff" aria-pressed="${ui.panel === "eff"}" ${gone ? "disabled" : ""}>Effect</button>
     ${sideBtn}
-    ${c.ref || c.sheet ? `<button data-a="panel" data-p="more" aria-pressed="${ui.panel === "more"}" aria-label="Meer">⋯</button>` : ""}
+    ${c.ref || c.sheet ? `<button data-a="panel" data-p="more" aria-pressed="${ui.panel === "more"}" aria-label="Meer">${ico("more")}</button>` : ""}
   </div>
   ${kPanels(c, false, gone)}`;
 }
@@ -533,7 +534,7 @@ function prepActions(c) {
   b.push(`<button data-a="panel" data-p="conds" aria-pressed="${ui.panel === "conds"}">Conditie</button>`,
     `<button data-a="panel" data-p="eff" aria-pressed="${ui.panel === "eff"}">Effect</button>`);
   if (c.ref) b.push(`<button data-a="sb">Statblock</button>`); else if (c.sheet) b.push(`<button data-a="sheet">Sheet</button>`);
-  b.push(`<button data-a="panel" data-p="more" aria-pressed="${ui.panel === "more"}" aria-label="Meer: naam${c.kind === "pc" ? ", max HP, party" : ", AC, naam voor spelers"}, verwijderen">⋯</button>`);
+  b.push(`<button data-a="panel" data-p="more" aria-pressed="${ui.panel === "more"}" aria-label="Meer: naam${c.kind === "pc" ? ", max HP, party" : ", AC, naam voor spelers"}, verwijderen">${ico("more")}</button>`);
   return `<div class="acts pacts n${b.length}">${b.join("")}</div>${kPanels(c, true, false)}`;
 }
 
@@ -548,7 +549,7 @@ function atkRow(a, cid, la) {
   const key = dmgKey(a.dmg), flat = a.dmg.filter((x) => !x.e);
   const hit = a.hit !== null && cid ? `<button class="d hit" data-atk="${esc(a.an || a.n)}" data-cid="${esc(cid)}" data-label="${esc(lab)}"${la != null ? ` data-la-i="${la}"` : ""} aria-label="${esc(lab)}: aanval ${sgn(a.hit)} to hit, doel kiezen">${sgn(a.hit)}</button>`
     : a.hit !== null ? `<button class="d hit" data-roll="1d20${sgn(a.hit)}" data-hit="1" data-label="${esc(lab)}" aria-label="${esc(lab)}: aanval ${sgn(a.hit)} to hit">${sgn(a.hit)}</button>`
-    : isSaveAoe(a) && cid ? `<button class="d dcb" data-aoe="${esc(a.n)}" data-cid="${esc(cid)}" aria-label="${esc(lab)}: DC ${a.dc.n} ${a.dc.ab}, AoE-paneel openen">DC ${a.dc.n} ${a.dc.ab}<small>AoE ▸</small></button>`
+    : isSaveAoe(a) && cid ? `<button class="d dcb" data-aoe="${esc(a.n)}" data-cid="${esc(cid)}" aria-label="${esc(lab)}: DC ${a.dc.n} ${a.dc.ab}, AoE-paneel openen">DC ${a.dc.n} ${a.dc.ab}<small>AoE ${chev(false)}</small></button>`
     : a.dc ? `<span class="dc">DC ${a.dc.n} ${a.dc.ab}</span>` : "<span></span>";
   const dmg = key ? `<button class="d dm" data-dmg="${esc(key)}" data-label="${esc(lab)}" aria-label="${esc(lab)}: damage rollen">${esc(a.dmg.map((x) => x.e || x.flat).join(" + "))}<small>${esc(a.dmg.map((x) => SHORT[x.type] || x.type).join(" + "))}</small></button>`
     : flat.length ? `<span class="dflat">${esc(flat.map((x) => `${x.flat} ${x.type}`).join(" + "))}</span>` : "<span></span>";
@@ -566,16 +567,16 @@ function atkBlock(c, S) {
   const ready = (a) => { const i = rcIndex(c.rc, a.n); return i >= 0 && c.rc[i].ready; };
   const main = A.main.some(ready) ? [...A.main.filter(ready), ...A.main.filter((a) => !ready(a))] : A.main;
   const row = (a) => atkRow(a, c.id);
-  if (!turn && !all) return `<button class="atkfold" data-a="atk-open" aria-expanded="false">Aanvallen${n ? ` (${n})` : ""} <span aria-hidden="true">▸</span></button>`;
+  if (!turn && !all) return `<button class="atkfold" data-a="atk-open" aria-expanded="false">Aanvallen${n ? ` (${n})` : ""} ${chev(false)}</button>`;
   const room = turn && !all ? Math.max(1, MAIN_MAX - (A.multi ? 1 : 0)) : A.main.length;
   const hidden = A.main.length - room;
   const rx = !turn || ui.atkRx === c.id;
   const multi = A.multi ? `<p class="multi"><b>Multiattack:</b> ${esc(A.multi.text)}</p>` : "";
   const other = !A.other.length ? "" : rx
-    ? `${turn ? `<button class="atkfold sub" data-a="atk-rx" aria-expanded="true">Reactions · Legendary <span aria-hidden="true">▾</span></button>` : ""}${A.other.map(row).join("")}`
-    : `<button class="atkfold sub" data-a="atk-rx" aria-expanded="false">Reactions · Legendary (${A.other.length}) <span aria-hidden="true">▸</span></button>`;
+    ? `${turn ? `<button class="atkfold sub" data-a="atk-rx" aria-expanded="true">Reactions · Legendary ${chev(true)}</button>` : ""}${A.other.map(row).join("")}`
+    : `<button class="atkfold sub" data-a="atk-rx" aria-expanded="false">Reactions · Legendary (${A.other.length}) ${chev(false)}</button>`;
   return `<div class="atk">
-    ${!turn ? `<button class="atkfold" data-a="atk-close" aria-expanded="true">Aanvallen <span aria-hidden="true">▾</span></button>` : ""}
+    ${!turn ? `<button class="atkfold" data-a="atk-close" aria-expanded="true">Aanvallen ${chev(true)}</button>` : ""}
     ${multi}${main.slice(0, room).map(row).join("")}
     ${hidden > 0 ? `<div class="atkmore"><button class="link" data-a="atk-open">+${hidden} meer</button></div>` : ""}
     ${other}</div>`;
@@ -591,7 +592,7 @@ function lairRow(c, S) {
   const acts = app.lairs[c.key] || [];
   const keys = [...new Set([c.key, ...Object.keys(app.lairs), ...S.list.filter((x) => x.la).map((x) => "Lair: " + x.ref)])];
   return `<li class="c k lair ${c.id === S.active ? "turn" : ""}" data-id="${esc(c.id)}"${c.id === S.active ? ' aria-current="true"' : ""}>
-    <div class="i">${n0(c.init)}${c.id === S.active ? `<span class="tri" aria-hidden="true">▶</span>` : ""}</div>
+    <div class="i">${n0(c.init)}${c.id === S.active ? `<span class="tri">${ico("turn")}</span>` : ""}</div>
     <div class="n"><select class="lairsel" data-f="lairkey" aria-label="Welke lair">${keys.map((k) => `<option ${k === c.key ? "selected" : ""}>${esc(k)}</option>`).join("")}</select></div>
     <div class="meta">lair</div>
     ${c.hidden ? `<div class="badges">${hidBadge(c)}</div>` : ""}
@@ -616,7 +617,7 @@ function row(c, S, down = false) {
   const turn = c.id === S.active, hp = c.max && !down, fhp = hp && !prep;
   return `<li class="c k ${c.kind === "pc" ? "pc" : "mon"} ${open ? "open" : ""} ${turn ? "turn" : ""} ${isOut(c) ? "out" : ""}${down ? " down" : ""}${fhp ? " fhp" : ""}" data-id="${esc(c.id)}"${down ? ` data-down="1"` : ""}>
     <button class="khead" data-a="open" aria-expanded="${open}"${turn ? ` aria-current="true"` : ""} aria-label="${esc(c.name)}, ${c.kind === "pc" ? "speler" : "monster"}${effAc(c) && !(isOut(c) && c.kind === "monster") ? `, AC ${n0(effAc(c))}` : ""}${open ? ", sluiten" : ", openen"}">
-      <span class="i">${c.init == null ? "–" : n0(c.init)}${turn ? `<span class="tri" aria-hidden="true">▶</span>` : ""}</span>
+      <span class="i">${c.init == null ? "–" : n0(c.init)}${turn ? `<span class="tri">${ico("turn")}</span>` : ""}</span>
       <span class="n">${avatar(c, c.ref ? findMon(c.ref)?.meta : "")}<span class="nm">${esc(c.name)}</span></span>
       <span class="meta">${isOut(c) && c.kind === "monster" ? "neer" : acMeta(c)}</span>
       ${hp && prep ? hpBar(c) : ""}
@@ -670,7 +671,7 @@ function listHtml(S, L, prep) {
   const { up, down } = downSplit(L, prep, openId(), ui.fromDown);
   if (!down.length) return up.map((c) => row(c, S)).join("");
   return up.map((c) => row(c, S)).join("")
-    + `<li class="downblk"><button type="button" class="downbtn" id="down-tog" aria-expanded="${ui.downOpen}">Neer (${down.length}) <span aria-hidden="true">${ui.downOpen ? "▾" : "▸"}</span></button></li>`
+    + `<li class="downblk"><button type="button" class="downbtn" id="down-tog" aria-expanded="${ui.downOpen}">Neer (${down.length}) ${chev(ui.downOpen)}</button></li>`
     + (ui.downOpen ? down.map((c) => row(c, S, true)).join("") : "");
 }
 
@@ -702,7 +703,7 @@ function oldAsk(S) {
 function paintDock() {
   const S = app.S;
   const L = sortOrder(S.list);
-  const undoBtn = `<button id="undo" ${canUndo() ? "" : "disabled"} aria-label="Ongedaan maken" title="Ongedaan maken (${MAC ? "⌘Z" : "Ctrl+Z"})" aria-keyshortcuts="Meta+Z Control+Z">↶</button>`;
+  const undoBtn = `<button id="undo" ${canUndo() ? "" : "disabled"} aria-label="Ongedaan maken" title="Ongedaan maken (${MAC ? "⌘Z" : "Ctrl+Z"})" aria-keyshortcuts="Meta+Z Control+Z">${ico("undo")}</button>`;
   const pb = (k, l, al) => `<button type="button" data-prep="${k}" aria-pressed="${ui.prep === k || (k === "mon" && MONTABS.includes(ui.prep))}"${al ? ` aria-label="${al}" title="${al}"` : ""}>${l}</button>`;
   const prepRow = mode() === "prep" ? `<div class="prow">${pb("mon", `<span class="pp">+&nbsp;</span>Monster`, "")}${pb("pc", `<span class="pp">+&nbsp;</span>Speler`, "")}${pb("party", "Party", "")}${pb("data", GEAR, "Instellingen")}</div>` : "";
   if (!S.round) {
@@ -765,8 +766,8 @@ function svBar(S) {
   const O = openSaves(S), rg = rageRow(S), lim = rg ? 1 : 2; // de Rage-regel telt mee in de grens van 2 regels
   if (!O.length) return rg ? `<div class="svbar">${rg}</div>` : "";
   if (O.length <= lim) return `<div class="svbar">${rg}${O.map((s) => svRow(S, s)).join("")}</div>`;
-  if (rg) return `<div class="svbar">${rg}<button type="button" class="svall" data-svsheet="1">Saves · ${O.length} open <span aria-hidden="true">▸</span></button></div>`;
-  const C = O.filter((s) => s.kind === "conc"), btn = (t) => `<button type="button" class="svall" data-svsheet="1">${t} <span aria-hidden="true">▸</span></button>`;
+  if (rg) return `<div class="svbar">${rg}<button type="button" class="svall" data-svsheet="1">Saves · ${O.length} open ${chev(false)}</button></div>`;
+  const C = O.filter((s) => s.kind === "conc"), btn = (t) => `<button type="button" class="svall" data-svsheet="1">${t} ${chev(false)}</button>`;
   if (!C.length || C.length > 2) return `<div class="svbar">${btn(`Saves · ${O.length} open${C.length ? ` · ${C.length} concentratie` : ""}`)}</div>`;
   return `<div class="svbar">${C.map((s) => svRow(S, s)).join("")}${btn(`Saves · ${O.length - C.length} andere open`)}</div>`;
 }
@@ -804,13 +805,13 @@ function laBar(S, L) {
   if (M.length > 2) {
     const ok = M.some((c) => laStatus(c, S) === "ok");
     return `<div class="larow"><button class="lachip${ok ? "" : " off"}${pulse(ok)}" data-la="*" aria-label="Legendary actions van ${M.length} monsters">
-      <span class="ln">Legendary · ${M.length} monsters</span><span aria-hidden="true">▸</span></button></div>`;
+      <span class="ln">Legendary · ${M.length} monsters</span>${chev(false)}</button></div>`;
   }
   return `<div class="larow">${M.map((c) => {
     const st = laStatus(c, S), ok = st === "ok";
     return `<button class="lachip${ok ? "" : " off"}${pulse(ok)}" data-la="${esc(c.id)}" ${ok ? "" : "disabled"} title="${ok ? "Legendary actions" : LA_TITLE[st]}"
       aria-label="Legendary actions ${esc(c.name)}: ${n0(c.la.left)} van ${n0(c.la.max)} over${ok ? "" : ", " + LA_TITLE[st]}">
-      <span class="ln">${esc(c.name)}</span><span class="ld">${ok ? dots(c.la) : LA_WHY[st]}</span><span aria-hidden="true">▸</span></button>`;
+      <span class="ln">${esc(c.name)}</span><span class="ld">${ok ? dots(c.la) : LA_WHY[st]}</span>${chev(false)}</button>`;
   }).join("")}</div>`;
 }
 
@@ -1410,12 +1411,12 @@ function atkRes(x, c, by) {
     const left = shieldOk(c, x, r, res) ? `<button type="button" class="btn" data-xa="shield">Shield +5</button>`
       : parryOk(c, x, r, res) ? `<button type="button" class="btn" data-xa="parry">Parry +${parryOf(findMon(c.ref))}</button>` : "<span></span>";
     const nx = !can && x.sq && x.sq.left.length ? x.sq.left[0] : ""; // GV11: niets toe te passen (immuun): wel door
-    foot = `${left}${nx ? `<button type="button" class="btn primary qgo" data-xa="next">Volgende: ${esc(nx)} <span aria-hidden="true">▸</span></button>`
+    foot = `${left}${nx ? `<button type="button" class="btn primary qgo" data-xa="next">Volgende: ${esc(nx)} ${chev(false)}</button>`
       : `<button type="button" class="btn primary qgo" data-xa="go" ${can ? "" : "disabled"}>${!c.max ? "HP onbekend" : goLabel(res.dealt, ri, x)}</button>`}`;
   } else {
     const spend = x.la && x.la.on && laCan(x, by);
     const nx = !spend && x.sq && x.sq.left.length ? x.sq.left[0] : ""; // GV11: door naar de volgende aanval
-    foot = `<button type="button" class="link" data-xa="force">Toch raak</button><button type="button" class="btn primary qgo" data-xa="${spend ? "miss" : nx ? "next" : "close"}">${spend ? `Sluit (−${x.la.cost} LA)` : nx ? `Volgende: ${esc(nx)} <span aria-hidden="true">▸</span>` : "Sluit"}</button>`;
+    foot = `<button type="button" class="link" data-xa="force">Toch raak</button><button type="button" class="btn primary qgo" data-xa="${spend ? "miss" : nx ? "next" : "close"}">${spend ? `Sluit (−${x.la.cost} LA)` : nx ? `Volgende: ${esc(nx)} ${chev(false)}` : "Sluit"}</button>`;
   }
   return `<button type="button" class="link xback" data-xa="back">‹ Ander doel</button>
     <p class="xhit"><b class="${res.hit ? "ok" : "bad"}">${word}</b> ${atkHtml(r, ac)}</p>
@@ -1473,7 +1474,7 @@ export function paintInit() {
 
 /* ---------- party en logboek ---------- */
 /** VB2: wie een sessie voorbereidt zoekt bij Party; de encounters staan onder + Monster */
-const ENC_LINK = `<button type="button" class="btn tap enclink" data-prep="enc">Encounters klaarzetten <span aria-hidden="true">▸</span></button>`;
+const ENC_LINK = `<button type="button" class="btn tap enclink" data-prep="enc">Encounters klaarzetten ${chev(false)}</button>`;
 export function paintParty() {
   const el = $("#party-panel");
   const at = new Set(app.S.list.filter((c) => c.pid).map((c) => c.pid));

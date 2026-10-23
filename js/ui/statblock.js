@@ -1,5 +1,6 @@
 // Statblocks (monsters) en character sheets (spelers) in het zijpaneel, met klikbare dobbelstenen.
 import { $, esc, n0, toastHtml, spellLink } from "./util.js";
+import { chev } from "./icons.js";
 import { findMon } from "../data/monsters.js";
 import { rollExpr, mod, sgn } from "../rules/dice.js";
 import { ORD, legInfo, castInfo } from "../rules/spells.js";
@@ -369,7 +370,7 @@ export function monCard(m, full = false, toggle = true) {
     ${!A && m.text ? `<p class="mptext">${esc(m.text)}</p>` : ""}
     ${traits.length ? `<p class="mptraits">${esc(traits.join(" · "))}</p>` : ""}
     ${tags.length ? `<p class="mptags">${tags.map((t) => `<span class="tag m">${esc(t)}</span>`).join("")}</p>` : ""}
-    ${toggle ? `<button type="button" class="link mpfull" data-mpfull aria-expanded="${full}">${full ? "Minder ▴" : "Volledig statblock ▾"}</button>` : ""}
+    ${toggle ? `<button type="button" class="link mpfull" data-mpfull aria-expanded="${full}">${full ? "Minder" : "Volledig statblock"} ${chev(full)}</button>` : ""}
     ${toggle && full ? `<div class="sbx">${sbBody(m)}</div>` : ""}
   </div>`;
 }

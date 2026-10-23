@@ -1,6 +1,7 @@
 // GV2: samenvatting bij Gevecht afronden (paneel #esheet) en de strook "Laatste gevecht" in Voorbereiden.
 // Regels puur in js/rules/fight.js; de samenvatting staat in app.S.endSum (undo: Ongedaan na afronden laat het gevecht doorlopen).
 import { $, esc, toast, toastHtml } from "./util.js";
+import { chev } from "./icons.js";
 import { app, logAs, relog, because, stepNo } from "../state.js";
 import { render, ui } from "./render.js";
 import { findMon } from "../data/monsters.js";
@@ -45,7 +46,7 @@ export function paintEnd() {
       <div class="etiles"><div><b>${fmt(k.xp)}</b><span>XP totaal</span></div><div><b>${k.per == null ? "–" : fmt(k.per)}</b><span>${k.share.length ? `per speler (${k.share.length})` : "niemand deelt"}</span></div></div>
       ${line("Verslagen:", k.by.length ? esc(byText(k.by)) : "niets")}
       ${k.noXp.length ? `<p class="hint">Zonder CR of statblock niet geteld: ${esc(k.noXp.join(", "))}</p>` : ""}
-      ${alive.length ? `<details class="eflee" ${ui.endFlee ? "open" : ""}><summary>Gevlucht of overgegeven? Tel mee <span aria-hidden="true">${ui.endFlee ? "▾" : "▸"}</span></summary>
+      ${alive.length ? `<details class="eflee" ${ui.endFlee ? "open" : ""}><summary>Gevlucht of overgegeven? Tel mee ${chev(ui.endFlee)}</summary>
         <div class="echips">${alive.map((m) => chip(m.id, counted(m), m.label || m.name)).join("")}</div></details>` : ""}
       ${es.pcs.length ? `<p class="elbl">Delen</p><div class="echips">${es.pcs.map((p) => chip(p.id, k.share.includes(p), `${p.name}${p.dead ? " (dood)" : ""}`)).join("")}</div>` : ""}
       ${line("Neer geweest:", esc(k.down.map((x) => `${x.name}${x.up ? " (stond weer op)" : ""}`).join(", ")))}

@@ -1,5 +1,6 @@
 // Spelersscherm: toont alleen de snapshot die het DM-scherm stuurt (js/playerview.js), nooit eigen data.
 import { APP } from "./version.js";
+import { ico } from "./ui/icons.js";
 import { cleanView, headHtml, findMe, meState, buzzFor, dsText, logLines, pushLog } from "./playerview.js";
 import { ORD } from "./rules/spells.js";
 import { localChannel, roomChannel, normCode, fmtCode } from "./share.js";
@@ -49,7 +50,7 @@ function row(c, V, meId) {
   const turn = c.id === V.active || (V.group || []).includes(c.id), nxt = c.id === V.next, me = c.id === meId;
   const ds = dsB(c), tags = tagsB(c);
   return `<li class="pvc ${c.kind} ${turn ? "turn" : ""} ${c.out ? "out" : ""}${me ? " me" : ""}">
-    <span class="pvi">${c.init != null ? c.init : ""}${turn ? `<span class="tri" aria-hidden="true">▶</span>` : ""}</span>
+    <span class="pvi">${c.init != null ? c.init : ""}${turn ? `<span class="tri">${ico("turn")}</span>` : ""}</span>
     <span class="pvn">${av(c)}<span class="nm">${esc(c.name)}</span>${me ? `<span class="pvnext">jij</span>` : nxt ? `<span class="pvnext">volgende</span>` : ""}</span>
     <span class="pvhp">${hp(c)}</span>
     ${tags || ds ? `<div class="badges">${ds}${tags}</div>` : ""}

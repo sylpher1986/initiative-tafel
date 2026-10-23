@@ -1,5 +1,6 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
 import { APP } from "../version.js";
+import { chev } from "./icons.js";
 import { openSettings } from "./settings.js";
 import { $, esc, n0, toast, toastHtml, closeToast, show } from "./util.js";
 import { app, because, addWhy, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
@@ -1189,7 +1190,7 @@ export function bindForms() {
     const m = cuMon();
     box.innerHTML = `<p class="hint cuok">Herkend: ${esc(foundText(p))}</p>
       ${rest ? `<p class="hint">Niet herkend: ${rest} ${rest === 1 ? "regel blijft" : "regels blijven"} als tekst onder Overig.</p>` : ""}
-      <button type="button" class="link" data-cuprev aria-expanded="${cuPrev}">${cuPrev ? "Voorbeeld ▴" : "Voorbeeld ▾"}</button>
+      <button type="button" class="link" data-cuprev aria-expanded="${cuPrev}">Voorbeeld ${chev(cuPrev)}</button>
       ${cuPrev && m ? monCard(withParsed(m), false, false) : ""}`;
   };
   /** Monster uit het formulier (null = nog niet compleet); HP: getal of dobbelstenen */

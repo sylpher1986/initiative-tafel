@@ -144,8 +144,9 @@ ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 /* AF6: knop- en summary-links 44 px hoog (ook midden in een zin: de regel wordt dan hoger) */
 button.link,summary.link{display:inline-flex;align-items:center;gap:.3em;min-height:44px;padding:0 8px}
 /* inline-flex haalt de standaard ▸ weg: zelf tekenen, behalve waar die al bewust uit stond (.cast, .conds) */
-details:not(.cast):not(.conds)>summary.link::before{content:"▸";text-decoration:none;display:inline-block}
-details[open]:not(.cast):not(.conds)>summary.link::before{content:"▾"}
+/* WP17 (HS7): chevron als CSS-lijn (geen tekenglyph: Inter heeft ▸/▾ niet); rechts = dicht, omlaag = open */
+details:not(.cast):not(.conds)>summary.link::before,.setsec .schev::before{content:"";flex:0 0 auto;width:.42em;height:.42em;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(-45deg);margin:0 .45em 0 .1em}
+details[open]:not(.cast):not(.conds)>summary.link::before,.setsec[open] .schev::before{transform:rotate(45deg)}
 .link.strong{color:var(--act-ink);font-weight:700}
 details.conds{width:100%}
 details.conds summary{list-style:none;display:inline-flex}
@@ -377,6 +378,10 @@ ol.order{gap:6px}
 .av.img{background:var(--sunk)}
 .av img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}
 .ic{fill:currentColor}
+/* WP17 (HS7): lijn-iconen uit icons/ui.svg (ico() in js/ui/icons.js); kleur = currentColor, maat volgt de letter */
+.li{width:1em;height:1em;flex:0 0 auto;vertical-align:-.14em;overflow:visible}
+.li.dn{transform:rotate(90deg)}
+.tri .li{display:block;width:.9em;height:.9em;margin:0 auto}
 .c.k.out .av{filter:grayscale(1)}
 /* AF12: monster of speler niet alleen via kleur: speler rond, monster afgeronde rechthoek */
 .c.k.mon .av,.pvc.monster .av{border-radius:6px}
@@ -1098,8 +1103,7 @@ button.dchip{min-height:44px;cursor:pointer}
 .setsec .sstat{flex:1;min-width:0;text-align:right;font-size:.85rem;color:var(--muted);overflow-wrap:anywhere}
 .setsec .sstat.warn{color:var(--warn);font-weight:600}
 .setsec .sstat.dot::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--bad);margin-right:6px;vertical-align:1px}
-.setsec .schev::before{content:"▸";color:var(--muted)}
-.setsec[open] .schev::before{content:"▾"}
+.setsec .schev{color:var(--muted);display:inline-flex;align-items:center}
 .setsec>summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .setbody{display:grid;gap:10px;padding:2px 0 14px}
 #order{overflow-anchor:none} /* IN8: scrollcorrectie doet keepCard, niet de browser */
