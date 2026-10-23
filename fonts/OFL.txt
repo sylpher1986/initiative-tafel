@@ -1,4 +1,4 @@
-Lettertypes in deze map (latin-subset, variabel gewicht, via Fontsource 5.3.0):
+Lettertypes in deze map (latin-subset, variabel gewicht), ongewijzigd overgenomen van Fontsource 5.3.0 (@fontsource-variable/inter, @fontsource-variable/playfair-display); niet zelf gesubset:
 - inter-latin-wght.woff2, inter-latin-wght-italic.woff2: Inter
 - playfair-display-latin-wght.woff2: Playfair Display
 Beide onder de SIL Open Font License 1.1 (hieronder, per lettertype).
