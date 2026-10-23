@@ -38,6 +38,13 @@ const PAIRS = [
   ["fg", "mon-soft", TEXT, "monster-avatar/tag"], ["fg", "pc-soft", TEXT, "speler-avatar"],
   ["bg", "fg", TEXT, "Schade-knop, melding"], ["t-link", "fg", TEXT, "knop op melding"], ["t-good", "fg", TEXT, "crit op melding"], ["t-bad", "fg", TEXT, "fumble op melding"],
   ["sb-ink", "surface", TEXT, "statblock"],
+  // WP17: statblock op perkament (--sb-bg), deelnemerskaart --card, walnoot-kop spelersscherm
+  ["sb-ink", "sb-bg", TEXT, "statblock-inkt op perkament"], ["sb-ink", "sunk", TEXT, "statblock-inkt op hover (ability)"], ["fg", "sb-bg", TEXT, "statblock-tekst"],
+  ["muted", "sb-bg", TEXT, "statblock-meta"], ["act-ink", "sb-bg", TEXT, "worp in het statblock"], ["info", "sb-bg", TEXT, "Voorbeeld/Daarna in de zijkolom"],
+  ["fg", "card", TEXT, "tekst op kaart"], ["muted", "card", TEXT, "secundair op kaart"], ["act-ink", "card", TEXT, "goud op kaart"],
+  ["good", "card", TEXT, "gelukt op kaart"], ["warn", "card", TEXT, "aandacht op kaart"], ["bad", "card", TEXT, "fout op kaart"], ["info", "card", TEXT, "info op kaart"],
+  ["now-ink", "fight-bg", TEXT, "aan de beurt op walnoot-kop (spelersscherm)"], ["muted", "sunk", TEXT, "kop spelersscherm bij verbinding kwijt"],
+  ["line-strong", "card", UI, "componentrand op kaart"], ["sel", "card", UI, "ring op kaart"], ["mon", "card", UI, "zijstreep op kaart"], ["focus", "card", UI, "focusring op kaart"], ["line-strong", "sb-bg", UI, "rand in het statblock"],
   ["fight-fg", "fight-bg", TEXT, "Gevecht-kop"], ["fight-muted", "fight-bg", TEXT, "Gevecht-kop secundair"], ["fight-fg", "fight-btn", TEXT, "knop in Gevecht-kop"],
   ["sel", "surface", UI, "ring geopend/geselecteerd"], ["sel", "act-soft", UI, "selectierand op zacht vlak"],
   ["focus", "bg", UI, "focusring"], ["focus", "surface", UI, "focusring op kaart"], ["focus", "act-soft", UI, "focusring op geselecteerd"],
@@ -58,7 +65,7 @@ for (const [name, T] of [["licht", light], ["donker", darkSys]]) {
 }
 
 test("HP-balk en statuskleuren als grafiek ≥ 3:1 tegen de kaart", () => {
-  for (const T of [light, darkSys]) for (const k of ["good", "warn", "bad", "act-ink"]) assert.ok(ratio(T[k], T.surface) >= UI, k);
+  for (const T of [light, darkSys]) for (const k of ["good", "warn", "bad", "act-ink"]) for (const bg of ["surface", "card"]) assert.ok(ratio(T[k], T[bg]) >= UI, k + " op " + bg);
 });
 
 test("donker thema staat twee keer gelijk (systeem en vaste keuze)", () => {

@@ -92,6 +92,22 @@ const SCEN = {
     if (r.w < 30 || r.w > 38) throw new Error("embleem " + r.w + " px");
     if (r.hh > 1.6 * r.lh) throw new Error("h1 over meer regels: " + JSON.stringify(r));
   },
+  // WP17: statblock op perkament met koperen inkt, ability-knoppen ≥ 44 px, melding met fout-icoon, lijn-iconen geladen
+  async huisstijl(page) {
+    await SCEN.letters(page);
+    const r = await page.evaluate(async () => {
+      const u = await import("/js/ui/util.js"); u.toastBad("Proef: weigering met icoon.");
+      const ab = [...document.querySelectorAll(".sb .abil button")].map((b) => Math.round(b.getBoundingClientRect().width));
+      const ic = document.querySelector("#undo .li"), t = document.querySelector("#toast .tmsg.bad .tico");
+      const cs = (el, p) => el && getComputedStyle(el)[p];
+      return { ab, min: Math.min(...ab), undo: ic && Math.round(ic.getBoundingClientRect().width), tico: !!t, role: cs(t?.closest(".tmsg"), "display") && t.closest(".tmsg").getAttribute("role"),
+        sb: cs(document.querySelector(".sb"), "backgroundColor"), card: cs(document.querySelector("#order .c"), "backgroundColor") };
+    });
+    if (!r.ab.length || r.min < 44) throw new Error("ability-knoppen < 44 px: " + r.ab.join(","));
+    if (!r.undo || r.undo < 18) throw new Error("undo-icoon ontbreekt of te klein");
+    if (!r.tico || r.role !== "alert") throw new Error("foutmelding zonder icoon of role=alert");
+    if (r.sb === "rgb(255, 255, 255)" || r.card === "rgb(255, 255, 255)") throw new Error("statblock/kaart nog wit: " + JSON.stringify(r));
+  },
   async tagline(page) { if (!(await page.locator("#pv-tag").isVisible())) throw new Error("tagline niet zichtbaar in de wachtstand"); },
 };
 

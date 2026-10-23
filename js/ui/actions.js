@@ -2,7 +2,7 @@
 import { APP } from "../version.js";
 import { chev } from "./icons.js";
 import { openSettings } from "./settings.js";
-import { $, esc, n0, toast, toastHtml, closeToast, show } from "./util.js";
+import { $, esc, n0, toast, toastHtml, closeToast, show, toastBad } from "./util.js";
 import { app, because, addWhy, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
 import { render, ui, openId, mode, atkAc, atkRider, atkTargets, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintDmgSugg, dmgSp, aoeCaster, dmgSlot, dmgDice, dmgLevel, spellSlot, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, edNow, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
 import { PAS, pasVal, cleanPas } from "../rules/passives.js";
@@ -201,11 +201,11 @@ const row = {
     const ed = ui.edit;
     if (!ed || ed.id !== c.id) return false;
     const name = String(ed.name).trim().slice(0, 120);
-    if (!name) { toast("Naam mag niet leeg zijn."); return false; }
+    if (!name) { toastBad("Naam mag niet leeg zijn."); return false; }
     const has = (k) => !ed.keys || ed.keys.includes(k);
     // SP5: eigen passives (leeg = uit de sheet); ongeldig = niets opslaan, melding
     const pas = has("pas") && c.kind === "pc" ? Object.fromEntries(PAS.map(([k]) => [k, String(ed[k] ?? "").trim()])) : null;
-    if (pas && PAS.some(([k]) => pas[k] !== "" && pasVal(pas[k]) == null)) { toast("Passive is 1 t/m 40, of leeg laten."); return false; }
+    if (pas && PAS.some(([k]) => pas[k] !== "" && pasVal(pas[k]) == null)) { toastBad("Passive is 1 t/m 40, of leeg laten."); return false; }
     c.name = name;
     if (pas) { const v = cleanPas(pas); if (v) c.pas = v; else delete c.pas; }
     const ac = parseInt(ed.ac);
@@ -238,11 +238,11 @@ const row = {
     const f = ui.effForm, k = f.k || "ac+";
     const { st, op, v } = effSpec(k, f.v);
     const spec = { n: String(f.n || "").trim() || "Effect", st, op, v, txt: f.txt || "" };
-    if (st === "ac" && spec.op === "+" && !c.ac) { toast("Vul eerst AC in (⋯)."); return false; }
-    if (st && !spec.v) { toast("Vul een waarde in."); return false; }
+    if (st === "ac" && spec.op === "+" && !c.ac) { toastBad("Vul eerst AC in (⋯)."); return false; }
+    if (st && !spec.v) { toastBad("Vul een waarde in."); return false; }
     // RE11/RE16: deze namen horen bij Conditie → Exhaustion en de preset Rage (niveau, Frenzy, resource)
-    if (/^(exhaustion|rage)$/i.test(spec.n)) { toast(/^e/i.test(spec.n) ? "Exhaustion zet je via Conditie → Exhaustion." : "Gebruik de preset Rage."); return false; }
-    if (!st && !spec.txt && !f.n) { toast("Geef het effect een naam of notitie."); return false; }
+    if (/^(exhaustion|rage)$/i.test(spec.n)) { toastBad(/^e/i.test(spec.n) ? "Exhaustion zet je via Conditie → Exhaustion." : "Gebruik de preset Rage."); return false; }
+    if (!st && !spec.txt && !f.n) { toastBad("Geef het effect een naam of notitie."); return false; }
     const by = f.by && app.S.list.some((x) => x.id === f.by) ? f.by : null;
     ui.effForm = {}; ui.effCustom = false;
     return applyEff(c, { ...spec, dur: f.dur || "inf", conc: !!by }, by);
@@ -303,7 +303,7 @@ const row = {
   },
   "lair-add"(c, b, li) {
     const n = li.querySelector('[data-f="la-n"]').value.trim(), t = li.querySelector('[data-f="la-t"]').value.trim();
-    if (!n || !t) { toast("Vul een naam en een effect in."); return false; }
+    if (!n || !t) { toastBad("Vul een naam en een effect in."); return false; }
     app.lairs[c.key] = [...(app.lairs[c.key] || []), { n, t }]; saveLairs();
   },
   "lair-del"(c, b) { app.lairs[c.key].splice(+b.dataset.i, 1); saveLairs(); },
@@ -322,7 +322,7 @@ function renderFocus(c, ...sels) {
 function dsDone(c, r, byApp) {
   ui.dsPad = null;
   const f = R.dsResult(c, r, byApp);
-  if (!f.why.length) { toast("Geen death save nodig."); renderFocus(c, '[data-a="ds-own"]', ".khead"); return false; }
+  if (!f.why.length) { toastBad("Geen death save nodig."); renderFocus(c, '[data-a="ds-own"]', ".khead"); return false; }
   addWhy(f.why);
   renderFocus(c, byApp ? '[data-a="ds-roll"]' : '[data-a="ds-own"]', ".khead");
   toastHtml(`${esc(dsToast(c, r))} <button class="tundo" id="toast-undo">Ongedaan</button>`);
@@ -539,7 +539,7 @@ const global = {
   "reset-no"() { ui.confirmReset = false; },
   "reset-yes"() { app.S = { list: [], round: 0, active: null, sample: false }; ui.confirmReset = false; ui.mode = null; },
   spelers() {
-    if (!window.open("speler", "it-spelers")) toast("Het venster werd geblokkeerd. Sta pop-ups toe voor deze site.");
+    if (!window.open("speler", "it-spelers")) toastBad("Het venster werd geblokkeerd. Sta pop-ups toe voor deze site.");
     return false;
   },
   sbclose() { closeSB(); return false; },
@@ -766,7 +766,7 @@ export function saveLevel({ cid, pid }, raw) {
   const m = p && app.party.find((x) => x.pid === p);
   if (!c && !m) return true; // intussen weg
   const v = cleanLvl(raw);
-  if (raw !== "" && !v) { toast("Level is 1 t/m 20."); return false; }
+  if (raw !== "" && !v) { toastBad("Level is 1 t/m 20."); return false; }
   if (m) { if ((m.lvl ?? null) !== v) { m.lvl = v; saveParty(); } return true; }
   if (c && (c.lvl ?? null) !== v) { c.lvl = v ?? undefined; because("level", c.id); commit(); }
   return true;
@@ -779,7 +779,7 @@ export function saveLevel({ cid, pid }, raw) {
  */
 function prepField(c, t) {
   const k = t.dataset.pf, raw = t.value.trim();
-  const back = (msg) => { toast(msg); t.value = { init: c.init, max: baseMax(c) || "", hp: c.hp, ac: c.ac || "" }[k] ?? t.value; };
+  const back = (msg) => { toastBad(msg); t.value = { init: c.init, max: baseMax(c) || "", hp: c.hp, ac: c.ac || "" }[k] ?? t.value; };
   if (k === "lvl") { if (!saveLevel({ cid: c.id }, raw)) { const m = c.pid && app.party.find((x) => x.pid === c.pid); t.value = (m ? m.lvl : c.lvl) ?? ""; } return; }
   const n = parseInt(raw);
   if (k === "init") {
@@ -1160,9 +1160,9 @@ export function bindForms() {
   $("#mon-prev").addEventListener("click", (e) => { if (!e.target.closest("[data-mpfull]")) return; ui.monFull = !ui.monFull; renderMonList(); });
   $("#f-mon").addEventListener("submit", (e) => {
     e.preventDefault();
-    if (!selMon) { toast("Tik eerst een monster in de lijst aan."); return; }
+    if (!selMon) { toastBad("Tik eerst een monster in de lijst aan."); return; }
     const st = ui.monAdd, fix = parseInit(st.fix);
-    if (st.fixOn && fix === null) { toast("Vul de initiative in."); $("#mon-fix")?.focus(); return; }
+    if (st.fixOn && fix === null) { toastBad("Vul de initiative in."); $("#mon-fix")?.focus(); return; }
     $("#mon-q").blur();
     addMonsters(selMon, st.n, addHp(findMon(selMon)), addInit(st), false, fix, $("#mon-hid").checked, $("#mon-anon").checked);
     Object.assign(st, { n: 1, fixOn: false, fix: "" }); // aantal en ingevulde initiative gelden één keer; HP en Per monster/Groep blijven
@@ -1209,10 +1209,10 @@ export function bindForms() {
     e.preventDefault();
     clearTimeout(cuT); cuParse(); // net geplakt en meteen opslaan: eerst herkennen
     const m = cuMon();
-    if (m.err) { toast(m.err); $("#cu-hp").focus(); return; }
-    if (!$("#cu-name").value.trim()) { toast("Vul een naam in."); $("#cu-name").focus(); return; }
-    if (!(parseInt(m.ac) > 0)) { toast("Vul AC in, of plak een statblock met Armor Class."); $("#cu-ac").focus(); return; }
-    if (!(m.hp > 0)) { toast("Vul geldige HP in, of plak een statblock met Hit Points."); $("#cu-hp").focus(); return; }
+    if (m.err) { toastBad(m.err); $("#cu-hp").focus(); return; }
+    if (!$("#cu-name").value.trim()) { toastBad("Vul een naam in."); $("#cu-name").focus(); return; }
+    if (!(parseInt(m.ac) > 0)) { toastBad("Vul AC in, of plak een statblock met Armor Class."); $("#cu-ac").focus(); return; }
+    if (!(m.hp > 0)) { toastBad("Vul geldige HP in, of plak een statblock met Hit Points."); $("#cu-hp").focus(); return; }
     app.custom = [m, ...app.custom.filter((x) => x.n !== m.n)]; saveLibrary();
     e.target.reset(); for (const [id] of CU) cuAuto($("#" + id), false); cuPrev = false; cuParse();
     selMon = m.n; $("#mon-q").value = "";
@@ -1228,9 +1228,9 @@ export function bindForms() {
     const f = e.target.files[0]; if (!f) return;
     e.target.value = ""; // ook na een fout opnieuw te kiezen
     let j;
-    try { j = JSON.parse(await f.text()); } catch { toast("Dit bestand is geen geldige JSON. Kies het .json-bestand met monsters."); return; }
+    try { j = JSON.parse(await f.text()); } catch { toastBad("Dit bestand is geen geldige JSON. Kies het .json-bestand met monsters."); return; }
     const conv = parseMonsterFile(j);
-    if (!conv.length) { toast("Geen monsters gevonden in dit bestand."); return; }
+    if (!conv.length) { toastBad("Geen monsters gevonden in dit bestand."); return; }
     const before = app.imported.length;
     const map = new Map(app.imported.map((m) => [m.n.toLowerCase(), m]));
     conv.forEach((m) => map.set(m.n.toLowerCase(), m));
@@ -1434,9 +1434,9 @@ function spellClick(a, k, b) {
   });
   else if (k === "sroll") {
     const dc = parseInt(a.sdc);
-    if (!(dc > 0)) { toast("Vul eerst de DC in."); $("#s-dc")?.focus(); return true; }
+    if (!(dc > 0)) { toastBad("Vul eerst de DC in."); $("#s-dc")?.focus(); return true; }
     const mons = spellTargets(app.S.list).map((c) => ({ c, p: spellPick(a, sp, caster, c) })).filter((x) => x.c.kind === "monster" && x.p.sel && !x.p.immune);
-    if (!mons.length) { toast("Kies eerst de monsters die een save doen."); return true; }
+    if (!mons.length) { toastBad("Kies eerst de monsters die een save doen."); return true; }
     selfToast(mons.map((x) => x.c), sp.ab);
     // altijd een spell: Magic Resistance geeft advantage; Bless/Bane en cover tellen mee
     mons.filter(({ c }) => !selfRoll(c, sp.ab)).forEach(({ c, p }) => { const sa = saveAdv(c, sp.ab, hasMagicRes(p.m)), x = rollSave(saveBonus(p.m, sp.ab), sa.v, Math.random, saveMods(c, sp.ab), sa.why); a.s[c.id] = { ...(a.s[c.id] || {}), roll: x, ok: x.tot >= dc, lr: false }; });
@@ -1450,7 +1450,7 @@ function spellGo() {
   const a = ui.aoe, S = app.S, sp = curSpell(a), caster = S.list.find((x) => x.id === a.by && x.kind !== "lair");
   if (!sp || !caster) return;
   const dc = parseInt(a.sdc);
-  if (sp.rep && !(dc > 0)) { toast("Vul de DC in: die is nodig voor de herhaalsave."); $("#s-dc")?.focus(); return; }
+  if (sp.rep && !(dc > 0)) { toastBad("Vul de DC in: die is nodig voor de herhaalsave."); $("#s-dc")?.focus(); return; }
   const picks = sortOrder(spellTargets(S.list)).map((c) => ({ c, p: spellPick(a, sp, caster, c) })).filter((x) => x.p.sel)
     .map(({ c, p }) => ({ c, m: p.m, ok: !!sp.ab && p.ok, lr: !!sp.ab && p.lr, note: p.roll ? `${sp.ab} save ${rollText(p.roll, dc)}` : "" }));
   if (!picks.length) return;
@@ -1529,7 +1529,7 @@ export function bindAoe() {
     if (k === "dspx") { chooseDmg(a, null); rebuildAoe("#a-q"); return; }
     if (k === "slot") { const sp = dmgSp(a), cur = dmgSlot(a, aoeCaster(a), sp); a.slot = b.dataset.v; if (sp && cur !== a.slot) rollNow(a, dmgDice(a, aoeCaster(a), sp)); rebuildAoe(`[data-ao="slot"][data-v="${b.dataset.v}"]`); return; }
     if (k === "droll" || (k === "reroll" && !a.src)) {
-      if (!normDice(a.dice)) { toast("Dobbelstenen als 8d6 of 2d6+3."); $("#a-dice")?.focus(); return; }
+      if (!normDice(a.dice)) { toastBad("Dobbelstenen als 8d6 of 2d6+3."); $("#a-dice")?.focus(); return; }
       rollNow(a, a.dice); $("#a-dmg").value = a.dmg; paintAoe(); return;
     }
     if (k === "save") aoeSet(a, id, { save: b.dataset.v, lr: false });
@@ -1539,9 +1539,9 @@ export function bindAoe() {
     if (k === "all") aoeTargets(a.src).forEach((c) => aoeSet(a, c.id, { sel: !!b.dataset.v && c.kind === b.dataset.v }));
     if (k === "roll") {
       const dc = parseInt(a.dc);
-      if (!(dc > 0)) { toast("Vul eerst de DC in."); $("#a-dc").focus(); return; }
+      if (!(dc > 0)) { toastBad("Vul eerst de DC in."); $("#a-dc").focus(); return; }
       const mons = aoeTargets(a.src).filter((c) => c.kind === "monster" && aoePick(a, c).sel);
-      if (!mons.length) { toast("Kies eerst de monsters die een save doen."); return; }
+      if (!mons.length) { toastBad("Kies eerst de monsters die een save doen."); return; }
       selfToast(mons, a.ab);
       mons.filter((c) => !selfRoll(c, a.ab)).forEach((c) => {
         const m = findMon(c.ref), sa = saveAdv(c, a.ab, hasMagicRes(m)), x = rollSave(saveBonus(m, a.ab), sa.v, Math.random, saveMods(c, a.ab), sa.why);
@@ -1568,7 +1568,7 @@ function openActAoe(cid, name) {
   if (!c) return;
   const a = { src: c.id, srcName: c.name, act: name, t: {} };
   const x = srcAoe(a);
-  if (!x) { toast("Deze actie kon niet gelezen worden. Gebruik de knop AoE in de beurtbalk."); return; }
+  if (!x) { toastBad("Deze actie kon niet gelezen worden. Gebruik de knop AoE in de beurtbalk."); return; }
   const ri = rcIndex(c.rc, name);
   ui.aoe = null; paintAoe(); // paneel opnieuw opbouwen met de titel van deze actie
   ui.sheet = null; ui.qadd = null; ui.la = null; ui.atk = null;
@@ -1808,7 +1808,7 @@ function initGo() {
     const L = initPcs(app.S.list), first = L.find((c) => parseInit(x.v[c.id]) === null);
     if (first) { x.act = first.id; x.fresh = true; }
     paintInit();
-    toast(`Nog geen initiative voor: ${r.missing.join(", ")}.`);
+    toastBad(`Nog geen initiative voor: ${r.missing.join(", ")}.`);
     return;
   }
   apply(r);
@@ -1905,7 +1905,7 @@ export function bindParty() {
     const pid = e.target.dataset.plvl; if (!pid) return;
     const m = app.party.find((x) => x.pid === pid); if (!m) return;
     const v = cleanLvl(e.target.value);
-    if (e.target.value !== "" && !v) { toast("Level is 1 t/m 20."); e.target.value = m.lvl ?? ""; return; } // ongeldig: oude waarde blijft
+    if (e.target.value !== "" && !v) { toastBad("Level is 1 t/m 20."); e.target.value = m.lvl ?? ""; return; } // ongeldig: oude waarde blijft
     m.lvl = v; // de party is de bron (geen undo-stap: hoort niet bij de encounter)
     saveParty(); render();
   });
@@ -1936,7 +1936,7 @@ export function bindParty() {
       const todo = app.party.filter((m) => !at.has(m.pid));
       const fight = !!app.S.round; // SP4: vóór het gevecht null, het paneel bij Start vraagt het
       const missing = fight ? todo.filter((m) => parseInit(ui.partyInit[m.pid]) === null) : [];
-      if (missing.length) { toast(`Nog geen initiative voor: ${missing.map((m) => m.name).join(", ")}. Vul in of tik op "Rol voor iedereen".`); return; }
+      if (missing.length) { toastBad(`Nog geen initiative voor: ${missing.map((m) => m.name).join(", ")}. Vul in of tik op "Rol voor iedereen".`); return; }
       because("party aan tafel gezet");
       todo.forEach((m) => { seatMember(m, fight ? parseInit(ui.partyInit[m.pid]) : null); delete ui.partyInit[m.pid]; });
       app.S.sample = false; ui.prepLast = app.S.list[app.S.list.length - 1].id; toast(`${todo.length} speler${todo.length === 1 ? "" : "s"} aan tafel gezet.`);
@@ -1994,7 +1994,7 @@ async function copyText(t, okMsg, box) {
     const ta = document.createElement("textarea");
     ta.value = t; ta.readOnly = true; ta.style.cssText = "width:100%;min-height:200px;margin-top:8px";
     box.appendChild(ta); ta.select();
-    toast("Kopiëren lukte niet automatisch; de tekst staat geselecteerd.");
+    toastBad("Kopiëren lukte niet automatisch; de tekst staat geselecteerd.");
     return false;
   }
 }
@@ -2062,7 +2062,7 @@ export function bindBackup(afterImport) {
   };
   const read = (text) => {
     try { ask(parseImport(JSON.parse(text))); }
-    catch (err) { toast(err instanceof SyntaxError ? "Dit is geen geldige export (geen JSON)." : err.message); }
+    catch (err) { toastBad(err instanceof SyntaxError ? "Dit is geen geldige export (geen JSON)." : err.message); }
   };
   $("#imp-backup").addEventListener("change", async (e) => { const f = e.target.files[0]; if (f) read(await f.text()); e.target.value = ""; });
   $("#imp-text-go").addEventListener("click", () => { const t = $("#imp-text").value.trim(); if (t) read(t); });

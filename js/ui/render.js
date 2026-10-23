@@ -1,7 +1,7 @@
 // Tekent de encounter (compacte kaarten, één tegelijk open), de beurtbalk, het schade-paneel,
 // de party en het logboek. Render past de data niet aan.
 import { MAC } from "./keys.js";
-import { ico, chev } from "./icons.js";
+import { ico, chev, dsMini } from "./icons.js";
 import { paintSetStat } from "./settings.js";
 import { $, esc, n0, spellLink } from "./util.js";
 import { app, commit, canUndo } from "../state.js";
@@ -127,8 +127,7 @@ function sumHtml(S, round, sep = "") {
     mons.length ? `<span>Vijanden <b>${mons.filter((c) => c.hp > 0).length}/${mons.length}</b></span>` : ""].filter(Boolean).join(sep);
 }
 
-const PEN = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
-const PLUS = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`;
+const PEN = ico("pen", "big"), PLUS = ico("plus", "big"); // WP17: uit icons/ui.svg
 
 /**
  * Modus = toestand (IN1). Voorbereiden zonder gevecht: fase-aanduiding (niet tikbaar). Gevecht: eigen kop met de ronde,
@@ -189,7 +188,7 @@ function condChips(c, S, interactive, info = interactive) {
     const dl = dt ? ` · ${esc(dt)}` : "";
     if (x === "Concentrating") {
       const label = `Concentrating${c.concSpell ? ` · ${esc(c.concSpell)}` : ""}${dl}`;
-      return interactive ? `<button class="bd cc cbtn" data-a="dropconc" title="Concentratie beëindigen">${label} <span aria-hidden="true">✕</span><span class="vh">beëindigen</span></button>` : `<span class="bd cc">${label}</span>`;
+      return interactive ? `<button class="bd cc cbtn" data-a="dropconc" title="Concentratie beëindigen">${label} ${ico("x")}<span class="vh">beëindigen</span></button>` : `<span class="bd cc">${label}</span>`;
     }
     return info ? cinfoBtn(c, x, `${esc(x)}${dl}`) : `<span class="bd cc">${x}${dl}</span>`;
   }).join("");
@@ -215,7 +214,7 @@ function effChips(c, S, interactive, info = interactive) {
     const by = e.by && e.by !== c.id ? S.list.find((x) => x.id === e.by) : null;
     const dur = e.d ? durLabel(e.d, S.list, !interactive) : e.lr ? "long rest" : "";
     const t = [`${e.n}${e.st ? " " + effText(e) : ""}`, w ? e.txt : "", dur, by ? by.name : ""].filter(Boolean).map(esc).join(" · ");
-    return interactive ? `<button class="${cls} cbtn" data-a="effdel" data-e="${esc(e.id)}" title="Effect weghalen">${t} <span aria-hidden="true">✕</span><span class="vh">weghalen</span></button>`
+    return interactive ? `<button class="${cls} cbtn" data-a="effdel" data-e="${esc(e.id)}" title="Effect weghalen">${t} ${ico("x")}<span class="vh">weghalen</span></button>`
       : `<span class="${cls}">${t}</span>`;
   }).join("");
 }
@@ -231,7 +230,7 @@ const rageBonus = (c) => { const b = rageDmg(rageLvl(c)); return b ? `+${b}` : "
 /** "Rage +2 · 10r": daar kijkt de DM als de speler zijn schade noemt; open kaart met ✕ */
 function rageChip(c, e, S, interactive) {
   const t = [`Rage ${rageBonus(c)}`, e.d ? durLabel(e.d, S.list, !interactive) : "", e.bear ? "Bear" : "", e.frz ? "Frenzy" : ""].filter(Boolean).map(esc).join(" · ");
-  return interactive ? `<button class="bd ef cbtn" data-a="effdel" data-e="${esc(e.id)}" title="Rage beëindigen">${t} <span aria-hidden="true">✕</span><span class="vh">beëindigen</span></button>` : `<span class="bd ef">${t}</span>`;
+  return interactive ? `<button class="bd ef cbtn" data-a="effdel" data-e="${esc(e.id)}" title="Rage beëindigen">${t} ${ico("x")}<span class="vh">beëindigen</span></button>` : `<span class="bd ef">${t}</span>`;
 }
 
 /** Conditie- en effect-chips voor de speler-sheet in het zijpaneel (condities tikbaar voor uitleg, RE10) */
@@ -248,7 +247,7 @@ function badges(c, S) {
   const out = [surBadge(c, S), hidBadge(c), condChips(c, S, false), effChips(c, S, false)];
   if (c.kind === "pc" && c.max && c.hp <= 0) {
     const d = c.ds || R.newDs();
-    out.push(d.dead ? `<span class="bd r">Dood</span>` : d.stable ? `<span class="bd g">Stabiel</span>` : `<span class="bd r">Death saves ✓${d.s} ✗${d.f}</span>`);
+    out.push(d.dead ? `<span class="bd r">Dood</span>` : d.stable ? `<span class="bd g">Stabiel</span>` : `<span class="bd r">${dsMini(d.s, d.f)}</span>`);
   }
   if (c.casting && (c.casting.slots.length || c.casting.pact)) out.push(`<span class="bd b">Slots ${slotSum(c.casting, "·")}</span>`);
   else if (c.casting && c.casting.daily.length) out.push(`<span class="bd b">Spells</span>`);
@@ -401,7 +400,7 @@ function morePanel(c, prep) {
       <div class="bar"><button class="btn tap" data-a="ed-cancel">Annuleer</button><button class="btn primary tap" data-a="ed-save">Opslaan</button></div>
     </div>${c.kind === "pc" ? drBox(c) : ""}
     <div class="bar">${c.kind === "pc" && !c.pid ? `<button class="btn small" data-a="topty">Naar vaste party</button>` : ""}
-    ${canToggleSurprise(c, app.S) ? `<button class="btn small" data-a="sur" aria-pressed="${c.sur === true}">${c.sur === true ? "Verrast ✓" : "Verrast"}</button>` : ""}
+    ${canToggleSurprise(c, app.S) ? `<button class="btn small" data-a="sur" aria-pressed="${c.sur === true}">Verrast${c.sur === true ? " " + ico("check") : ""}</button>` : ""}
     ${c.kind === "monster" ? `${prep ? "" : `<button class="btn small" data-a="hide" aria-pressed="${!!c.hidden}">${c.hidden ? "Tonen aan spelers" : "Verbergen voor spelers"}</button>`}
       <button class="btn small" data-a="anon" aria-pressed="${!!c.anon}">${c.anon ? "Naam tonen aan spelers" : "Naam verbergen voor spelers"}</button>` : ""}
     <button class="btn small danger" data-a="del">${app.S.round ? "Verwijder uit gevecht" : "Verwijder"}</button></div></div>`;
@@ -474,7 +473,7 @@ function presetOrder(c) {
 function rageBox(c) {
   const o = ui.rage, r = rageRes(c), lvl = rageLvl(c), b = rageDmg(lvl), on = !!rageOf(c);
   const res = r ? `${r.n} ${n0(r.left)} van ${n0(r.max)} over` : "Geen Rage-teller op de sheet: houd het aantal zelf bij.";
-  const conc = c.cond.includes("Concentrating") ? `<p class="hint rgwarn">⚠ Concentratie${c.concSpell ? ` op ${esc(c.concSpell)}` : ""} stopt.</p>` : "";
+  const conc = c.cond.includes("Concentrating") ? `<p class="hint rgwarn">${ico("alert")} Concentratie${c.concSpell ? ` op ${esc(c.concSpell)}` : ""} stopt.</p>` : "";
   const tg = (k, l) => `<button type="button" class="btn tap" data-a="rage-opt" data-k="${k}" aria-pressed="${!!o[k]}">${l}</button>`;
   return `<div class="kpanel rgbox">
     <p class="rghead"><b>Rage · ${esc(c.name)}</b>${lvl ? ` <span class="hint">(${c.sheet && c.sheet.cls ? "barbarian" : "level"} ${n0(lvl)})</span>` : ""}</p>
@@ -482,7 +481,7 @@ function rageBox(c) {
     <p class="hint">${esc(res)}</p>${conc}
     <div class="effgrid rgopt">${tg("bear", "Bear Totem")}${tg("frz", "Frenzy")}</div>
     ${o.frz ? `<p class="hint">Frenzy: na afloop één niveau exhaustion.</p>` : ""}
-    ${on ? `<p class="hint rgwarn">Rage loopt al. Beëindigen: ✕ op de chip.</p>` : ""}
+    ${on ? `<p class="hint rgwarn">Rage loopt al. Beëindigen: ${ico("x")} op de chip.</p>` : ""}
     <div class="bar"><button type="button" class="btn tap" data-a="rage-no">Annuleer</button><button type="button" class="btn primary tap" data-a="rage-go" ${on ? "disabled" : ""}>Start Rage${r && r.left <= 0 ? " (0 over)" : ""}</button></div></div>`;
 }
 
@@ -686,10 +685,10 @@ function emptyState(S, prep) {
     <div class="wbtns"><button type="button" class="btn primary tap" id="welcome-sample">Start met voorbeeld</button><button type="button" class="btn tap" id="welcome-empty">Begin leeg</button></div>
     <button type="button" class="link wimp" data-impw="1">Heb je een export? Importeren…</button>
     <p class="hint">Voorbeeld: 2 spelers, 2 Goblins en een Hobgoblin. Probeer daarna Start gevecht. Encounters zet je klaar onder + Monster.</p></li>`;
-  return `<li class="hint empty">Nog niemand aan tafel. Voeg spelers en monsters toe met de knoppen onderaan.</li>`;
+  return `<li class="empty">Nog niemand aan tafel. Voeg spelers en monsters toe met de knoppen onderaan.</li>`;
 }
 
-const GEAR = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`;
+const GEAR = ico("gear", "big");
 
 /** GV7: vraag boven Start als er monsters uit het vorige gevecht staan (ui.startAsk na een tik op Start) */
 function oldAsk(S) {
@@ -1098,7 +1097,7 @@ function dmgCastHtml(a) {
   const meta = [sp.lv ? ORD[dmgLevel(a, c, sp)] : "cantrip", `${sp.ab} ${sp.half ? "½" : "0"}`, sp.type].join(" · ");
   const cant = !sp.lv && sp.cant ? `<p class="hint">${lvl ? `Cantrip · level ${lvl} → ${esc(dmgDice(a, c, sp))}` : `Cantrip · level onbekend: ${esc(sp.dice)}`}</p>` : "";
   const lose = c && sp.conc && c.cond.includes("Concentrating") && c.concSpell && c.concSpell !== sp.n ? c.concSpell : ""; // zoals in de tab Spell
-  return `${casterSel}<div class="aspell"><div class="dsel"><span><b>${esc(sp.n)}</b> · ${esc(meta)}${sp.conc ? " · conc" : ""}</span><button type="button" class="link" data-ao="dspx" aria-label="Andere spell kiezen">✕</button></div>${cant}
+  return `${casterSel}<div class="aspell"><div class="dsel"><span><b>${esc(sp.n)}</b> · ${esc(meta)}${sp.conc ? " · conc" : ""}</span><button type="button" class="link" data-ao="dspx" aria-label="Andere spell kiezen">${ico("x")}</button></div>${cant}
     ${lose ? `<p class="hint"><b class="bad">${esc(`${c.name} concentreert nu op ${lose}: die vervalt.`)}</b></p>` : ""}
     ${c && sp.lv ? slotSeg(c, sp.lv, sp.n, dmgSlot(a, c, sp), "slot") : ""}</div>`;
 }
@@ -1480,7 +1479,7 @@ export function paintParty() {
   const at = new Set(app.S.list.filter((c) => c.pid).map((c) => c.pid));
   const fight = !!app.S.round; // SP4: initiative pas bij Start gevecht; tijdens een gevecht meteen (het paneel opent niet meer)
   if (!app.party.length) {
-    el.innerHTML = `<p class="hint">Nog geen vaste party. Spelers die je toevoegt met "Ook opslaan in vaste party" komen hier, inclusief geïmporteerde sheets. HP, spell slots en resources lopen dan door van gevecht naar gevecht tot een rust.</p>${ENC_LINK}`;
+    el.innerHTML = `<p class="empty">Nog geen vaste party. Spelers die je toevoegt met "Ook opslaan in vaste party" komen hier, inclusief geïmporteerde sheets. HP, spell slots en resources lopen dan door van gevecht naar gevecht tot een rust.</p>${ENC_LINK}`;
     return;
   }
   el.innerHTML = `<div>${app.party.map((m) => {
@@ -1491,7 +1490,7 @@ export function paintParty() {
     const lv = m.sheet && clsLevel(m.sheet.cls) ? "" : `<label class="plvl">Level <input data-plvl="${esc(m.pid)}" type="number" min="1" max="20" inputmode="numeric" value="${esc(m.lvl ?? "")}" aria-label="Level ${esc(m.name)}"></label>`;
     // SP1: Bijwerken alleen met D&D Beyond-link; in de middenkolom, ver van "Uit party"
     const u = ui.pUpd && ui.pUpd.pid === m.pid ? ui.pUpd : null, busy = ui.pUpd && ui.pUpd.st === "busy";
-    const upd = m.ddbId ? `<button type="button" class="link pupd" data-pupd="${esc(m.pid)}" aria-label="${esc(m.name)} bijwerken van D&amp;D Beyond"${busy ? ` aria-disabled="true"` : ""}${u && u.st === "busy" ? ` aria-busy="true"` : ""}>${u && u.st === "busy" ? "Ophalen…" : u && u.st === "err" ? "↻ Opnieuw" : "↻ Bijwerken"}</button>` : "";
+    const upd = m.ddbId ? `<button type="button" class="link pupd" data-pupd="${esc(m.pid)}" aria-label="${esc(m.name)} bijwerken van D&amp;D Beyond"${busy ? ` aria-disabled="true"` : ""}${u && u.st === "busy" ? ` aria-busy="true"` : ""}>${u && u.st === "busy" ? "Ophalen…" : ico("refresh") + (u && u.st === "err" ? " Opnieuw" : " Bijwerken")}</button>` : "";
     const box = !u || u.st === "busy" ? "" : u.st === "err" ? `<p class="hint warnline pupdbox"${u.said ? "" : ` role="alert"`}>${esc(u.msg)}</p>`
       : `<div class="confirmbox pupdbox"><p style="margin:0"><b>${esc(m.name)}</b> bijwerken van D&amp;D Beyond${at.has(m.pid) ? " (zit aan tafel)" : ""}.</p>
         <p class="hint">${esc([...u.ch, ...u.kept].join(" · "))}. Schade en verbruik blijven staan.</p>

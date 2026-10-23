@@ -3,7 +3,7 @@
 // Alleen UI- en verbindingstoestand: niets hiervan zit in undo, opslag of export.
 import { APP } from "../version.js";
 import { roomChannel, dmLink, createRoom, normCode, fmtCode } from "../share.js";
-import { $, esc, toast, toastHtml, closeToast } from "./util.js";
+import { $, esc, toast, toastHtml, closeToast, toastBad } from "./util.js";
 import { canWrite } from "../storage.js";
 import { qrSvg } from "../qr.js";
 
@@ -41,7 +41,7 @@ function lost(on) {
   if (!on) { document.documentElement.classList.remove("kamer-lost"); warned = false; changed(); return; }
   lostT = setTimeout(() => {
     document.documentElement.classList.add("kamer-lost"); changed();
-    if (!warned) { warned = true; toast("Spelersscherm: verbinding kwijt, opnieuw verbinden…"); }
+    if (!warned) { warned = true; toastBad("Spelersscherm: verbinding kwijt, opnieuw verbinden…"); }
   }, LOST_MS);
 }
 
@@ -131,7 +131,7 @@ async function stop(fromBtn = false) {
   const ok = await c.stop();
   if (stopping !== c) return; // intussen Opnieuw delen of Nieuwe code: dit "stop" telt niet meer
   stopping = null;
-  if (!ok) toast("Geen verbinding met de kamer: spelers houden de laatste stand.");
+  if (!ok) toastBad("Geen verbinding met de kamer: spelers houden de laatste stand.");
 }
 /** Een "stop" dat nog wacht op verbinding afbreken: anders pakt dat kanaal de kamer terug (4001) en pauzeert hem opnieuw */
 function dropStopping() { const c = stopping; stopping = null; if (c) c.close(); }
@@ -169,7 +169,7 @@ async function newCode() {
 
 async function copy() {
   try { await navigator.clipboard.writeText(shareUrl()); toast("Link gekopieerd"); }
-  catch { toast("Kopiëren lukt niet. Houd de link ingedrukt om hem te kopiëren."); }
+  catch { toastBad("Kopiëren lukt niet. Houd de link ingedrukt om hem te kopiëren."); }
 }
 
 /** AF5: korte status voor de kop van de sectie Spelersscherm; warn = zelfde rode stip als op ⚙ */

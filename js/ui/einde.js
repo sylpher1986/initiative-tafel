@@ -1,7 +1,7 @@
 // GV2: samenvatting bij Gevecht afronden (paneel #esheet) en de strook "Laatste gevecht" in Voorbereiden.
 // Regels puur in js/rules/fight.js; de samenvatting staat in app.S.endSum (undo: Ongedaan na afronden laat het gevecht doorlopen).
-import { $, esc, toast, toastHtml } from "./util.js";
-import { chev } from "./icons.js";
+import { $, esc, toast, toastHtml, toastBad } from "./util.js";
+import { ico, chev } from "./icons.js";
 import { app, logAs, relog, because, stepNo } from "../state.js";
 import { render, ui } from "./render.js";
 import { findMon } from "../data/monsters.js";
@@ -25,10 +25,10 @@ export function endBanner(S, calm) {
 }
 
 /** GV7: condities van spelers (standaard aan: Prone/Grappled/Restrained en condities met een duur) */
-const cchip = (x, on) => `<button type="button" class="echip" data-end="cpick" data-k="${esc(x.k)}" aria-pressed="${on}">${on ? "✓ " : "+ "}${esc(`${x.name}: ${x.cond}`)}</button>`;
+const cchip = (x, on) => `<button type="button" class="echip" data-end="cpick" data-k="${esc(x.k)}" aria-pressed="${on}">${on ? ico("check") : ico("plus")}${esc(`${x.name}: ${x.cond}`)}</button>`;
 const picked = (x) => (ui.endPick || {})[x.k] ?? x.on;
 const condList = () => (ui.condDone === stepNo() ? [] : leftConds(app.S.list)); // na Wis: weg, tot er een stap (Ongedaan) bij komt
-const chip = (id, on, label) => `<button type="button" class="echip" data-end="flip" data-id="${esc(id)}" aria-pressed="${on}">${on ? "✓ " : "+ "}${esc(label)}</button>`;
+const chip = (id, on, label) => `<button type="button" class="echip" data-end="flip" data-id="${esc(id)}" aria-pressed="${on}">${on ? ico("check") : ico("plus")}${esc(label)}</button>`;
 
 export function paintEnd() {
   const el = $("#esheet"), es = app.S.endSum;
@@ -69,7 +69,7 @@ function condBlock() {
 async function copy() {
   const t = endText(app.S.endSum);
   try { await navigator.clipboard.writeText(t); toast("Samenvatting gekopieerd."); }
-  catch { toast("Kopiëren lukt niet in deze browser. De samenvatting staat ook in het logboek."); }
+  catch { toastBad("Kopiëren lukt niet in deze browser. De samenvatting staat ook in het logboek."); }
 }
 
 /** Sluit, Escape, achtergrond: focus terug naar de strook "Laatste gevecht", anders Start gevecht */

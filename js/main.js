@@ -10,7 +10,7 @@ import { localChannel, dmLink } from "./share.js";
 import { bindSharing, dropSharing } from "./ui/kamer.js";
 import { setWriteGuard } from "./storage.js";
 import { claimTab } from "./tablock.js";
-import { $, toast } from "./ui/util.js";
+import { $, toast, toastBad } from "./ui/util.js";
 import { VERSION, APP } from "./version.js";
 import { bindEnc } from "./ui/encounters.js";
 import { bindEnd } from "./ui/einde.js";
@@ -129,4 +129,4 @@ async function boot() {
 }
 
 // onverwachte fout bij het opstarten: zichtbaar maken in plaats van stil een half werkende app
-boot().catch((e) => { toast(`Fout bij opstarten: ${e && e.message || e}`); if (window.__itErr) window.__itErr(`Opstarten: ${e && (e.stack || e.message) || e}`); });
+boot().catch((e) => { toastBad(`Fout bij opstarten: ${e && e.message || e}`); if (window.__itErr) window.__itErr(`Opstarten: ${e && (e.stack || e.message) || e}`); });

@@ -1,4 +1,5 @@
 // Kleine DOM-hulpjes en meldingen.
+import { ico } from "./icons.js";
 export const $ = (s) => document.querySelector(s);
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 export const n0 = (v) => (Number.isFinite(+v) ? +v : 0);
@@ -8,7 +9,7 @@ const TMAX = 3;
 /** Meldingen-stapel boven de beurtbalk (#toast). Nieuwste onderaan, max 3; alleen de nieuwste houdt knoppen
  *  (Ongedaan draait altijd de laatste stap terug, dus een oudere knop zou iets anders terugdraaien).
  *  Binnen 300 ms = dezelfde melding (als die er nog staat). html moet al geëscaped zijn. */
-export function toastHtml(html) {
+export function toastHtml(html, bad = false) {
   const box = $("#toast");
   const now = Date.now();
   let m = now - tLast < 300 && tEl?.isConnected ? tEl : null;
@@ -16,8 +17,9 @@ export function toastHtml(html) {
   if (m) m.insertAdjacentHTML("beforeend", "<br>" + html);
   else {
     m = document.createElement("div");
-    m.className = "tmsg";
-    m.innerHTML = html;
+    m.className = bad ? "tmsg bad" : "tmsg";
+    if (bad) m.setAttribute("role", "alert"); // WP17 (HS6): weigering of fout, met icoon; de rest zonder (geen ruis aan tafel)
+    m.innerHTML = (bad ? ico("alert", "tico") : "") + html;
     box.appendChild(m);
   }
   tEl = m;
@@ -32,6 +34,8 @@ export function closeToast() {
   if (b) b.closest(".tmsg").remove();
 }
 export const toast = (text) => toastHtml(esc(text));
+/** Melding voor een weigering of fout (validatie, laden mislukt): icoon + role=alert */
+export const toastBad = (text) => toastHtml(esc(text), true);
 /** Fx-meldingen uit de regels tonen */
 export const show = (fx) => fx && fx.msgs.forEach((m) => toast(m));
 /**

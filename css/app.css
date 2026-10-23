@@ -16,7 +16,7 @@ img{max-width:100%}
    Eigenaarschap: --act* goud = primaire actie, focus (--focus), aan de beurt, geselecteerd (--sel); --good gelukt; --warn aandacht;
    --bad fout, destructief, kritiek; --info info en delen (kamer); neutralen voor vlakken, tekst, randen, secundaire knoppen.
    Op goud altijd --act-fg (walnoot), nooit wit. Helder goud (--act) alleen als vlak; tekst/iconen/ringen in licht via --act-ink.
-   Monster/speler zonder kleur: zijstreep alleen bij monsters (--mon), avatar-vorm (AF12), neutrale vlakken. --sb-ink = statblock-lijnvoering (WP17).
+   Monster/speler zonder kleur: zijstreep alleen bij monsters (--mon), avatar-vorm (AF12), neutrale vlakken. --sb-ink = statblock-inkt (koper, WP17) op --sb-bg (perkament); --card = deelnemerskaart (warm wit).
    Licht = :root; donker twee keer gelijk (systeem en vaste keuze), de test bewaakt dat. */
 :root{
   --bg:#f7f6f2; --surface:#ffffff; --sunk:#eceae3; --line:#d6d5cd; --line-strong:#8a8a8a;
@@ -24,7 +24,8 @@ img{max-width:100%}
   --act:#d4a44b; --act-fg:#3b2f26; --act-ink:#7a5714; --act-soft:#f5ead0; --focus:#7a5714; --sel:#7a5714;
   --good:#286b2c; --good-fg:#ffffff; --warn:#8f5a00; --warn-soft:#fbf3e4;
   --bad:#c62828; --bad-soft:#fbe9e7; --info:#1f5fbf;
-  --mon:#5b5b5b; --mon-soft:#e2e0da; --pc-soft:#ebdcc6; --sb-ink:#8a1f14;
+  --mon:#5b5b5b; --mon-soft:#e2e0da; --pc-soft:#ebdcc6; --sb-ink:#7f4316; --sb-bg:#f6efe3; --card:#fbf7f0;
+  --now-ink:#e0b565; /* naam aan de beurt op de walnoot-kop van het spelersscherm (beide thema's) */
   --fight-bg:#3b2f26; --fight-fg:#ffffff; --fight-muted:#d9cfc2; --fight-btn:#4a3c31; --fight-btn-line:#a08c78;
   --t-link:#e0b565; --t-good:#7fe08f; --t-bad:#ff9a90; /* op de melding (achtergrond --fg) */
   --brand:"Playfair Display", Georgia, "Times New Roman", serif; /* alleen merk, h1, statblock-naam */
@@ -38,7 +39,8 @@ img{max-width:100%}
   --act:#d4a44b; --act-fg:#2a2019; --act-ink:#e0b565; --act-soft:#3a2f1c; --focus:#e0b565; --sel:#d4a44b;
   --good:#6cc287; --good-fg:#0f2414; --warn:#e3a944; --warn-soft:#2e2614;
   --bad:#f28b82; --bad-soft:#3a2321; --info:#8ab4f8;
-  --mon:#b5ada2; --mon-soft:#34312d; --pc-soft:#3b3226; --sb-ink:#e0705f;
+  --mon:#b5ada2; --mon-soft:#34312d; --pc-soft:#3b3226; --sb-ink:#d9956a; --sb-bg:#1f1f1f; --card:#231e1a;
+  --now-ink:#e0b565;
   --fight-bg:#3a322b; --fight-fg:#ede8e0; --fight-muted:#c9c0b4; --fight-btn:#4a4038; --fight-btn-line:#9a8e80;
   --t-link:#7a5714; --t-good:#276a3a; --t-bad:#b3261e; color-scheme:dark }}
 :root[data-theme="dark"]{
@@ -47,7 +49,8 @@ img{max-width:100%}
   --act:#d4a44b; --act-fg:#2a2019; --act-ink:#e0b565; --act-soft:#3a2f1c; --focus:#e0b565; --sel:#d4a44b;
   --good:#6cc287; --good-fg:#0f2414; --warn:#e3a944; --warn-soft:#2e2614;
   --bad:#f28b82; --bad-soft:#3a2321; --info:#8ab4f8;
-  --mon:#b5ada2; --mon-soft:#34312d; --pc-soft:#3b3226; --sb-ink:#e0705f;
+  --mon:#b5ada2; --mon-soft:#34312d; --pc-soft:#3b3226; --sb-ink:#d9956a; --sb-bg:#1f1f1f; --card:#231e1a;
+  --now-ink:#e0b565;
   --fight-bg:#3a322b; --fight-fg:#ede8e0; --fight-muted:#c9c0b4; --fight-btn:#4a4038; --fight-btn-line:#9a8e80;
   --t-link:#7a5714; --t-good:#276a3a; --t-bad:#b3261e; color-scheme:dark }
 *{box-sizing:border-box}
@@ -81,7 +84,7 @@ h1 .emb{width:1.33em;height:1.33em;vertical-align:-.28em;margin-right:.3em;color
 
 /* Order list */
 ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
-.c{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);display:grid;grid-template-columns:52px minmax(0,1fr);gap:0 12px;padding:10px 12px 10px 0;position:relative}
+.c{background:var(--card);border:1px solid var(--line);border-radius:var(--r);display:grid;grid-template-columns:52px minmax(0,1fr);gap:0 12px;padding:10px 12px 10px 0;position:relative}
 .c.active{border-color:var(--sel);box-shadow:0 0 0 2px var(--sel) inset}
 .c.down{opacity:.5}
 .c.down .nm{text-decoration:line-through}
@@ -139,7 +142,7 @@ ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .rc[aria-pressed="false"]{border-color:var(--line-strong);color:var(--muted);border-style:dashed}
 .tag.l{background:var(--surface);color:var(--fg)}
 .c.lair{background:var(--sunk);border-style:dashed}
-.chip{font-size:.78rem;padding:2px 8px;border-radius:99px;border:1px solid var(--warn);color:var(--warn);background:transparent}
+.chip{font-size:.75rem;padding:2px 8px;border-radius:99px;border:1px solid var(--warn);color:var(--warn);background:transparent}
 .link{border:0;background:none;padding:2px 4px;color:var(--muted);font-size:.85rem;text-decoration:underline;text-underline-offset:2px}
 /* AF6: knop- en summary-links 44 px hoog (ook midden in een zin: de regel wordt dan hoger) */
 button.link,summary.link{display:inline-flex;align-items:center;gap:.3em;min-height:44px;padding:0 8px}
@@ -158,7 +161,7 @@ details.conds summary::-webkit-details-marker{display:none}
 .pick{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 0 4px 54px}
 .pick .conc{border-color:var(--warn);color:var(--warn)}
 @media (max-width:420px){.pick{padding-left:0}}
-.chip.cbtn{cursor:pointer;font:inherit;font-size:.78rem}
+.chip.cbtn{cursor:pointer;font:inherit;font-size:.75rem}
 .chip.cbtn:hover{background:var(--warn);color:var(--bg)}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .chk{display:flex;align-items:center;min-height:44px;gap:8px;text-transform:none;letter-spacing:0;font-size:.95rem;color:var(--fg)}
@@ -240,7 +243,7 @@ textarea{min-height:120px;resize:vertical}
 
 /* Statblock */
 .sbwrap{position:sticky;top:12px}
-.sb{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--sb-ink);border-bottom:4px solid var(--sb-ink);border-radius:4px;padding:14px 16px;max-height:calc(100vh - 24px);overflow:auto}
+.sb{background:var(--sb-bg);border:1px solid var(--line);border-top:4px solid var(--sb-ink);border-bottom:4px solid var(--sb-ink);border-radius:4px;padding:14px 16px;max-height:calc(100vh - 24px);overflow:auto}
 .sb h2{font-family:var(--brand);font-weight:700;color:var(--sb-ink);font-size:1.6rem;margin:0;line-height:1.1}
 .sb .meta,.sbx .meta{font-style:italic;color:var(--muted);margin:2px 0 8px;font-size:.9rem;line-height:1.3}
 .sb hr,.sbx hr{border:0;height:2px;background:linear-gradient(90deg,var(--sb-ink),transparent);margin:8px 0}
@@ -251,6 +254,8 @@ textarea{min-height:120px;resize:vertical}
 .abil b{display:block;color:var(--sb-ink);font-size:.8rem;letter-spacing:.06em}
 .abil button{border:0;background:none;padding:2px;border-radius:4px}
 .abil button:hover{background:var(--sunk)}
+/* WP17 (HS6): ability-knoppen ≥ 44 px op 320 px: geen gap en tot in de padding van het statblock */
+@media (max-width:379px){.abil{gap:0;margin-inline:-10px}}
 .sb h3,.sbx h3{font-family:var(--display);color:var(--sb-ink);font-size:1.15rem;border-bottom:1px solid var(--sb-ink);margin:12px 0 6px;font-weight:700}
 .sb .entry b i,.sbx .entry b i{font-style:italic}
 .sb .entry,.sbx .entry{white-space:pre-line}
@@ -275,7 +280,8 @@ textarea{min-height:120px;resize:vertical}
 /* AF14: inline in een zin (WCAG 2.5.8-uitzondering), daarom geen 44 px; wel ± 28 px hoog met een ruimere regel in het statblock */
 .dice{border:0;border-bottom:1px dotted var(--act-ink);background:none;padding:4px 3px;margin:0 -1px;border-radius:6px;line-height:1.25;color:var(--act-ink);font-weight:700}
 .dice:hover{background:var(--act-soft)}
-.sbempty{color:var(--muted);text-align:center;padding:30px 10px}
+/* WP17 (HS6): één patroon voor lege toestanden (geen icoon/embleem, zie WP16): gestippeld vak, rustige tekst */
+.empty{color:var(--muted);font-size:.95rem;text-align:center;padding:24px 16px;margin:0;border:1px dashed var(--line-strong);border-radius:var(--r)}
 .sbhead{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:0 8px}
 .sbhead>div:first-child{display:contents}
 .sbhead>.sbbtns{grid-column:2;grid-row:1}
@@ -308,7 +314,7 @@ textarea{min-height:120px;resize:vertical}
   .sbwrap[data-open="false"]{display:none}
   .sb{max-height:45vh;max-height:45dvh;border-radius:12px 12px 0 0;border-bottom:0;box-shadow:0 -8px 30px rgba(0,0,0,.25);padding-top:10px}
   .sbwrap[data-big="true"] .sb{max-height:calc(100vh - var(--dock-h) - env(safe-area-inset-top,0px) - 12px);max-height:calc(100dvh - var(--dock-h) - env(safe-area-inset-top,0px) - 12px)}
-  .sbhead{position:sticky;top:-10px;background:var(--surface);z-index:1;padding-top:2px}
+  .sbhead{position:sticky;top:-10px;background:var(--sb-bg);z-index:1;padding-top:2px}
   .closebtn,.sbbig{display:inline-flex;min-height:44px;min-width:56px;align-items:center;justify-content:center}
   .sbpin,#sbturn{display:none}
   body[data-sb="open"]{padding-bottom:calc(var(--dock-h) + 45vh + 24px);padding-bottom:calc(var(--dock-h) + 45dvh + 24px)}
@@ -318,6 +324,7 @@ textarea{min-height:120px;resize:vertical}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--dock-h) + 8px);z-index:50;display:flex;flex-direction:column;gap:6px;width:min(480px,calc(100% - 16px));pointer-events:none}
 .toast:empty{display:none}
 .tmsg{pointer-events:auto;background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-variant-numeric:tabular-nums;box-shadow:0 6px 24px rgba(0,0,0,.3);max-height:30vh;max-height:30dvh;overflow:auto;overflow-wrap:anywhere}
+.tmsg .tico{width:18px;height:18px;color:var(--t-bad);margin-right:8px;vertical-align:-.25em} /* WP17: alleen weigering/fout */
 .toast b{font-size:1.25rem}
 .toast .crit{color:var(--t-good)} .toast .fumble{color:var(--t-bad)}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.9rem}
@@ -382,13 +389,16 @@ ol.order{gap:6px}
 .li{width:1em;height:1em;flex:0 0 auto;vertical-align:-.14em;overflow:visible}
 .li.dn{transform:rotate(90deg)}
 .tri .li{display:block;width:.9em;height:.9em;margin:0 auto}
+.c.k .tri .li{width:12px;height:12px}
+.li.big{width:22px;height:22px;vertical-align:middle} /* icoonknoppen: ✎ en + in de Gevecht-kop, ⚙ in de prep-rij */
+#undo .li,.c.k .acts [data-p="more"] .li,.emore .li{width:22px;height:22px;vertical-align:middle}
 .c.k.out .av{filter:grayscale(1)}
 /* AF12: monster of speler niet alleen via kleur: speler rond, monster afgeronde rechthoek */
 .c.k.mon .av,.pvc.monster .av{border-radius:6px}
 .hint .pv{width:28px;height:28px;border-radius:50%;object-fit:cover;object-position:50% 20%;vertical-align:middle}
 .badges{display:flex;gap:5px;flex-wrap:wrap;padding:0 12px 10px 48px}
 .kbody .badges{padding:0 0 8px}
-.bd{flex:0 0 auto;font-size:.74rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap;background:transparent;font-family:inherit;line-height:1.5}
+.bd{flex:0 0 auto;font-size:.75rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap;background:transparent;font-family:inherit;line-height:1.5}
 .bd.cc{border-color:var(--warn);color:var(--warn)}
 .bd.g{border-color:var(--good);color:var(--good)}
 .bd.w{border-color:var(--warn);color:var(--warn);font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis}
@@ -478,8 +488,8 @@ body[data-mode="fight"] #resetbar{display:none}
 .fhead .ft{flex:1 1 auto;min-width:0;display:grid;justify-items:start;text-align:left;font:inherit;color:inherit;background:transparent;border:1px solid var(--fight-btn-line);border-radius:12px;padding:6px 8px;margin:-6px 0 -6px -8px;cursor:pointer}
 .fhead .ft:focus-visible{outline-color:var(--fight-fg)}
 @media (hover:hover){.fhead .ft:hover{background:var(--fight-btn)}}
-.fhead .lk{color:var(--fight-fg)}
-.fhead .l{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--fight-muted)}
+.fhead .lk{color:var(--fight-fg);white-space:nowrap} /* WP17: chevron breekt niet los af */
+.fhead .l{font-size:.72rem;letter-spacing:.03em;white-space:nowrap;text-transform:uppercase;color:var(--fight-muted)}
 .fhead .rn{font-family:var(--display);font-size:2rem;line-height:1.05;font-weight:700;white-space:nowrap}
 .fhead .fsum{font-size:.78rem;letter-spacing:-.01em;color:var(--fight-muted);margin-top:4px;font-variant-numeric:tabular-nums}
 .fhead .fsum>span{white-space:nowrap} /* WP15: past op 320 px tot 9/9; daarboven breekt hij tussen Party en Vijanden, nooit een aantal achter een ellipsis */
@@ -652,14 +662,14 @@ body.pv{font-size:clamp(16px,1.1rem + .9vw,30px);padding-bottom:max(24px,env(saf
 /* WP16: tagline alleen in de wachtstand (geen gevecht), Inter en gedempt: het wachtbericht blijft de hoofdboodschap */
 .pvbrand{min-width:0}
 .pvtag{margin:.15em 0 0;font-size:1rem;color:var(--muted)}
-.pvnow{background:var(--act-soft);border:1px solid var(--sel);border-radius:var(--r);padding:.6em .9em;display:flex;justify-content:space-between;align-items:flex-end;gap:.4em 1.2em;flex-wrap:wrap}
+.pvnow{background:var(--fight-bg);color:var(--fight-fg);border:1px solid var(--fight-bg);border-radius:var(--r);padding:.6em .9em;display:flex;justify-content:space-between;align-items:flex-end;gap:.4em 1.2em;flex-wrap:wrap}
 .pvnow:empty{display:none}
-.pvnow .l{display:block;font-size:.6em;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-.pvnow b{font-family:var(--display);font-size:1.5em;color:var(--act-ink);line-height:1.15;overflow-wrap:anywhere}
+.pvnow .l{display:block;font-size:.6em;text-transform:uppercase;letter-spacing:.08em;color:var(--fight-muted)}
+.pvnow b{font-family:var(--display);font-size:1.5em;color:var(--now-ink);line-height:1.15;overflow-wrap:anywhere}
 .pvnow .r{text-align:right;font-family:var(--display);font-weight:600;font-size:1.05em;overflow-wrap:anywhere}
 ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
-.pvc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);display:grid;grid-template-columns:1.8em minmax(0,1fr) auto;align-items:center;gap:.25em .6em;padding:.45em .7em .45em 0}
-.pvc.turn{border-color:var(--sel)}
+.pvc{background:var(--card);border:1px solid var(--line);border-radius:var(--r);display:grid;grid-template-columns:1.8em minmax(0,1fr) auto;align-items:center;gap:.25em .6em;padding:.45em .7em .45em 0}
+.pvc.turn{border-color:var(--sel);box-shadow:0 0 0 1px var(--sel) inset} /* WP17: 2 px, 1 px viel op 3 m weg */
 .pvc.out{opacity:.5}
 .pvc.out .av{filter:grayscale(1)}
 .pvi{text-align:center;font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted)}
@@ -799,7 +809,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .welcome .wimp{margin-top:6px}
 .welcome .wbtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
 .welcome .btn{min-height:48px}
-.order .empty{list-style:none;padding:20px;text-align:center}
+.order .empty{list-style:none}
 .order .sbanner{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.85rem;color:var(--muted);border-left:3px solid var(--warn);padding:2px 0 2px 10px}
 .sbanner .sbtns{display:flex;gap:8px;flex:none}
 
@@ -871,7 +881,10 @@ body.tv .pvlog{min-height:calc(3 * 1.35em)}
 .pvpick .link{justify-self:start}
 .pvnow.me{background:var(--act);border-color:var(--act)}
 .pvnow.me b,.pvnow.me .l,.pvnow.me .r{color:var(--act-fg)}
-.pvnow .r.me{color:var(--act-ink);font-weight:700}
+.pvnow .r.me{color:var(--now-ink);font-weight:700}
+/* WP17 (HS8): walnoot-kop zoals de gevechtskop van de DM; verbinding kwijt (body.stale) = neutraal, leest niet als live */
+body.stale .pvnow{background:var(--sunk);border-color:var(--line);color:var(--muted)}
+body.stale .pvnow b,body.stale .pvnow .l,body.stale .pvnow .r.me{color:var(--muted)}
 .pvnow.me .r.me{color:var(--act-fg)}
 .pvme{background:var(--surface);border:2px solid var(--line-strong);border-radius:var(--r);padding:.5em .8em;display:grid;grid-template-columns:minmax(0,1fr);gap:.35em}
 .pvme>*{grid-column:1/-1}
@@ -1061,7 +1074,7 @@ button.dchip{min-height:44px;cursor:pointer}
 .eln span,.elbl{color:var(--muted);font-size:.85rem}
 .eflee summary{list-style:none;min-height:44px;display:flex;gap:6px;align-items:center;cursor:pointer;color:var(--muted);font-size:.9rem}
 .echips{display:flex;flex-wrap:wrap;gap:6px}
-.echip{min-height:44px;padding:0 12px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:inherit;font-size:.9rem}
+.echip{min-height:44px;padding:0 12px;border-radius:99px;border:1px solid var(--line-strong);background:transparent;color:var(--muted);font:inherit;font-size:.9rem;display:inline-flex;align-items:center;gap:4px}
 .echip[aria-pressed="true"]{border-color:var(--good);color:var(--fg);font-weight:700}
 .endrow{border-color:var(--line)}
 .endrow span{flex:1 1 auto;font-size:.9rem}

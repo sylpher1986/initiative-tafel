@@ -1,6 +1,6 @@
 // Statblocks (monsters) en character sheets (spelers) in het zijpaneel, met klikbare dobbelstenen.
 import { $, esc, n0, toastHtml, spellLink } from "./util.js";
-import { chev } from "./icons.js";
+import { chev, dsMini } from "./icons.js";
 import { findMon } from "../data/monsters.js";
 import { rollExpr, mod, sgn } from "../rules/dice.js";
 import { ORD, legInfo, castInfo } from "../rules/spells.js";
@@ -224,7 +224,7 @@ function paintNext(S) {
 function emptySB() {
   if (sb.cid === null && sb.ref === null && !sb.pc && $("#sb .sbempty")) return;
   sb.cid = null; sb.ref = null; sb.pc = false; sb.live = ""; sb.prev = null;
-  $("#sb").innerHTML = `<div class="sbempty">Voeg een monster of speler toe: het statblock of de sheet verschijnt hier.</div>`;
+  $("#sb").innerHTML = `<div class="sbempty empty">Voeg een monster of speler toe: het statblock of de sheet verschijnt hier.</div>`;
 }
 /** Naam van het getoonde monster bijwerken (na bewerken of Goblin 1 → 2) */
 function nameSB(c) {
@@ -284,7 +284,7 @@ function liveHtml(c, chips) {
   const ac = effAc(c), br = acBreakdown(c), pt = pasText(passives(c));
   const d = c.ds || newDs();
   const ds = c.max && c.hp <= 0 ? (d.dead ? `<span class="bd r">Dood</span>` : d.stable ? `<span class="bd g">Stabiel</span>`
-    : `<span class="bd r">Death saves ✓${n0(d.s)} ✗${n0(d.f)}</span>`) : "";
+    : `<span class="bd r">${dsMini(n0(d.s), n0(d.f))}</span>`) : "";
   const k = c.casting, cnt = (l, o) => `<span class="cnt"><b>${esc(l)}</b> ${n0(o.left)}/${n0(o.max)}</span>`;
   const slots = k ? [...(k.pact ? [cnt(`Pact ${ORD[k.pact.lvl] || ""}`, k.pact)] : []), ...k.slots.map((x) => cnt(ORD[x.lvl] || "", x)), ...k.daily.flatMap((g) => g.items.map((it) => cnt(it.n, it)))] : [];
   const res = (c.res || []).map((r) => cnt(r.n, r));

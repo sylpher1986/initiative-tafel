@@ -2,7 +2,7 @@
 // UI-toestand (concept, menu, uitleg) staat in `ui` (render.js); de encounters zelf in app.encounters (IndexedDB, niet in undo).
 import { APP } from "../version.js";
 import { ico, chev } from "./icons.js";
-import { $, esc, toast, toastHtml, closeToast } from "./util.js";
+import { $, esc, toast, toastHtml, closeToast, toastBad } from "./util.js";
 import { app, because, addWhy, logAs, commit, saveEncounters, saveLairs, saveLibrary } from "../state.js";
 import { render, ui, monListHtml } from "./render.js";
 import { addMonsters, scrollToCard, newLair, CLEAR_UI } from "./actions.js";
@@ -59,7 +59,7 @@ function weakRow(r, tog) {
   if (!r.weak.length) return "";
   const who = esc(r.weak.map((w) => `${w.n}× ${w.name}`).join(", "));
   return `<p>${r.all ? `Telt mee voor ×, ook met veel lagere CR: ${who}` : `Niet meegeteld voor ×: ${who} (XP onder 1/10 van het sterkste monster)`}</p>
-    ${tog ? `<button type="button" class="btn small dall" ${tog} aria-pressed="${r.all}">${r.all ? "✓ " : ""}Toch meetellen</button>` : ""}`;
+    ${tog ? `<button type="button" class="btn small dall" ${tog} aria-pressed="${r.all}">${r.all ? ico("check") + " " : ""}Toch meetellen</button>` : ""}`;
 }
 
 /**
@@ -141,7 +141,7 @@ function listHtml() {
       <div class="bar"><button type="button" class="btn primary" data-enc="imp-replace">Vervangen</button><button type="button" class="btn" data-enc="imp-copy">Als kopie</button><button type="button" class="btn small" data-enc="imp-no">Annuleer</button></div></div>`;
   })() : "";
   const rows = E.sorted(app.encounters).map(rowHtml).join("");
-  return `${save}${imp}<div class="enclist">${rows || `<p class="hint">Nog geen encounters. Tik op "+ Nieuwe encounter" of sla de huidige lijst op.</p>`}</div>
+  return `${save}${imp}<div class="enclist">${rows || `<p class="empty">Nog geen encounters. Tik op "+ Nieuwe encounter" of sla de huidige lijst op.</p>`}</div>
     <div class="bar encimp"><button type="button" class="btn tap" data-file="enc-file">Encounterbestand importeren…</button><input id="enc-file" type="file" accept=".json,application/json" hidden></div>
     <p class="hint">Delen maakt een bestand met de encounter en de eigen monsters erin, voor een ander apparaat of een co-DM.</p>`;
 }
@@ -205,7 +205,7 @@ function loadEnc(enc, mode) {
   const S = app.S, plan = E.loadPlan(enc, (r) => !!findMon(r));
   const lairNew = plan.lair && (mode === "replace" || !hasLair(S.list));
   if (!plan.adds.length && !lairNew) {
-    toast(plan.missing.length ? `Niets in te laden: ${plan.missing.join(", ")} staat niet op dit apparaat.` : "Er staat al een lair; deze encounter heeft verder geen monsters.");
+    toastBad(plan.missing.length ? `Niets in te laden: ${plan.missing.join(", ")} staat niet op dit apparaat.` : "Er staat al een lair; deze encounter heeft verder geen monsters.");
     return;
   }
   let gone = 0;
@@ -236,9 +236,9 @@ function loadEnc(enc, mode) {
 
 function saveNew() {
   const d = ui.encDraft, name = (d.name || "").trim();
-  if (!name) { toast("Geef de encounter een naam."); $("#enc-name")?.focus(); return; }
+  if (!name) { toastBad("Geef de encounter een naam."); $("#enc-name")?.focus(); return; }
   const e = E.fromList(app.S.list, { id: E.newId(), name, notes: d.notes, now: Date.now(), all: !!app.S.allMon });
-  if (!e) { toast("Er staan geen monsters of lair in de lijst."); return; }
+  if (!e) { toastBad("Er staan geen monsters of lair in de lijst."); return; }
   app.encounters = [...app.encounters, e]; saveEncounters();
   ui.encDraft = null; repaint();
   const lost = monCount(app.S.list) - E.total(e); // boven de grenzen (100 monsters, 40 regels) valt de rest weg
@@ -259,9 +259,9 @@ function startEdit(e) {
 }
 function saveEdit() {
   const x = ui.encEdit, old = findEnc(x.id);
-  if (!x.name.trim() && !x.isNew) { toast("Geef de encounter een naam."); $("#ee-name")?.focus(); return; }
+  if (!x.name.trim() && !x.isNew) { toastBad("Geef de encounter een naam."); $("#ee-name")?.focus(); return; }
   const e = E.cleanEncounter({ id: x.id, name: x.name.trim() || "Nieuwe encounter", notes: x.notes, monsters: x.monsters, lair: x.lair, all: x.all, updatedAt: Date.now() });
-  if (!e) { toast("Een encounter heeft minstens één monster of een lair."); return; }
+  if (!e) { toastBad("Een encounter heeft minstens één monster of een lair."); return; }
   app.encounters = old ? app.encounters.map((y) => (y.id === x.id ? e : y)) : [...app.encounters, e];
   saveEncounters(); ui.encEdit = null; repaint();
   toast(`"${e.name}" ${old ? "bijgewerkt" : "opgeslagen"} · ${encSummary(e)}`);
@@ -310,7 +310,7 @@ function importDone(p, mode) {
 async function importFile(file) {
   let p;
   try { p = E.parseEncFile(JSON.parse(await file.text())); }
-  catch (err) { toast(err instanceof SyntaxError ? `Geen encounter-bestand van ${APP}.` : err.message); return; }
+  catch (err) { toastBad(err instanceof SyntaxError ? `Geen encounter-bestand van ${APP}.` : err.message); return; }
   if (findEnc(p.enc.id)) { ui.encImp = p; ui.encEdit = null; repaint(); return; } // nooit stil overschrijven
   importDone(p, "new");
 }
@@ -383,7 +383,7 @@ export function bindEnc() {
     const p = e.target.closest("[data-eepick]");
     if (p && ui.encEdit) {
       const x = ui.encEdit, ref = p.dataset.eepick;
-      if (E.total(x) >= E.MAX_TOTAL) { toast(`Maximaal ${E.MAX_TOTAL} monsters per encounter.`); return; }
+      if (E.total(x) >= E.MAX_TOTAL) { toastBad(`Maximaal ${E.MAX_TOTAL} monsters per encounter.`); return; }
       const m = x.monsters.find((y) => y.ref === ref && !y.hidden && !y.anon);
       if (m && m.n < E.MAX_N) m.n++;
       else if (x.monsters.length < E.MAX_ROWS) x.monsters.push({ ref, n: 1 });
