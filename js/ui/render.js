@@ -28,6 +28,7 @@ import { initRoll } from "./initroll.js";
 import { ANON, anonName } from "../playerview.js";
 import { paintEnc, encBanner, encStrip } from "./encounters.js";
 import { paintEnd, endBanner } from "./einde.js";
+import { PAS, passives, pasText, sheetPassives, percList } from "../rules/passives.js";
 import { pcReact } from "./pcreact.js";
 import { clsLevel } from "../rules/encounters.js";
 import { oldMons, oldText } from "../rules/fight.js";
@@ -362,11 +363,13 @@ export function editPreview(c) {
 }
 
 /** Velden in het ⋯-paneel. Voorbereiden: alleen wat niet al direct op de kaart staat (monster: naam + AC, speler: naam + max HP) */
-export const editKeys = (c, prep) => (!prep ? ["name", "ac", "max", "init"] : c.kind === "pc" ? (c.max ? ["name", "max"] : ["name"]) : ["name", "ac"]);
+export const editKeys = (c, prep) => [...(!prep ? ["name", "ac", "max", "init"] : c.kind === "pc" ? (c.max ? ["name", "max"] : ["name"]) : ["name", "ac"]), ...(c.kind === "pc" ? ["pas"] : [])];
+/** Concept van het ⋯-formulier uit de deelnemer (SP5: eigen passives, leeg = uit de sheet) */
+export const edNow = (c) => ({ name: c.name, ac: c.ac || "", max: baseMax(c) || "", init: c.init, ...Object.fromEntries(PAS.map(([k]) => [k, (c.pas && c.pas[k]) ?? ""])) });
 
 function morePanel(c, prep) {
-  const ed = ui.edit && ui.edit.id === c.id ? ui.edit : { name: c.name, ac: c.ac || "", max: baseMax(c) || "", init: c.init };
-  const keys = editKeys(c, prep), hpd = (c.max || 0) - baseMax(c);
+  const ed = ui.edit && ui.edit.id === c.id ? ui.edit : edNow(c);
+  const keys = editKeys(c, prep), row = keys.slice(1).filter((k) => k !== "pas"), hpd = (c.max || 0) - baseMax(c);
   const fld = {
     ac: `<label>AC<input data-f="ed-ac" type="number" inputmode="numeric" min="0" max="40" value="${esc(ed.ac)}"></label>`,
     max: `<label>Max HP${hpd ? ` <small>(${hpd > 0 ? "+" : "−"}${Math.abs(hpd)} effect)</small>` : ""}<input data-f="ed-max" type="number" inputmode="numeric" min="1" value="${esc(ed.max)}"></label>`,
@@ -375,7 +378,7 @@ function morePanel(c, prep) {
   return `<div class="kpanel more">
     <div class="edit">
       <label>Naam<input data-f="ed-name" value="${esc(ed.name)}" autocomplete="off" maxlength="120"></label>
-      ${keys.length > 1 ? `<div class="ed3">${keys.slice(1).map((k) => fld[k]).join("")}</div>` : ""}
+      ${row.length ? `<div class="ed3">${row.map((k) => fld[k]).join("")}</div>` : ""}${keys.includes("pas") ? pasFields(c, ed) : ""}
       <p class="hint edprev" aria-live="polite">${editPreview(c)}</p>
       <div class="bar"><button class="btn tap" data-a="ed-cancel">Annuleer</button><button class="btn primary tap" data-a="ed-save">Opslaan</button></div>
     </div>${c.kind === "pc" ? drBox(c) : ""}
@@ -384,6 +387,12 @@ function morePanel(c, prep) {
     ${c.kind === "monster" ? `${prep ? "" : `<button class="btn small" data-a="hide" aria-pressed="${!!c.hidden}">${c.hidden ? "Tonen aan spelers" : "Verbergen voor spelers"}</button>`}
       <button class="btn small" data-a="anon" aria-pressed="${!!c.anon}">${c.anon ? "Naam tonen aan spelers" : "Naam verbergen voor spelers"}</button>` : ""}
     <button class="btn small danger" data-a="del">${app.S.round ? "Verwijder uit gevecht" : "Verwijder"}</button></div></div>`;
+}
+
+/** SP5: eigen passives in ⋯ (opslaan met Opslaan); placeholder = waarde uit de sheet */
+function pasFields(c, ed) {
+  const sh = sheetPassives(c.sheet), any = PAS.some(([k]) => sh[k] != null);
+  return `<p class="vlbl edpasl">Passive</p><div class="ed3 edpas">${PAS.map(([k, l, sh3]) => `<label>${sh3}<input data-f="ed-${k}" type="number" inputmode="numeric" min="1" max="40" value="${esc(ed[k] ?? "")}" placeholder="${sh[k] ?? ""}" aria-label="${esc(`Passive ${l} ${c.name}`)}"></label>`).join("")}</div>${any ? `<p class="hint">Leeg = uit de sheet.</p>` : ""}`;
 }
 
 /**
@@ -496,7 +505,8 @@ function prepFields(c) {
   const m = c.pid && app.party.find((x) => x.pid === c.pid);
   const lv = sheetLvl(c, m) ? "" : fld("lvl", "Level", (m ? m.lvl : c.lvl) ?? "", { ph: "?" });
   const hp = c.max ? fld("hp", `HP${eff}`, n0(c.hp), { of: n0(c.max), aria: "Huidige HP" }) : fld("max", "Max HP", "", { ph: "?" });
-  return `<div class="pfs${lv ? "" : " two"}">${hp}${fld("ac", (c.eff || []).some((e) => e.st === "ac") ? "Basis-AC" : "AC", c.ac || "", { ph: "?" })}${lv}</div>`;
+  const pt = pasText(passives(c)); // SP5: alleen lezen; invullen onder ⋯
+  return `<div class="pfs${lv ? "" : " two"}">${hp}${fld("ac", (c.eff || []).some((e) => e.st === "ac") ? "Basis-AC" : "AC", c.ac || "", { ph: "?" })}${lv}</div>${pt ? `<p class="hint ppas">Passive ${esc(pt)}</p>` : ""}`;
 }
 
 function prepActions(c) {
@@ -552,6 +562,12 @@ function atkBlock(c, S) {
     ${multi}${main.slice(0, room).map(row).join("")}
     ${hidden > 0 ? `<div class="atkmore"><button class="link" data-a="atk-open">+${hidden} meer</button></div>` : ""}
     ${other}</div>`;
+}
+
+/** SP5: passive Perception van de spelers aan tafel, hoogste eerst (hinderlaag); niemand bekend → niets */
+function percLine() {
+  const L = percList(app.S.list);
+  return L.length ? `<p class="hint ipas">Passive Perception: ${esc(L.map((x) => `${x.name} ${x.v ?? "–"}`).join(" · "))}</p>` : "";
 }
 
 function lairRow(c, S) {
@@ -956,12 +972,12 @@ export function paintQadd() {
     </div>`;
     el.hidden = false;
   }
-  const f = filterMonsters(allMonsters(), q.q, q.sel);
+  const f = filterMonsters(allMonsters(), q.q, q.sel, !!q.typed);
   if (f.sel !== q.sel) q.full = false; // andere keuze: preview weer kort
   q.sel = f.sel; // UI-toestand: de selectie volgt wat zichtbaar is (zoals in de Monster-tab)
   const lbl = monLabel(f);
   $("#q-lbl").hidden = !lbl; $("#q-lbl").textContent = lbl;
-  $("#q-list").innerHTML = monListHtml(f, q.sel, "data-qpick", "Niets gevonden. Eigen monsters maak je onder Voorbereiden.");
+  $("#q-list").innerHTML = monListHtml(f, q.sel, "data-qpick", "Niets gevonden. Eigen monsters maak je onder Voorbereiden → + Monster → Eigen.");
   $("#q-prev").innerHTML = monPrev(q.sel && findMon(q.sel), q.full, false); // snel toevoegen: geen zijkolom (die volgt de beurt)
   if (!q.typing) $("#q-blk").innerHTML = addBlockHtml("q", q, q.sel && findMon(q.sel)); // tijdens typen in het getalveld niet vervangen (focus)
   else $("#q-addh").textContent = addHint(q, q.sel && findMon(q.sel));
@@ -1426,7 +1442,7 @@ export function paintInit() {
       <div class="shead"><h3 id="i-title">Initiative</h3><button type="button" class="link" data-ia="close">Annuleer</button></div>
       ${monRollHtml(mons)}
       <div class="isur"><span id="i-sur">Verrast</span><div class="seg2" role="group" aria-labelledby="i-sur">${[["none", "Niemand"], ["mon", "Monsters"], ["pc", "Spelers"]].map(([k, l]) => `<button type="button" data-ia="sur" data-v="${k}" aria-pressed="${(x.sur || "none") === k}" ${k === "mon" && !mons ? "disabled" : ""}>${l}</button>`).join("")}</div></div>
-      <p class="hint isurh" id="i-surh">${(x.sur || "none") === "none" ? "Verrast is wie de tegenpartij niet opmerkte toen het gevecht begon (Stealth tegen passive Perception). Losse wezens: ⋯ → Verrast." : "Verrasten slaan hun eerste beurt over en hebben tot die voorbij is geen reaction."}</p>
+      <p class="hint isurh" id="i-surh">${(x.sur || "none") === "none" ? "Verrast is wie de tegenpartij niet opmerkte toen het gevecht begon (Stealth tegen passive Perception). Losse wezens: ⋯ → Verrast." : "Verrasten slaan hun eerste beurt over en hebben tot die voorbij is geen reaction."}</p>${percLine()}
       <div class="ilist">${L.map((c) => `<div class="ir ${c.id === x.act ? "act" : ""}">
         <button type="button" class="irn" data-ia="sel" data-id="${esc(c.id)}" aria-pressed="${c.id === x.act}" aria-label="${esc(c.name)}: initiative ${esc(x.v[c.id] || "leeg")}"><span>${esc(c.name)}</span>${x.rolls[c.id] ? `<small>${esc(x.rolls[c.id])}</small>` : ""}</button>
         <b class="iv" aria-hidden="true">${x.v[c.id] !== "" && x.v[c.id] != null ? esc(x.v[c.id]) : "—"}</b>
@@ -1451,6 +1467,7 @@ export function paintParty() {
   el.innerHTML = `<div>${app.party.map((m) => {
     const sl = m.casting && (m.casting.slots.length || m.casting.pact) ? " · slots " + [...(m.casting.pact ? [`Pact ${n0(m.casting.pact.left)}/${n0(m.casting.pact.max)}`] : []), ...m.casting.slots.map((x) => `${n0(x.left)}/${n0(x.max)}`)].join(" ") : "";
     const rs = (m.res || []).map((r) => ` · ${esc(r.n)} ${n0(r.left)}/${n0(r.max)}`).join("");
+    const pp = passives(m).per; // SP5: alleen Perception, regel blijft kort
     // level voor de moeilijkheid: uit de klasse-string van de sheet, anders zelf invullen
     const lv = m.sheet && clsLevel(m.sheet.cls) ? "" : `<label class="plvl">Level <input data-plvl="${esc(m.pid)}" type="number" min="1" max="20" inputmode="numeric" value="${esc(m.lvl ?? "")}" aria-label="Level ${esc(m.name)}"></label>`;
     // SP1: Bijwerken alleen met D&D Beyond-link; in de middenkolom, ver van "Uit party"
@@ -1460,7 +1477,7 @@ export function paintParty() {
       : `<div class="confirmbox pupdbox"><p style="margin:0"><b>${esc(m.name)}</b> bijwerken van D&amp;D Beyond${at.has(m.pid) ? " (zit aan tafel)" : ""}.</p>
         <p class="hint">${esc([...u.ch, ...u.kept].join(" · "))}. Schade en verbruik blijven staan.</p>
         <div class="bar"><button type="button" class="btn primary tap" data-pupdok="${esc(m.pid)}">Bijwerken</button><button type="button" class="btn tap" data-pupdno="${esc(m.pid)}">Annuleer</button></div></div>`;
-    return `<div class="pm">${avatar({ ...m, kind: "pc" })}<div><div class="pn">${esc(m.name)}</div><div class="pi">${m.sheet && m.sheet.cls ? esc(m.sheet.cls) + " · " : ""}${m.ac ? `AC ${n0(m.ac)} · ` : ""}${m.max ? `HP ${n0(m.hp)}/${n0(m.max)}${m.temp ? ` +${n0(m.temp)}` : ""}` : ""}${sl}${rs}</div>${lv}${upd}</div>
+    return `<div class="pm">${avatar({ ...m, kind: "pc" })}<div><div class="pn">${esc(m.name)}</div><div class="pi">${m.sheet && m.sheet.cls ? esc(m.sheet.cls) + " · " : ""}${m.ac ? `AC ${n0(m.ac)} · ` : ""}${m.max ? `HP ${n0(m.hp)}/${n0(m.max)}${m.temp ? ` +${n0(m.temp)}` : ""}` : ""}${sl}${pp != null ? ` · Passive Perc ${n0(pp)}` : ""}${rs}</div>${lv}${upd}</div>
       <div class="pc">${at.has(m.pid) ? `<span class="here">aan tafel</span>` : !fight ? "" : `<input data-pinit="${esc(m.pid)}" type="number" inputmode="numeric" placeholder="init" aria-label="Initiative ${esc(m.name)}" value="${esc(ui.partyInit[m.pid] ?? "")}"><button type="button" class="btn small" data-proll="${esc(m.pid)}">Rol</button>`}
         <button type="button" class="link" data-pdel="${esc(m.pid)}">Uit party</button></div>${box}</div>`;
   }).join("")}</div>

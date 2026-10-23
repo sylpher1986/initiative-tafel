@@ -314,6 +314,7 @@ export function parseDdbJson(json) {
     name: str(d.name), cls: classes.map((c) => `${cname(c)} ${int(c.level)}`).join(" / "), race: str(race.fullName) || str(race.baseName) || str(race.baseRaceName),
     ac: clamp(ac, 0, 40), max: clamp(max, 0, 9999), initBonus, dex: M[1], speed: `${speed} ft.`, prof: sg(prof),
     ab, saves, saveNotes: "", skills,
+    passive: { per: 10 + skillVal.Perception + sum("bonus", "passive-perception"), ins: 10 + skillVal.Insight + sum("bonus", "passive-insight"), inv: 10 + skillVal.Investigation + sum("bonus", "passive-investigation") }, // SP5 (Observant e.d.)
     senses: [...sense.map(([s, v]) => `${s} ${v} ft.`), `passive Perception ${10 + skillVal.Perception + sum("bonus", "passive-perception")}`].join(", "),
     attacks, levels, spellDC: spellMod == null ? "" : String(8 + prof + spellMod + dcPlus), spellAtk: spellMod == null ? "" : sg(prof + spellMod + atkPlus), spellAbility: castAb ? SHORT[castAb - 1] : "",
     features: [sub.length ? `Subclass: ${sub.join(", ")}` : "", feats, pact ? "Pact Magic: slots komen terug na een short rest." : ""].filter(Boolean).join("\n"),

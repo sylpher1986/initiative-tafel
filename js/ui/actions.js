@@ -2,7 +2,8 @@
 import { openSettings } from "./settings.js";
 import { $, esc, n0, toast, toastHtml, closeToast, show } from "./util.js";
 import { app, because, addWhy, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
-import { render, ui, openId, mode, atkAc, atkRider, atkTargets, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintDmgSugg, dmgSp, aoeCaster, dmgSlot, dmgDice, dmgLevel, spellSlot, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
+import { render, ui, openId, mode, atkAc, atkRider, atkTargets, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintDmgSugg, dmgSp, aoeCaster, dmgSlot, dmgDice, dmgLevel, spellSlot, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, edNow, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
+import { PAS, pasVal, cleanPas } from "../rules/passives.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { DMG_SPELLS } from "../rules/dmgtable.js";
 import { rollDice, diceText, normDice } from "../rules/dmgspells.js";
@@ -190,7 +191,7 @@ const row = {
   panel(c, b) {
     ui.panel = ui.panel === b.dataset.p ? null : b.dataset.p; ui.effWho = null; ui.exhOpen = false; ui.rage = null;
     // keys: alleen wat het paneel toont, zodat Opslaan niets terugzet wat intussen direct op de kaart is aangepast
-    ui.edit = ui.panel === "more" ? { id: c.id, name: c.name, ac: c.ac || "", max: baseMax(c) || "", init: c.init, dirty: false, keys: editKeys(c, mode() === "prep") } : null;
+    ui.edit = ui.panel === "more" ? { id: c.id, ...edNow(c), dirty: false, keys: editKeys(c, mode() === "prep") } : null;
   },
   /* ---- bewerken (⋯) ---- */
   "ed-cancel"() { ui.edit = null; ui.panel = null; },
@@ -199,8 +200,12 @@ const row = {
     if (!ed || ed.id !== c.id) return false;
     const name = String(ed.name).trim().slice(0, 120);
     if (!name) { toast("Naam mag niet leeg zijn."); return false; }
-    c.name = name;
     const has = (k) => !ed.keys || ed.keys.includes(k);
+    // SP5: eigen passives (leeg = uit de sheet); ongeldig = niets opslaan, melding
+    const pas = has("pas") && c.kind === "pc" ? Object.fromEntries(PAS.map(([k]) => [k, String(ed[k] ?? "").trim()])) : null;
+    if (pas && PAS.some(([k]) => pas[k] !== "" && pasVal(pas[k]) == null)) { toast("Passive is 1 t/m 40, of leeg laten."); return false; }
+    c.name = name;
+    if (pas) { const v = cleanPas(pas); if (v) c.pas = v; else delete c.pas; }
     const ac = parseInt(ed.ac);
     if (has("ac")) c.ac = Number.isFinite(ac) ? Math.max(0, Math.min(40, ac)) : 0;
     const mx = parseInt(ed.max), extra = (c.max || 0) - baseMax(c);
@@ -701,8 +706,8 @@ export function onChange(e) {
 function rekeyEdit() {
   const ed = ui.edit, c = ed && app.S.list.find((x) => x.id === ed.id);
   if (!c) return;
-  const keys = editKeys(c, mode() === "prep"), now = { name: c.name, ac: c.ac || "", max: baseMax(c) || "", init: c.init };
-  for (const k of keys) if (!(ed.keys || []).includes(k)) ed[k] = now[k];
+  const keys = editKeys(c, mode() === "prep"), now = edNow(c);
+  for (const k of keys) if (!(ed.keys || []).includes(k)) { if (k === "pas") for (const [p] of PAS) ed[p] = now[p]; else ed[k] = now[k]; }
   ed.keys = keys;
 }
 
@@ -1083,19 +1088,19 @@ export function bindForms() {
     $("#mon-hidh").hidden = !$("#mon-hid").checked;
     $("#mon-anonh").hidden = !$("#mon-anon").checked;
   };
-  const renderMonList = () => {
-    const f = filterMonsters(allMonsters(), $("#mon-q").value, selMon);
+  const renderMonList = (typed) => {
+    const f = filterMonsters(allMonsters(), $("#mon-q").value, selMon, typed === true); // VB5: tijdens typen wint een exacte naam
     if (f.sel !== selMon) ui.monFull = false; // andere keuze: preview weer kort
     selMon = f.sel; // UI-toestand, geen data: de selectie volgt wat zichtbaar is
     monBtn();
     const lbl = monLabel(f), m = selMon && findMon(selMon);
     $("#mon-lbl").hidden = !lbl; $("#mon-lbl").textContent = lbl;
-    $("#mon-list").innerHTML = monListHtml(f, selMon, "data-pick", `Niets gevonden. Voeg het toe onder "Eigen monster".`);
+    $("#mon-list").innerHTML = monListHtml(f, selMon, "data-pick", `Niets gevonden. Voeg het toe onder "Eigen".`);
     $("#mon-prev").innerHTML = monPrev(m, ui.monFull, true);
     if (ui.prep === "mon") previewSB(m || null); // tablet/desktop: volledig statblock in de zijkolom (geen keuze: terug)
   };
   bindForms.renderMonList = renderMonList;
-  $("#mon-q").addEventListener("input", renderMonList);
+  $("#mon-q").addEventListener("input", () => renderMonList(true));
   $("#mon-blk").addEventListener("click", (e) => {
     const b = e.target.closest("button[data-ab]"); if (!b) return;
     const f = addBlockTap(ui.monAdd, b), had = document.activeElement === b; monBtn();
@@ -1206,7 +1211,7 @@ export function bindQadd() {
   // invoer: alleen het paneel bijwerken (geen volledige render), zodat het zoekveld focus houdt
   el.addEventListener("input", (e) => {
     const q = ui.qadd; if (!q) return;
-    if (e.target.id === "q-q") { q.q = e.target.value; paintQadd(); }
+    if (e.target.id === "q-q") { q.q = e.target.value; q.typed = true; paintQadd(); q.typed = false; }
     else if (e.target.dataset.ab === "fix") { q.fix = e.target.value; q.typing = true; paintQadd(); q.typing = false; }
   });
   el.addEventListener("click", (e) => {

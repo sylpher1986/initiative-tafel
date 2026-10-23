@@ -131,14 +131,15 @@ function listHtml() {
         <label>Notitie <span class="opt">(optioneel)</span><textarea id="enc-notes" maxlength="2000" placeholder="bijv. hinderlaag bij de brug, 2 goblins verstopt">${esc(d.notes)}</textarea></label>
         <p class="hint">Bewaart ${esc(what)}. Spelers gaan niet mee; HP en initiative kies je bij het inladen.</p>
         <div class="bar"><button type="button" class="btn small" data-enc="save-no">Annuleer</button><button type="button" class="btn primary" data-enc="save-go">Opslaan</button></div></div>`
-    : `<button type="button" class="btn tap encsave" data-enc="save-open" ${n || lair ? "" : "disabled"}>+ Huidige lijst opslaan${what ? ` (${esc(what)})` : ""}</button>${n || lair ? "" : `<p class="hint">Voeg eerst monsters toe. Spelers gaan niet mee.</p>`}`;
+    : `${n || lair ? `<button type="button" class="btn tap encsave" data-enc="save-open">+ Huidige lijst opslaan (${esc(what)})</button>` : ""}
+      <button type="button" class="btn tap encsave" data-enc="new">+ Nieuwe encounter</button>${n || lair ? "" : `<p class="hint">Of zet monsters in de lijst en sla die op. Spelers gaan niet mee.</p>`}`; // VB5
   const imp = ui.encImp ? (() => {
     const had = app.encounters.find((e) => e.id === ui.encImp.enc.id);
     return `<div class="confirmbox"><p style="margin:0">"${esc(ui.encImp.enc.name)}" staat er al${had ? ` (gewijzigd ${esc(dateTxt(had.updatedAt))})` : ""}.</p>
       <div class="bar"><button type="button" class="btn primary" data-enc="imp-replace">Vervangen</button><button type="button" class="btn" data-enc="imp-copy">Als kopie</button><button type="button" class="btn small" data-enc="imp-no">Annuleer</button></div></div>`;
   })() : "";
   const rows = E.sorted(app.encounters).map(rowHtml).join("");
-  return `${save}${imp}<div class="enclist">${rows || `<p class="hint">Nog geen encounters. Zet monsters in de lijst en tik op "Huidige lijst opslaan".</p>`}</div>
+  return `${save}${imp}<div class="enclist">${rows || `<p class="hint">Nog geen encounters. Tik op "+ Nieuwe encounter" of sla de huidige lijst op.</p>`}</div>
     <div class="bar encimp"><button type="button" class="btn tap" data-file="enc-file">Encounterbestand importeren…</button><input id="enc-file" type="file" accept=".json,application/json" hidden></div>
     <p class="hint">Delen maakt een bestand met de encounter en de eigen monsters erin, voor een ander apparaat of een co-DM.</p>`;
 }
@@ -158,21 +159,28 @@ function rowHtml(e) {
     ${menu}</div>`;
 }
 
+/** Lair in Bewerken: die van de encounter, anders (VB5) de eerste met legendary actions ("Lair: Adult Red Dragon") */
+function lairKeyOf(x) {
+  if ((x.lair && x.lair.key) || x.lairKey) return (x.lair && x.lair.key) || x.lairKey;
+  const m = x.monsters.find((y) => { const sb = findMon(y.ref); return sb && sb.l && sb.l.length; });
+  return m ? `Lair: ${m.ref}` : "";
+}
+
 function editHtml() {
-  const x = ui.encEdit;
+  const x = ui.encEdit, lk = lairKeyOf(x);
   const r = E.difficulty(E.encMons(x, findMon), partyNow().who, !!x.all);
   const rows = x.monsters.map((m, i) => {
     const s = findMon(m.ref);
     const tags = [m.hidden && "verborgen", m.anon && "onbekend", m.grp && "groep", !s && "niet op dit apparaat"].filter(Boolean).join(" · ");
     return `<div class="erow"><span class="en"><b>${esc(m.ref)}</b><small>${s ? `CR ${esc(s.cr || "?")}` : ""}${tags ? `${s ? " · " : ""}${esc(tags)}` : ""}</small></span>
-      <span class="step"><button type="button" class="btn" data-enc="n" data-i="${i}" data-v="-1" aria-label="${m.n === 1 ? `${esc(m.ref)} weghalen` : `Eén ${esc(m.ref)} minder`}">−</button><b>${m.n}</b><button type="button" class="btn" data-enc="n" data-i="${i}" data-v="1" aria-label="Eén ${esc(m.ref)} meer" ${E.total(x) >= E.MAX_TOTAL || m.n >= E.MAX_N ? "disabled" : ""}>+</button></span></div>`;
+      <span class="step"><button type="button" class="btn" data-enc="n" data-i="${i}" data-v="-1" aria-label="${m.n === 1 ? `${esc(m.ref)} weghalen` : `Eén ${esc(m.ref)} minder`}">−</button><input class="encnum" data-encn="${i}" type="number" inputmode="numeric" min="1" max="${E.MAX_N}" enterkeyhint="done" value="${m.n}" aria-label="${esc(`Aantal ${m.ref}`)}"><button type="button" class="btn" data-enc="n" data-i="${i}" data-v="1" aria-label="Eén ${esc(m.ref)} meer" ${E.total(x) >= E.MAX_TOTAL || m.n >= E.MAX_N ? "disabled" : ""}>+</button></span></div>`;
   }).join("");
   return `<button type="button" class="link eback" data-enc="edit-no">‹ Encounters</button>
     <label>Naam<input id="ee-name" maxlength="80" value="${esc(x.name)}" autocomplete="off"></label>
     <label>Notitie <span class="opt">(optioneel)</span><textarea id="ee-notes" maxlength="2000">${esc(x.notes)}</textarea></label>
     <p class="vlbl">Monsters${x.monsters.length ? ` · <span class="dchip ${chipCls(r)}">${esc(chipLbl(r))}</span> ${fmt(r.adj)} XP` : ""}</p>
     <div class="erows">${rows || `<p class="hint">Nog geen monsters.</p>`}</div>
-    ${x.lairKey ? `<label class="chk"><input type="checkbox" id="ee-lair" ${x.lair ? "checked" : ""}> Lair actions (${esc(x.lairKey)})</label>` : ""}
+    ${lk ? `<label class="chk"><input type="checkbox" id="ee-lair" ${x.lair ? "checked" : ""}> Lair actions (${esc(lk.replace(/^Lair: /, ""))})</label>` : ""}
     <label>+ Monster<input id="ee-q" placeholder="naam, type of CR" autocomplete="off" enterkeyhint="search" value="${esc(x.q)}"></label>
     <div class="mlist" id="ee-list"></div>
     <div class="bar"><button type="button" class="btn small" data-enc="edit-no">Annuleer</button><button type="button" class="btn primary" data-enc="edit-go">Opslaan</button></div>`;
@@ -183,7 +191,7 @@ function paintEditList() {
   if (!x || !box) return;
   const f = filterMonsters(allMonsters(), x.q, null);
   box.hidden = !x.q.trim();
-  box.innerHTML = x.q.trim() ? monListHtml({ ...f, L: f.L.slice(0, 40) }, null, "data-eepick", "Niets gevonden.") : "";
+  box.innerHTML = x.q.trim() ? monListHtml({ ...f, L: f.L.slice(0, 40) }, null, "data-eepick", `Niets gevonden. Eigen monsters maak je onder "Eigen".`) : "";
 }
 
 /* ---------- acties ---------- */
@@ -235,6 +243,13 @@ function saveNew() {
   toast(`"${e.name}" opgeslagen · ${encSummary(e)}${lost > 0 ? `. Let op: ${lost} monsters niet bewaard (max ${E.MAX_TOTAL})` : ""}`);
 }
 
+/** VB5: lege encounter maken in hetzelfde subscherm; pas bij Opslaan in de bibliotheek */
+function startNew() {
+  ui.encEdit = { id: E.newId(), isNew: true, name: "", notes: "", monsters: [], lair: null, lairKey: "", lairHidden: false, all: false, q: "" };
+  ui.encMenu = null; ui.encDraft = null; ui.encImp = null; repaint();
+  $("#enc-panel").closest(".psheet").scrollTop = 0;
+  $("#ee-name")?.focus();
+}
 function startEdit(e) {
   ui.encEdit = { id: e.id, name: e.name, notes: e.notes, monsters: structuredClone(e.monsters), lair: e.lair ? { ...e.lair } : null, lairKey: e.lair ? e.lair.key : "", lairHidden: !!(e.lair && e.lair.hidden), all: !!e.all, q: "" };
   ui.encMenu = null; repaint();
@@ -242,12 +257,12 @@ function startEdit(e) {
 }
 function saveEdit() {
   const x = ui.encEdit, old = findEnc(x.id);
-  if (!x.name.trim()) { toast("Geef de encounter een naam."); $("#ee-name")?.focus(); return; }
-  const e = E.cleanEncounter({ id: x.id, name: x.name, notes: x.notes, monsters: x.monsters, lair: x.lair, all: x.all, updatedAt: Date.now() });
+  if (!x.name.trim() && !x.isNew) { toast("Geef de encounter een naam."); $("#ee-name")?.focus(); return; }
+  const e = E.cleanEncounter({ id: x.id, name: x.name.trim() || "Nieuwe encounter", notes: x.notes, monsters: x.monsters, lair: x.lair, all: x.all, updatedAt: Date.now() });
   if (!e) { toast("Een encounter heeft minstens één monster of een lair."); return; }
   app.encounters = old ? app.encounters.map((y) => (y.id === x.id ? e : y)) : [...app.encounters, e];
   saveEncounters(); ui.encEdit = null; repaint();
-  toast(`"${e.name}" bijgewerkt · ${encSummary(e)}`);
+  toast(`"${e.name}" ${old ? "bijgewerkt" : "opgeslagen"} · ${encSummary(e)}`);
 }
 
 let lastDel = null;
@@ -298,10 +313,23 @@ async function importFile(file) {
   importDone(p, "new");
 }
 
+/** VB5: aantal getypt. Leeg, 0 of onzin = vorige waarde terug (weghalen gaat met −); max 50 per regel en 100 in totaal */
+function setCount(x, i, t) {
+  const m = x.monsters[i]; if (!m) return;
+  const v = parseInt(t.value, 10);
+  if (!(v >= 1)) { t.value = m.n; return; }
+  const room = E.MAX_TOTAL - (E.total(x) - m.n);
+  const n = Math.min(E.MAX_N, v, room);
+  if (n < v) toast(n === room && room < Math.min(E.MAX_N, v) ? `Maximaal ${E.MAX_TOTAL} monsters per encounter.` : `Maximaal ${E.MAX_N} per regel.`);
+  m.n = n; t.value = n;
+  if (n < 2) delete m.grp;
+}
+
 const ACT = {
   "save-open"() { ui.encDraft = { name: "", notes: "" }; repaint(); $("#enc-name")?.focus(); },
   "save-no"() { ui.encDraft = null; repaint(); },
   "save-go": saveNew,
+  new: startNew,
   load(id) {
     const e = findEnc(id); if (!e) return;
     // alleen vragen als er iets te vervangen valt
@@ -376,12 +404,14 @@ export function bindEnc() {
   });
   el.addEventListener("change", async (e) => {
     const t = e.target;
-    if (t.id === "ee-lair" && ui.encEdit) { const x = ui.encEdit; x.lair = t.checked ? { key: x.lairKey, ...(x.lairHidden ? { hidden: true } : {}) } : null; }
+    if (t.id === "ee-lair" && ui.encEdit) { const x = ui.encEdit, k = lairKeyOf(x); x.lair = t.checked && k ? { key: k, ...(x.lairHidden ? { hidden: true } : {}) } : null; if (!t.checked && k) x.lairKey = k; }
+    if ("encn" in t.dataset && ui.encEdit) setCount(ui.encEdit, +t.dataset.encn, t); // VB5: render volgt na focusout (main.js)
     if (t.id === "enc-file" && t.files[0]) { const f = t.files[0]; t.value = ""; await importFile(f); }
   });
   el.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
     if (e.target.id === "enc-name") { e.preventDefault(); saveNew(); }
+    if ("encn" in e.target.dataset) { e.preventDefault(); e.target.blur(); return; }
     if (e.target.id === "ee-q") { e.preventDefault(); const f = $("#ee-list [data-eepick]"); if (f) f.click(); }
   });
   // levelvelden in de uitleg: Enter = volgende veld, op het laatste klaar (blur → opslaan → render).

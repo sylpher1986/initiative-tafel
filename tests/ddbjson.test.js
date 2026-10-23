@@ -292,3 +292,18 @@ test("SP3: seatPlan — nooit een tweede deelnemer voor hetzelfde partylid", asy
   assert.equal(seatPlan(true, true, true), "upd");
   assert.equal(seatPlan(true, true, false), "none");
 });
+
+test("SP5: passives uit de link (10 + skill, plus passive-bonussen zoals Observant)", () => {
+  const { sheet } = parseDdbJson(wizard);
+  assert.deepEqual(sheet.passive, { per: 14, ins: 11, inv: 14 });
+  const obs = structuredClone(wizard);
+  obs.modifiers.feat = [mod("bonus", "passive-perception", 5), mod("bonus", "passive-investigation", 5)];
+  assert.deepEqual(parseDdbJson(obs).sheet.passive, { per: 19, ins: 11, inv: 19 });
+  assert.match(parseDdbJson(obs).sheet.senses, /passive Perception 19/);
+  // export/import houdt het
+  const c = cleanCombatant({ kind: "pc", name: "T", sheet, pas: { per: 17, ins: "x", inv: 99 } });
+  assert.deepEqual(c.sheet.passive, { per: 14, ins: 11, inv: 14 });
+  assert.deepEqual(c.pas, { per: 17 });
+  assert.equal(cleanCombatant({ kind: "pc", name: "T", pas: {} }).pas, undefined);
+  assert.equal(cleanCombatant({ kind: "monster", name: "M", pas: { per: 12 } }).pas, undefined);
+});

@@ -35,6 +35,7 @@ const ASSETS = [
   "./js/rules/aoe.js",
   "./js/rules/attacks.js",
   "./js/rules/monrules.js",
+  "./js/rules/passives.js",
   "./js/rules/combat.js",
   "./js/rules/conclist.js",
   "./js/rules/conditions.js",

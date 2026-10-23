@@ -9,6 +9,7 @@ import { effAc, acBreakdown } from "../rules/effects.js";
 import { newDs } from "../rules/combat.js";
 import { drText } from "../rules/aoe.js";
 import { spellParts } from "../data/spells.js";
+import { passives, pasText } from "../rules/passives.js";
 
 /**
  * Tekst → HTML met klikbare "(2d6 + 3)", "+4 to hit" en losse "1d4".
@@ -279,7 +280,7 @@ export function showSB(c, follow = false) {
 
 /** Live-blok van een speler: alles wat tijdens het gevecht verandert. Alleen-lezen: bediening zit op de kaart. */
 function liveHtml(c, chips) {
-  const ac = effAc(c), br = acBreakdown(c);
+  const ac = effAc(c), br = acBreakdown(c), pt = pasText(passives(c));
   const d = c.ds || newDs();
   const ds = c.max && c.hp <= 0 ? (d.dead ? `<span class="bd r">Dood</span>` : d.stable ? `<span class="bd g">Stabiel</span>`
     : `<span class="bd r">Death saves ✓${n0(d.s)} ✗${n0(d.f)}</span>`) : "";
@@ -294,6 +295,7 @@ function liveHtml(c, chips) {
       <div><span class="lk">Dex</span><b>${sgn(n0(c.dex))}</b></div>
     </div>
     ${br ? `<p class="hint">AC: ${esc(br)}</p>` : ""}
+    ${pt ? `<p class="cnts"><span class="k">Passive</span> ${esc(pt)}</p>` : ""}
     ${c.dr ? `<p class="cnts"><span class="k">Resistances</span> ${esc(drText(c.dr))}</p>` : ""}
     ${tags ? `<div class="badges">${tags}</div>` : ""}
     ${slots.length ? `<p class="cnts"><span class="k">Slots</span> ${slots.join("")}</p>` : ""}

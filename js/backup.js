@@ -8,6 +8,7 @@ import { cleanEncounters, cleanLvl } from "./rules/encounters.js";
 import { cleanEnc } from "./rules/fight.js";
 import { cleanDr } from "./rules/aoe.js";
 import { cleanRs } from "./rules/effects.js";
+import { cleanPas } from "./rules/passives.js";
 
 export const FORMAT = "initiative-tafel";
 export const VERSION = 2; // 2 (1.28.0): encounters erbij
@@ -43,7 +44,7 @@ function cleanSheet(h) {
   return {
     name: str(h.name, 120), cls: str(h.cls, 120), race: str(h.race, 120), ac: num(h.ac), max: num(h.max),
     initBonus: num(h.initBonus), dex: num(h.dex), speed: str(h.speed, 120), prof: str(h.prof, 10),
-    ab: arr(h.ab).slice(0, 6).map((x) => num(x, 10)), saves: pairs(h.saves), saveNotes: str(h.saveNotes), skills: pairs(h.skills), senses: str(h.senses),
+    ab: arr(h.ab).slice(0, 6).map((x) => num(x, 10)), saves: pairs(h.saves), saveNotes: str(h.saveNotes), skills: pairs(h.skills), senses: str(h.senses), ...(cleanPas(h.passive) ? { passive: cleanPas(h.passive) } : {}),
     attacks: arr(h.attacks).map((a) => ({ n: str(a.n, 120), hit: str(a.hit, 10), dmg: str(a.dmg, 120), notes: str(a.notes, 300) })),
     levels: arr(h.levels).map((l) => ({ lvl: num(l.lvl), max: num(l.max), spells: arr(l.spells).map((s) => ({ n: str(s.n, 120), src: str(s.src, 120), hit: str(s.hit, 20), time: str(s.time, 20), range: str(s.range, 60), dur: str(s.dur, 80), notes: str(s.notes, 200), ...(s.ed === "2014" || s.ed === "2024" ? { ed: s.ed } : {}) })) })),
     spellDC: str(h.spellDC, 10), spellAtk: str(h.spellAtk, 10), spellAbility: str(h.spellAbility, 10), features: str(h.features, 20000),
@@ -100,6 +101,7 @@ export function cleanCombatant(c) {
     rc: c.rc === undefined ? undefined : arr(c.rc).map((r) => ({ n: str(r.n, 120), min: r.min == null ? null : num(r.min), rest: !!r.rest, ready: !!r.ready })),
     casting: c.casting === undefined ? undefined : cleanCasting(c.casting), res: cleanRes(c.res), sheet: cleanSheet(c.sheet),
     dr: kind === "pc" ? cleanDr(c.dr) : undefined, // weerstanden van een speler (SP2)
+    pas: kind === "pc" ? cleanPas(c.pas) : undefined, // SP5: eigen passives (gaan voor de sheet)
     slotSelf: c.slotSelf === true ? true : undefined, // RE1: slots zelf bijhouden (WP9)
     concLvl: c.concSpell && Number.isInteger(c.concLvl) && c.concLvl >= 1 && c.concLvl <= 9 ? c.concLvl : undefined, // slot-level van een lopende schade-spell
   });
