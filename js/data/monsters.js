@@ -1,5 +1,6 @@
 // Monsterbibliotheek: SRD (data/monsters.json) + geïmporteerde + eigen monsters, met één index.
 import { HD_RE } from "../rules/dice.js";
+import { withParsed } from "./statparse.js";
 
 let srd = [], custom = [], imported = [];
 let list = null, index = null;
@@ -21,7 +22,8 @@ export const getImported = () => imported;
 function invalidate() { list = null; index = null; }
 function build() {
   const seen = new Map();
-  for (const m of [...custom.map((c) => ({ ...c, custom: true })), ...imported, ...srd]) {
+  // RE14: eigen (en geïmporteerde eigen-formaat) monsters met plaktekst krijgen dezelfde structuur als SRD
+  for (const m of [...custom.map((c) => ({ ...withParsed(c), custom: true })), ...imported.map(withParsed), ...srd]) {
     const k = m.n.toLowerCase();
     if (!seen.has(k)) seen.set(k, m);
   }

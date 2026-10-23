@@ -16,6 +16,7 @@ import { diceify, syncSB, monCard, isPhone } from "./statblock.js";
 import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
 import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
+import { hasUF, ufDc, ufNeed, riderWhat, riderImmune, parryOf, canParry } from "../rules/monrules.js";
 import { openSaves, lastTurn } from "../rules/saves.js";
 import { avatar, icon, monType } from "./avatar.js";
 import { SPELLS, SPELL_CONDS, customSpell, spellTargets, spellDefault, condImmune, spellFor, rulesDiffer, slotFor } from "../rules/spellcast.js";
@@ -431,7 +432,7 @@ function effPanel(c) {
       return `<button class="btn tap" data-a="effp" data-i="${i}" ${off ? `disabled title="Vul eerst AC in (⋯)"` : ""}><span>${esc(p.n)}${tag ? ` <span class="tag">${esc(tag)}</span>` : ""}</span><small>${esc(p.dex ? "AC 13 + Dex" : p.st ? effText(p) : p.txt.split(" op ")[0])}${p.conc ? " · conc" : ""}</small></button>`;
     }).join("")}<button class="btn tap" data-a="effcustom" aria-pressed="${ui.effCustom}">+ Eigen effect</button></div>
     ${!c.ac ? `<p class="hint">Geen AC bekend: AC + is uit. Vul AC in via ⋯.</p>` : ""}
-    <p class="hint">Concentratie-spells: caster is ${act ? `<b>${esc(act.name)}</b> (aan de beurt)` : "je kiest zelf"}. Zelfde effect opnieuw = vernieuwen.</p>
+    <p class="hint">Concentratie-spells: caster is ${act ? `<b>${esc(act.name)}</b> (aan de beurt)` : "je kiest zelf"}. Zelfde effect opnieuw = vernieuwen. Meer doelen tegelijk (Bless, Bane): AoE → Spell.</p>
     ${custom}</div>`;
 }
 
@@ -697,7 +698,9 @@ const SELF = ` <span class="tag">zelf rollen</span>`;
 /** Eén open save. full = in het paneel "Open saves" (met "einde beurt"); in de beurtbalk kort (RE12: past op 320 px naast Geslaagd/Gefaald) */
 function svRow(S, s, full = false) {
   const c = S.list.find((x) => x.id === s.id);
-  const what = s.kind === "conc" ? `concentratie${c.concSpell ? ` · ${c.concSpell}` : ""}` : `${s.n}${full ? " · einde beurt" : ""}`;
+  const what = s.kind === "conc" ? `concentratie${c.concSpell ? ` · ${c.concSpell}` : ""}`
+    : s.kind === "rider" ? `${s.n} · ${s.rd.conds.length ? `of ${s.rd.conds.join(" + ")}` : s.rd.dmg ? `${s.rd.roll ? s.rd.roll.total : s.rd.dmg.e} ${s.rd.dmg.type}${s.rd.dmg.half ? ", half" : ""}` : "zie statblock"}`
+    : `${s.n}${full ? " · einde beurt" : ""}`;
   const self = selfRoll(c, s.ab), end = lastTurn(s);
   const btns = c.kind === "monster" && !self
     ? `<button type="button" class="svroll" data-svroll="${esc(s.sid)}" aria-label="${esc(c.name)}: ${esc(s.ab)}-save rollen, DC ${s.dc}">Rol ${sgn(svBonus(c, s.ab))}</button>`
@@ -834,7 +837,8 @@ function paintSheet() {
   const c = s && app.S.list.find((x) => x.id === s.id);
   if (!c) { el.hidden = true; el.innerHTML = ""; return; }
   const v = parseInt(s.val) || 0;
-  let preview = "";
+  let preview = "", ufBtn = "";
+  const m = c.ref ? findMon(c.ref) : null;
   if (v) {
     const { sim } = sheetPreview(c, s.kind, v, s.mode);
     const hp = (x) => `${n0(x.hp)}${x.temp ? ` (+${n0(x.temp)} temp)` : ""}`;
@@ -843,10 +847,17 @@ function paintSheet() {
       const dealt = Math.floor(v * s.mode);
       if (s.mode !== 1) preview += ` · ${dealt} na ${{ 0.5: "resist", 2: "kwetsbaar", 0: "immuun" }[s.mode]}`;
       if (sim.ds && sim.ds.dead && !(c.ds && c.ds.dead)) preview += ` · <b class="bad">sterft</b>`;
+      else if (sim.hp === 0 && c.hp > 0 && c.kind === "monster" && hasUF(m)) { // RE13: het schadepaneel kent het type niet: de DM zegt het
+        preview += s.ufx ? ` · <b class="bad">neer</b> · geen Undead Fortitude` : ` · Undead Fortitude CON DC ${ufDc(dealt)} (rolt bij toepassen)`;
+        ufBtn = `<div class="xrow"><button type="button" class="btn small" data-sk="ufx" aria-pressed="${!!s.ufx}">Radiant of kritiek</button><span class="hint">dan geen Undead Fortitude</span></div>`;
+      }
       else if (sim.hp === 0 && c.hp > 0) preview += ` · <b class="bad">${c.kind === "pc" ? "bewusteloos" : "neer"}</b>`;
       else if (c.cond.includes("Concentrating") && sim.hp > 0 && dealt > 0) preview += ` · concentration save <b>DC ${Math.max(10, Math.floor(dealt / 2))}</b>`;
     }
   } else preview = `Nu ${n0(c.hp)}/${n0(c.max)} HP${c.temp ? ` (+${n0(c.temp)} temp)` : ""}`;
+  // RE13: Parry (reaction) van een monster: de aanval van de speler mist als hij met +N niet zou raken
+  const pn = s.kind === "dmg" && app.S.round && c.kind === "monster" ? parryOf(m) : 0, ac = effAc(c);
+  const parry = pn && canParry(c, app.S.round) ? `<div class="xrow"><button type="button" class="btn small" data-sk="parry">Parry +${pn} → mis</button><span class="hint">Melee · raak met ${ac ? `AC ${ac}${pn > 1 ? `–${ac + pn - 1}` : ""}` : `AC +${pn}`}? dan mis</span></div>` : "";
   const kinds = [["dmg", "Schade"], ["heal", "Heal"], ["thp", "Temp HP"]];
   const label = { dmg: `${v || ""} schade toepassen`, heal: `${v || ""} HP genezen`, thp: `${v || ""} temp HP geven` }[s.kind];
   el.hidden = false;
@@ -855,9 +866,9 @@ function paintSheet() {
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3>${esc(c.name)}</h3><button class="link" data-sk="close">Annuleer</button></div>
       <div class="seg2">${kinds.map(([k, l]) => `<button data-sk="kind" data-v="${k}" aria-pressed="${s.kind === k}">${l}</button>`).join("")}</div>
-      ${s.kind === "dmg" ? `<div class="seg2 sm">${[[1, "Normaal"], [0.5, "Resist ½"], [2, "Kwetsb. ×2"], [0, "Immuun"]].map(([m, l]) => `<button data-sk="mode" data-v="${m}" aria-pressed="${s.mode === m}">${l}</button>`).join("")}</div>${c.kind === "pc" && c.dr ? `<p class="hint drhint">${esc(drText(c.dr))}</p>` : ""}${rageOf(c) ? `<p class="hint drhint">Rage: resistance ${rageOf(c).bear ? "tegen alles behalve psychic" : "B/P/S"}, halveer.</p>` : ""}` : ""}
+      ${s.kind === "dmg" ? `<div class="seg2 sm">${[[1, "Normaal"], [0.5, "Resist ½"], [2, "Kwetsb. ×2"], [0, "Immuun"]].map(([m, l]) => `<button data-sk="mode" data-v="${m}" aria-pressed="${s.mode === m}">${l}</button>`).join("")}</div>${c.kind === "pc" && c.dr ? `<p class="hint drhint">${esc(drText(c.dr))}</p>` : ""}${rageOf(c) ? `<p class="hint drhint">Rage: resistance ${rageOf(c).bear ? "tegen alles behalve psychic" : "B/P/S"}, halveer.</p>` : ""}${parry}` : ""}
       <div class="disp" aria-live="polite">${esc(s.val || "0")}</div>
-      <div class="preview">${preview}</div>
+      <div class="preview">${preview}</div>${ufBtn}
       <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-sk="d" data-v="${n}">${n}</button>`).join("")}<button data-sk="back" aria-label="Wissen">⌫</button><button data-sk="d" data-v="0">0</button><button data-sk="clear" aria-label="Alles wissen">C</button>
         <button class="go go-${s.kind}" data-sk="apply" ${v ? "" : "disabled"}>${label}</button></div>
     </div>`;
@@ -1237,9 +1248,64 @@ const AUTO_CRIT = ["Paralyzed", "Unconscious"];
 /** Wie een aanval kan krijgen: niet de aanvaller, geen lair, geen dode speler of monster op 0 HP (spelers op 0 HP wel) */
 export const atkTargets = (by) => sortOrder(app.S.list).filter((c) => c.kind !== "lair" && c.id !== by && !isOut(c));
 
+/** Knoptekst bij een treffer: "7 schade + Prone toepassen", "7 schade toepassen · save in beurtbalk" (RE13) */
+function goLabel(dealt, ri, x) {
+  const base = dealt ? `${dealt} schade` : "";
+  if (!ri || !ri.act) return dealt ? `${base} toepassen` : "Geen schade";
+  const rd = ri.rd, ch = ri.choice;
+  if (!ch) return `${base || "Niets"} toepassen · save in beurtbalk`;
+  const extra = [];
+  if (rd.dmg && x.rroll) { const v = ch === "fail" ? x.rroll.total : rd.dmg.half ? Math.floor(x.rroll.total / 2) : 0; if (v) extra.push(`${v} ${rd.dmg.type}`); }
+  if (ch === "fail" && rd.conds.length) extra.push(rd.conds.join(" + "));
+  const all = [base, ...extra].filter(Boolean);
+  return all.length ? `${all.join(" + ")} toepassen` : "Toepassen (geen gevolg)";
+}
+
+/** RE13: Parry aanbieden bij monster tegen monster: melee, raak (geen nat 20) en met +N zou het missen */
+const parryOk = (c, x, r, res) => {
+  const n = c.kind === "monster" && c.ref ? parryOf(findMon(c.ref)) : 0;
+  return n > 0 && !x.acp && x.kind !== "ranged" && res.hit && !x.force.hit && r.nat !== 20 && canParry(c, app.S.round) && r.tot < atkAc(x, c) + n;
+};
+
 /** Shield (reaction, +5) aanbieden: speler die kan reageren (niet op 0 HP/incapacitated), geraakt maar niet met een natuurlijke 20, en +5 AC zou missen */
 export const shieldOk = (c, x, r, res) => c.kind === "pc" && c.hp > 0 && !c.cond.some((k) => NO_ACT.includes(k)) && res.hit && !x.force.hit && r.nat !== 20 && !c.reaction
   && !(c.eff || []).some((e) => e.n === "Shield") && r.tot < effAc(c) + 5;
+
+/** AC van het doel voor deze aanval: effecten (Shield) plus een Parry die op deze aanval gebruikt is (RE13) */
+export const atkAc = (x, c) => (effAc(c) || 0) + (x.acp && c.reaction ? x.acp : 0); // Parry ongedaan gemaakt: reaction weer vrij, bonus weg
+
+/**
+ * RE13: save-rider van deze aanval tegen dit doel, of null (geen rider, geen treffer, doel neer).
+ * simHp = HP van het doel na de treffer. { rd, act (conditie/schade toe te passen), immune, auto ("fail": bewusteloos
+ * faalt STR/DEX vanzelf), choice ("fail"|"ok"|null) }.
+ */
+export function atkRider(x, c, res, simHp) {
+  const rd = x.rid;
+  if (!rd || !res.hit) return null;
+  if (c.kind === "monster" && c.max && simHp <= 0) return null; // monster neer: geen rider meer
+  const down = c.kind === "pc" && c.max > 0 && simHp <= 0;
+  if (down && !rd.dmg && rd.conds.length && rd.conds.every((k) => k === "Prone")) return null; // bewusteloos = al prone
+  const m = c.ref ? findMon(c.ref) : null;
+  if (riderImmune(rd, m)) return { rd, act: false, immune: true };
+  const act = !!(rd.conds.length || rd.dmg);
+  const auto = act && down && (rd.ab === "STR" || rd.ab === "DEX") ? "fail" : null;
+  return { rd, act, immune: false, auto, choice: auto || x.rs || null };
+}
+
+/** Rij "Daarna · STR DC 11 · of Prone" in het aanvalspaneel (alleen bij een treffer) */
+function riderRow(x, c, ri) {
+  const rd = ri.rd, head = `Daarna · ${rd.ab} DC ${rd.dc} · ${esc(riderWhat(rd))}`;
+  const only = rd.only ? `<p class="hint">Alleen als: ${esc(rd.only)}</p>` : "";
+  if (ri.immune) return `<div class="xrider"><p class="hint">${head} <span class="tag">immuun</span></p></div>`;
+  if (!ri.act) return `<div class="xrider"><p class="hint">Let op: bij gefaalde ${rd.ab} ${rd.dc}: ${esc(rd.note)}</p>${only}</div>`;
+  const roll = x.rroll ? `<p class="hint">${esc(x.rroll.txt)}${rd.dmg.half ? `, half ${Math.floor(x.rroll.total / 2)}` : ""}</p>` : "";
+  if (ri.auto) return `<div class="xrider"><p class="qlbl">${head}</p>${roll}<p class="hint"><span class="tag">bewusteloos: faalt vanzelf</span></p></div>`;
+  const canRoll = c.kind === "monster" && !selfRoll(c, rd.ab);
+  return `<div class="xrider"><p class="qlbl">${head}</p>${roll}
+    <div class="xrow">${canRoll ? `<button type="button" class="btn small" data-xa="rroll" aria-label="${esc(c.name)}: ${rd.ab}-save rollen, DC ${rd.dc}">Rol ${sgn(svBonus(c, rd.ab))}</button>` : ""}
+    <div class="seg2 sm" role="group" aria-label="Save ${esc(c.name)}">${[["fail", "Gefaald"], ["ok", "Geslaagd"]].map(([v, l]) => `<button type="button" data-xa="rs" data-v="${v}" aria-pressed="${x.rs === v}">${l}</button>`).join("")}</div></div>
+    ${x.rx ? `<p class="hint">${esc(`${rd.ab} ${rollText(x.rx, rd.dc)}`)}</p>` : ""}${only}</div>`;
+}
 
 /** Effectieve worp tegen dit doel: Auto = advantage/disadvantage uit condities (atkAdv), anders de handmatige stand */
 export function atkRoll(x, by, c) {
@@ -1294,7 +1360,7 @@ function advLine(x, au, r) {
 
 function atkRes(x, c, by) {
   const { au, r } = atkRoll(x, by, c);
-  const ac = effAc(c) || 0, res = atkResult(r, ac, x.parts, x.modes, x.force);
+  const ac = atkAc(x, c), res = atkResult(r, ac, x.parts, x.modes, x.force);
   const word = res.crit ? "Kritiek!" : res.hit ? (res.natHit ? "Raak" : "Toch raak") : r.nat === 1 ? "Mis (nat 1)" : "Mis";
   const crit = c.cond.filter((k) => AUTO_CRIT.includes(k));
   const hints = [
@@ -1304,21 +1370,29 @@ function atkRes(x, c, by) {
   ].filter(Boolean);
   const how = advLine(x, au, r);
   let body = "", foot = "";
+  if (x.acp && c.reaction) hints.unshift(`Parry: AC ${ac - x.acp} + ${x.acp} = ${ac}`);
   if (res.hit) {
     const sim = structuredClone(c), was = c.hp;
     if (c.max) atkDamage(sim, res);
+    const uf = c.max && ufNeed(sim, c.ref ? findMon(c.ref) : null, was, res.dealt, { crit: res.crit, radiant: res.types.some((t) => t.type === "radiant" && t.dealt > 0) });
+    const ri = atkRider(x, c, res, sim.hp);
     const end = !c.max ? "" : sim.ds && sim.ds.dead && !(c.ds && c.ds.dead) ? ` · <b class="bad">sterft</b>`
-      : was > 0 && sim.hp <= 0 ? ` · <b class="bad">${c.kind === "pc" ? "bewusteloos" : "neer"}</b>`
+      : uf && uf.dc ? ` · Undead Fortitude CON DC ${uf.dc} (rolt bij toepassen)`
+      : was > 0 && sim.hp <= 0 ? ` · <b class="bad">${c.kind === "pc" ? "bewusteloos" : "neer"}</b>${uf && uf.skip ? ` · geen Undead Fortitude (${uf.skip})` : ""}`
       : c.kind === "pc" && was <= 0 && res.dealt ? ` · <b class="bad">${res.crit ? "twee failures" : "death save failure"}</b>` : "";
     body = `${x.parts.length ? `<div class="xdmg">${x.parts.map((p) => esc(partText(p, res.crit))).join("<br>")}</div>` : `<p class="hint">Geen schade-worp in deze aanval.</p>`}
       ${res.types.map((t) => `<div class="xmode"><span class="qlbl">${esc(t.type || "schade")}${t.mode !== 1 && t.mode === targetMode(c, null, t.type).mode ? (targetMode(c, null, t.type).eff ? " · Rage" : c.kind === "pc" ? " · opgeslagen" : "") : ""}</span><div class="seg2 sm" role="group" aria-label="Weerstand ${esc(t.type)}">${XMODES.map(([v, l]) => `<button type="button" data-xa="mode" data-t="${esc(t.type)}" data-v="${v}" aria-pressed="${t.mode === v}">${l}</button>`).join("")}</div></div>`).join("")}
       <div class="xrow"><button type="button" class="btn small" data-xa="crit" aria-pressed="${res.crit}">Kritiek</button>
-      <span class="acalc">${c.max ? `${n0(c.hp)} → ${n0(sim.hp)} HP${end}` : "HP onbekend"}</span></div>`;
-    foot = `${shieldOk(c, x, r, res) ? `<button type="button" class="btn" data-xa="shield">Shield +5</button>` : "<span></span>"}
-      <button type="button" class="btn primary qgo" data-xa="go" ${c.max && res.dealt ? "" : "disabled"}>${!c.max ? "HP onbekend" : res.dealt ? `${res.dealt} schade toepassen` : "Geen schade"}</button>`;
+      <span class="acalc">${c.max ? `${n0(c.hp)} → ${n0(sim.hp)} HP${end}` : "HP onbekend"}</span></div>
+      ${ri ? riderRow(x, c, ri) : ""}`;
+    const can = c.max && (res.dealt || (ri && ri.act));
+    const left = shieldOk(c, x, r, res) ? `<button type="button" class="btn" data-xa="shield">Shield +5</button>`
+      : parryOk(c, x, r, res) ? `<button type="button" class="btn" data-xa="parry">Parry +${parryOf(findMon(c.ref))}</button>` : "<span></span>";
+    foot = `${left}<button type="button" class="btn primary qgo" data-xa="go" ${can ? "" : "disabled"}>${!c.max ? "HP onbekend" : goLabel(res.dealt, ri, x)}</button>`;
   } else {
     const spend = x.la && x.la.on && laCan(x, by);
-    foot = `<button type="button" class="link" data-xa="force">Toch raak</button><button type="button" class="btn primary qgo" data-xa="${spend ? "miss" : "close"}">${spend ? `Sluit (−${x.la.cost} LA)` : "Sluit"}</button>`;
+    const nx = !spend && x.sq && x.sq.left.length ? x.sq.left[0] : ""; // GV11: door naar de volgende aanval
+    foot = `<button type="button" class="link" data-xa="force">Toch raak</button><button type="button" class="btn primary qgo" data-xa="${spend ? "miss" : nx ? "next" : "close"}">${spend ? `Sluit (−${x.la.cost} LA)` : nx ? `Volgende: ${esc(nx)} <span aria-hidden="true">▸</span>` : "Sluit"}</button>`;
   }
   return `<button type="button" class="link xback" data-xa="back">‹ Ander doel</button>
     <p class="xhit"><b class="${res.hit ? "ok" : "bad"}">${word}</b> ${atkHtml(r, ac)}</p>
@@ -1336,7 +1410,7 @@ export function paintAtk() {
   el.innerHTML = `<div class="dim" data-xa="close"></div>
     <div class="sheet qsheet xsheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="x-title">
       <div class="grab" aria-hidden="true"></div>
-      <div class="shead"><h3 id="x-title">${esc(x.label)} → ${c ? esc(c.name) : "doel?"}</h3><button type="button" class="link" data-xa="close">Annuleer</button></div>
+      <div class="shead"><h3 id="x-title">${esc(x.label)}${x.sq ? ` ${x.sq.i}/${x.sq.n}` : ""} → ${c ? esc(c.name) : "doel?"}</h3><button type="button" class="link" data-xa="close">Annuleer</button></div>
       ${c ? atkRes(x, c, by) : atkPick(x, by)}
     </div>`;
   el.hidden = false;

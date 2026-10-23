@@ -166,19 +166,19 @@
       </div></details>
       <p class="hint appver" id="app-version"></p>
     </div>
-    <form class="form" id="f-custom" data-panel="custom" hidden>
+    <form class="form" id="f-custom" data-panel="custom" novalidate hidden>
       <p class="hint">Voor monsters buiten de SRD. Ze worden in deze browser bewaard en verschijnen daarna gewoon in de monsterlijst.</p>
       <div class="f2">
-        <label>Naam<input id="cu-name" required></label>
-        <label>CR<input id="cu-cr" placeholder="1/2"></label>
+        <label>Naam<span class="autot" hidden> · uit tekst</span><input id="cu-name" required></label>
+        <label>CR<span class="autot" hidden> · uit tekst</span><input id="cu-cr" placeholder="1/2"></label>
       </div>
       <div class="f2">
-        <label>AC<input id="cu-ac" type="number" required inputmode="numeric"></label>
-        <label>HP of dice<input id="cu-hp" required placeholder="22 of 5d8"></label>
-        <label>Dex-score<input id="cu-dex" type="number" value="10" inputmode="numeric"></label>
+        <label>AC<span class="autot" hidden> · uit tekst</span><input id="cu-ac" type="number" inputmode="numeric"></label>
+        <label>HP of dice<span class="autot" hidden> · uit tekst</span><input id="cu-hp" placeholder="22 of 5d8"></label>
+        <label>Dex-score<span class="autot" hidden> · uit tekst</span><input id="cu-dex" type="number" placeholder="10" inputmode="numeric"></label>
       </div>
       <label>Statblock (plak tekst)<textarea id="cu-text" placeholder="Multiattack. … &#10;Bite. Melee Weapon Attack: +4 to hit, reach 5 ft. Hit: 7 (2d4 + 2) piercing damage."></textarea></label>
-      <p class="hint">Dobbelstenen als (2d6 + 3) en "+4 to hit" worden in het statblock klikbaar.</p>
+      <div id="cu-parse" aria-live="polite"><p class="hint">Plak een statblock (bijv. van D&amp;D Beyond): aanvallen, legendary actions, resistances en ability scores worden herkend en lege velden hierboven ingevuld.</p></div>
       <button class="btn primary" type="submit">Monster opslaan</button>
       <hr style="border:0;border-top:1px solid var(--line);margin:6px 0">
       <div class="bar"><button type="button" class="btn tap" data-file="imp-file">Monsterbestand importeren (JSON)…</button><input id="imp-file" type="file" accept=".json,application/json" hidden></div>

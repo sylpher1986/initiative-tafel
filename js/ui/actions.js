@@ -2,7 +2,7 @@
 import { openSettings } from "./settings.js";
 import { $, esc, n0, toast, toastHtml, closeToast, show } from "./util.js";
 import { app, because, addWhy, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
-import { render, ui, openId, mode, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintDmgSugg, dmgSp, aoeCaster, dmgSlot, dmgDice, dmgLevel, spellSlot, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
+import { render, ui, openId, mode, atkAc, atkRider, atkTargets, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintDmgSugg, dmgSp, aoeCaster, dmgSlot, dmgDice, dmgLevel, spellSlot, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { DMG_SPELLS } from "../rules/dmgtable.js";
 import { rollDice, diceText, normDice } from "../rules/dmgspells.js";
@@ -12,13 +12,15 @@ import { useLA } from "../rules/legendary.js";
 import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc, effSpec, setExh, startRage, rageOf } from "../rules/effects.js";
 import { exhLevel } from "../rules/conditions.js";
 import { openCond, closeCond, condOpen, condSheetClick } from "./condinfo.js";
-import { showSB, showSheet, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
+import { showSB, showSheet, monCard, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
+import { parseStatText, foundText, hasStructure, withParsed } from "../data/statparse.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
 import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant, setInit, durWords, saveWords } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, saveAdv, DTYPES, targetMode, drToggle, drKind, DR_LBL, cleanDr } from "../rules/aoe.js";
-import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
+import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage, multiSeq, seqAfter } from "../rules/attacks.js";
+import { ufNeed, ufApply, parseRider, applyRider, parryOf, canParry, useParry } from "../rules/monrules.js";
 import { castInfo, legInfo, rcInfo, pickList, isConc, edFor, ORD } from "../rules/spells.js";
 import { rulesEd, setRulesEd } from "./spellrules.js";
 import { initRoll, setInitRoll } from "./initroll.js";
@@ -44,6 +46,19 @@ const concNote = (f) => {
   const C = ((f && f.saves) || []).filter((s) => s.kind === "conc");
   return !C.length ? "" : C.length === 1 ? ` · concentratie-save CON ${C[0].dc} in de beurtbalk` : ` · ${C.length} concentratie-saves in de beurtbalk`;
 };
+/**
+ * RE13: Undead Fortitude na schade, in dezelfde stap (de app rolt: statblock-save + Bless/Bane). info: { radiant, crit, why }.
+ * Geeft de staart voor de melding ("Undead Fortitude CON 19: d20 [17] +3 = 20, blijft op 1 HP") of "".
+ */
+function ufRoll(c, was, dealt, info) {
+  const m = c.ref ? findMon(c.ref) : null, need = ufNeed(c, m, was, dealt, info);
+  if (!need) return "";
+  let x = null;
+  if (!need.skip) { const sa = saveAdv(c, "CON"); x = rollSave(saveBonus(m, "CON"), sa.v, Math.random, saveMods(c, "CON"), sa.why); }
+  const r = ufApply(c, need, x, x ? rollText(x, 0) : "");
+  addWhy(r.why);
+  return r.txt;
+}
 /** RE16: Bear Totem / Frenzy per speler op dit apparaat (subclass staat niet betrouwbaar op de sheet) */
 const RAGE_KEY = "it-rage";
 const rageKey = (c) => c.pid || c.id;
@@ -289,14 +304,25 @@ function sheetKey(k, v) {
   if (k === "clear") { s.val = ""; return; }
   if (k === "kind") { s.kind = v; return; }
   if (k === "mode") { s.mode = +v; return; }
+  if (k === "ufx") { s.ufx = !s.ufx; return; } // RE13: schadepaneel kent het type niet; de DM zegt het
+  if (k === "parry") { // RE13: Parry van het monster: de aanval van de speler mist, reaction gebruikt
+    const c = app.S.list.find((x) => x.id === s.id), n = c && c.ref ? parryOf(findMon(c.ref)) : 0;
+    if (!c || !n || !canParry(c, app.S.round)) return;
+    because("Parry");
+    apply(useParry(c, n));
+    ui.sheet = null;
+    return { back: s, undoToast: `${c.name}: Parry, aanval mist · reaction gebruikt` };
+  }
   if (k === "apply") {
     const c = app.S.list.find((x) => x.id === s.id), n = parseInt(s.val) || 0;
     if (!c || !n) return;
+    const was = c.hp;
     const f = s.kind === "dmg" ? R.applyDamage(c, n, s.mode) : s.kind === "heal" ? R.heal(c, n) : R.giveTemp(c, n);
     apply(f);
+    const uf = s.kind === "dmg" ? ufRoll(c, was, Math.floor(n * s.mode), s.ufx ? { radiant: true, why: "radiant of kritiek" } : {}) : "";
     const before = { dmg: `−${Math.floor(n * s.mode)}`, heal: `+${n}`, thp: `+${n} temp` }[s.kind];
     ui.sheet = null;
-    return { back: s, undoToast: `${c.name} ${before} HP → ${c.hp}/${c.max}${c.temp ? ` (+${c.temp} temp)` : ""}${concNote(f)}` };
+    return { back: s, undoToast: `${c.name} ${before} HP → ${c.hp}/${c.max}${c.temp ? ` (+${c.temp} temp)` : ""}${uf ? ` · ${uf}` : ""}${concNote(f)}` };
   }
 }
 
@@ -1096,19 +1122,51 @@ export function bindForms() {
     render();
   });
 
-  $("#f-custom").addEventListener("submit", (e) => {
-    e.preventDefault();
+  /* RE14: plaktekst live herkennen; lege velden invullen (gemarkeerd "uit tekst"), getypte waarden nooit overschrijven */
+  const CU = [["cu-name", (p) => p.n], ["cu-cr", (p) => p.cr], ["cu-ac", (p) => String(parseInt(p.ac) || "")],
+    ["cu-hp", (p) => (p.hd && HD_RE.test(p.hd) ? p.hd : p.hp)], ["cu-dex", (p) => (p.ab ? String(p.ab[1]) : "")]];
+  const cuAuto = (el, on) => { el.dataset.auto = on ? "1" : ""; el.closest("label").querySelector(".autot").hidden = !on; };
+  let cuT = 0, cuPrev = false;
+  const cuParse = () => {
+    const txt = $("#cu-text").value, p = txt.trim() ? parseStatText(txt) : null, ok = hasStructure(p);
+    for (const [id, get] of CU) {
+      const el = $("#" + id), v = ok || (p && id !== "cu-dex") ? get(p) || "" : "";
+      if (el.value && !el.dataset.auto) continue; // zelf getypt: blijft
+      el.value = v; cuAuto(el, !!v);
+    }
+    const box = $("#cu-parse");
+    if (!p) { box.innerHTML = `<p class="hint">Plak een statblock (bijv. van D&amp;D Beyond): aanvallen, legendary actions, resistances en ability scores worden herkend en lege velden hierboven ingevuld.</p>`; cuPrev = false; return; }
+    if (!ok) { box.innerHTML = `<p class="hint">Geen statblock herkend, wordt als vrije tekst bewaard.</p>`; cuPrev = false; return; }
+    const rest = p.rest ? p.rest.split("\n").length : 0;
+    const m = cuMon();
+    box.innerHTML = `<p class="hint cuok">Herkend: ${esc(foundText(p))}</p>
+      ${rest ? `<p class="hint">Niet herkend: ${rest} ${rest === 1 ? "regel blijft" : "regels blijven"} als tekst onder Overig.</p>` : ""}
+      <button type="button" class="link" data-cuprev aria-expanded="${cuPrev}">${cuPrev ? "Voorbeeld ▴" : "Voorbeeld ▾"}</button>
+      ${cuPrev && m ? monCard(withParsed(m), false, false) : ""}`;
+  };
+  /** Monster uit het formulier (null = nog niet compleet); HP: getal of dobbelstenen */
+  function cuMon() {
     const hpIn = $("#cu-hp").value.replace(/\s/g, "");
     let hp = parseInt(hpIn), hd = null;
-    if (/d/i.test(hpIn)) {
-      if (!HD_RE.test(hpIn)) { toast("HP als getal (22) of als dobbelstenen (5d8 of 5d8+10)."); return; }
-      hd = hpIn; hp = avgExpr(hpIn);
-    }
-    if (!(hp > 0)) { toast("Vul geldige HP in."); return; }
-    const m = { n: $("#cu-name").value.trim(), cr: $("#cu-cr").value.trim(), ac: $("#cu-ac").value, hp, hd, dexScore: parseInt($("#cu-dex").value) || 10, text: $("#cu-text").value };
-    if (!m.n) return;
+    if (/d/i.test(hpIn)) { if (!HD_RE.test(hpIn)) return { err: "HP als getal (22) of als dobbelstenen (5d8 of 5d8+10)." }; hd = hpIn; hp = avgExpr(hpIn); }
+    return { n: $("#cu-name").value.trim() || "Eigen monster", cr: $("#cu-cr").value.trim(), ac: $("#cu-ac").value, hp, hd,
+      dexScore: parseInt($("#cu-dex").value) || 10, text: $("#cu-text").value };
+  }
+  $("#cu-text").addEventListener("input", () => { clearTimeout(cuT); cuT = setTimeout(cuParse, 300); });
+  for (const [id] of CU) $("#" + id).addEventListener("input", (e) => { cuAuto(e.target, false); if (cuPrev) cuParse(); });
+  $("#cu-parse").addEventListener("click", (e) => { if (!e.target.closest("[data-cuprev]")) return; cuPrev = !cuPrev; cuParse(); $("#cu-parse [data-cuprev]")?.focus(); });
+
+  $("#f-custom").addEventListener("submit", (e) => {
+    e.preventDefault();
+    clearTimeout(cuT); cuParse(); // net geplakt en meteen opslaan: eerst herkennen
+    const m = cuMon();
+    if (m.err) { toast(m.err); $("#cu-hp").focus(); return; }
+    if (!$("#cu-name").value.trim()) { toast("Vul een naam in."); $("#cu-name").focus(); return; }
+    if (!(parseInt(m.ac) > 0)) { toast("Vul AC in, of plak een statblock met Armor Class."); $("#cu-ac").focus(); return; }
+    if (!(m.hp > 0)) { toast("Vul geldige HP in, of plak een statblock met Hit Points."); $("#cu-hp").focus(); return; }
     app.custom = [m, ...app.custom.filter((x) => x.n !== m.n)]; saveLibrary();
-    e.target.reset(); selMon = m.n; $("#mon-q").value = "";
+    e.target.reset(); for (const [id] of CU) cuAuto($("#" + id), false); cuPrev = false; cuParse();
+    selMon = m.n; $("#mon-q").value = "";
     ui.prep = "mon"; renderMonList(); render(); $("#mon-add").focus(); toast(`${m.n} opgeslagen. Kies aantal en voeg toe.`);
   });
 
@@ -1199,10 +1257,14 @@ function svRoll(sid, adv = false, quiet = false) {
 function svDone(c, sid, ok, note, shown, quiet = false, adv = false) {
   const s = (app.S.saves || []).find((x) => x.sid === sid);
   if (!s || !isValid(app.S, s)) return ""; // bijv. tweede concentration save nadat de eerste al faalde
-  addWhy(resolveSave(app.S, sid, ok, note).why); // de melding hieronder zegt al wat er gebeurde
+  const f = resolveSave(app.S, sid, ok, note), was = c.hp;
+  addWhy(f.why); // de melding hieronder zegt al wat er gebeurde
+  if (f.saves) f.saves.forEach((x) => addSave(app.S, x)); // rider-schade: concentration save
   if (!quiet) render(); // "Rol alle monsters" rendert één keer: één undo-stap
   const m = c.kind === "monster" && c.ref ? findMon(c.ref) : null;
-  const res = s.kind === "conc" ? (ok ? "blijft concentreren" : "concentratie weg") : ok ? `${s.n} weg` : `${s.n} blijft`;
+  const res = s.kind === "conc" ? (ok ? "blijft concentreren" : "concentratie weg")
+    : s.kind === "rider" ? riderRes(s.rd, ok, was - c.hp) + concNote(f)
+    : ok ? `${s.n} weg` : `${s.n} blijft`;
   const line = esc(`${c.name}: ${shown || `${s.ab}-save ${ok ? "geslaagd" : "gefaald"}`} · ${res}`);
   if (quiet) return line;
   ui.svRetry = !ok && c.kind === "monster" ? { sid, id: c.id, step: stepNo() } : null;
@@ -1211,6 +1273,15 @@ function svDone(c, sid, ok, note, shown, quiet = false, adv = false) {
       + (!adv && s.kind === "cond" && hasMagicRes(m) ? `<button class="tundo" id="toast-svadv">Spell? Advantage</button>` : "");
   toastHtml(`${line} ${extra}<button class="tundo" id="toast-undo">Ongedaan</button>`);
   return line;
+}
+
+/** RE13: uitkomst van een rider in de melding: "Prone", "−9 HP", "half: −4 HP", "geen gevolg" */
+function riderRes(rd, ok, lost) {
+  const p = [];
+  if (!ok && rd.conds.length) p.push(rd.conds.join(" + "));
+  if (lost > 0) p.push(`${ok ? "half: " : ""}−${lost} HP`);
+  if (!ok && !rd.conds.length && !rd.dmg && rd.note) p.push(rd.note);
+  return p.join(", ") || "geen gevolg";
 }
 
 /** Laatste gefaalde save terugdraaien en anders afhandelen (alleen als er sindsdien niets gebeurde) */
@@ -1482,6 +1553,9 @@ function aoeGo() {
   const label = `${a.act ? `${a.srcName}: ${a.act} ` : name}${n}${a.type ? " " + a.type : ""}${dc > 0 ? ` (${a.ab} DC ${dc})` : ""}`;
   const r = applyAoe(picks, n, label);
   apply(r);
+  // RE13: Undead Fortitude per monster dat hierdoor op 0 kwam (type bekend: radiant = geen worp)
+  const ufs = r.hits.map((h) => { const t = picks.find((x) => x.c.id === h.id); return t && t.up ? [t.c, ufRoll(t.c, 1, h.dealt, { radiant: a.type === "radiant" })] : null; })
+    .filter((x) => x && x[1]).map(([t, txt]) => `${t.name}: ${txt}`);
   const sl = c && sp ? spendSlot(c, k, sp.n, sp.lv, !!a.slot) : { why: [], txt: "" };
   if (!a.src && a.roll) addWhy([{ t: `${c ? `${c.name} cast ` : ""}${a.roll}${a.rtot != null && a.rtot !== n ? `, aangepast naar ${n}` : ""}${a.type ? ` ${a.type}` : ""}`, id: (c || L[0]).id }]);
   addWhy(sl.why);
@@ -1494,7 +1568,7 @@ function aoeGo() {
   const down = picks.filter((x) => x.up && x.c.hp <= 0).length;
   ui.aoe = null;
   render();
-  toastHtml(`${esc(`${a.act || (sp ? sp.n : `AoE ${label}`)}: ${L.length} doel${L.length === 1 ? "" : "en"}, ${r.hits.reduce((s, h) => s + h.dealt, 0)} schade${down ? `, ${down} neer` : ""}${rcUsed ? " · recharge op" : ""}${sl.txt ? ` · ${sl.txt}` : ""}${conc}${concNote(r)}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  toastHtml(`${esc(`${a.act || (sp ? sp.n : `AoE ${label}`)}: ${L.length} doel${L.length === 1 ? "" : "en"}, ${r.hits.reduce((s, h) => s + h.dealt, 0)} schade${down ? `, ${down} neer` : ""}${rcUsed ? " · recharge op" : ""}${sl.txt ? ` · ${sl.txt}` : ""}${conc}${concNote(r)}${ufs.length ? ` · ${ufs.join(" · ")}` : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
   const ab = $("#aoe"); if (ab) ab.focus();
 }
 
@@ -1517,12 +1591,32 @@ function openAtk(cid, name, label, laI, from) {
   }
   const o = laI != null && laI !== "" ? laOpts(by)[+laI] : null, laBack = ui.la || by.id; // "*" = paneel met alle monsters
   ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = null; ui.sv = false;
-  const adv = ui.atkAdv && ui.atkAdv.by === by.id ? ui.atkAdv.v : "a";
-  ui.atk = { by: by.id, n: a.n, label: label || a.n, bo: a.hit, kind: a.kind, key: partsKey(a.dmg), adv, tid: null, r: null, parts: null, modes: {}, force: {},
-    la: o ? { i: +laI, n: o.n, cost: o.cost, on: true, back: laBack } : null };
+  // GV11: volgorde uit de Multiattack ("one with its bite and two with its claws"); niet vanuit het legendary-paneel
+  const seq = o ? null : multiSeq(monsterActions(findMon(by.ref))), rest = seqAfter(seq, a.n);
+  ui.atk = newAtk(by, a, label, o ? { i: +laI, n: o.n, cost: o.cost, on: true, back: laBack } : null, rest ? { left: rest, i: 1, n: seq.length } : null);
   atkFrom = o ? null : from || null;
   render();
   focusAtk();
+}
+
+/** Toestand van het aanvalspaneel. sq = { left: [namen], i, n } (GV11), rid = save-rider van deze aanval (RE13) */
+function newAtk(by, a, label, la, sq) {
+  const adv = ui.atkAdv && ui.atkAdv.by === by.id ? ui.atkAdv.v : "a";
+  return { by: by.id, n: a.n, label: label || a.n, bo: a.hit, kind: a.kind, key: partsKey(a.dmg), adv, tid: null, r: null, parts: null, modes: {}, force: {},
+    la, sq, rid: parseRider(a.text), rroll: null, rs: null, rx: null, acp: 0 };
+}
+
+/** GV11: volgende aanval uit de multiattack, hetzelfde doel meteen gerold (doel neer of weg: doelkeuze) */
+function atkNext(x, tid) {
+  const by = app.S.list.find((c) => c.id === x.by);
+  if (!by || !x.sq) { ui.atk = null; return false; }
+  let left = x.sq.left, i = x.sq.i, a = null;
+  while (left.length && !a) { a = findAtk(by, left[0]); left = left.slice(1); i++; } // naam niet (meer) te vinden: overslaan
+  if (!a) { ui.atk = null; return false; }
+  ui.atk = newAtk(by, a, a.n, null, left.length ? { left, i, n: x.sq.n } : { left: [], i, n: x.sq.n });
+  const c = app.S.list.find((t) => t.id === tid);
+  if (c && c.max && !isOut(c) && atkTargets(by.id).some((t) => t.id === c.id)) atkTarget(ui.atk, c.id);
+  return true;
 }
 
 const focusAtk = () => { const s = $("#xsheet"); (s.querySelector(".qgo:not([disabled])") || s.querySelector(".xt") || s.querySelector(".xsheet"))?.focus(); };
@@ -1548,8 +1642,11 @@ function atkTarget(x, id) {
   const c = app.S.list.find((t) => t.id === id);
   if (!c) return;
   x.tid = id;
-  if (!x.r) { x.r = rollAttack(x.bo); x.parts = x.key ? rollDmgCrit(x.key, (e) => rollExpr(e)) || [] : []; }
-  x.force = {};
+  if (!x.r) {
+    x.r = rollAttack(x.bo); x.parts = x.key ? rollDmgCrit(x.key, (e) => rollExpr(e)) || [] : [];
+    if (x.rid && x.rid.dmg) { const r = rollExpr(x.rid.dmg.e); if (r) x.rroll = { total: r.total, txt: `${x.rid.dmg.e} [${r.rolls.join(", ")}] = ${r.total} ${x.rid.dmg.type}` }; } // RE13: rider-schade vooraf
+  }
+  x.force = {}; x.rs = null; x.rx = null; x.acp = 0; // save, Parry en "toch raak" horen bij het doel
   // resistance/immuniteit: monster uit het statblock (onvoorwaardelijk), speler uit zijn opgeslagen resistances (SP2)
   const m = c.ref ? findMon(c.ref) : null;
   x.modes = {};
@@ -1559,18 +1656,44 @@ function atkTarget(x, id) {
 function atkGo() {
   const x = ui.atk, by = x && app.S.list.find((c) => c.id === x.by), c = x && app.S.list.find((t) => t.id === x.tid);
   if (!by || !c || !c.max || isOut(c)) return;
-  const { r } = atkRoll(x, by, c), ac = effAc(c) || 0, res = atkResult(r, ac, x.parts, x.modes, x.force);
-  if (!res.hit || !res.dealt) return;
+  const { r } = atkRoll(x, by, c), ac = atkAc(x, c), res = atkResult(r, ac, x.parts, x.modes, x.force);
+  if (!res.hit) return;
+  const sim = structuredClone(c); atkDamage(sim, res);
+  const ri = atkRider(x, c, res, sim.hp); // RE13: vóór de schade bepaald, zoals het paneel het toonde
+  if (!res.dealt && !(ri && ri.act)) return;
   const before = c.hp;
   because(atkWhy(`${x.label} (${by.name})`, r, ac || null, x.parts, res), c.id);
-  const f = atkDamage(c, res);
+  const f = res.dealt ? atkDamage(c, res) : R.fx();
   apply(f);
+  const uf = res.dealt ? ufRoll(c, before, res.dealt, { crit: res.crit, radiant: res.types.some((t) => t.type === "radiant" && t.dealt > 0) }) : "";
+  const rt = ri && ri.act ? atkRiderGo(x, c, ri) : "";
   const la = atkLa(x, by); // na de schade: een monster dat zichzelf raakt en neergaat kan geen LA meer
   ui.atkPrev = { by: by.id, id: c.id };
-  ui.atk = null;
+  const hasNext = x.sq && x.sq.left.length && atkNext(x, c.id); // GV11: door naar de volgende aanval, zelfde doel
+  if (!hasNext) ui.atk = null;
   render();
-  toastHtml(`${esc(`${c.name}: −${res.dealt} HP${res.crit ? " (kritiek)" : ""} → ${n0(c.hp)}/${n0(c.max)}${before > 0 && c.hp <= 0 ? (c.kind === "pc" ? ", bewusteloos" : ", neer") : ""}${la}${concNote(f)}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
-  atkBack(x, false);
+  toastHtml(`${esc(`${c.name}: −${res.dealt} HP${res.crit ? " (kritiek)" : ""} → ${n0(c.hp)}/${n0(c.max)}${before > 0 && c.hp <= 0 ? (c.kind === "pc" ? ", bewusteloos" : ", neer") : ""}${uf ? ` · ${uf}` : ""}${rt}${la}${concNote(f)}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  if (hasNext) focusAtk(); else atkBack(x, false);
+}
+
+/**
+ * RE13: rider na de treffer, in dezelfde stap. Ingevuld: meteen toepassen; niet ingevuld: open save in de beurtbalk.
+ * Geeft de staart voor de melding.
+ */
+function atkRiderGo(x, c, ri) {
+  const m = c.ref ? findMon(c.ref) : null, rd = ri.rd;
+  const full = { ...rd, n: x.n, by: x.by, roll: x.rroll, mode: rd.dmg ? targetMode(c, m, rd.dmg.type).mode : 1 };
+  if (!ri.choice) {
+    addSave(app.S, { id: c.id, kind: "rider", n: x.n, ab: rd.ab, dc: rd.dc, rd: full });
+    return ` · ${rd.ab}-save DC ${rd.dc} in de beurtbalk`;
+  }
+  const hp = c.hp, f = applyRider(c, full, ri.choice === "ok", app.S.active);
+  addWhy(f.why);
+  if (f.saves) f.saves.forEach((s) => addSave(app.S, s));
+  const lost = hp - c.hp, p = [];
+  if (ri.choice === "fail" && rd.conds.length) p.push(rd.conds.join(" + "));
+  if (lost > 0) p.push(`−${lost} ${rd.dmg ? rd.dmg.type : "HP"}`);
+  return ` · ${rd.ab} ${rd.dc} ${ri.choice === "ok" ? "geslaagd" : "gefaald"}${p.length ? `: ${p.join(", ")}` : ""}${concNote(f)}`;
 }
 
 /** Mis met de LA-schakelaar aan: legendary action is toch gebruikt */
@@ -1592,6 +1715,16 @@ export function bindAtk() {
     if (k === "close") { closeAtk(!b.classList.contains("qgo")); return; } // Annuleer/achtergrond: terug; Sluit na mis: dicht
     if (k === "go") { atkGo(); return; }
     if (k === "miss") { atkMiss(); return; }
+    if (k === "next") { if (!atkNext(x, x.tid)) { closeAtk(false); return; } render(); focusAtk(); return; } // GV11: misser → volgende aanval
+    if (k === "rs") { x.rs = x.rs === b.dataset.v ? null : b.dataset.v; } // RE13: nog eens tikken = weer open (beurtbalk)
+    if (k === "rroll") { // monster als doel: save rollen, uitslag zet de seg (blijft om te zetten)
+      const c = app.S.list.find((t) => t.id === x.tid), rd = x.rid;
+      if (c && rd) { const m = findMon(c.ref), sa = saveAdv(c, rd.ab); x.rx = rollSave(saveBonus(m, rd.ab), sa.v, Math.random, saveMods(c, rd.ab), sa.why); x.rs = x.rx.tot >= rd.dc ? "ok" : "fail"; }
+    }
+    if (k === "parry") { // RE13: Parry van het doelmonster (monster tegen monster): reaction weg, +N AC voor deze aanval
+      const c = app.S.list.find((t) => t.id === x.tid), n = c && c.ref ? parryOf(findMon(c.ref)) : 0;
+      if (c && n && canParry(c, app.S.round)) { because("Parry"); apply(useParry(c, n)); x.acp = n; render(); toastHtml(`${esc(`${c.name}: Parry +${n} AC · reaction gebruikt`)} <button class="tundo" id="toast-undo">Ongedaan</button>`); focusAtk(); return; }
+    }
     if (k === "la") x.la.on = !x.la.on;
     if (k === "free") { // oude gedrag: alleen de worp als melding
       const lab = x.label; closeAtk(!!x.la); // uit het legendary-paneel: terug, daar staat Gebruik
@@ -1602,7 +1735,7 @@ export function bindAtk() {
     if (k === "tgt") atkTarget(x, b.dataset.id);
     if (k === "back") x.tid = null;
     if (k === "mode") x.modes[b.dataset.t] = +b.dataset.v;
-    if (k === "crit") { const c = app.S.list.find((t) => t.id === x.tid), by = app.S.list.find((t) => t.id === x.by); const res = c && by && atkResult(atkRoll(x, by, c).r, effAc(c) || 0, x.parts, x.modes, x.force); x.force.crit = !(res && res.crit); }
+    if (k === "crit") { const c = app.S.list.find((t) => t.id === x.tid), by = app.S.list.find((t) => t.id === x.by); const res = c && by && atkResult(atkRoll(x, by, c).r, atkAc(x, c), x.parts, x.modes, x.force); x.force.crit = !(res && res.crit); }
     if (k === "force") x.force.hit = true;
     if (k === "shield") {
       const c = app.S.list.find((t) => t.id === x.tid), p = PRESETS.find((q) => q.n === "Shield");

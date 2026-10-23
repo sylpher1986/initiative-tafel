@@ -253,3 +253,45 @@ export function atkDamage(c, res) {
   if (rest <= 0 || rest >= c.max) return applyDamage(c, res.dealt, 1, true);
   return merge(merge(wakeByDamage(c), temp ? applyDamage(c, temp, 1, true) : { msgs: [], why: [] }), critAtZero(c)); // schade = Sleep/Hypnotic Pattern weg
 }
+
+/* ---------- GV11: volgorde van een multiattack ---------- */
+const NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7 };
+const sing = (w) => w.replace(/(?:ies)$/, "y").replace(/(?:ches|shes|xes|ses)$/, (m) => m.slice(0, -2)).replace(/s$/, "");
+
+/**
+ * Aanvallen in de volgorde van de Multiattack-tekst: "three attacks: one with its bite and two with its claws" → Bite, Claw, Claw.
+ * Alleen het eerste alternatief ("… or two with its longbow" valt weg). A = monsterActions. Geeft namen (≥ 2) of null
+ * als de tekst niet te lezen is (dan geen volgorde: het paneel gedraagt zich zoals vroeger).
+ */
+export function multiSeq(A) {
+  if (!A || !A.multi) return null;
+  const atk = A.main.filter((a) => a.hit !== null);
+  if (!atk.length) return null;
+  const sent = (String(A.multi.text).split(/(?<=\.)\s+/).find((x) => /\battacks?\b/i.test(x)) || "")
+    .replace(/\s+or\s+(?=(?:one|two|three|four|five|six|seven)\b)[\s\S]*$/i, "");
+  const find = (w) => {
+    const t = sing(w.trim().toLowerCase());
+    if (/^(?:melee|ranged)$/.test(t)) { const k = atk.filter((a) => a.kind === t || a.kind === "both"); return k.length === 1 ? k[0] : null; }
+    return atk.find((a) => sing(a.n.toLowerCase()) === t) || atk.find((a) => sing(a.n.toLowerCase()).split(" ").includes(t)) || null;
+  };
+  const seq = [];
+  const parts = [...sent.matchAll(/\b(one|two|three|four|five|six|seven)\s+(?:(?:melee\s+|ranged\s+)?attacks?\s+)?with its ([a-z ]+?)(?=,|\s+and\b|\.|\s+or\b|$)/gi)];
+  if (parts.length) {
+    for (const p of parts) { const a = find(p[2]); if (!a) return null; for (let i = 0; i < NUM[p[1].toLowerCase()]; i++) seq.push(a.n); }
+  } else {
+    const p = sent.match(/\b(two|three|four|five|six|seven)\s+([a-z]+(?: [a-z]+)?)\s+attacks\b/i) || sent.match(/\bmakes\s+(two|three|four|five|six|seven)\s+attacks\b/i);
+    if (!p) return null;
+    const a = p[2] ? find(p[2]) : atk.length === 1 ? atk[0] : null;
+    if (!a) return null;
+    for (let i = 0; i < NUM[p[1].toLowerCase()]; i++) seq.push(a.n);
+  }
+  return seq.length >= 2 && seq.length <= 8 ? seq : null;
+}
+
+/** De rest van de volgorde als de DM met `name` begint: die ene eruit (de eerste), de rest erachter */
+export function seqAfter(seq, name) {
+  if (!seq) return null;
+  const i = seq.indexOf(name);
+  if (i < 0) return null;
+  return [...seq.slice(0, i), ...seq.slice(i + 1)];
+}

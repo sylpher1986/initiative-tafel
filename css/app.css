@@ -1087,3 +1087,13 @@ kbd{display:inline-block;min-width:1.6em;padding:1px 6px;border:1px solid var(--
 .rgbox .bar{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 .dwhy .dtip{color:var(--fg);font-weight:600}
 .isurh{margin:-4px 0 0;font-size:.8rem}
+
+/* RE14: eigen monster uit plaktekst */
+.autot { color: var(--muted); font-weight: 400; font-size: .85em; }
+#cu-parse .mprev { margin-top: 4px; }
+#cu-parse .hint { margin: 4px 0; }
+/* RE13: save-rider in het aanvalspaneel; de seg vult de rij (duimbereik) */
+.xrider{margin-top:6px}
+.xrider .qlbl{margin:0 0 2px}
+.xrider .hint{margin:2px 0}
+.xrider .xrow .seg2{flex:1;min-width:180px}

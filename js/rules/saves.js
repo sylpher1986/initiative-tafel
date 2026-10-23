@@ -4,13 +4,18 @@
 import { fx, merge, dropConc } from "./combat.js";
 import { uid } from "./dice.js";
 import { isOut } from "./turns.js";
+import { applyRider } from "./monrules.js";
 
 export const TTL = 2;
 
-/** s: { id, kind: "cond"|"conc", n, ab, dc }. Herhaal-save tegen dezelfde conditie vervangt de oude; elke schade is een eigen concentration save. */
+/**
+ * s: { id, kind: "cond"|"conc"|"rider", n, ab, dc, rd? }. Herhaal-save tegen dezelfde conditie vervangt de oude; elke schade
+ * is een eigen concentration save. RE13: "rider" = save na een treffer die de DM in het aanvalspaneel nog niet invulde
+ * (n = naam van de aanval, rd = de rider uit monrules.js met de vooraf gerolde schade).
+ */
 export function addSave(S, s) {
   S.saves = (S.saves || []).filter((x) => !(s.kind === "cond" && x.kind === "cond" && x.id === s.id && x.n === s.n));
-  S.saves.push({ sid: uid(), ttl: TTL, id: s.id, kind: s.kind, n: s.n || "", ab: s.ab, dc: s.dc });
+  S.saves.push({ sid: uid(), ttl: TTL, id: s.id, kind: s.kind, n: s.n || "", ab: s.ab, dc: s.dc, ...(s.rd ? { rd: s.rd } : {}) });
 }
 
 /** Begin van de beurt van id: herhaal-saves voor het einde van deze beurt klaarzetten */
@@ -33,7 +38,7 @@ export function tickSaves(S) {
     const c = isValid(S, s) && S.list.find((x) => x.id === s.id);
     if (c) {
       out.why.push({ t: `${label(s)} niet afgehandeld, vervallen zonder gevolg`, id: s.id });
-      out.msgs.push(`Save vervallen zonder uitslag: ${c.name} ${s.ab} ${s.dc} · ${s.kind === "conc" ? "concentratie" : s.n} blijft`);
+      out.msgs.push(`Save vervallen zonder uitslag: ${c.name} ${s.ab} ${s.dc} · ${s.kind === "conc" ? "concentratie blijft" : s.kind === "rider" ? `${s.n}: geen gevolg` : `${s.n} blijft`}`);
     }
     return false;
   });
@@ -56,13 +61,14 @@ export function untickSaves(S) {
 export function isValid(S, s) {
   const c = S.list.find((x) => x.id === s.id);
   if (!c || isOut(c)) return false;
+  if (s.kind === "rider") return !!s.rd;
   return s.kind === "conc" ? c.cond.includes("Concentrating") && (c.concSpell || "") === s.n : c.cond.includes(s.n);
 }
 
 /** Open saves die er nog toe doen, in volgorde van ontstaan */
 export const openSaves = (S) => (S.saves || []).filter((s) => isValid(S, s));
 
-export const label = (s) => `${s.ab}-save DC ${s.dc} ${s.kind === "conc" ? "(concentratie)" : `tegen ${s.n}`}`;
+export const label = (s) => `${s.ab}-save DC ${s.dc} ${s.kind === "conc" ? "(concentratie)" : s.kind === "rider" ? `(${s.n})` : `tegen ${s.n}`}`;
 
 /**
  * Gefaalde herhaalsave met een vervolg (Sleep 2024: Incapacitated → Unconscious voor de duur van de spell): de eerste conditie
@@ -82,7 +88,8 @@ function nextPhase(c, n) {
 
 /**
  * Uitslag verwerken. ok = geslaagd; note = bijv. de gerolde worp. Conditie-save geslaagd → conditie weg;
- * concentration save gefaald → concentratie weg (effecten volgen via commit). Geeft Fx terug.
+ * concentration save gefaald → concentratie weg (effecten volgen via commit); rider (RE13): conditie/schade zoals in
+ * het aanvalspaneel. Geeft Fx terug (met saves: een concentration save door rider-schade).
  */
 export function resolveSave(S, sid, ok, note = "") {
   const out = fx();
@@ -91,6 +98,7 @@ export function resolveSave(S, sid, ok, note = "") {
   S.saves = S.saves.filter((x) => x !== s);
   const c = S.list.find((x) => x.id === s.id);
   if (!c || !isValid(S, s)) return out;
+  if (s.kind === "rider") return merge(out, applyRider(c, { ...s.rd, n: s.n }, ok, S.active));
   out.why.push({ t: `${label(s)}: ${note ? note + ", " : ""}${ok ? "geslaagd" : "gefaald"}`, id: c.id });
   if (s.kind === "cond" && ok) {
     c.cond = c.cond.filter((x) => x !== s.n);
