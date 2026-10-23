@@ -32,7 +32,7 @@ import { logText, stepEntries, stepText } from "../log.js";
 import { readSheetPdf, fetchDdb, ddbMsg } from "../ddb.js";
 import { parseDdbLink, findMember, mergeSheet, partyUpdate, seatPlan } from "../ddbjson.js";
 import { RACE_OPTS, raceKey, pickRace, cleanImg } from "./avatar.js";
-import { buildExport, parseImport } from "../backup.js";
+import { buildExport, parseImport, exportName } from "../backup.js";
 import { markExported, snoozeNudge } from "../exportnudge.js";
 import { cleanLvl } from "../rules/encounters.js";
 import { startFight, oldMons, dropOld } from "../rules/fight.js";
@@ -1964,7 +1964,7 @@ const exportJson = () => JSON.stringify(buildExport(app));
  * Geeft true als het als geëxporteerd telt.
  */
 async function exportFile() {
-  const json = exportJson(), name = `initiative-tafel-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.json`;
+  const json = exportJson(), name = exportName(new Date());
   try {
     const f = new File([json], name, { type: "application/json" });
     if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: "Initiative Tafel export" }); return done(); }

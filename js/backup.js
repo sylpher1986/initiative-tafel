@@ -1,5 +1,4 @@
 // Export/import van alle data als één JSON-bestand met versienummer.
-// Hetzelfde formaat exporteert de Claude-versie, zodat je daarmee kunt overstappen.
 import { sanitizeOwn } from "./data/monsters.js";
 import { CONDS } from "./rules/turns.js";
 import { cleanImg } from "./ui/avatar.js";
@@ -12,6 +11,12 @@ import { cleanPas } from "./rules/passives.js";
 
 export const FORMAT = "initiative-tafel";
 export const VERSION = 2; // 2 (1.28.0): encounters erbij
+
+/** AF11: bestandsnaam in lokale tijd ("initiative-tafel-2026-10-23-21-14.json"), niet UTC */
+export function exportName(t) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `initiative-tafel-${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}-${p(t.getHours())}-${p(t.getMinutes())}.json`;
+}
 
 export function buildExport(app) {
   return {

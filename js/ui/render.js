@@ -418,7 +418,7 @@ function effPanel(c) {
   if (ui.effWho && ui.effWho.id === c.id) {
     const p = PRESETS_14[ui.effWho.i];
     return `<div class="kpanel"><p class="hint">Wie cast <b>${esc(p.n)}</b>?</p>
-      <div class="effgrid">${S.list.filter((x) => x.kind !== "lair").map((x) => `<button class="btn tap" data-a="effby" data-by="${esc(x.id)}">${esc(x.name)}</button>`).join("")}</div>
+      <div class="effgrid">${spellTargets(S.list).map((x) => `<button class="btn tap" data-a="effby" data-by="${esc(x.id)}">${esc(x.name)}</button>`).join("")}</div>
       <button class="link" data-a="effwho-no">Annuleer</button></div>`;
   }
   if (ui.rage && ui.rage.id === c.id) return rageBox(c);
@@ -432,7 +432,7 @@ function effPanel(c) {
         <label>Duur<select data-f="ef-dur">${[...DURS, ["lr", "Tot long rest"]].map(([v, l]) => `<option value="${v}" ${(f.dur || "inf") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
       </div>
       <label>Notitie<input data-f="ef-txt" value="${esc(f.txt || "")}" placeholder="bijv. +1d4 op saves" maxlength="120"></label>
-      <label>Concentratie van<select data-f="ef-by"><option value="">geen</option>${S.list.filter((x) => x.kind !== "lair").map((x) => `<option value="${esc(x.id)}" ${f.by === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label>
+      <label>Concentratie van<select data-f="ef-by"><option value="">geen</option>${S.list.filter((x) => x.id === f.by || spellTargets([x]).length).map((x) => `<option value="${esc(x.id)}" ${f.by === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label>
       <button class="btn primary tap" data-a="eff-add">Toevoegen</button></div>` : "";
   return `<div class="kpanel">
     <div class="effgrid">${presetOrder(c).map((i) => {
