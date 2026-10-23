@@ -59,6 +59,13 @@ const SCEN = {
     if (n) await tap(page, '[data-ia="go"]');
     await page.waitForSelector("#next");
   },
+  // WP14: beurt (gouden vlak) en een andere geopende kaart (ring) naast elkaar
+  async kleur(page) { await SCEN.fight(page); await page.locator("#order .c.k:not(.turn) .khead").first().tap(); await page.waitForSelector("#order .c.k.open:not(.turn)"); },
+  // WP14: schadepaneel met gouden toepasknop
+  async schade(page) {
+    await SCEN.fight(page); await tap(page, "#order .c.k.turn .khp"); await page.waitForSelector("#sheet .pad");
+    await page.locator("#sheet .pad button", { hasText: /^7$/ }).first().tap();
+  },
   speler: null, // eigen startpagina, zie START
 };
 

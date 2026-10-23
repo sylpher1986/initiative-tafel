@@ -3,7 +3,7 @@
 (() => {
   const KEY = "it-theme";
   const MODES = ["system", "light", "dark"];
-  const BAR = { light: "#8a1f14", dark: "#13161d" }; // statusbalk, gelijk aan de theme-color-metatags
+  const BAR = { light: "#3b2f26", dark: "#151413" }; // statusbalk, gelijk aan de theme-color-metatags
   const root = document.documentElement;
 
   const get = () => {

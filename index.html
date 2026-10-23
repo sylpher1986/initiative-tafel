@@ -5,16 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kev’s Inn itiative</title>
 <meta name="description" content="Initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.">
-<meta name="theme-color" content="#8a1f14" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#13161d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="1.44.1">
+<meta name="theme-color" content="#3b2f26" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151413" media="(prefers-color-scheme: dark)">
+<meta name="it-version" content="1.45.0">
 <script src="js/theme.js"></script>
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
 <script>
 (function () {
   function show(t) {
     var b = document.getElementById("errbar");
-    if (!b) { b = document.createElement("div"); b.id = "errbar"; b.setAttribute("role", "alert"); b.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;background:#b3261e;color:#fff;font:14px/1.3 sans-serif;padding:8px 12px;white-space:pre-wrap;overflow-wrap:anywhere"; (document.body || document.documentElement).appendChild(b); b.onclick = function () { b.remove(); }; }
+    if (!b) { b = document.createElement("div"); b.id = "errbar"; b.setAttribute("role", "alert"); b.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;background:#c62828;color:#fff;font:14px/1.3 sans-serif;padding:8px 12px;white-space:pre-wrap;overflow-wrap:anywhere"; (document.body || document.documentElement).appendChild(b); b.onclick = function () { b.remove(); }; }
     b.textContent += (b.textContent ? "\n" : "Fout (tik om te sluiten): ") + t;
   }
   window.__itErr = show;

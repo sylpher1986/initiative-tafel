@@ -208,9 +208,9 @@ function effChips(c, S, interactive, info = interactive) {
   const E = c.eff || [];
   return [...E.filter(isWarn), ...E.filter((e) => !isWarn(e))].map((e) => {
     // RE11: Exhaustion is een conditie met niveau: uitleg in plaats van ✕ (niveau wijzigen via Conditie)
-    if (isExh(e)) return info ? cinfoBtn(c, "Exhaustion", esc(effName(e)), "bd r") : `<span class="bd r">${esc(effName(e))}</span>`;
+    if (isExh(e)) return info ? cinfoBtn(c, "Exhaustion", esc(effName(e)), "bd w") : `<span class="bd w">${esc(effName(e))}</span>`;
     if (isRage(e)) return rageChip(c, e, S, interactive);
-    const w = isWarn(e), cls = w ? "bd r" : "bd ef";
+    const w = isWarn(e), cls = w ? "bd w" : "bd ef";
     const by = e.by && e.by !== c.id ? S.list.find((x) => x.id === e.by) : null;
     const dur = e.d ? durLabel(e.d, S.list, !interactive) : e.lr ? "long rest" : "";
     const t = [`${e.n}${e.st ? " " + effText(e) : ""}`, w ? e.txt : "", dur, by ? by.name : ""].filter(Boolean).map(esc).join(" · ");
@@ -253,8 +253,8 @@ function badges(c, S) {
   else if (c.casting && c.casting.daily.length) out.push(`<span class="bd b">Spells</span>`);
   (c.res || []).forEach((r) => out.push(`<span class="bd b">${esc(r.n)} ${n0(r.left)}/${n0(r.max)}</span>`));
   (c.rc || []).forEach((r) => out.push(`<span class="bd ${r.ready ? "g" : ""}">${esc(r.n)} ${r.ready ? "klaar" : "op"}</span>`));
-  if (c.la) out.push(`<span class="bd r">LA ${n0(c.la.left)}</span>`);
-  if (c.lr) out.push(`<span class="bd r">LR ${n0(c.lr.left)}/dag</span>`);
+  if (c.la) out.push(`<span class="bd b">LA ${n0(c.la.left)}</span>`);
+  if (c.lr) out.push(`<span class="bd b">LR ${n0(c.lr.left)}/dag</span>`);
   out.push(reactChip(c, S));
   const html = out.join("");
   return html ? `<div class="badges">${html}</div>` : "";

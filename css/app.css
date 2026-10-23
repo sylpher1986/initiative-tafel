@@ -14,62 +14,74 @@ img{max-width:100%}
 @font-face{font-family:"Alegreya Sans";font-style:italic;font-weight:700;font-display:swap;src:url("../fonts/alegreya-sans-700-italic.woff2") format("woff2")}
 
 /* Layout: DM-scherm — links de initiative-volgorde als stapel kaarten, rechts (of als sheet op mobiel) het statblock in klassieke rode lijnvoering */
+/* Kleurtokens (WP14, huisstijl Kev's Inn). Componenten gebruiken alleen deze tokens, geen hex (tests/contrast.test.js).
+   Eigenaarschap: --act* goud = primaire actie, focus (--focus), aan de beurt, geselecteerd (--sel); --good gelukt; --warn aandacht;
+   --bad fout, destructief, kritiek; --info info en delen (kamer); neutralen voor vlakken, tekst, randen, secundaire knoppen.
+   Op goud altijd --act-fg (walnoot), nooit wit. Helder goud (--act) alleen als vlak; tekst/iconen/ringen in licht via --act-ink.
+   Monster/speler zonder kleur: zijstreep alleen bij monsters (--mon), avatar-vorm (AF12), neutrale vlakken. --sb-ink = statblock-lijnvoering (WP17).
+   Licht = :root; donker twee keer gelijk (systeem en vaste keuze), de test bewaakt dat. */
 :root{
-  --bg:#eef0f3; --surface:#ffffff; --sunk:#e3e6ec; --line:#cdd2db;
-  --fg:#1d2330; --muted:#5d6676;
-  --accent:#8a1f14; --accent-soft:#f3e2df; --accent-fg:#ffffff;
-  --active:#1f4e8a; --active-soft:#dfe8f5;
-  --good:#2f7a45; --warn:#a36a07; --bad:#b3261e;
-  --t-link:#9cc2ff; --t-good:#7fe08f; --t-bad:#ff9a90; /* op de melding (achtergrond --fg) */
+  --bg:#f7f6f2; --surface:#ffffff; --sunk:#eceae3; --line:#d6d5cd; --line-strong:#8a8a8a;
+  --fg:#1f1f1f; --muted:#5b5b5b;
+  --act:#d4a44b; --act-fg:#3b2f26; --act-ink:#7a5714; --act-soft:#f5ead0; --focus:#7a5714; --sel:#7a5714;
+  --good:#2e7d32; --good-fg:#ffffff; --warn:#9a6200; --warn-soft:#fbf3e4;
+  --bad:#c62828; --bad-fg:#ffffff; --bad-soft:#fbe9e7; --info:#1f5fbf; --info-soft:#e3ecf9;
+  --mon:#5b5b5b; --mon-soft:#e2e0da; --pc-soft:#ebdcc6; --sb-ink:#8a1f14;
+  --fight-bg:#3b2f26; --fight-fg:#ffffff; --fight-muted:#d9cfc2; --fight-btn:#4a3c31; --fight-btn-line:#a08c78;
+  --t-link:#e0b565; --t-good:#7fe08f; --t-bad:#ff9a90; /* op de melding (achtergrond --fg) */
   --display:"Alegreya SC", Georgia, "Times New Roman", serif;
   --body:"Alegreya Sans", "Segoe UI", system-ui, sans-serif;
   --r:10px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#13161d; --surface:#1c2029; --sunk:#252a35; --line:#353b48;
-  --fg:#e7e9ee; --muted:#9aa2b2;
-  --accent:#e0705f; --accent-soft:#3a2321; --accent-fg:#1a0d0b;
-  --active:#7fa8e0; --active-soft:#1f2c40;
-  --good:#6cc287; --warn:#e3a944; --bad:#f07a70;
-  --t-link:#1f4e8a; --t-good:#2f7a45; --t-bad:#b3261e; color-scheme:dark }}
+  --bg:#151413; --surface:#1f1f1f; --sunk:#2b2825; --line:#3d3934; --line-strong:#8a8278;
+  --fg:#ede8e0; --muted:#b5ada2;
+  --act:#d4a44b; --act-fg:#2a2019; --act-ink:#e0b565; --act-soft:#3a2f1c; --focus:#e0b565; --sel:#d4a44b;
+  --good:#6cc287; --good-fg:#0f2414; --warn:#e3a944; --warn-soft:#2e2614;
+  --bad:#f28b82; --bad-fg:#2a0f0c; --bad-soft:#3a2321; --info:#8ab4f8; --info-soft:#1c2a40;
+  --mon:#b5ada2; --mon-soft:#34312d; --pc-soft:#3b3226; --sb-ink:#e0705f;
+  --fight-bg:#3a322b; --fight-fg:#ede8e0; --fight-muted:#c9c0b4; --fight-btn:#4a4038; --fight-btn-line:#9a8e80;
+  --t-link:#7a5714; --t-good:#276a3a; --t-bad:#b3261e; color-scheme:dark }}
 :root[data-theme="dark"]{
-  --bg:#13161d; --surface:#1c2029; --sunk:#252a35; --line:#353b48;
-  --fg:#e7e9ee; --muted:#9aa2b2;
-  --accent:#e0705f; --accent-soft:#3a2321; --accent-fg:#1a0d0b;
-  --active:#7fa8e0; --active-soft:#1f2c40;
-  --good:#6cc287; --warn:#e3a944; --bad:#f07a70;
-  --t-link:#1f4e8a; --t-good:#2f7a45; --t-bad:#b3261e; color-scheme:dark }
+  --bg:#151413; --surface:#1f1f1f; --sunk:#2b2825; --line:#3d3934; --line-strong:#8a8278;
+  --fg:#ede8e0; --muted:#b5ada2;
+  --act:#d4a44b; --act-fg:#2a2019; --act-ink:#e0b565; --act-soft:#3a2f1c; --focus:#e0b565; --sel:#d4a44b;
+  --good:#6cc287; --good-fg:#0f2414; --warn:#e3a944; --warn-soft:#2e2614;
+  --bad:#f28b82; --bad-fg:#2a0f0c; --bad-soft:#3a2321; --info:#8ab4f8; --info-soft:#1c2a40;
+  --mon:#b5ada2; --mon-soft:#34312d; --pc-soft:#3b3226; --sb-ink:#e0705f;
+  --fight-bg:#3a322b; --fight-fg:#ede8e0; --fight-muted:#c9c0b4; --fight-btn:#4a4038; --fight-btn-line:#9a8e80;
+  --t-link:#7a5714; --t-good:#276a3a; --t-bad:#b3261e; color-scheme:dark }
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.4;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:max(80px,env(safe-area-inset-bottom,0px))}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
-:focus-visible{outline:2px solid var(--active);outline-offset:2px}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .wrap{max-width:1180px;margin:0 auto;display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
 @media (min-width:900px){.wrap{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}}
 
 header.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;justify-content:space-between}
 h1{font-family:var(--display);font-weight:800;font-size:1.6rem;margin:0;letter-spacing:.01em;text-wrap:balance}
-h1 span{color:var(--accent)}
+h1 span{color:var(--act-ink)}
 .round{display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
 .round b{font-family:var(--display);font-size:1.15rem}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;min-height:44px;min-width:44px}
 .btn:hover{border-color:var(--muted)}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:700}
+.btn.primary{background:var(--act);border-color:var(--act);color:var(--act-fg);font-weight:700}
 .btn.ghost{background:transparent}
 .btn:disabled{opacity:.4;cursor:default}
 .btn.small{min-height:44px;padding:4px 10px;font-size:.9rem}
 .bar{display:flex;gap:8px;flex-wrap:wrap}
 
 /* Turn banner */
-.now{background:var(--active-soft);border:1px solid var(--active);border-radius:var(--r);padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.now{background:var(--act-soft);border:1px solid var(--sel);border-radius:var(--r);padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .now .lbl{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-.now .who{font-family:var(--display);font-size:1.3rem;font-weight:700;color:var(--active)}
+.now .who{font-family:var(--display);font-size:1.3rem;font-weight:700;color:var(--act-ink)}
 
 /* Order list */
 ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .c{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);display:grid;grid-template-columns:52px minmax(0,1fr);gap:0 12px;padding:10px 12px 10px 0;position:relative}
-.c.active{border-color:var(--active);box-shadow:0 0 0 2px var(--active) inset}
+.c.active{border-color:var(--sel);box-shadow:0 0 0 2px var(--sel) inset}
 .c.down{opacity:.5}
 .c.down .nm{text-decoration:line-through}
 .c>*:not(.init){grid-column:2;min-width:0}
@@ -79,7 +91,7 @@ ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .row1{display:flex;align-items:baseline;gap:8px;min-width:0;flex-wrap:wrap}
 .nm{font-weight:700;font-size:1.05rem;min-width:0;overflow-wrap:anywhere}
 .tag{font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;padding:1px 6px;border-radius:4px;background:var(--sunk);color:var(--muted)}
-.tag.m{background:var(--accent-soft);color:var(--accent)}
+.tag.m{background:var(--mon-soft);color:var(--fg)}
 .ac{margin-left:auto;font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 .ac b{color:var(--fg)}
 .hp{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
@@ -87,7 +99,7 @@ ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .hpbar i{display:block;height:100%;background:var(--good)}
 .hpbar i.mid{background:var(--warn)} .hpbar i.low{background:var(--bad)}
 .hpnum{font-variant-numeric:tabular-nums;font-size:.9rem;white-space:nowrap}
-.thp{color:var(--active);font-weight:700}
+.thp{color:var(--info);font-weight:700}
 .defl{font-size:.8rem;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}
 .defl b{color:var(--fg);font-weight:700}
 .row3{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center}
@@ -95,7 +107,7 @@ ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .pips .lbl{min-width:0;margin-right:6px}
 .pips .pg{display:inline-flex;flex-wrap:wrap} /* pips breken als groep af, niet los van elkaar */
 /* AF6: tikvlak 44×44 zonder overlap, het zichtbare bolletje is ::before */
-.pip{width:44px;height:44px;border:0;background:none;padding:0;display:inline-grid;place-items:center;color:var(--accent);border-radius:8px}
+.pip{width:44px;height:44px;border:0;background:none;padding:0;display:inline-grid;place-items:center;color:var(--act-ink);border-radius:8px}
 .pip::before{content:"";box-sizing:border-box;width:24px;height:24px;border-radius:50%;border:2px solid currentColor;background:currentColor}
 .pip[data-used="true"]::before{background:transparent;opacity:.55}
 .pip:focus-visible{outline-offset:-6px}
@@ -123,9 +135,9 @@ ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .ds .st.ok{color:var(--good)} .ds .st.dead{color:var(--bad)}
 .rcs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .rc{font-size:.8rem;min-height:44px;padding:0 12px;border-radius:99px;border:1px solid var(--good);color:var(--good);background:transparent}
-.rc[aria-pressed="false"]{border-color:var(--bad);color:var(--bad);border-style:dashed}
-.tag.l{background:var(--active-soft);color:var(--active)}
-.c.lair{background:var(--active-soft);border-style:dashed}
+.rc[aria-pressed="false"]{border-color:var(--line-strong);color:var(--muted);border-style:dashed}
+.tag.l{background:var(--sunk);color:var(--fg)}
+.c.lair{background:var(--sunk);border-style:dashed}
 .chip{font-size:.78rem;padding:2px 8px;border-radius:99px;border:1px solid var(--warn);color:var(--warn);background:transparent}
 .link{border:0;background:none;padding:2px 4px;color:var(--muted);font-size:.85rem;text-decoration:underline;text-underline-offset:2px}
 /* AF6: knop- en summary-links 44 px hoog (ook midden in een zin: de regel wordt dan hoger) */
@@ -133,7 +145,7 @@ button.link,summary.link{display:inline-flex;align-items:center;gap:.3em;min-hei
 /* inline-flex haalt de standaard ▸ weg: zelf tekenen, behalve waar die al bewust uit stond (.cast, .conds) */
 details:not(.cast):not(.conds)>summary.link::before{content:"▸";text-decoration:none;display:inline-block}
 details[open]:not(.cast):not(.conds)>summary.link::before{content:"▾"}
-.link.strong{color:var(--accent);font-weight:700}
+.link.strong{color:var(--act-ink);font-weight:700}
 details.conds{width:100%}
 details.conds summary{list-style:none;display:inline-flex}
 details.conds summary::-webkit-details-marker{display:none}
@@ -148,7 +160,7 @@ details.conds summary::-webkit-details-marker{display:none}
 .chip.cbtn:hover{background:var(--warn);color:var(--bg)}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .chk{display:flex;align-items:center;min-height:44px;gap:8px;text-transform:none;letter-spacing:0;font-size:.95rem;color:var(--fg)}
-.chk input{width:20px;height:20px;min-height:0;accent-color:var(--accent)}
+.chk input{width:20px;height:20px;min-height:0;accent-color:var(--act-ink)}
 .pm{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
 .pm:last-of-type{border-bottom:0}
 .pm .pn{font-weight:700}
@@ -164,16 +176,16 @@ details.conds summary::-webkit-details-marker{display:none}
 /* hele regel is het tikvlak voor een reden (::after over de rij); notitie en invoer liggen erboven */
 .lg-msg{all:unset;overflow-wrap:anywhere;cursor:pointer}
 .lg-msg::after{content:"";position:absolute;inset:0}
-.lg-msg:focus-visible::after{outline:2px solid var(--accent);outline-offset:-2px;border-radius:6px}
+.lg-msg:focus-visible::after{outline:2px solid var(--focus);outline-offset:-2px;border-radius:6px}
 @media (hover:hover){.lg:hover{background:var(--sunk)}}
 .lg-tip{margin:0 0 6px}
 .gsheet .lg{min-height:44px;align-content:center}
 .gsheet .lglist{max-height:none;overflow:visible}
 .lg-why{font-size:.85rem;color:var(--muted);font-style:italic}
-.lg-note{position:relative;z-index:1;justify-self:start;border:0;background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:2px 8px;font-size:.85rem;text-align:left}
+.lg-note{position:relative;z-index:1;justify-self:start;border:0;background:var(--sunk);color:var(--fg);border-radius:6px;padding:2px 8px;font-size:.85rem;text-align:left}
 .lg-in{position:relative;z-index:1;width:100%;border:1px solid var(--line);border-radius:6px;background:var(--bg);padding:6px 8px;margin-top:2px}
-.lg-round{font-family:var(--display);font-weight:700;color:var(--accent);padding:10px 0 2px;border-bottom:1px solid var(--accent)}
-.lg-turn{font-size:.78rem;color:var(--active);padding:4px 0 0;text-transform:uppercase;letter-spacing:.06em}
+.lg-round{font-family:var(--display);font-weight:700;color:var(--fg);padding:10px 0 2px;border-bottom:1px solid var(--line-strong)}
+.lg-turn{font-size:.78rem;color:var(--muted);padding:4px 0 0;text-transform:uppercase;letter-spacing:.06em}
 @media (max-width:420px){.lg{grid-template-columns:minmax(0,1fr)}.lg-meta{grid-row:auto}}
 .chip .dl{opacity:.8;font-variant-numeric:tabular-nums}
 .condgrid button{font-size:.82rem;min-height:44px;padding:2px 4px;border-radius:10px;border:1px solid var(--line);background:var(--bg)}
@@ -187,22 +199,22 @@ details.conds summary::-webkit-details-marker{display:none}
 .form{display:grid;gap:10px}
 .f2{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
 label{display:grid;gap:3px;font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-label input,label select,label textarea{text-transform:none;letter-spacing:0;font-size:1rem;color:var(--fg);border:1px solid var(--line);border-radius:6px;background:var(--bg);padding:8px;min-height:44px;width:100%}
+label input,label select,label textarea{text-transform:none;letter-spacing:0;font-size:1rem;color:var(--fg);border:1px solid var(--line-strong);border-radius:6px;background:var(--bg);padding:8px;min-height:44px;width:100%}
 textarea{min-height:120px;resize:vertical}
 .mlist{max-height:min(240px,32vh);max-height:min(240px,32dvh);overflow:auto;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
 .mlist button{display:flex;width:100%;min-height:44px;align-items:center;justify-content:space-between;gap:8px;border:0;border-bottom:1px solid var(--line);background:transparent;padding:8px 10px;text-align:left}
 .mlist button:last-child{border-bottom:0}
-.mlist button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.mlist button[aria-pressed="true"]{background:var(--act-soft);color:var(--fg);font-weight:700;box-shadow:inset 3px 0 0 var(--sel)}
 .mlist button>span:first-child{display:flex;align-items:flex-start;gap:8px;min-width:0}
 .mlist .mi{flex:0 0 18px;width:18px;height:18px;margin-top:2px;color:var(--muted)}
-.mlist button[aria-pressed="true"] .mi{color:var(--accent)}
+.mlist button[aria-pressed="true"] .mi{color:var(--fg)}
 .mlist .cr{color:var(--muted);font-size:.85rem;font-variant-numeric:tabular-nums;white-space:nowrap}
-.mlbl{font-size:.85rem;font-weight:700;color:var(--accent);margin:0}
+.mlbl{font-size:.85rem;font-weight:700;color:var(--fg);margin:0}
 /* Preview vóór toevoegen: compacte kaart onder de lijst */
 .mprev{display:grid;gap:3px;padding:10px 12px;border:1px solid var(--line);border-left:4px solid var(--mon);border-radius:8px;background:var(--surface);font-size:.9rem;min-width:0;overflow-wrap:anywhere}
 .mprev p{margin:0}
 .mphead{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}
-.mphead b{font-family:var(--display);color:var(--accent);font-size:1.1rem}
+.mphead b{font-family:var(--display);color:var(--fg);font-size:1.1rem}
 .mphead span{font-style:italic;color:var(--muted);font-size:.85rem}
 .mpstat{font-variant-numeric:tabular-nums}
 .mpdef{color:var(--muted);font-size:.85rem}
@@ -213,8 +225,8 @@ textarea{min-height:120px;resize:vertical}
 .mptraits{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mptags{display:flex;flex-wrap:wrap;gap:4px}
 .mpfull{justify-self:start;min-height:44px}
-.sbx{border-top:2px solid var(--accent);padding-top:6px}
-.sbprev{margin:2px 0 0;font-size:.8rem;font-weight:700;letter-spacing:.04em;color:var(--active)}
+.sbx{border-top:2px solid var(--sb-ink);padding-top:6px}
+.sbprev{margin:2px 0 0;font-size:.8rem;font-weight:700;letter-spacing:.04em;color:var(--info)}
 .hint{font-size:.85rem;color:var(--muted);margin:0}
 /* Instellingen: kopjes en een gesegmenteerde keuze (Systeem/Licht/Donker) */
 .appver{text-align:center;margin-top:8px;font-variant-numeric:tabular-nums}
@@ -222,22 +234,22 @@ textarea{min-height:120px;resize:vertical}
 .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{flex:1 1 0;min-width:0;min-height:44px;border:0;border-left:1px solid var(--line);background:var(--surface);color:var(--fg);font:inherit;padding:0 6px}
 .seg button:first-child{border-left:0}
-.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:700;box-shadow:inset 0 -3px 0 var(--accent)}
+.seg button[aria-pressed="true"]{background:var(--act-soft);color:var(--fg);font-weight:700;box-shadow:inset 0 -3px 0 var(--sel)}
 
 /* Statblock */
 .sbwrap{position:sticky;top:12px}
-.sb{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--accent);border-bottom:4px solid var(--accent);border-radius:4px;padding:14px 16px;max-height:calc(100vh - 24px);overflow:auto}
-.sb h2{font-family:var(--display);color:var(--accent);font-size:1.6rem;margin:0;line-height:1.1}
+.sb{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--sb-ink);border-bottom:4px solid var(--sb-ink);border-radius:4px;padding:14px 16px;max-height:calc(100vh - 24px);overflow:auto}
+.sb h2{font-family:var(--display);color:var(--sb-ink);font-size:1.6rem;margin:0;line-height:1.1}
 .sb .meta,.sbx .meta{font-style:italic;color:var(--muted);margin:2px 0 8px}
-.sb hr,.sbx hr{border:0;height:2px;background:linear-gradient(90deg,var(--accent),transparent);margin:8px 0}
+.sb hr,.sbx hr{border:0;height:2px;background:linear-gradient(90deg,var(--sb-ink),transparent);margin:8px 0}
 .sb p,.sbx p{margin:4px 0;line-height:1.9}
 .lact p,#rsheet p,.sb .pre{line-height:1.9} /* AF14: overal waar diceify worpen zet */
-.sb .k,.sbx .k{color:var(--accent);font-weight:700}
+.sb .k,.sbx .k{color:var(--sb-ink);font-weight:700}
 .abil{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));text-align:center;font-variant-numeric:tabular-nums;gap:2px}
-.abil b{display:block;color:var(--accent);font-size:.8rem;letter-spacing:.06em}
+.abil b{display:block;color:var(--sb-ink);font-size:.8rem;letter-spacing:.06em}
 .abil button{border:0;background:none;padding:2px;border-radius:4px}
-.abil button:hover{background:var(--accent-soft)}
-.sb h3,.sbx h3{font-family:var(--display);color:var(--accent);font-size:1.15rem;border-bottom:1px solid var(--accent);margin:12px 0 6px;font-weight:700}
+.abil button:hover{background:var(--sunk)}
+.sb h3,.sbx h3{font-family:var(--display);color:var(--sb-ink);font-size:1.15rem;border-bottom:1px solid var(--sb-ink);margin:12px 0 6px;font-weight:700}
 .sb .entry b i,.sbx .entry b i{font-style:italic}
 .sb .entry,.sbx .entry{white-space:pre-line}
 .cast{margin-top:6px;width:100%}
@@ -245,11 +257,11 @@ textarea{min-height:120px;resize:vertical}
 .cast summary::-webkit-details-marker{display:none}
 .castbox{display:grid;gap:6px;margin-top:6px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
 .slotrow{display:grid;grid-template-columns:44px auto minmax(0,1fr);gap:4px 10px;align-items:center}
-.slotrow .lv{font-family:var(--display);font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
+.slotrow .lv{font-family:var(--display);font-weight:700;color:var(--fg);font-variant-numeric:tabular-nums;white-space:nowrap}
 .slotrow .pp{display:flex;gap:0;flex-wrap:wrap}
 .slotrow .sp{font-size:.82rem;color:var(--muted);min-width:0;overflow-wrap:anywhere}
 .resrow{display:grid;grid-template-columns:minmax(0,9em) minmax(0,1fr);gap:4px 10px;align-items:center}
-.resrow .rn{font-weight:700;color:var(--accent);font-size:.9rem;overflow-wrap:anywhere}
+.resrow .rn{font-weight:700;color:var(--fg);font-size:.9rem;overflow-wrap:anywhere}
 .resrow .pp{display:flex;gap:0;flex-wrap:wrap;align-items:center}
 .resrow .sp{grid-column:2;font-size:.8rem;color:var(--muted)}
 /* AF6: pips van 44 px; op de telefoon spellnamen onder de slots en resources onder hun naam */
@@ -259,8 +271,8 @@ textarea{min-height:120px;resize:vertical}
 .slotin input{padding:6px 2px;text-align:center;min-height:44px}
 @media (max-width:420px){.slotin{grid-template-columns:repeat(5,minmax(0,1fr))}}
 /* AF14: inline in een zin (WCAG 2.5.8-uitzondering), daarom geen 44 px; wel ± 28 px hoog met een ruimere regel in het statblock */
-.dice{border:0;border-bottom:1px dotted var(--accent);background:none;padding:4px 3px;margin:0 -1px;border-radius:6px;line-height:1.25;color:var(--accent);font-weight:700}
-.dice:hover{background:var(--accent-soft)}
+.dice{border:0;border-bottom:1px dotted var(--act-ink);background:none;padding:4px 3px;margin:0 -1px;border-radius:6px;line-height:1.25;color:var(--act-ink);font-weight:700}
+.dice:hover{background:var(--act-soft)}
 .sbempty{color:var(--muted);text-align:center;padding:30px 10px}
 .sbhead{display:flex;justify-content:space-between;align-items:start;gap:8px}
 .closebtn{display:none}
@@ -270,16 +282,16 @@ textarea{min-height:120px;resize:vertical}
 .sbbtns{display:flex;gap:6px;flex:0 0 auto}
 .sbbig{display:none}
 .sbpin{min-height:44px;min-width:56px}
-.sbpin[aria-pressed="true"]{background:var(--active-soft);border-color:var(--active);color:var(--active);font-weight:700}
-.sbturn{display:flex;align-items:center;gap:6px;width:100%;min-height:44px;margin:0 0 8px;padding:6px 12px;border:1px solid var(--active);border-radius:8px;background:var(--active-soft);color:var(--active);text-align:left}
+.sbpin[aria-pressed="true"]{background:var(--act-soft);border-color:var(--sel);color:var(--fg);font-weight:700}
+.sbturn{display:flex;align-items:center;gap:6px;width:100%;min-height:44px;margin:0 0 8px;padding:6px 12px;border:1px solid var(--sel);border-radius:8px;background:var(--act-soft);color:var(--fg);text-align:left}
 @media (min-width:900px){#sbturn:not(:empty)+.sb{max-height:calc(100vh - 76px)}} /* id-selector: niet over de telefoonhoogte heen */
 .sbturn b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 /* Speler-sheet: live-blok bovenaan (alleen-lezen; bediening zit op de kaart) */
 .livest{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;text-align:center;font-variant-numeric:tabular-nums}
 .livest>div{background:var(--sunk);border-radius:6px;padding:4px 2px}
-.livest .lk{display:block;font-size:.72rem;letter-spacing:.06em;color:var(--accent);font-weight:700}
+.livest .lk{display:block;font-size:.72rem;letter-spacing:.06em;color:var(--muted);font-weight:700}
 .livest b{font-family:var(--display);font-size:1.25rem}
-.livest b.acx{color:var(--active)}
+.livest b.acx{color:var(--info)}
 .sb .badges{padding:6px 0 0}
 .cnts{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
 .cnt{white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -316,9 +328,7 @@ textarea{min-height:120px;resize:vertical}
 .dock .oldask .btn{min-height:44px;font-size:1rem}
 
 /* ===== Compacte kaarten (één open), beurtbalk onderaan, schade-paneel ===== */
-:root{--pc:#2f6fb5;--mon:#b3261e;--dock-h:118px}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--pc:#6aa3e8;--mon:#e0705f}}
-:root[data-theme="dark"]{--pc:#6aa3e8;--mon:#e0705f}
+:root{--dock-h:118px}
 body{padding-bottom:calc(var(--dock-h) + 24px + env(safe-area-inset-bottom,0px))}
 header.top{align-items:baseline}
 .sum{display:flex;gap:12px;font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -326,18 +336,18 @@ header.top{align-items:baseline}
 ol.order{gap:6px}
 .c.k{display:block;padding:0;position:relative;overflow:hidden}
 .c.k>*{grid-column:auto;min-width:0}
-.c.k::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--line)}
-.c.k.pc::before{background:var(--pc)}
+.c.k::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:transparent}
 .c.k.mon::before{background:var(--mon)}
-.c.k.open{border-color:var(--active);box-shadow:0 0 0 2px var(--active) inset}
-.c.k.turn:not(.open){border-color:var(--active)}
+.c.k.open{border-color:var(--sel);box-shadow:0 0 0 2px var(--sel) inset}
+/* WP14: aan de beurt = gouden vlak achter initiative en ▶ (plek, geen rand); geopend = ring (--sel). Samen op één kaart: vlak + ring. */
+.c.k.turn .i{align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;background:var(--act);color:var(--act-fg);padding:6px 0}
 .c.k.out{opacity:.55}
 .c.k.out .n span{text-decoration:line-through}
 .khead,.c.k.lair>.i,.c.k.lair>.n,.c.k.lair>.meta{all:unset}
 .khead{box-sizing:border-box;width:100%;display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:4px 10px;padding:10px 12px 8px 4px;cursor:pointer;color:var(--fg);font:inherit}
-.khead:focus-visible{outline:2px solid var(--active);outline-offset:-2px;border-radius:var(--r)}
+.khead:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;border-radius:var(--r)}
 .c.k .i{font-family:var(--display);font-weight:800;font-size:1.2rem;text-align:center;font-variant-numeric:tabular-nums;line-height:1}
-.c.k .tri{display:block;font-size:.65rem;color:var(--active);margin-top:2px}
+.c.k .tri{display:block;font-size:.65rem;color:inherit;margin-top:2px}
 .c.k .n{font-weight:700;font-size:1.02rem;min-width:0}
 .c.k .n{display:flex;align-items:center;gap:8px}
 .c.k .n>.nm{display:block;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -352,10 +362,10 @@ ol.order{gap:6px}
 .khp{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 12px 0 58px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .khp .hpn{color:var(--fg)}
 .khp:active{background:var(--sunk)}
-.khp:focus-visible{outline:2px solid var(--active);outline-offset:-2px;border-radius:var(--r)}
+.khp:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;border-radius:var(--r)}
 /* Avatar: portret of icoon (ras / creature type) */
-.av{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:inline-grid;place-items:center;overflow:hidden;background:var(--accent-soft);color:var(--accent)}
-.pm .av,.c.k.pc .av{background:var(--active-soft);color:var(--active)}
+.av{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:inline-grid;place-items:center;overflow:hidden;background:var(--mon-soft);color:var(--fg)}
+.pm .av,.c.k.pc .av{background:var(--pc-soft);color:var(--fg)}
 .av .ic{width:20px;height:20px}
 .av.img{background:var(--sunk)}
 .av img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}
@@ -369,14 +379,15 @@ ol.order{gap:6px}
 .bd{flex:0 0 auto;font-size:.74rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap;background:transparent;font-family:inherit;line-height:1.5}
 .bd.cc{border-color:var(--warn);color:var(--warn)}
 .bd.g{border-color:var(--good);color:var(--good)}
+.bd.w{border-color:var(--warn);color:var(--warn);font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .bd.r{border-color:var(--bad);color:var(--bad);max-width:100%;overflow:hidden;text-overflow:ellipsis}
-.bd.b{border-color:var(--active);color:var(--active)}
+.bd.b{border-color:var(--info);color:var(--info)}
 .bd.cbtn{cursor:pointer;min-height:44px;padding-inline:10px}
 .kbody{padding:0 12px 12px 48px;display:grid;gap:8px}
 .acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .acts button{min-height:46px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-weight:700;font-size:.85rem;padding:4px;color:var(--fg)}
 .acts button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
-.acts .dmg2{background:var(--bad);border-color:var(--bad);color:#fff}
+.acts .dmg2{background:var(--fg);border-color:var(--fg);color:var(--bg)}
 .acts .heal2{color:var(--good)}
 .acts .wide{grid-column:span 2}
 .kpanel{display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
@@ -397,18 +408,18 @@ ol.order{gap:6px}
 .dock>*{max-width:680px;margin-inline:auto}
 .dock .who{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
 .dock .who .l{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-.dock .who b{font-family:var(--display);font-size:1.15rem;color:var(--active)}
+.dock .who b{font-family:var(--display);font-size:1.15rem;color:var(--act-ink)}
 .dock .who .gk{font-size:.85rem;font-weight:700;color:var(--muted);white-space:nowrap}
 .dock .who .r{font-size:.8rem;color:var(--muted);text-align:right;min-width:0}
 .dock .row{display:grid;grid-template-columns:52px 52px minmax(0,1fr);gap:8px}
 .dock .prow{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,.9fr) 50px;gap:6px;margin-bottom:8px}
 .dock .prow button{min-height:48px;font-size:.95rem;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;justify-content:center}
-.dock .prow button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.dock .prow button[aria-pressed="true"]{border-color:var(--sel);color:var(--fg);background:var(--act-soft)}
 @media (max-width:340px){.dock .prow .pp{display:none}}
 .dock .row.one{grid-template-columns:52px minmax(0,1fr)}
 .dock button{min-height:50px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-weight:700;font-size:1.05rem;color:var(--fg)}
 .dock button:disabled{opacity:.4}
-.dock .nx{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.dock .nx{background:var(--act);border-color:var(--act);color:var(--act-fg)}
 /* desktop: beurtbalk precies onder de linkerkolom (kolommen 1.1fr / 1fr, gap 16px, max 1180px) */
 @media (min-width:900px){.dock{--wrapw:min(1180px,calc(100vw - 32px));left:calc((100vw - var(--wrapw)) / 2);right:auto;width:calc((var(--wrapw) - 16px) * 1.1 / 2.1);border:1px solid var(--line);border-bottom:0;border-radius:14px 14px 0 0;padding-inline:16px}}
 
@@ -431,18 +442,15 @@ ol.order{gap:6px}
 .preview b{color:var(--fg)}.preview .bad{color:var(--bad)}
 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .pad button{min-height:52px;border-radius:12px;background:var(--bg);border:1px solid var(--line);font-size:1.35rem;font-weight:700;color:var(--fg)}
-.pad .go{grid-column:span 3;font-size:1.05rem;color:#fff;background:var(--bad);border-color:var(--bad)}
-.pad .go.go-heal{background:var(--good);border-color:var(--good)}
-.pad .go.go-thp{background:var(--active);border-color:var(--active);color:var(--bg)}
+.pad .go{grid-column:span 3;font-size:1.05rem;color:var(--act-fg);background:var(--act);border-color:var(--act)}
+.pad .go.go-heal{background:var(--good);border-color:var(--good);color:var(--good-fg)}
+.pad .go.go-thp{background:var(--info);border-color:var(--info);color:var(--bg)}
 .pad .go:disabled{opacity:.45}
 
 /* ===== Modi (1.29.0): modus volgt het gevecht. Voorbereiden = fase-aanduiding; Gevecht = eigen kop; tussendoor = amberkleurige balk =====
-   Kleuren als tokens (gemeten, WCAG): kop licht = tekstkleur als vlak (13,8:1 tegen de pagina), donker = neutraal en lichter dan de
-   kaarten (1,5:1 tegen de pagina, tekst 9,8:1). Bewust geen rood (al bezet: monster, schade, hoofdactie) en geen zijstreep
-   (betekent monster of speler). Knoprand ≥ 3:1. Geen color-mix (oudere iPads). */
-:root{--fight-bg:#1d2330;--fight-fg:#ffffff;--fight-muted:#c9cfdb;--fight-btn:#2a3140;--fight-btn-line:#7a8397;--warn-soft:#fbf3e4}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--fight-bg:#303747;--fight-fg:#e7e9ee;--fight-muted:#b4bbc9;--fight-btn:#3d4556;--fight-btn-line:#8a93a6;--warn-soft:#2e2614}}
-:root[data-theme="dark"]{--fight-bg:#303747;--fight-fg:#e7e9ee;--fight-muted:#b4bbc9;--fight-btn:#3d4556;--fight-btn-line:#8a93a6;--warn-soft:#2e2614}
+   Kleuren: tokens --fight-* bovenaan (WP14): licht = walnoot als vlak, donker = warm neutraal en lichter dan de kaarten; contrast in
+   tests/contrast.test.js. Geen goud in de kop (goud = actie/beurt; Volgende staat in de dock), geen rood, geen zijstreep (= monster).
+   Knoprand ≥ 3:1. Geen color-mix (oudere iPads). */
 .modes{min-width:0}
 body[data-mode="fight"] header.top,body[data-run][data-mode="prep"] header.top{display:none}
 body[data-mode="fight"] #resetbar{display:none}
@@ -475,9 +483,9 @@ body[data-mode="fight"] #resetbar{display:none}
 .pf{display:grid;gap:3px;align-content:start;min-width:0}
 .pf .pl{font-size:.75rem;font-weight:700;letter-spacing:.04em;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pf .pl small{font-weight:400;letter-spacing:0}
-.pbox{display:flex;align-items:center;min-height:48px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}
+.pbox{display:flex;align-items:center;min-height:48px;border-radius:10px;border:1px solid var(--line-strong);background:var(--surface)}
 .pbox.nv{border-style:dashed}
-.pbox:focus-within{border-color:var(--active);box-shadow:0 0 0 1px var(--active)}
+.pbox:focus-within{border-color:var(--focus);box-shadow:0 0 0 1px var(--focus)}
 .pbox input{flex:1 1 auto;min-width:0;width:100%;min-height:46px;border:0;background:transparent;color:var(--fg);font-weight:700;font-size:1.15rem;text-align:center;font-variant-numeric:tabular-nums;-moz-appearance:textfield;appearance:textfield}
 .pbox input::-webkit-inner-spin-button,.pbox input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .pbox input:focus{outline:none}
@@ -515,7 +523,7 @@ body:has(.sheet-wrap:not([hidden])) .toast{top:calc(8px + env(safe-area-inset-to
 .dock .pv{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:0;line-height:1}
 .dock .pvl{font-size:.7rem;font-weight:600;color:var(--muted);margin-top:2px}
 .dock .row.one{grid-template-columns:52px minmax(0,1fr)}
-.dock .aoeb{color:var(--accent);border-color:var(--accent);font-size:.95rem}
+.dock .aoeb{font-size:.95rem}
 @media (max-width:399px){.dock .nb{display:none}}
 .asheet{gap:12px}
 .arow{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;align-items:end}
@@ -526,13 +534,13 @@ body:has(.sheet-wrap:not([hidden])) .toast{top:calc(8px + env(safe-area-inset-to
 .dchips:empty{display:none}
 .dchips .btn{display:inline-flex;align-items:baseline;gap:6px}
 .dchips .btn small{font-size:.72rem;color:var(--muted);font-weight:400}
-.dsel{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:0 0 0 10px;border-radius:10px;background:var(--accent-soft)}
+.dsel{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:0 0 0 10px;border-radius:10px;background:var(--act-soft)}
 .dsel button.link{min-width:44px;justify-content:center;font-size:1.1rem}
 .aslot{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px}
 .aslot .seg2 button small{font-weight:400}
 .adice{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
 .adice .btn{min-width:64px}
-.asave{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--active-soft)}
+.asave{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--sunk)}
 .asave select,.asave input{min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:0 8px;font-size:1rem}
 .asave input{width:72px;text-align:center}
 .asave .btn{margin-left:auto}
@@ -542,7 +550,7 @@ body:has(.sheet-wrap:not([hidden])) .toast{top:calc(8px + env(safe-area-inset-to
 .at.off{border-style:dashed;background:transparent;padding-bottom:4px}
 .at.off .atn>span:first-child{color:var(--muted)}
 .atop{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--fg);font-size:1rem}
-.atop input{width:22px;height:22px;min-height:0;margin:0;flex:0 0 auto;accent-color:var(--accent)}
+.atop input{width:22px;height:22px;min-height:0;margin:0;flex:0 0 auto;accent-color:var(--act-ink)}
 .atn{flex:1 1 auto;min-width:0;font-weight:700;overflow-wrap:anywhere}
 .atn small{display:block;font-weight:400;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .adealt{font-family:var(--display);font-size:1.3rem;color:var(--bad);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -553,13 +561,13 @@ body:has(.sheet-wrap:not([hidden])) .toast{top:calc(8px + env(safe-area-inset-to
 /* Spell op doelen (tab in het AoE-paneel) */
 .atabs{margin-top:-4px}
 .spgrid .btn{min-height:48px}
-.spgrid .btn[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-soft)}
+.spgrid .btn[aria-pressed="true"]{border-color:var(--sel);box-shadow:inset 0 0 0 1px var(--sel);background:var(--act-soft)}
 .scast{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px}
 .scast select{min-height:44px;min-width:0}
 .sform{display:grid;gap:8px}
 .schk{display:flex;flex-wrap:wrap;gap:4px 16px}
 .schk label{display:flex;align-items:center;gap:8px;min-height:44px;text-transform:none;letter-spacing:0;font-size:.95rem;color:var(--fg)}
-.schk input{width:22px;height:22px;min-height:0;margin:0;accent-color:var(--accent)}
+.schk input{width:22px;height:22px;min-height:0;margin:0;accent-color:var(--act-ink)}
 .sres{font-size:.9rem;color:var(--bad);text-align:right;flex:0 1 auto;max-width:42%;overflow-wrap:anywhere}
 .sres.zero{color:var(--muted);font-weight:400}
 #s-info:empty{display:none}
@@ -592,8 +600,8 @@ label.warn input{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
 /* Tijdelijke effecten en bewerken (open kaart) */
 /* AF13: AC als schildje in de kaartkop; past in de bestaande kophoogte, "neer" blijft gewone tekst */
 .c.k .meta .acv{display:inline-grid;place-items:center;min-width:2.1em;height:1.8em;padding:0 .2em;box-sizing:border-box;border:1.5px solid var(--muted);border-radius:.3em .3em 50% 50% / .3em .3em 40% 40%;font:800 1.1rem/1 var(--display);font-variant-numeric:tabular-nums;color:var(--fg)}
-.c.k .meta .acv.acx{border-color:var(--active);color:var(--active);background:var(--active-soft)}
-.bd.ef{border-style:dashed;border-color:var(--active);color:var(--active);max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.c.k .meta .acv.acx{border-color:var(--fg);border-style:dashed;color:var(--fg);background:var(--sunk)}
+.bd.ef{border-style:dashed;border-color:var(--info);color:var(--info);max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .acb{margin:-2px 0 8px}
 .effgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
 .effgrid .btn{display:grid;gap:1px;text-align:left;line-height:1.2;padding:6px 10px}
@@ -626,27 +634,28 @@ body.pv{font-size:clamp(16px,1.1rem + .9vw,30px);padding-bottom:max(24px,env(saf
 .pvwrap{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:.8em}
 .pvtop{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .pv h1{font-size:1.3em}
-.pvnow{background:var(--active-soft);border:1px solid var(--active);border-radius:var(--r);padding:.6em .9em;display:flex;justify-content:space-between;align-items:flex-end;gap:.4em 1.2em;flex-wrap:wrap}
+.pvnow{background:var(--act-soft);border:1px solid var(--sel);border-radius:var(--r);padding:.6em .9em;display:flex;justify-content:space-between;align-items:flex-end;gap:.4em 1.2em;flex-wrap:wrap}
 .pvnow:empty{display:none}
 .pvnow .l{display:block;font-size:.6em;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-.pvnow b{font-family:var(--display);font-size:1.5em;color:var(--active);line-height:1.15;overflow-wrap:anywhere}
+.pvnow b{font-family:var(--display);font-size:1.5em;color:var(--act-ink);line-height:1.15;overflow-wrap:anywhere}
 .pvnow .r{text-align:right;font-family:var(--display);font-size:1.05em;overflow-wrap:anywhere}
 ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .pvc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);display:grid;grid-template-columns:1.8em minmax(0,1fr) auto;align-items:center;gap:.25em .6em;padding:.45em .7em .45em 0}
-.pvc.turn{border-color:var(--active);box-shadow:0 0 0 2px var(--active) inset}
+.pvc.turn{border-color:var(--sel)}
 .pvc.out{opacity:.5}
 .pvc.out .av{filter:grayscale(1)}
 .pvi{text-align:center;font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted)}
-.pvi .tri{display:block;font-size:.6em;color:var(--active)}
+.pvi .tri{display:block;font-size:.6em;color:inherit}
+.pvc.turn .pvi{align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:.4em;background:var(--act);color:var(--act-fg)}
 .pvn{display:flex;align-items:center;gap:.45em;min-width:0}
 .pvn .nm{flex:0 1 auto;min-width:0;font-weight:700;font-size:1.05em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pvn .av,.pvnext{flex:0 0 auto}
 .pvc .av{width:1.9em;height:1.9em}
 .pvc .av .ic{width:1.25em;height:1.25em}
-.pvc.pc .av{background:var(--active-soft);color:var(--active)}
+.pvc.pc .av{background:var(--pc-soft);color:var(--fg)}
 .pvc.lair .av{background:var(--sunk)}
 .pvc.lair .nm{font-family:var(--display);color:var(--muted)}
-.pvnext{font-size:.6em;padding:1px .5em;border:1px solid var(--active);color:var(--active);border-radius:99px;white-space:nowrap}
+.pvnext{font-size:.6em;padding:1px .5em;border:1px solid var(--line-strong);color:var(--fg);border-radius:99px;white-space:nowrap}
 .pvhp{display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:0}
 .pvhp .hpw{width:min(9em,30vw)}
 .pvhp .hpw .bar{height:.35em}
@@ -672,7 +681,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .ar .an{font-weight:700;font-size:.92rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ar .an small{display:block;font-weight:400;font-size:.74rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
 .ar .d{min-height:44px;min-width:46px;border-radius:9px;border:1px solid var(--line);background:var(--bg);font-weight:700;font-size:.88rem;padding:2px 8px;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--fg);max-width:46vw}
-.ar .d.hit{color:var(--active);border-color:var(--active)}
+.ar .d.hit{color:var(--fg);border-color:var(--line-strong)}
 .ar .d.dm{min-width:94px}
 .ar .d.dm small{display:block;font-weight:400;font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ar .d:active{background:var(--sunk)}
@@ -685,7 +694,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .atkfold{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-weight:700;font-size:.9rem;cursor:pointer;color:var(--fg)}
 .atk .atkfold{border:0;padding:0;border-radius:0}
 .atk .atkfold.sub{border-top:1px solid var(--line);font-size:.85rem;color:var(--muted)}
-.atkfold:focus-visible{outline:2px solid var(--active);outline-offset:2px}
+.atkfold:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 
 /* Legendary actions: vaste regel in de beurtbalk + paneel */
 .dock .larow{display:flex;gap:8px;margin-bottom:8px}
@@ -756,7 +765,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .isheet{gap:10px}
 .ilist{display:grid;gap:6px;max-height:min(300px,36dvh);overflow:auto}
 .ir{display:grid;grid-template-columns:minmax(0,1fr) 52px auto;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:2px 6px 2px 2px;background:var(--surface)}
-.ir.act{border-color:var(--active);box-shadow:0 0 0 1px var(--active)}
+.ir.act{border-color:var(--sel);box-shadow:0 0 0 1px var(--sel)}
 .irn{min-height:44px;border:0;background:transparent;text-align:left;font:inherit;font-weight:700;color:var(--fg);padding:4px 8px;min-width:0}
 .irn span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .irn small{display:block;font-weight:400;font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -767,7 +776,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 
 /* Lege lijst: welkomstkaart, party-knop of hint; voorbeeld-banner boven de lijst */
 .order .welcome{list-style:none;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:10px}
-.welcome h2{margin:0;font-family:var(--display);font-size:1.4rem;color:var(--accent)}
+.welcome h2{margin:0;font-family:var(--display);font-size:1.4rem;color:var(--fg)}
 .welcome p{margin:0}
 .welcome .wimp{margin-top:6px}
 .welcome .wbtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
@@ -779,7 +788,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 /* Spell-uitleg: tikbare spellnaam (cursief met stippel, zoals spellnamen in een statblock) en paneel #rsheet */
 .spl{font:inherit;font-style:italic;color:inherit;background:none;border:0;border-bottom:1px dotted var(--muted);border-radius:0;
   padding:10px 0 4px;margin:-10px 0 -4px;line-height:inherit;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent}
-.spl:hover,.spl:focus-visible{color:var(--accent);border-bottom-color:var(--accent)}
+.spl:hover,.spl:focus-visible{color:var(--act-ink);border-bottom-color:var(--act-ink)}
 .rwrap{z-index:45}
 .rsheet{max-height:85dvh;gap:8px;padding-top:0}
 .rsheet .grab{margin-top:10px}
@@ -812,7 +821,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 /* Gevecht: dode monsters onderaan in een ingeklapt blok */
 .downblk{list-style:none}
 .downbtn{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;width:100%;min-height:44px;padding:0 12px;border:1px dashed var(--line);border-radius:var(--r);color:var(--muted);font-weight:700;font-size:.9rem;cursor:pointer}
-.downbtn:focus-visible{outline:2px solid var(--active);outline-offset:2px}
+.downbtn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .pvdown{margin:0;color:var(--muted);padding:.4em .7em;border:1px dashed var(--line);border-radius:var(--r)}
 /* SC4: kop (verbinding + aan de beurt) vast bovenaan; de titel scrolt weg. Eén regel per naam, zodat de kop nooit groeit */
 .pvstick{position:sticky;top:0;z-index:5;background:var(--bg);display:grid;grid-template-columns:minmax(0,1fr);gap:.4em}
@@ -839,17 +848,17 @@ body.tv .pvlog{min-height:calc(3 * 1.35em)}
 .pvpickb{display:flex;align-items:center;gap:.5em;justify-content:flex-start;text-align:left;width:100%;min-height:44px}
 .pvpickb .av{width:1.6em;height:1.6em;flex:0 0 auto}
 .pvpickb .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.pvpickb[aria-pressed="true"]{border-color:var(--active);box-shadow:0 0 0 2px var(--active) inset}
+.pvpickb[aria-pressed="true"]{border-color:var(--sel);box-shadow:0 0 0 2px var(--sel) inset;background:var(--act-soft)}
 .pvpick .chk{font-size:.8em}
 .pvpick .link{justify-self:start}
-.pvnow.me{background:var(--active);border-color:var(--active)}
+.pvnow.me{background:var(--act);border-color:var(--act)}
 .pvnow.me b,.pvnow.me .l,.pvnow.me .r{color:var(--surface)}
-.pvnow .r.me{color:var(--active);font-weight:700}
+.pvnow .r.me{color:var(--act-ink);font-weight:700}
 .pvnow.me .r.me{color:var(--surface)}
-.pvme{background:var(--surface);border:2px solid var(--active);border-radius:var(--r);padding:.5em .8em;display:grid;grid-template-columns:minmax(0,1fr);gap:.35em}
+.pvme{background:var(--surface);border:2px solid var(--line-strong);border-radius:var(--r);padding:.5em .8em;display:grid;grid-template-columns:minmax(0,1fr);gap:.35em}
 .pvme>*{grid-column:1/-1}
 .pvmehead{display:flex;align-items:center;gap:.5em;min-width:0}
-.pvmehead .av{width:1.9em;height:1.9em;flex:0 0 auto;background:var(--active-soft);color:var(--active)}
+.pvmehead .av{width:1.9em;height:1.9em;flex:0 0 auto;background:var(--pc-soft);color:var(--fg)}
 .pvmehead .av .ic{width:1.25em;height:1.25em}
 .pvmehead .nm{font-family:var(--display);font-size:1.05em;line-height:1.2;min-width:0;overflow-wrap:anywhere}
 .pvme>.pvhp{display:flex;flex-direction:row;align-items:center;gap:.5em}
@@ -858,8 +867,8 @@ body.tv .pvlog{min-height:calc(3 * 1.35em)}
 .pvme .badges{padding:0;margin:0}
 .pvsl .l{font-size:.6em;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);align-self:center;margin-right:.2em}
 .pvmiss{margin:0;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:0 .5em}
-.pvc.me{box-shadow:inset 4px 0 0 var(--active)}
-.pvc.me.turn{box-shadow:inset 4px 0 0 var(--active),0 0 0 2px var(--active) inset}
+.pvc.me{box-shadow:inset 4px 0 0 var(--fg)}
+.pvc.me.turn{box-shadow:inset 4px 0 0 var(--fg)}
 /* SC8: lange namen over twee regels in de lijst (de vaste kop houdt één regel) */
 .pvn{align-items:flex-start}
 .pvn .av,.pvn .pvnext{align-self:center}
@@ -898,6 +907,7 @@ body.pv.tv:not(.cols) .pvc .badges{grid-column:3;grid-row:1;justify-content:flex
 body.pv.tv:not(.cols) .pvhp{grid-column:4;grid-row:1}
 body.pv.tv .pvc .bd{font-size:.85em;font-weight:700}
 body.pv.tv .pvi{color:var(--fg)}
+body.pv.tv .pvc.turn .pvi{color:var(--act-fg)}
 body.pv.tv .pvhp{flex-direction:row;align-items:center;gap:.5em}
 body.pv.tv .pvhp .hpw{display:flex;align-items:center;gap:.5em;width:auto}
 body.pv.tv .pvhp .hpw .bar{width:6em;height:.45em}
@@ -918,7 +928,7 @@ body.pv.tv.qr .pvqr:not([hidden]){display:grid;justify-items:center;gap:.3em;pos
 .kamerbox{display:grid;gap:6px}
 .kamerbox .hint{margin:0}
 .kamererr{color:var(--bad)}
-.kamer-code{margin:2px 0 0;font-family:var(--display);font-weight:700;font-size:2.2rem;line-height:1.1;letter-spacing:.12em;font-variant-numeric:tabular-nums;color:var(--active)}
+.kamer-code{margin:2px 0 0;font-family:var(--display);font-weight:700;font-size:2.2rem;line-height:1.1;letter-spacing:.12em;font-variant-numeric:tabular-nums;color:var(--info)}
 .kamer-url{margin:0;font-size:.82rem;color:var(--muted);overflow-wrap:anywhere}
 .kamer-st{margin:0;font-size:.92rem;color:var(--muted)}
 .kamer-st.on{color:var(--good)}
@@ -964,9 +974,9 @@ body.pv.stale #pv-now,body.pv.stale #pv-list,body.pv.stale #pv-down{opacity:.4}
 .dchip{display:inline-flex;align-items:center;font:inherit;font-size:.8rem;font-weight:700;padding:2px 10px;border-radius:99px;border:1px solid var(--muted);color:var(--muted);background:transparent;white-space:nowrap}
 button.dchip{min-height:44px;cursor:pointer}
 .dchip.r1{border-color:var(--good);color:var(--good)}
-.dchip.r2{border-color:var(--pc);color:var(--pc)}
+.dchip.r2{border-color:var(--line-strong);color:var(--fg)}
 .dchip.r3{border-color:var(--warn);color:var(--warn)}
-.dchip.r4{border-color:var(--bad);color:var(--bad);background:var(--accent-soft)}
+.dchip.r4{border-color:var(--bad);color:var(--bad);background:var(--bad-soft)}
 .dchip.unk{border-style:dashed;font-weight:400}
 .order .dbanner{list-style:none;display:grid;gap:4px}
 .dbtn{display:flex;align-items:center;gap:6px;flex-wrap:wrap;width:100%;min-height:44px;padding:4px 10px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);color:var(--fg);font:inherit;font-size:.9rem;text-align:left;font-variant-numeric:tabular-nums}
@@ -1043,7 +1053,7 @@ button.dchip{min-height:44px;cursor:pointer}
 /* DA3: tabblad gestopt, een ander tabblad werkt verder (js/main.js tabLost); boven alles, app eronder inert */
 .tabstop{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center;padding:16px;overflow:auto}
 .tabstop-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px 16px;max-width:420px;width:100%;display:grid;gap:12px}
-.tabstop h2{margin:0;font-family:var(--display);font-size:1.4rem;color:var(--accent)}
+.tabstop h2{margin:0;font-family:var(--display);font-size:1.4rem;color:var(--fg)}
 .tabstop p{margin:0}
 .tabstop .btn{min-height:48px;width:100%}
 
@@ -1053,7 +1063,7 @@ button.dchip{min-height:44px;cursor:pointer}
 :root[data-theme="dark"]{--tour-dim:rgba(0,0,0,.7)}
 .tour{position:fixed;inset:0;z-index:60}
 .tour[hidden]{display:none}
-.tspot{position:fixed;border-radius:12px;box-shadow:0 0 0 200vmax var(--tour-dim);outline:2px solid var(--active);pointer-events:none}
+.tspot{position:fixed;border-radius:12px;box-shadow:0 0 0 200vmax var(--tour-dim);outline:2px solid var(--focus);pointer-events:none}
 .tbox{position:fixed;width:min(320px,calc(100vw - 32px));background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:14px;padding:14px 16px 10px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
 .tbox .thead{margin:0 0 4px;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
 .tbox .thead b{font-family:var(--display);font-size:1.1rem}
@@ -1077,7 +1087,7 @@ button.dchip{min-height:44px;cursor:pointer}
 .setsec .sstat.dot::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--bad);margin-right:6px;vertical-align:1px}
 .setsec .schev::before{content:"▸";color:var(--muted)}
 .setsec[open] .schev::before{content:"▾"}
-.setsec>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.setsec>summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .setbody{display:grid;gap:10px;padding:2px 0 14px}
 #order{overflow-anchor:none} /* IN8: scrollcorrectie doet keepCard, niet de browser */
 /* GV8/GV10: undo-melding en sneltoetsen */

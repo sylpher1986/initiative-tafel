@@ -111,8 +111,8 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 ## Huisstijl Kev's Inn (23-10-2026)
 Plan, palet, contrastmetingen en het kleurbesluit van Michiel: projectdoc `claude/huisstijl.md`. Logobronnen: `brand/`.
 - [x] **HS1** Naam "Kev’s Inn itiative" (WP13)
-- [ ] **HS2** Kleur-tokens licht/donker naar het nieuwe palet; goud = primaire actie, focus, beurt, selectie; rood alleen fout/destructief/kritiek
-- [ ] **HS3** Automatische contrasttest WCAG 2.2 AA over alle toestanden, beide thema's
+- [x] **HS2** Kleur-tokens licht/donker naar het nieuwe palet; goud = primaire actie, focus, beurt, selectie; rood alleen fout/destructief/kritiek
+- [x] **HS3** Automatische contrasttest WCAG 2.2 AA over alle toestanden, beide thema's
 - [ ] **HS4** Playfair Display (merk, grote koppen) + Inter (rest), zelf meegeleverd
 - [ ] **HS5** Logo in de kop van Voorbereiden, favicon, app-iconen, lichte variant
 - [ ] **HS6** Componenten: knoppen, perkament-kaarten, chips, meldingen met icoon, lege toestanden, statblock
