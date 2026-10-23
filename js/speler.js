@@ -1,4 +1,5 @@
 // Spelersscherm: toont alleen de snapshot die het DM-scherm stuurt (js/playerview.js), nooit eigen data.
+import { APP } from "./version.js";
 import { cleanView, headHtml, findMe, meState, buzzFor, dsText, logLines, pushLog } from "./playerview.js";
 import { ORD } from "./rules/spells.js";
 import { localChannel, roomChannel, normCode, fmtCode } from "./share.js";
@@ -389,7 +390,7 @@ function showJoin(msg) {
   $("#pv-wait").textContent = msg || "";
   $("#pv-join").hidden = false;
   $("#pv-joinmsg").classList.remove("err");
-  $("#pv-joinmsg").textContent = "Of open Initiative Tafel in een ander venster van deze browser.";
+  $("#pv-joinmsg").textContent = `Of open ${APP} in een ander venster van deze browser.`;
 }
 
 /** submit: ook een foutmelding; tijdens het typen: alleen verbinden zodra er 6 geldige tekens staan */

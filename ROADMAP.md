@@ -65,6 +65,11 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | ~~**WP10**~~ | Monsterregels en minder klikken: Undead Fortitude, save-riders, Parry, eigen monster inlezen, multiattack-volgorde (klaar) | RE13, RE14, GV11 | 1.42.0 |
 | ~~**WP11**~~ | Voorbereiding: passives, zoeken, lege encounter (klaar) | SP5, VB4, VB5 | 1.43.0 |
 | ~~**WP12**~~ | Afwerking: haperingen, kleine fouten, toegankelijkheid, death save-worp, mini-log, dobbelstenen in statblocktekst (klaar) | AF10, AF11, AF12, AF14, RE15, SC9 | 1.44.0 |
+| ~~**WP13**~~ | Naam Kev’s Inn itiative + syntaxcheck en vast browsercheck-script (klaar) | HS1 | 1.44.1 |
+| **WP14** | Kleur: semantische tokens, goud = actie/focus/beurt, contrasttest | HS2, HS3 | 1.45.0 |
+| **WP15** | Typografie: Playfair Display + Inter zelf meegeleverd | HS4 | 1.46.0 |
+| **WP16** | Logo en app-icoon (bronnen in `brand/`) | HS5 | 1.47.0 |
+| **WP17** | Componenten, lijn-iconen, spelersscherm in huisstijl | HS6, HS7, HS8 | 1.48.0 |
 | Backlog | Niet ingepland | RE4, RE5, RE6, TA1, TS1, fase 2 en 3 | |
 
 ---
@@ -102,6 +107,17 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 
 ## Opslag en data
 - Geen open punten (DA3 klaar in 1.31.8, zie Klaar).
+
+## Huisstijl Kev's Inn (23-10-2026)
+Plan, palet, contrastmetingen en het kleurbesluit van Michiel: projectdoc `claude/huisstijl.md`. Logobronnen: `brand/`.
+- [x] **HS1** Naam "Kev’s Inn itiative" (WP13)
+- [ ] **HS2** Kleur-tokens licht/donker naar het nieuwe palet; goud = primaire actie, focus, beurt, selectie; rood alleen fout/destructief/kritiek
+- [ ] **HS3** Automatische contrasttest WCAG 2.2 AA over alle toestanden, beide thema's
+- [ ] **HS4** Playfair Display (merk, grote koppen) + Inter (rest), zelf meegeleverd
+- [ ] **HS5** Logo in de kop van Voorbereiden, favicon, app-iconen, lichte variant
+- [ ] **HS6** Componenten: knoppen, perkament-kaarten, chips, meldingen met icoon, lege toestanden, statblock
+- [ ] **HS7** Lijn-iconen in plaats van tekenglyphs (⚙ ✎ ⋯ ↶ ▸)
+- [ ] **HS8** Spelersscherm en tv-stand in huisstijl
 
 ## Taal
 - [ ] **TA1 Taaloptie Nederlands / English** (Instellingen, keuze bewaard op het apparaat). Bij English alle Nederlandse tekst vervangen: knoppen, labels, meldingen, logboek, hints, formulieren, spelersscherm en foutmeldingen (ook van de Worker). D&D-termen zijn al Engels. Aanpak: teksten centraal in een vertaalbestand per taal (`js/i18n/nl.js`, `en.js`) met een `t("sleutel")`-functie; logboekregels als sleutel + waarden opslaan zodat ze na wisselen ook vertaald zijn; test die bewaakt dat elke sleutel in beide talen bestaat

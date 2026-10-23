@@ -2,6 +2,7 @@
 // Encounter: { id, updatedAt, name, notes, monsters: [{ ref, n, hidden?, anon?, grp? }], lair?: { key, hidden? } }
 // id + updatedAt maken de collectie sync-klaar (fase 2). Hp-modus en initiative worden bewust niet bewaard.
 
+import { APP } from "../version.js";
 export const ENC_FORMAT = "initiative-tafel-encounter";
 export const ENC_VERSION = 1;
 export const MAX_N = 50, MAX_ROWS = 40, MAX_TOTAL = 100, MAX_ENCS = 500;
@@ -246,7 +247,7 @@ export function buildEncFile(enc, { own = [], lairs = {} } = {}) {
  * Accepteert ook een losse encounter (zonder omhulsel) niet: alleen het eigen formaat.
  */
 export function parseEncFile(json, now = Date.now()) {
-  if (!json || typeof json !== "object" || json.format !== ENC_FORMAT) throw new Error("Geen encounter-bestand van Initiative Tafel.");
+  if (!json || typeof json !== "object" || json.format !== ENC_FORMAT) throw new Error(`Geen encounter-bestand van ${APP}.`);
   if (Number(json.version) > ENC_VERSION) throw new Error("Dit encounter-bestand komt uit een nieuwere versie van de app. Werk de app eerst bij.");
   const enc = cleanEncounter(json.encounter, now);
   if (!enc) throw new Error("Dit encounter-bestand is leeg of beschadigd.");

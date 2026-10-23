@@ -11,7 +11,7 @@ import { bindSharing, dropSharing } from "./ui/kamer.js";
 import { setWriteGuard } from "./storage.js";
 import { claimTab } from "./tablock.js";
 import { $, toast } from "./ui/util.js";
-import { VERSION } from "./version.js";
+import { VERSION, APP } from "./version.js";
 import { bindEnc } from "./ui/encounters.js";
 import { bindEnd } from "./ui/einde.js";
 import { bindSettings } from "./ui/settings.js";
@@ -48,7 +48,7 @@ function tabLost() {
   d.setAttribute("aria-describedby", "ts-d");
   d.innerHTML = `<div class="tabstop-card">
     <h2 id="ts-t">Dit tabblad is gestopt</h2>
-    <p id="ts-d">Initiative Tafel staat ook in een ander tabblad of venster open. Daar wordt nu opgeslagen, hier niet meer, zodat er niets overschreven wordt.</p>
+    <p id="ts-d">${APP} staat ook in een ander tabblad of venster open. Daar wordt nu opgeslagen, hier niet meer, zodat er niets overschreven wordt.</p>
     <button type="button" class="btn primary tap">Hier verder werken</button>
     <p class="hint">Laadt de nieuwste stand. Het andere tabblad stopt dan.</p>
   </div>`;
@@ -63,7 +63,7 @@ async function boot() {
   setWarn(toast);
   // pagina (index.html) en scripts moeten van dezelfde versie zijn; anders zichtbaar maken
   const pv = document.querySelector('meta[name="it-version"]')?.content;
-  $("#app-version").textContent = `Initiative Tafel ${VERSION}${pv === VERSION ? "" : ` · pagina ${pv || "ouder"}`}`;
+  $("#app-version").textContent = `${APP} ${VERSION}${pv === VERSION ? "" : ` · pagina ${pv || "ouder"}`}`;
   try {
     await Promise.all([load(), loadSrd()]);
   } catch (e) {

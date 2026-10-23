@@ -1,5 +1,6 @@
 // Encounters klaarzetten (tab in het Monster-paneel) en XP-moeilijkheid. Regels puur in js/rules/encounters.js.
 // UI-toestand (concept, menu, uitleg) staat in `ui` (render.js); de encounters zelf in app.encounters (IndexedDB, niet in undo).
+import { APP } from "../version.js";
 import { $, esc, toast, toastHtml, closeToast } from "./util.js";
 import { app, because, addWhy, logAs, commit, saveEncounters, saveLairs, saveLibrary } from "../state.js";
 import { render, ui, monListHtml } from "./render.js";
@@ -308,7 +309,7 @@ function importDone(p, mode) {
 async function importFile(file) {
   let p;
   try { p = E.parseEncFile(JSON.parse(await file.text())); }
-  catch (err) { toast(err instanceof SyntaxError ? "Geen encounter-bestand van Initiative Tafel." : err.message); return; }
+  catch (err) { toast(err instanceof SyntaxError ? `Geen encounter-bestand van ${APP}.` : err.message); return; }
   if (findEnc(p.enc.id)) { ui.encImp = p; ui.encEdit = null; repaint(); return; } // nooit stil overschrijven
   importDone(p, "new");
 }

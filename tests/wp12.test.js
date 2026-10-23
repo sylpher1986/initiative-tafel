@@ -9,7 +9,7 @@ const pc = (o = {}) => ({ id: "p", kind: "pc", name: "Aria", hp: 0, max: 20, con
 
 test("AF11: exportnaam in lokale tijd", () => {
   const t = new Date(2026, 0, 2, 3, 4); // lokaal 2 jan 03:04
-  assert.equal(exportName(t), "initiative-tafel-2026-01-02-03-04.json");
+  assert.equal(exportName(t), "kevs-inn-itiative-2026-01-02-03-04.json");
 });
 
 test("AF11: dode wezens niet in de casterlijst", () => {

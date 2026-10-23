@@ -1,4 +1,5 @@
 // Export/import van alle data als één JSON-bestand met versienummer.
+import { APP } from "./version.js";
 import { sanitizeOwn } from "./data/monsters.js";
 import { CONDS } from "./rules/turns.js";
 import { cleanImg } from "./ui/avatar.js";
@@ -12,10 +13,10 @@ import { cleanPas } from "./rules/passives.js";
 export const FORMAT = "initiative-tafel";
 export const VERSION = 2; // 2 (1.28.0): encounters erbij
 
-/** AF11: bestandsnaam in lokale tijd ("initiative-tafel-2026-10-23-21-14.json"), niet UTC */
+/** AF11: bestandsnaam in lokale tijd ("kevs-inn-itiative-2026-10-23-21-14.json"; het formaat heet nog "initiative-tafel"), niet UTC */
 export function exportName(t) {
   const p = (n) => String(n).padStart(2, "0");
-  return `initiative-tafel-${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}-${p(t.getHours())}-${p(t.getMinutes())}.json`;
+  return `kevs-inn-itiative-${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}-${p(t.getHours())}-${p(t.getMinutes())}.json`;
 }
 
 export function buildExport(app) {
@@ -123,7 +124,7 @@ const migrate1to2 = (json) => ({ ...json, version: 2, encounters: [] });
 
 /** Bestand → schone data, of een Error met een leesbare melding */
 export function parseImport(json) {
-  if (!obj(json) || json.format !== FORMAT) throw new Error("Dit is geen export van Initiative Tafel.");
+  if (!obj(json) || json.format !== FORMAT) throw new Error(`Dit is geen export van ${APP}.`);
   if (num(json.version) > VERSION) throw new Error("Deze export komt uit een nieuwere versie van de app. Werk de app eerst bij.");
   if (!(num(json.version) >= 2)) json = migrate1to2(json);
   const S = obj(json.state) || { list: [], round: 0, active: null };

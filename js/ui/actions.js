@@ -1,4 +1,5 @@
 // Alle gebruikersacties. Knoppen dragen data-a="naam" (rij-acties) of een id (algemene acties).
+import { APP } from "../version.js";
 import { openSettings } from "./settings.js";
 import { $, esc, n0, toast, toastHtml, closeToast, show } from "./util.js";
 import { app, because, addWhy, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
@@ -2010,7 +2011,7 @@ async function exportFile() {
   const json = exportJson(), name = exportName(new Date());
   try {
     const f = new File([json], name, { type: "application/json" });
-    if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: "Initiative Tafel export" }); return done(); }
+    if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: `${APP} export` }); return done(); }
   } catch (err) { if (err && err.name === "AbortError") return false; } // geannuleerd; andere fout: downloaden
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([json], { type: "application/json" })); a.download = name;

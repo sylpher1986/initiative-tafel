@@ -1,6 +1,7 @@
 // "Delen met spelers": spelersscherm op andere apparaten via een kamer op de Worker (js/share.js, worker/room.js).
 // Staat in Instellingen → Spelersscherm. Kamer (code + DM-token) in localStorage: na herladen loopt het delen door.
 // Alleen UI- en verbindingstoestand: niets hiervan zit in undo, opslag of export.
+import { APP } from "../version.js";
 import { roomChannel, dmLink, createRoom, normCode, fmtCode } from "../share.js";
 import { $, esc, toast, toastHtml, closeToast } from "./util.js";
 import { canWrite } from "../storage.js";
@@ -296,7 +297,7 @@ export function bindSharing(view, links) {
     else if (k === "copy") copy();
     else if (k === "resume") ch && ch.resume();
     else if (k === "hervat") resume();
-    else if (k === "deel") navigator.share({ title: "Initiative Tafel · spelersscherm", text: `Volg het gevecht: code ${fmtCode(room.code)}`, url: shareUrl() }).catch(() => {});
+    else if (k === "deel") navigator.share({ title: `${APP} · spelersscherm`, text: `Volg het gevecht: code ${fmtCode(room.code)}`, url: shareUrl() }).catch(() => {});
   });
   $("#toast")?.addEventListener("click", (e) => {
     if (e.target.closest("#toast-kamer")) resume();
