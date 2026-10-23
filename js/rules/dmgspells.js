@@ -12,7 +12,9 @@ const AB = { strength: "STR", dexterity: "DEX", constitution: "CON", intelligenc
  * Spells met "saving throw" en schadedobbelstenen in de tekst die geen schade-spell voor dit paneel zijn:
  * de save gaat over iets anders (Web: losbranden, Heat Metal: laten vallen) of schade is een bijzaak of straf (Geas, Dream).
  */
-export const SKIP = ["Bestow Curse", "Contact Other Plane", "Control Water", "Dream", "Feeblemind", "Geas", "Heat Metal", "Storm of Vengeance", "Web", "Weird"];
+export const SKIP = ["Bestow Curse", "Contact Other Plane", "Control Water", "Dream", "Earthquake", "Feeblemind", "Geas", "Heat Metal", "Storm of Vengeance", "Web", "Weird"];
+// Earthquake: de schade komt van instortende gebouwen (DEX), de CON-save in de tekst is voor concentratie.
+// Niet herkend en bewust niet met de hand toegevoegd: Delayed Blast Fireball ("base damage is 12d6", groeit per ronde).
 
 const dice = (s) => String(s).replace(/l0\b/g, "10").replace(/\s+/g, "");
 

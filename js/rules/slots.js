@@ -10,9 +10,6 @@ export function pactSlots(lv) {
   return { lvl: Math.min(5, Math.ceil(lv / 2)), max: lv >= 17 ? 4 : lv >= 11 ? 3 : lv >= 2 ? 2 : 1 };
 }
 
-/** Heeft deze deelnemer slots (gewoon of Pact)? */
-export const hasSlots = (c) => !!(c && c.casting && ((c.casting.slots || []).some((s) => s.max > 0) || (c.casting.pact && c.casting.pact.max > 0)));
-
 /** x/day-regel met deze spell ("3/day each: fireball", "1/day: cone of cold") → { g, i, o, label } of null */
 export function dailyFor(c, n) {
   const K = keys(n), D = (c && c.casting && c.casting.daily) || [];
@@ -42,17 +39,17 @@ export function slotChoices(c, lv, n = "") {
 }
 
 /**
- * Standaardkeuze: "self" als de caster zijn slots zelf bijhoudt (c.slotSelf) of niets meer over heeft; anders Pact als die
- * past (komt terug na een short rest), dan het laagste slot vanaf need (RE8: meer doelen = hoger slot) met slots over.
+ * Standaardkeuze: "self" als de caster zijn slots zelf bijhoudt (c.slotSelf, alleen door een tik van de DM); anders Pact als
+ * die past en vrij is (komt terug na een short rest), dan het laagste vrije slot vanaf need (RE8: meer doelen = hoger slot).
+ * Niets vrij: het laagste passende slot toch (de UI zegt "geen … meer over", er wordt niets afgeschreven; review: niet stil "Zelf").
  * Geen keuzes (cantrip, caster zonder slots) → "".
  */
 export function defaultSlot(c, lv, n = "", need = lv) {
   const opts = slotChoices(c, lv, n);
   if (!opts.length) return "";
   if (c.slotSelf) return "self";
-  if (opts[0].k[0] === "d") return opts[0].left > 0 ? opts[0].k : "self";
-  const fit = opts.filter((o) => o.lvl >= need && o.left > 0);
-  return (fit.find((o) => o.k === "p") || fit[0] || { k: "self" }).k;
+  const fit = opts.filter((o) => o.lvl >= need), free = fit.filter((o) => o.left > 0);
+  return (free.find((o) => o.k === "p") || free[0] || fit[0] || opts[opts.length - 1]).k;
 }
 
 /** Slot-level van een keuze (voor upcast en het aantal doelen); "self"/""/x/day = het spell-level */
@@ -64,7 +61,7 @@ export function slotLevel(c, k, lv) {
 
 /** "3rd-level slot", "3rd-level Pact-slot", "1/day" */
 export function slotName(c, k) {
-  if (!k || k === "self") return "";
+  if (!k || !/^(s\d|p$|d\d)/.test(k)) return ""; // "self", "run" (concentratie loopt al)
   if (k === "p") return `${ORD[c.casting.pact.lvl]}-level Pact-slot`;
   if (k[0] === "d") { const [g] = k.slice(1).split(".").map(Number); return ((c.casting.daily[g] || {}).label || "x/day").replace(/ each$/, ""); }
   return `${ORD[+k.slice(1)]}-level slot`;
@@ -81,15 +78,17 @@ function slotObj(c, k) {
 }
 
 /**
- * Slot afschrijven bij een cast (in dezelfde stap als de spell). k = keuze; "self" of "" = niets afschrijven.
- * Zet c.slotSelf als er iets te kiezen viel (onthouden per caster). Niets meer over: niet blokkeren, wel zeggen.
+ * Slot afschrijven bij een cast (in dezelfde stap als de spell). k = keuze; "self", "run" of "" = niets afschrijven.
+ * explicit = de DM tikte deze keuze: alleen dan wordt "Zelf" per caster onthouden (of weer vergeten bij een level).
+ * Niets meer over: niet blokkeren, wel zeggen. Het afschrijven zelf komt in het logboek via de toestandsvergelijking (log.js);
+ * hier alleen een oorzaak als er niets afgeschreven kon worden.
  * → { why: [{ t, id }], txt } (txt voor de melding: "3rd-level slot (1 over)" / "geen 3rd-level slot meer over" / "")
  */
-export function spendSlot(c, k, spell, lv) {
+export function spendSlot(c, k, spell, lv, explicit = false) {
   const out = { why: [], txt: "" };
   if (!c) return out;
-  if (slotChoices(c, lv, spell).length) { if (k === "self") c.slotSelf = true; else if (k) delete c.slotSelf; }
-  const o = k && k !== "self" ? slotObj(c, k) : null;
+  if (explicit && k && slotChoices(c, lv, spell).length) { if (k === "self") c.slotSelf = true; else if (k !== "run") delete c.slotSelf; }
+  const o = slotName(c, k) ? slotObj(c, k) : null;
   if (!o) return out;
   const nm = slotName(c, k);
   if (!(o.left > 0)) {
@@ -99,7 +98,6 @@ export function spendSlot(c, k, spell, lv) {
   }
   o.left--;
   out.txt = `${nm} (${o.left} over)`;
-  out.why.push({ t: `${spell}: ${out.txt}`, id: c.id });
   return out;
 }
 

@@ -101,6 +101,7 @@ export function cleanCombatant(c) {
     casting: c.casting === undefined ? undefined : cleanCasting(c.casting), res: cleanRes(c.res), sheet: cleanSheet(c.sheet),
     dr: kind === "pc" ? cleanDr(c.dr) : undefined, // weerstanden van een speler (SP2)
     slotSelf: c.slotSelf === true ? true : undefined, // RE1: slots zelf bijhouden (WP9)
+    concLvl: c.concSpell && Number.isInteger(c.concLvl) && c.concLvl >= 1 && c.concLvl <= 9 ? c.concLvl : undefined, // slot-level van een lopende schade-spell
   });
   if (obj(c.cd)) {
     out.cd = {};

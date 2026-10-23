@@ -1,6 +1,6 @@
 // Schade-spells met een save uit data/spells.json → js/rules/dmgtable.js (RE18).
 // De app heeft de tabel direct nodig (AoE-paneel), terwijl de spelldata pas bij de eerste tik laadt.
-// Draai opnieuw na het bijwerken van de spelldata of de parser; tests/dmgspells.test.js bewaakt dat het klopt.
+// Draai opnieuw na het bijwerken van de spelldata of de parser; tests/wp9.test.js bewaakt dat het klopt.
 // Gebruik (in de repo): node tools/dmg_spells.mjs
 import { readFileSync, writeFileSync } from "node:fs";
 import { buildDmgTable } from "../js/rules/dmgspells.js";

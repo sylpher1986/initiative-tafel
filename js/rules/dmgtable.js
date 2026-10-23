@@ -12,7 +12,6 @@ export const DMG_SPELLS = [
   {"n":"Cloudkill","lv":5,"ab":"CON","half":true,"dice":"5d8","type":"poison","up":"1d8","cant":false,"x":[],"conc":true},
   {"n":"Cone of Cold","lv":5,"ab":"CON","half":true,"dice":"8d8","type":"cold","up":"1d8","cant":false,"x":[],"conc":false},
   {"n":"Disintegrate","lv":6,"ab":"DEX","half":false,"dice":"10d6+40","type":"force","up":"3d6","cant":false,"x":[],"conc":false},
-  {"n":"Earthquake","lv":8,"ab":"CON","half":true,"dice":"5d6","type":"bludgeoning","up":null,"cant":false,"x":[],"conc":true},
   {"n":"Finger of Death","lv":7,"ab":"CON","half":true,"dice":"7d8+30","type":"necrotic","up":null,"cant":false,"x":[],"conc":false},
   {"n":"Fire Storm","lv":7,"ab":"DEX","half":true,"dice":"7d10","type":"fire","up":null,"cant":false,"x":[],"conc":false},
   {"n":"Fireball","lv":3,"ab":"DEX","half":true,"dice":"8d6","type":"fire","up":"1d6","cant":false,"x":[],"conc":false},
