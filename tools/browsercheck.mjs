@@ -66,6 +66,23 @@ const SCEN = {
     await SCEN.fight(page); await tap(page, "#order .c.k.turn .khp"); await page.waitForSelector("#sheet .pad");
     await page.locator("#sheet .pad button", { hasText: /^7$/ }).first().tap();
   },
+  // WP15: letters geladen, h1 op één regel, gevecht met open statblock (Playfair-naam, Inter-tekst)
+  async letters(page) {
+    await SCEN.prep(page);
+    const f = await page.evaluate(async () => { await document.fonts.ready; const h = document.querySelector("h1"), lh = parseFloat(getComputedStyle(h).lineHeight);
+      return { inter: document.fonts.check('16px "Inter"'), play: document.fonts.check('800 26px "Playfair Display"'), lines: Math.round(h.getBoundingClientRect().height / lh) }; });
+    if (!f.inter || !f.play) throw new Error("letters niet geladen: " + JSON.stringify(f));
+    if (f.lines > 1) throw new Error(`h1 over ${f.lines} regels`);
+    await tap(page, "#start");
+    const n = await page.locator('[data-ia="roll"]').count();
+    for (let i = 0; i < n; i++) await page.locator('[data-ia="roll"]').nth(i).tap();
+    if (n) await tap(page, '[data-ia="go"]');
+    await page.waitForSelector("#next");
+    const mon = page.locator("#order .c.k.mon").first();
+    if (!(await mon.evaluate((el) => el.classList.contains("open")))) await mon.locator(".khead").tap();
+    await mon.locator('[data-a="sb"]').tap();
+    await page.waitForSelector(".sb h2", { state: "visible" });
+  },
   speler: null, // eigen startpagina, zie START
 };
 
@@ -113,6 +130,7 @@ async function main() {
         if (SCEN[name]) { await page.waitForSelector("#dock"); await SCEN[name](page, base); }
         else await page.waitForLoadState("networkidle");
         if (process.env.BC_PROBE) await page.evaluate(() => document.body.insertAdjacentHTML("afterbegin", '<button id="probe" style="width:30px;height:30px">x</button>'));
+        await page.evaluate(() => document.fonts.ready); // Inter is breder dan de terugvalletter: meten met de echte letter
         await page.waitForTimeout(150);
       } catch (e) { errs.push("scenario: " + e.message.split("\n")[0]); }
       const m = await page.evaluate(measure).catch((e) => ({ hscroll: NaN, small: [], err: e.message }));

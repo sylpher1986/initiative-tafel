@@ -4,14 +4,12 @@ body{margin:0}
 [hidden]{display:none!important}
 img{max-width:100%}
 
-/* Lettertypes: zelf meegeleverd (latin-subset, woff2), werkt offline en zonder Google. Licentie: fonts/OFL.txt */
-@font-face{font-family:"Alegreya SC";font-style:normal;font-weight:500;font-display:swap;src:url("../fonts/alegreya-sc-500.woff2") format("woff2")}
-@font-face{font-family:"Alegreya SC";font-style:normal;font-weight:700;font-display:swap;src:url("../fonts/alegreya-sc-700.woff2") format("woff2")}
-@font-face{font-family:"Alegreya SC";font-style:normal;font-weight:800;font-display:swap;src:url("../fonts/alegreya-sc-800.woff2") format("woff2")}
-@font-face{font-family:"Alegreya Sans";font-style:normal;font-weight:400;font-display:swap;src:url("../fonts/alegreya-sans-400.woff2") format("woff2")}
-@font-face{font-family:"Alegreya Sans";font-style:italic;font-weight:400;font-display:swap;src:url("../fonts/alegreya-sans-400-italic.woff2") format("woff2")}
-@font-face{font-family:"Alegreya Sans";font-style:normal;font-weight:700;font-display:swap;src:url("../fonts/alegreya-sans-700.woff2") format("woff2")}
-@font-face{font-family:"Alegreya Sans";font-style:italic;font-weight:700;font-display:swap;src:url("../fonts/alegreya-sans-700-italic.woff2") format("woff2")}
+/* Lettertypes (WP15, huisstijl): Inter voor alles, Playfair Display alleen voor merk en grote koppen (h1, statblock-naam).
+   Zelf meegeleverd: latin-subset, variabel gewicht (één bestand per stijl), werkt offline en zonder Google. Licentie: fonts/OFL.txt.
+   Buiten de unicode-range valt de browser terug op de systeemletter. */
+@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:swap;src:url("../fonts/inter-latin-wght.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Inter";font-style:italic;font-weight:100 900;font-display:swap;src:url("../fonts/inter-latin-wght-italic.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Playfair Display";font-style:normal;font-weight:400 900;font-display:swap;src:url("../fonts/playfair-display-latin-wght.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 
 /* Layout: DM-scherm — links de initiative-volgorde als stapel kaarten, rechts (of als sheet op mobiel) het statblock in klassieke rode lijnvoering */
 /* Kleurtokens (WP14, huisstijl Kev's Inn). Componenten gebruiken alleen deze tokens, geen hex (tests/contrast.test.js).
@@ -29,8 +27,9 @@ img{max-width:100%}
   --mon:#5b5b5b; --mon-soft:#e2e0da; --pc-soft:#ebdcc6; --sb-ink:#8a1f14;
   --fight-bg:#3b2f26; --fight-fg:#ffffff; --fight-muted:#d9cfc2; --fight-btn:#4a3c31; --fight-btn-line:#a08c78;
   --t-link:#e0b565; --t-good:#7fe08f; --t-bad:#ff9a90; /* op de melding (achtergrond --fg) */
-  --display:"Alegreya SC", Georgia, "Times New Roman", serif;
-  --body:"Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --brand:"Playfair Display", Georgia, "Times New Roman", serif; /* alleen merk, h1, statblock-naam */
+  --body:"Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --display:var(--body); /* koppen, namen en grote cijfers: Inter vet */
   --r:10px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
@@ -61,7 +60,7 @@ button{cursor:pointer}
 @media (min-width:900px){.wrap{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}}
 
 header.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;justify-content:space-between}
-h1{font-family:var(--display);font-weight:800;font-size:1.6rem;margin:0;letter-spacing:.01em;text-wrap:balance}
+h1{font-family:var(--brand);font-weight:800;font-size:1.6rem;margin:0;letter-spacing:0;line-height:1.15;text-wrap:balance}
 h1 span{color:var(--act-ink)}
 .round{display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
 .round b{font-family:var(--display);font-size:1.15rem}
@@ -86,7 +85,7 @@ ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .c.down .nm{text-decoration:line-through}
 .c>*:not(.init){grid-column:2;min-width:0}
 .init{grid-column:1;grid-row:1/span 12;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;border-right:1px solid var(--line);padding-top:2px}
-.init input{width:44px;text-align:center;border:0;background:transparent;font-family:var(--display);font-weight:800;font-size:1.35rem;font-variant-numeric:tabular-nums;padding:0}
+.init input{width:44px;text-align:center;border:0;background:transparent;font-family:var(--display);font-weight:700;font-size:1.35rem;font-variant-numeric:tabular-nums;padding:0}
 .init small{font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .row1{display:flex;align-items:baseline;gap:8px;min-width:0;flex-wrap:wrap}
 .nm{font-weight:700;font-size:1.05rem;min-width:0;overflow-wrap:anywhere}
@@ -239,8 +238,8 @@ textarea{min-height:120px;resize:vertical}
 /* Statblock */
 .sbwrap{position:sticky;top:12px}
 .sb{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--sb-ink);border-bottom:4px solid var(--sb-ink);border-radius:4px;padding:14px 16px;max-height:calc(100vh - 24px);overflow:auto}
-.sb h2{font-family:var(--display);color:var(--sb-ink);font-size:1.6rem;margin:0;line-height:1.1}
-.sb .meta,.sbx .meta{font-style:italic;color:var(--muted);margin:2px 0 8px}
+.sb h2{font-family:var(--brand);font-weight:700;color:var(--sb-ink);font-size:1.6rem;margin:0;line-height:1.1}
+.sb .meta,.sbx .meta{font-style:italic;color:var(--muted);margin:2px 0 8px;font-size:.9rem;line-height:1.3}
 .sb hr,.sbx hr{border:0;height:2px;background:linear-gradient(90deg,var(--sb-ink),transparent);margin:8px 0}
 .sb p,.sbx p{margin:4px 0;line-height:1.9}
 .lact p,#rsheet p,.sb .pre{line-height:1.9} /* AF14: overal waar diceify worpen zet */
@@ -274,7 +273,10 @@ textarea{min-height:120px;resize:vertical}
 .dice{border:0;border-bottom:1px dotted var(--act-ink);background:none;padding:4px 3px;margin:0 -1px;border-radius:6px;line-height:1.25;color:var(--act-ink);font-weight:700}
 .dice:hover{background:var(--act-soft)}
 .sbempty{color:var(--muted);text-align:center;padding:30px 10px}
-.sbhead{display:flex;justify-content:space-between;align-items:start;gap:8px}
+.sbhead{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:0 8px}
+.sbhead>div:first-child{display:contents}
+.sbhead>.sbbtns{grid-column:2;grid-row:1}
+.sbhead .meta{grid-column:1/-1}
 .closebtn{display:none}
 .pre{white-space:pre-wrap}
 .credit{font-size:.75rem;color:var(--muted);margin-top:14px}
@@ -348,9 +350,9 @@ ol.order{gap:6px}
 .khead,.c.k.lair>.i,.c.k.lair>.n,.c.k.lair>.meta{all:unset}
 .khead{box-sizing:border-box;width:100%;display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:4px 10px;padding:10px 12px 8px 4px;cursor:pointer;color:var(--fg);font:inherit}
 .khead:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;border-radius:var(--r)}
-.c.k .i{font-family:var(--display);font-weight:800;font-size:1.2rem;text-align:center;font-variant-numeric:tabular-nums;line-height:1}
+.c.k .i{font-family:var(--display);font-weight:700;font-size:1.2rem;text-align:center;font-variant-numeric:tabular-nums;line-height:1}
 .c.k .tri{display:block;font-size:.65rem;color:inherit;margin-top:2px}
-.c.k .n{font-weight:700;font-size:1.02rem;min-width:0}
+.c.k .n{font-weight:600;font-size:1.02rem;min-width:0;letter-spacing:-.01em}
 .c.k .n{display:flex;align-items:center;gap:8px}
 .c.k .n>.nm{display:block;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .c.k .meta{font-size:.82rem;color:var(--muted);white-space:nowrap}
@@ -387,7 +389,7 @@ ol.order{gap:6px}
 .bd.cbtn{cursor:pointer;min-height:44px;padding-inline:10px}
 .kbody{padding:0 12px 12px 48px;display:grid;gap:8px}
 .acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.acts button{min-height:46px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-weight:700;font-size:.85rem;padding:4px;color:var(--fg)}
+.acts button{min-height:46px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-weight:600;font-size:.8rem;letter-spacing:-.01em;padding:4px 2px;color:var(--fg)}
 .acts button[aria-pressed="true"]{background:var(--act-soft);color:var(--fg);border-color:var(--sel);box-shadow:inset 0 0 0 1px var(--sel)}
 .acts .dmg2{background:var(--fg);border-color:var(--fg);color:var(--bg)}
 .acts .heal2{color:var(--good)}
@@ -410,9 +412,11 @@ ol.order{gap:6px}
 .dock>*{max-width:680px;margin-inline:auto}
 .dock .who{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
 .dock .who .l{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-.dock .who b{font-family:var(--display);font-size:1.15rem;color:var(--act-ink)}
+.dock .who>span:first-child{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden}
+.dock .who b{font-family:var(--display);font-size:1.05rem;font-weight:700;color:var(--act-ink);display:inline-block;max-width:100%;vertical-align:bottom;overflow:hidden;text-overflow:ellipsis}
+.dock .who b:not(:last-child){max-width:calc(100% - 3.5em)}
 .dock .who .gk{font-size:.85rem;font-weight:700;color:var(--muted);white-space:nowrap}
-.dock .who .r{font-size:.8rem;color:var(--muted);text-align:right;min-width:0}
+.dock .who .r{font-size:.8rem;color:var(--muted);text-align:right;min-width:0;max-width:50%;flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dock .row{display:grid;grid-template-columns:52px 52px minmax(0,1fr);gap:8px}
 .dock .prow{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,.9fr) 50px;gap:6px;margin-bottom:8px}
 .dock .prow button{min-height:48px;font-size:.95rem;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;justify-content:center}
@@ -439,7 +443,7 @@ ol.order{gap:6px}
 .seg2 button+button{border-left:1px solid var(--line)}
 .seg2 button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
 .seg2.sm button{font-size:.8rem;min-height:44px;padding:6px 2px}
-.disp{font-family:var(--display);font-size:2.4rem;text-align:center;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.disp{font-family:var(--display);font-size:2.4rem;text-align:center;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
 .preview{text-align:center;color:var(--muted);font-size:.95rem;min-height:1.4em}
 .preview b{color:var(--fg)}.preview .bad{color:var(--bad)}
 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -462,14 +466,15 @@ body[data-mode="fight"] #resetbar{display:none}
 .phase .on{color:var(--fg);font-weight:700}
 .phase .on .dot{background:var(--fg);border-color:var(--fg);color:var(--bg)}
 .phase .ln{flex:0 0 28px;height:1.5px;background:var(--line)}
-.fhead{background:var(--fight-bg);color:var(--fight-fg);border-radius:14px;padding:12px 12px 12px 16px;display:flex;align-items:center;gap:10px}
-.fhead .ft{flex:1 1 auto;min-width:0;display:grid;justify-items:start;text-align:left;font:inherit;color:inherit;background:transparent;border:1px solid var(--fight-btn-line);border-radius:12px;padding:6px 10px;margin:-6px 0 -6px -10px;cursor:pointer}
+.fhead{background:var(--fight-bg);color:var(--fight-fg);border-radius:14px;padding:12px 10px 12px 14px;display:flex;align-items:center;gap:8px}
+.fhead .ft{flex:1 1 auto;min-width:0;display:grid;justify-items:start;text-align:left;font:inherit;color:inherit;background:transparent;border:1px solid var(--fight-btn-line);border-radius:12px;padding:6px 8px;margin:-6px 0 -6px -8px;cursor:pointer}
 .fhead .ft:focus-visible{outline-color:var(--fight-fg)}
 @media (hover:hover){.fhead .ft:hover{background:var(--fight-btn)}}
 .fhead .lk{color:var(--fight-fg)}
 .fhead .l{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--fight-muted)}
-.fhead .rn{font-family:var(--display);font-size:2rem;line-height:1.05;font-weight:800;white-space:nowrap}
-.fhead .fsum{font-size:.85rem;color:var(--fight-muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.fhead .rn{font-family:var(--display);font-size:2rem;line-height:1.05;font-weight:700;white-space:nowrap}
+.fhead .fsum{font-size:.78rem;letter-spacing:-.01em;color:var(--fight-muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.fhead .fsum>span{white-space:nowrap} /* WP15: past op 320 px tot 9/9; daarboven breekt hij tussen Party en Vijanden, nooit een aantal achter een ellipsis */
 .fhead .fsum b{color:var(--fight-fg)}
 .fhead .fb{flex:0 0 auto;min-width:48px;min-height:48px;border-radius:12px;border:1px solid var(--fight-btn-line);background:var(--fight-btn);color:var(--fight-fg);font-weight:700;font-size:.95rem;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px}
 .fhead .fb.ic{padding:0}
@@ -529,7 +534,7 @@ body:has(.sheet-wrap:not([hidden])) .toast{top:calc(8px + env(safe-area-inset-to
 @media (max-width:399px){.dock .nb{display:none}}
 .asheet{gap:12px}
 .arow{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;align-items:end}
-.arow #a-dmg{font-family:var(--display);font-weight:800;font-size:1.5rem;text-align:center;padding:4px}
+.arow #a-dmg{font-family:var(--display);font-weight:700;font-size:1.5rem;text-align:center;padding:4px}
 /* RE18/RE1: caster, schade-spell, slot en dobbelstenen bovenaan de tab Schade */
 .acast,.aspell{display:grid;gap:8px}
 .dchips{display:flex;flex-wrap:wrap;gap:6px}
