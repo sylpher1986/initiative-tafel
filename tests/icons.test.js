@@ -7,9 +7,10 @@ import { ico, chev, dsMini } from "../js/ui/icons.js";
 
 const read = (p) => readFileSync(new URL("../" + p, import.meta.url), "utf8");
 const sprite = read("icons/ui.svg");
-const files = ["js/speler.js", "js/ui/util.js", ...readdirSync(new URL("../js/ui/", import.meta.url)).filter((f) => f.endsWith(".js")).map((f) => "js/ui/" + f)];
-// code zonder commentaar (// … en /* … */), zodat uitleg met ▸ of ⋯ mag blijven
-const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
+const files = ["js/speler.js", ...readdirSync(new URL("../js/ui/", import.meta.url)).filter((f) => f.endsWith(".js")).map((f) => "js/ui/" + f)];
+// Alleen hele commentaarregels weghalen (// …, /* … */, * …) en een staart "  // …" na code; niets binnen strings
+// (dev-review: een /* in accept="image/*" of // in een template-literal mag geen code wegknippen).
+const code = (s) => s.split("\n").map((l) => (/^\s*(\/\/|\/\*|\*)/.test(l) ? "" : l.replace(/;\s+\/\/ .*$/, ";"))).join("\n");
 
 test("elk gebruikt icoon bestaat in icons/ui.svg", () => {
   const used = new Set(["alert", "chev", "check", "x"]);
@@ -34,6 +35,12 @@ test("geen tekenglyphs meer als knop of uitklappijl", () => {
   const css = code(read("css/app.css"));
   if (/content:"[▸▾▴▶]"/.test(css)) hits.push("css/app.css: content-glyph");
   assert.deepEqual(hits, []);
+});
+
+test("een knop met alleen een icoon heeft een aria-label", () => {
+  const bad = [];
+  for (const f of files) for (const [tag] of read(f).matchAll(/<button[^>]*>\$\{(?:ico\(|PEN|PLUS|GEAR)[^}]*\}<\/button>/g)) if (!/aria-label=/.test(tag)) bad.push(`${f}: ${tag.slice(0, 80)}`);
+  assert.deepEqual(bad, []);
 });
 
 test("ico, chev en dsMini", () => {

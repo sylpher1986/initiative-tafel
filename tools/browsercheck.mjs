@@ -42,7 +42,7 @@ function serve() {
 }
 
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
-const START = { speler: "/speler", tagline: "/speler" };
+const START = { speler: "/speler", tagline: "/speler", stale: "/speler" };
 const tap = (page, sel) => page.locator(sel).first().tap();
 
 // Scenario's. Elk begint op een verse pagina (rondleiding uit, lege opslag).
@@ -100,13 +100,28 @@ const SCEN = {
       const ab = [...document.querySelectorAll(".sb .abil button")].map((b) => Math.round(b.getBoundingClientRect().width));
       const ic = document.querySelector("#undo .li"), t = document.querySelector("#toast .tmsg.bad .tico");
       const cs = (el, p) => el && getComputedStyle(el)[p];
-      return { ab, min: Math.min(...ab), undo: ic && Math.round(ic.getBoundingClientRect().width), tico: !!t, role: cs(t?.closest(".tmsg"), "display") && t.closest(".tmsg").getAttribute("role"),
+      return { ab, min: Math.min(...ab), undo: ic && Math.round(ic.getBoundingClientRect().width), tico: !!t, vh: !!t?.closest(".tmsg").querySelector(".vh"),
         sb: cs(document.querySelector(".sb"), "backgroundColor"), card: cs(document.querySelector("#order .c"), "backgroundColor") };
     });
     if (!r.ab.length || r.min < 44) throw new Error("ability-knoppen < 44 px: " + r.ab.join(","));
     if (!r.undo || r.undo < 18) throw new Error("undo-icoon ontbreekt of te klein");
-    if (!r.tico || r.role !== "alert") throw new Error("foutmelding zonder icoon of role=alert");
+    if (!r.tico || !r.vh) throw new Error("foutmelding zonder icoon of \"Let op:\"");
     if (r.sb === "rgb(255, 255, 255)" || r.card === "rgb(255, 255, 255)") throw new Error("statblock/kaart nog wit: " + JSON.stringify(r));
+  },
+  // WP17-review: spelersscherm "jij aan de beurt" + verbinding kwijt: de kop wordt neutraal en alle tekst blijft leesbaar
+  async stale(page) {
+    const r = await page.evaluate(() => {
+      const n = document.querySelector("#pv-now");
+      n.innerHTML = '<div><span class="l">Ronde 2 · aan de beurt</span><b>Aria</b></div><div class="r"><span class="l">Daarna</span> Goblin 1</div>';
+      n.classList.add("me"); document.body.classList.add("stale"); n.closest(".pvstick")?.classList.remove("off");
+      const rgb = (c) => c.match(/[\d.]+/g).slice(0, 3).map(Number);
+      const lum = (c) => { const v = rgb(c).map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+      const bg = getComputedStyle(n).backgroundColor, out = {};
+      for (const sel of ["b", ".r", ".l"]) { const a = lum(getComputedStyle(n.querySelector(sel)).color), b = lum(bg); out[sel] = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); }
+      return out;
+    });
+    const low = Object.entries(r).filter(([, v]) => v < 4.5);
+    if (low.length) throw new Error("stale + jij onleesbaar: " + low.map(([k, v]) => `${k} ${v.toFixed(2)}`).join(", "));
   },
   async tagline(page) { if (!(await page.locator("#pv-tag").isVisible())) throw new Error("tagline niet zichtbaar in de wachtstand"); },
 };

@@ -19,7 +19,7 @@ export const STOPS = {
     { sel: ["#dock .who"], t: "Aan de beurt", x: "Wie nu speelt en wie daarna. Zijn kaart staat open." },
     { sel: ["#order li.c.turn .khp"], t: "Schade en heal", x: "Tik op de HP-balk voor het cijferpaneel." },
     { sel: ["#next"], t: "Volgende beurt", x: "Telt rondes, condities en effecten vanzelf af." },
-    { sel: ["#prev", "#undo"], t: "Terug en ongedaan", x: "‹ Vorige gaat een beurt terug. ↶ draait je laatste actie terug, ook schade." },
+    { sel: ["#prev", "#undo"], t: "Terug en ongedaan", x: "‹ Vorige gaat een beurt terug. De pijl-terug-knop draait je laatste actie terug, ook schade." },
     { sel: ["#aoe"], t: "AoE", x: "Eén schadeworp op meerdere doelen, met een save per doel. Of een spell als Bless." },
     { sel: ["#logopen"], t: "Logboek", x: "Tik op het rondeblok voor alles wat er gebeurde. Daar zet je ook een reden bij." },
   ],

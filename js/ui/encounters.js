@@ -320,7 +320,7 @@ function setCount(x, i, t) {
   const m = x.monsters[i]; if (!m) return;
   const r = E.clampCount(x, i, t.value);
   if (r.n == null) { t.value = m.n; return; }
-  if (r.msg) toast(r.msg);
+  if (r.msg) toastBad(r.msg);
   m.n = r.n; t.value = r.n;
   if (r.n < 2) delete m.grp;
 }

@@ -884,7 +884,7 @@ body.tv .pvlog{min-height:calc(3 * 1.35em)}
 .pvnow .r.me{color:var(--now-ink);font-weight:700}
 /* WP17 (HS8): walnoot-kop zoals de gevechtskop van de DM; verbinding kwijt (body.stale) = neutraal, leest niet als live */
 body.stale .pvnow{background:var(--sunk);border-color:var(--line);color:var(--muted)}
-body.stale .pvnow b,body.stale .pvnow .l,body.stale .pvnow .r.me{color:var(--muted)}
+body.stale .pvnow b,body.stale .pvnow .l,body.stale .pvnow .r{color:var(--muted)} /* ook in stale + .me (dev-review) */
 .pvnow.me .r.me{color:var(--act-fg)}
 .pvme{background:var(--surface);border:2px solid var(--line-strong);border-radius:var(--r);padding:.5em .8em;display:grid;grid-template-columns:minmax(0,1fr);gap:.35em}
 .pvme>*{grid-column:1/-1}
@@ -899,6 +899,7 @@ body.stale .pvnow b,body.stale .pvnow .l,body.stale .pvnow .r.me{color:var(--mut
 .pvsl .l{font-size:.6em;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);align-self:center;margin-right:.2em}
 .pvmiss{margin:0;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:0 .5em}
 .pvc.me{box-shadow:inset 4px 0 0 var(--fg)}
+.pvc.turn.me{box-shadow:inset 4px 0 0 var(--fg),inset 0 0 0 1px var(--sel)} /* beurtring ook op de eigen rij */
 /* SC8: lange namen over twee regels in de lijst (de vaste kop houdt één regel) */
 .pvn{align-items:flex-start}
 .pvn .av,.pvn .pvnext{align-self:center}

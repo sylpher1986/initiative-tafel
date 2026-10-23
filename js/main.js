@@ -10,7 +10,7 @@ import { localChannel, dmLink } from "./share.js";
 import { bindSharing, dropSharing } from "./ui/kamer.js";
 import { setWriteGuard } from "./storage.js";
 import { claimTab } from "./tablock.js";
-import { $, toast, toastBad } from "./ui/util.js";
+import { $, toastBad } from "./ui/util.js";
 import { VERSION, APP } from "./version.js";
 import { bindEnc } from "./ui/encounters.js";
 import { bindEnd } from "./ui/einde.js";
@@ -60,7 +60,7 @@ function tabLost() {
 async function boot() {
   // vóór het laden: het vorige tabblad stopt met opslaan voordat dit tabblad de stand leest
   setWriteGuard(claimTab(tabLost));
-  setWarn(toast);
+  setWarn(toastBad); // opslaan mislukt = de belangrijkste fout (WP17-review)
   // pagina (index.html) en scripts moeten van dezelfde versie zijn; anders zichtbaar maken
   const pv = document.querySelector('meta[name="it-version"]')?.content;
   $("#app-version").textContent = `${APP} ${VERSION}${pv === VERSION ? "" : ` · pagina ${pv || "ouder"}`}`;

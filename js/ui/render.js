@@ -481,7 +481,7 @@ function rageBox(c) {
     <p class="hint">${esc(res)}</p>${conc}
     <div class="effgrid rgopt">${tg("bear", "Bear Totem")}${tg("frz", "Frenzy")}</div>
     ${o.frz ? `<p class="hint">Frenzy: na afloop één niveau exhaustion.</p>` : ""}
-    ${on ? `<p class="hint rgwarn">Rage loopt al. Beëindigen: ${ico("x")} op de chip.</p>` : ""}
+    ${on ? `<p class="hint rgwarn">Rage loopt al. Beëindigen: tik op de Rage-chip.</p>` : ""}
     <div class="bar"><button type="button" class="btn tap" data-a="rage-no">Annuleer</button><button type="button" class="btn primary tap" data-a="rage-go" ${on ? "disabled" : ""}>Start Rage${r && r.left <= 0 ? " (0 over)" : ""}</button></div></div>`;
 }
 

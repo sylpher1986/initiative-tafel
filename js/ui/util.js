@@ -12,14 +12,15 @@ const TMAX = 3;
 export function toastHtml(html, bad = false) {
   const box = $("#toast");
   const now = Date.now();
-  let m = now - tLast < 300 && tEl?.isConnected ? tEl : null;
+  let m = now - tLast < 300 && tEl?.isConnected && tEl.classList.contains("bad") === bad ? tEl : null; // fout en gewoon niet samenvoegen
   tLast = now;
   if (m) m.insertAdjacentHTML("beforeend", "<br>" + html);
   else {
     m = document.createElement("div");
     m.className = bad ? "tmsg bad" : "tmsg";
-    if (bad) m.setAttribute("role", "alert"); // WP17 (HS6): weigering of fout, met icoon; de rest zonder (geen ruis aan tafel)
-    m.innerHTML = (bad ? ico("alert", "tico") : "") + html;
+    // WP17 (HS6): weigering of fout met icoon; de rest zonder (geen ruis aan tafel). Geen role="alert": #toast is al een
+    // live-regio en geneste regio's worden op iOS/NVDA soms dubbel voorgelezen (dev-review); "Let op:" alleen voor schermlezers.
+    m.innerHTML = (bad ? ico("alert", "tico") + '<span class="vh">Let op: </span>' : "") + html;
     box.appendChild(m);
   }
   tEl = m;
@@ -34,7 +35,7 @@ export function closeToast() {
   if (b) b.closest(".tmsg").remove();
 }
 export const toast = (text) => toastHtml(esc(text));
-/** Melding voor een weigering of fout (validatie, laden mislukt): icoon + role=alert */
+/** Melding voor een weigering of fout (validatie, laden mislukt): icoon + "Let op:" voor schermlezers */
 export const toastBad = (text) => toastHtml(esc(text), true);
 /** Fx-meldingen uit de regels tonen */
 export const show = (fx) => fx && fx.msgs.forEach((m) => toast(m));
