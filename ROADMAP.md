@@ -109,7 +109,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - Geen open punten (DA3 klaar in 1.31.8, zie Klaar).
 
 ## Huisstijl Kev's Inn (23-10-2026)
-Plan, palet, contrastmetingen en het kleurbesluit van Michiel: projectdoc `claude/huisstijl.md`. Logobronnen: `brand/`.
+Afgerond in WP13–WP17 (1.44.1–1.48.0); keuzes in CLAUDE.md, overzicht in projectdoc `claude/archief.md`. Logobronnen: `brand/`.
 - [x] **HS1** Naam "Kev’s Inn itiative" (WP13)
 - [x] **HS2** Kleur-tokens licht/donker naar het nieuwe palet; goud = primaire actie, focus, beurt, selectie; rood alleen fout/destructief/kritiek
 - [x] **HS3** Automatische contrasttest WCAG 2.2 AA over alle toestanden, beide thema's
