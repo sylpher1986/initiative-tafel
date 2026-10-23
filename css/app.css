@@ -112,6 +112,13 @@ ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .dsp.s{color:var(--good)} .dsp.f{color:var(--bad)}
 .dsp[data-on="true"]::before{background:currentColor}
 .dsp:focus-visible{outline-offset:-6px}
+/* RE15: cijferpad voor de eigen death save-worp (onder het death-save-blok) */
+.dspad{margin-top:8px}
+.dspad .dsv{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 6px}
+.dspad .dsv b{font-size:1.5rem;font-variant-numeric:tabular-nums;min-width:2ch;text-align:right}
+.dspad .pad button:disabled{opacity:.35}
+.dspad .pad .ok{font-size:1.05rem}
+.dspad .hint{margin:6px 0 0}
 .ds .st{font-weight:700}
 .ds .st.ok{color:var(--good)} .ds .st.dead{color:var(--bad)}
 .rcs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
