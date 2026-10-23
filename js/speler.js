@@ -230,7 +230,8 @@ function fitTv(force) {
 let tvRaf = 0;
 const refit = () => { cancelAnimationFrame(tvRaf); tvRaf = requestAnimationFrame(() => fitTv(true)); };
 
-/** QR op de tv (en de tagline, overal): alleen via een kamer (het lokale kanaal heeft geen code), zonder gevecht of tijdens de pauze */
+/** Tagline (overal) en QR op de tv, beide alleen in de wachtstand: geen stand, geen ronde of pauze.
+ *  De QR alleen via een kamer (het lokale kanaal heeft geen code). */
 let qrFor = "";
 function tvQr() {
   const idle = paused || !lastV || !lastV.round;
@@ -318,6 +319,7 @@ function netLostNow() {
     clear();
     $("#pv-wait").hidden = false;
     $("#pv-wait").textContent = "Geen verbinding. Zodra die terug is, verschijnt het gevecht hier vanzelf.";
+    tvQr(); fitTv();
   }, LOST_MS);
 }
 function netOk() { clearTimeout(lostT); if (netLost) { netLost = false; bar(); } }
