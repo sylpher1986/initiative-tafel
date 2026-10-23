@@ -87,3 +87,30 @@ test("VB5: tijdens typen wint één exacte naam van een eerdere keuze; een tik b
   assert.equal(names("geest", "Ghost", true).sel, "Ghost"); // drie exacte: keuze blijft
   assert.equal(names("brass", "Young Brass Dragon", true).sel, "Young Brass Dragon"); // geen exacte naam
 });
+
+test("VB5: getypt aantal begrensd (per regel en in totaal); leeg of 0 = vorige waarde", async () => {
+  const { clampCount, MAX_N, MAX_TOTAL } = await import("../js/rules/encounters.js");
+  const e = { monsters: [{ ref: "Goblin", n: 3 }, { ref: "Orc", n: 60 }] };
+  assert.deepEqual(clampCount(e, 0, "7"), { n: 7, msg: "" });
+  assert.deepEqual(clampCount(e, 0, ""), { n: null, msg: "" });
+  assert.deepEqual(clampCount(e, 0, "0"), { n: null, msg: "" });
+  assert.deepEqual(clampCount({ monsters: [{ ref: "Goblin", n: 3 }] }, 0, "1e3"), { n: MAX_N, msg: `Maximaal ${MAX_N} per regel.` });
+  assert.deepEqual(clampCount(e, 0, "45"), { n: MAX_TOTAL - 60, msg: `Maximaal ${MAX_TOTAL} monsters per encounter.` });
+  assert.deepEqual(clampCount(e, 5, "3"), { n: null, msg: "" });
+});
+
+test("SP5: passives in het logboek, nooit op het spelersscherm", async () => {
+  const { diffLog } = await import("../js/log.js");
+  const { toPlayerView } = await import("../js/playerview.js");
+  const a = { id: "a", kind: "pc", name: "Ayla", hp: 10, max: 10, cond: [], sheet: { passive: { per: 14, ins: 11, inv: 12 } } };
+  const out = diffLog({ list: [a] }, { list: [{ ...a, pas: { per: 17 } }] });
+  assert.ok(out.some((x) => /passive uit de sheet → Perc 17 · Ins – · Inv –/.test(x.msg)), JSON.stringify(out));
+  const v = JSON.stringify(toPlayerView({ list: [{ ...a, pas: { per: 17 } }], round: 1, active: "a" }));
+  assert.ok(!/passive|"pas"|"per"/i.test(v), v);
+});
+
+test("SP5: dode spelers niet in de hinderlaag-lijst; VB4: NL-woord niet via subtype of midden in een naam", () => {
+  assert.deepEqual(percList([{ kind: "pc", name: "A", pas: { per: 12 }, ds: { dead: true } }, { kind: "pc", name: "B", pas: { per: 10 } }]).map((x) => x.name), ["B"]);
+  assert.deepEqual(names("aap").L.map((m) => m.n), ["Ape", "Baboon", "Giant Ape"]);
+  assert.ok(!names("ijs").L.some((m) => m.n === "Cockatrice"));
+});

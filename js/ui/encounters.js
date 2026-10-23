@@ -313,16 +313,14 @@ async function importFile(file) {
   importDone(p, "new");
 }
 
-/** VB5: aantal getypt. Leeg, 0 of onzin = vorige waarde terug (weghalen gaat met −); max 50 per regel en 100 in totaal */
+/** VB5: aantal getypt (regels in E.clampCount) */
 function setCount(x, i, t) {
   const m = x.monsters[i]; if (!m) return;
-  const v = parseInt(t.value, 10);
-  if (!(v >= 1)) { t.value = m.n; return; }
-  const room = E.MAX_TOTAL - (E.total(x) - m.n);
-  const n = Math.min(E.MAX_N, v, room);
-  if (n < v) toast(n === room && room < Math.min(E.MAX_N, v) ? `Maximaal ${E.MAX_TOTAL} monsters per encounter.` : `Maximaal ${E.MAX_N} per regel.`);
-  m.n = n; t.value = n;
-  if (n < 2) delete m.grp;
+  const r = E.clampCount(x, i, t.value);
+  if (r.n == null) { t.value = m.n; return; }
+  if (r.msg) toast(r.msg);
+  m.n = r.n; t.value = r.n;
+  if (r.n < 2) delete m.grp;
 }
 
 const ACT = {

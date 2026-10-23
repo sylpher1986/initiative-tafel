@@ -1,6 +1,7 @@
 // Logboek: vergelijkt elke stap met de vorige en beschrijft wat er veranderde. Puur, dus testbaar.
 import { ORD } from "./rules/spells.js";
 import { effText } from "./rules/effects.js";
+import { pasText } from "./rules/passives.js";
 
 export function diffLog(prev, cur) {
   const out = [];
@@ -18,6 +19,7 @@ export function diffLog(prev, cur) {
     const m = [];
     if (o.name !== c.name) m.push(`heette ${o.name}`);
     if ((o.ac || 0) !== (c.ac || 0)) m.push(`AC ${o.ac || 0} → ${c.ac || 0}`);
+    if (JSON.stringify(o.pas || null) !== JSON.stringify(c.pas || null)) m.push(`passive ${pasText({ ...{ per: null, ins: null, inv: null }, ...o.pas }) || "uit de sheet"} → ${pasText({ ...{ per: null, ins: null, inv: null }, ...c.pas }) || "uit de sheet"}`); // SP5
     if ((o.max || 0) !== (c.max || 0)) m.push(`max HP ${o.max || 0} → ${c.max || 0}`);
     if (o.init !== c.init) m.push(o.init == null ? `initiative ${c.init}` : `initiative ${o.init} → ${c.init ?? "–"}`);
     const oe = o.eff || [], ce = c.eff || [], has = (L, e) => L.some((x) => x.id === e.id), same = (L, e) => L.some((x) => x.n === e.n);

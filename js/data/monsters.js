@@ -173,15 +173,22 @@ function vocabOf(list) {
   return v;
 }
 
-/** Score van alle woorden; synoniem telt als het woord zelf niet past. syn: gebruikte NL-woorden (voor de kop) */
-function scoreAll(m, words, syn) {
+/** Synoniem-doel: alleen het begin van een naamwoord of het type (niet midden in een naam of via subtype: "ice" ≠ Cockatrice) */
+function synScore(m, t) {
+  const n = m.n.toLowerCase();
+  if (n.startsWith(t)) return 2;
+  if (n.includes(" " + t) || n.includes("(" + t)) return 1;
+  return metaInfo(m.meta).type === t ? 0 : -1;
+}
+/** Score van alle woorden; synoniem telt als het woord zelf niet past. ks: NL-woord per woord (één keer per zoektocht
+ *  bepaald), syn: gebruikte NL-woorden (voor de kop) */
+function scoreAll(m, words, ks, syn) {
   const out = [];
-  for (const w of words) {
-    let s = wordScore(m, w);
-    if (s < 0) {
-      const k = synFor(w);
-      if (k) for (const t of SYN.get(k)) { const x = wordScore(m, t); if (x > s) s = x; }
-      if (s >= 0) syn.add(k);
+  for (let i = 0; i < words.length; i++) {
+    let s = wordScore(m, words[i]);
+    if (s < 0 && ks[i]) {
+      for (const t of SYN.get(ks[i])) { const x = synScore(m, t); if (x > s) s = x; }
+      if (s >= 0) syn.add(ks[i]);
     }
     if (s < 0) return null;
     out.push(s);
@@ -201,10 +208,10 @@ export function filterMonsters(list, q, sel, typed = false) {
   const t = String(q || "").trim().toLowerCase();
   let p = parseQuery(t), fix = null, viaType = false;
   const run = (words) => {
-    const sc = new Map(), syn = new Set();
+    const sc = new Map(), syn = new Set(), ks = words.map(synFor);
     const L0 = list.filter((m) => {
       if (p.cr) { const v = crNum(m.cr); if (!(v >= p.cr.min && v <= p.cr.max)) return false; }
-      const s = scoreAll(m, words, syn);
+      const s = scoreAll(m, words, ks, syn);
       if (!s) return false;
       sc.set(m, s.length ? s[0] : 0); // rangorde op het eerste woord
       return true;
@@ -238,8 +245,8 @@ export function filterMonsters(list, q, sel, typed = false) {
 }
 /** Past dit woord (zelf of als NL-woord) bij minstens één monster? Dan is het geen typfout maar een te strenge combinatie. */
 function scoreAnyFits(list, w) {
-  const syn = new Set();
-  return list.some((m) => scoreAll(m, [w], syn));
+  const syn = new Set(), ks = [synFor(w)];
+  return list.some((m) => scoreAll(m, [w], ks, syn));
 }
 
 /* ---------- import: Open5e, 5e-bits (dnd5eapi) en het eigen formaat ---------- */

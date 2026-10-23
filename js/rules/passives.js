@@ -56,7 +56,7 @@ export function pasText(p) {
 
 /** Initiative-paneel (hinderlaag): spelers met passive Perception, hoogste eerst; wie geen waarde heeft achteraan met "–" */
 export function percList(list) {
-  const pcs = (list || []).filter((c) => c && c.kind === "pc").map((c) => ({ name: c.name, v: passives(c).per }));
+  const pcs = (list || []).filter((c) => c && c.kind === "pc" && !(c.ds && c.ds.dead)).map((c) => ({ name: c.name, v: passives(c).per }));
   if (!pcs.some((x) => x.v != null)) return [];
   return pcs.sort((a, b) => (b.v ?? -1) - (a.v ?? -1) || a.name.localeCompare(b.name));
 }

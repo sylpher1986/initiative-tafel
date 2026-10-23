@@ -135,6 +135,16 @@ export const listMons = (list, find) => (list || []).filter((c) => c.kind === "m
 const str = (v, max) => (v == null ? "" : String(v)).slice(0, max);
 const ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
 export const total = (enc) => (enc.monsters || []).reduce((a, m) => a + m.n, 0);
+/**
+ * VB5: getypt aantal voor regel i. → { n, msg }: n = null bij leeg/0/onzin (vorige waarde terug; weghalen gaat met −),
+ * anders begrensd op MAX_N per regel en MAX_TOTAL in totaal, met een melding als er afgekapt is.
+ */
+export function clampCount(enc, i, raw) {
+  const m = enc.monsters[i], v = Math.trunc(Number(String(raw).trim()));
+  if (!m || !(v >= 1)) return { n: null, msg: "" };
+  const room = MAX_TOTAL - (total(enc) - m.n), n = Math.min(MAX_N, v, room);
+  return { n, msg: n >= v ? "" : n === room && room < MAX_N ? `Maximaal ${MAX_TOTAL} monsters per encounter.` : `Maximaal ${MAX_N} per regel.` };
+}
 
 /**
  * Encounter uit de huidige lijst: monsters (op volgorde van toevoegen) samengevoegd per ref + verborgen + onbekend + groep;

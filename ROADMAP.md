@@ -26,7 +26,7 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 16. ~~RE12~~ klaar in 1.36.0 (WP3, zie Klaar)
 17. ~~RE1/RE2~~ klaar in 1.41.0 (WP9, zie Klaar)
 18. ~~RE11~~ klaar in 1.40.0 (WP8, zie Klaar)
-19. **SP5** Passive Perception / Insight / Investigation per speler
+19. ~~SP5~~ klaar in 1.43.0 (WP11, zie Klaar)
 20. ~~RE13~~ klaar in 1.42.0 (WP10, zie Klaar)
 
 **Eigen test Michiel (21-10-2026, aan tafel)**, ingedeeld in P2 en verdeeld over de werkpakketten:
@@ -41,7 +41,7 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 - Spelersscherm: ~~SC8~~ (klaar in 1.38.0), **SC9** (mini-log)
 - Afwerking: ~~AF8~~ (klaar in 1.40.0), **AF10–AF12**
 - Regels: **RE3–RE6**, ~~RE14~~ (klaar in 1.42.0), **RE15** (eigen death save-worp)
-- Voorbereiding: **VB4** (zoeken NL/typfouten), **VB5** (lege encounter maken)
+- Voorbereiding: ~~VB4~~ · ~~VB5~~ (klaar in 1.43.0, WP11)
 - Gevecht: ~~GV10~~ (klaar in 1.37.1), ~~GV11~~ (klaar in 1.42.0)
 - Taal: **TA1**
 - Technische schuld: **TS1** (oppakken wanneer je die code toch aanraakt)
@@ -63,7 +63,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | ~~**WP8**~~ | Condities en statussen aan tafel: uitleg, Exhaustion, Rage, Deadly/Verrast (klaar) | RE10, RE11, RE16, AF8 | 1.40.0 |
 | ~~**WP9**~~ | Spells van spelers: schade-spells in AoE (Fireball), slots verbruiken, Pact Magic (klaar) | RE18, RE1, RE2, RE3 | 1.41.0 |
 | ~~**WP10**~~ | Monsterregels en minder klikken: Undead Fortitude, save-riders, Parry, eigen monster inlezen, multiattack-volgorde (klaar) | RE13, RE14, GV11 | 1.42.0 |
-| **WP11** | Voorbereiding: passives, zoeken, lege encounter | SP5, VB4, VB5 | 1.43.0 |
+| ~~**WP11**~~ | Voorbereiding: passives, zoeken, lege encounter (klaar) | SP5, VB4, VB5 | 1.43.0 |
 | **WP12** | Afwerking: haperingen, kleine fouten, toegankelijkheid, death save-worp, mini-log, dobbelstenen in statblocktekst | AF10, AF11, AF12, AF14, RE15, SC9 | 1.43.x |
 | Backlog | Niet ingepland | RE4, RE5, RE6, TA1, TS1, fase 2 en 3 | |
 
@@ -76,8 +76,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - Geen open punten (GV11 klaar in 1.42.0, zie Klaar).
 
 ## Voorbereiding en encounters
-- [ ] **VB4 Monsters zoeken** (P3): "bandiet"/"gobin" vinden niets. Typfouttolerantie (afstand 1–2 op naam) en een kleine NL-synoniemenlijst (bandiet, skelet, draak, rat…). Meteen meenemen (klein): de lege-lijsttekst zegt "Eigen monster" terwijl de tab "Eigen" heet.
-- [ ] **VB5 Lege encounter maken** (P3): opslaan kan nu alleen vanuit de lijst. "+ Nieuwe encounter" in de tab opent het bestaande Bewerken-subscherm leeg; aantal ook typbaar. Na typen van een exacte naam die naam selecteren (bleef op Bandit Captain staan).
+- Geen open punten (VB4 en VB5 klaar in 1.43.0, zie Klaar).
 
 ## Spelregels
 - [ ] **RE4 2024-regels buiten spells** (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen
@@ -86,7 +85,6 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - [ ] **RE6 Spell-uitleg:** link vanuit AoE-Spell en Effect-presets; eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie)
 
 ## Spelers en D&D Beyond
-- [ ] **SP5 Passives** (P2): passive Perception, Insight en Investigation per speler (uit de D&D Beyond-link, anders invulbaar), zichtbaar op de spelerskaart in Voorbereiden en in het live-blok.
 - Later, als het nodig blijkt: handmatige "Defenses" op de D&D Beyond-sheet (`customDefenseAdjustments`) inlezen; tijdelijke resistances (Rage, Absorb Elements, Protection from Energy) als effect-preset.
 
 ## Spelersscherm
@@ -266,3 +264,6 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **RE13** (1.42.0, WP10) Monsterregels die je vergeet: **Undead Fortitude** rolt de app bij toepassen (CON DC 5 + schade, geslaagd = 1 HP; niet bij radiant of een crit; schadepaneel met knop "Radiant of kritiek", aanvalspaneel en AoE weten het zelf). **Save-riders** na een treffer (67 SRD-aanvallen: Prone, Poisoned/Paralyzed met duur en herhaalsave, gif-schade met of zonder half; ziekte, Life Drain e.d. als herinnering): rij in het aanvalspaneel met Gefaald/Geslaagd (monster: Rol +N), niet ingevuld = open save in de beurtbalk; één undo-stap met de schade. **Parry**: knop "Parry +2 → mis" in het schadepaneel van het monster (reaction gebruikt) en "Parry +N" in het aanvalspaneel bij monster tegen monster.
 - **RE14** (1.42.0, WP10) Eigen monster: geplakt statblock krijgt dezelfde structuur als een SRD-monster (aanvallen, LA, reactions, resistances, ability scores, saving throws); live "Herkend: …" onder de tekst, lege velden (naam, CR, AC, HP, Dex) ingevuld met "uit tekst", Voorbeeld ▾. Ook D&D Beyond-kopie en de 2024-schrijfwijze.
 - **GV11** (1.42.0, WP10) Multiattack-volgorde in het aanvalspaneel ("Claw 2/3"): bij een misser "Volgende: Claw ▸", na toepassen meteen de volgende aanval op hetzelfde doel. "+ meer doelen" niet gebouwd: tab Spell in AoE doet dat al (hint in het Effect-paneel).
+- **SP5** (1.43.0, WP11) Passives per speler (`js/rules/passives.js`): link-sheet `passive` (10 + skill + passive-bonussen), oudere/PDF-sheets afgeleid uit senses en skills; eigen waarde onder ⋯ (Perc/Ins/Inv, leeg = sheet) gaat voor, ook na Bijwerken. Regel "Passive Perc 14 · Ins 12 · Inv 10" op de kaart in Voorbereiden, regel in het live-blok, "Passive Perc" in de Party-regel en "Passive Perception: …" (hoogste eerst) in het initiative-paneel. Nooit op het spelersscherm.
+- **VB4** (1.43.0, WP11) Zoeken met NL-woorden (bandiet, skelet, draak, geest, ondode… ± 200 vormen) en typfouten als terugval bij 0 treffers ("gobin" → goblin, afstand 1 bij 4–6 letters, 2 vanaf 7). Kop "\"bandiet\" = bandit" of "Bedoelde je: goblin". Lege-lijstteksten noemen "Eigen".
+- **VB5** (1.43.0, WP11) "+ Nieuwe encounter" opent Bewerken leeg (lege naam → "Nieuwe encounter"); aantal per regel typbaar (leeg/0 = vorige waarde, max 50 en 100 totaal); lair-vinkje bij een monster met legendary actions. Tijdens typen wint één exacte naam (ook via een NL-woord) van een eerdere keuze.
