@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="260" viewBox="0 0 1000 260" role="img" aria-labelledby="title desc">
+  <title id="title">Kev’s Inn</title>
+  <desc id="desc">Kev’s Inn wordmark with a fine amber hexagonal lantern emblem and the tagline Your home between adventures.</desc>
+  <defs>
+    <style>
+      .gold{stroke:#D4A448;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;fill:none}
+      .goldFill{fill:#D4A448}
+      .cream{fill:#F7F0E4}
+      .word{font-family:Georgia,'Times New Roman',serif;font-size:105px;font-weight:bold;letter-spacing:-3px;fill:#F7F0E4}
+      .tag{font-family:Georgia,'Times New Roman',serif;font-size:29px;fill:#F7F0E4}
+    </style>
+  </defs>
+  <!-- Badge silhouette, deliberately simple to remain legible at small sizes -->
+  <path d="M108 25 174 63 174 139 108 177 42 139 42 63Z" fill="none" stroke="#D4A448" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Lantern cap and hanging loop -->
+  <g class="gold">
+    <path d="M100 51v-9q8-10 16 0v9"/>
+    <path d="M91 58h34l-7 10H98Z"/>
+    <path d="M97 71h22l7 10v43H90V81Z"/>
+    <path d="M98 83h20v29H98Z"/>
+    <path d="M86 128h36"/>
+    <path d="M94 135h20"/>
+  </g>
+  <path d="M108 86c-7 8-7 15 0 21 7-6 7-13 0-21Z" class="goldFill"/>
+  <!-- Tiny D20 mark beneath the lantern -->
+  <g transform="translate(108 155)" stroke="#D4A448" stroke-width="2" stroke-linejoin="round">
+    <path d="M0-12 11-4 7 9-7 9-11-4Z" fill="none"/>
+    <path d="M0-12V9M-11-4 7 9M11-4-7 9" fill="none"/>
+    <path d="M0-12 7-4 0 1-7-4Z" fill="#D4A448" stroke-width="1"/>
+  </g>
+  <!-- Wordmark and tagline -->
+  <text x="220" y="121" class="word">Kev’s Inn</text>
+  <path d="M224 145H630" stroke="#D4A448" stroke-width="2.5"/>
+  <text x="224" y="187" class="tag">Your home between adventures.</text>
+</svg>
