@@ -39,3 +39,65 @@ test("RE15: Rol death save gebruikt dezelfde regels", () => {
   const c = pc(); const fx = rollDs(c, () => 0.6); // d20 = 13
   assert.equal(c.ds.s, 1); assert.match(fx.why[0].t, /death save d20 \[13\]/);
 });
+
+/* ---------- SC9: mini-log uit de snapshots ---------- */
+import { toPlayerView, cleanView, logLines, pushLog, VIS } from "../js/playerview.js";
+const P = (o) => ({ kind: "pc", cond: [], dex: 0, ac: 15, hp: 20, max: 20, ...o });
+const M = (o) => ({ kind: "monster", cond: [], dex: 0, ac: 13, hp: 10, max: 10, ref: "Goblin", ...o });
+const view = (list, vis = VIS, extra = {}) => cleanView(JSON.parse(JSON.stringify(toPlayerView({ list, round: 2, active: list[0].id, ...extra }, () => "", vis))));
+
+test("SC9: HP-verandering, status en condities als regels", () => {
+  const a = view([P({ id: "p", name: "Aria" }), M({ id: "g", name: "Goblin 1" })]);
+  const b = view([P({ id: "p", name: "Aria", hp: 13, cond: ["Prone"] }), M({ id: "g", name: "Goblin 1", hp: 5 })]);
+  assert.deepEqual(logLines(a, b), ["Aria −7 HP · Prone", "Goblin 1: Ongedeerd → Bloodied"]);
+  const c = view([P({ id: "p", name: "Aria", hp: 13 }), M({ id: "g", name: "Goblin 1", hp: 0 })]);
+  assert.deepEqual(logLines(b, c), ["Aria: Prone weg", "Goblin 1 neer"]);
+});
+
+test("SC9: speler neer en dood", () => {
+  const a = view([P({ id: "p", name: "Aria", hp: 4 })]);
+  const b = view([P({ id: "p", name: "Aria", hp: 0, cond: ["Unconscious"], ds: { s: 0, f: 0 } })]);
+  assert.deepEqual(logLines(a, b), ["Aria −4 HP · bewusteloos"]);
+  const c = view([P({ id: "p", name: "Aria", hp: 0, cond: ["Unconscious"], ds: { s: 0, f: 3, dead: true } })]);
+  assert.deepEqual(logLines(b, c), ["Aria: dood"]);
+});
+
+test("SC9: lekt niets: verborgen monster, onthulde naam, monster-HP verborgen", () => {
+  const a = view([P({ id: "p", name: "Aria" }), M({ id: "h", name: "Lurker", hidden: true }), M({ id: "x", name: "Ogre", anon: 1 })]);
+  const b = view([P({ id: "p", name: "Aria" }), M({ id: "h", name: "Lurker", hidden: true, hp: 1 }), M({ id: "x", name: "Ogre", anon: 1, hp: 4 })]);
+  const L = logLines(a, b);
+  assert.ok(!L.join().includes("Lurker") && !L.join().includes("Ogre"), L.join());
+  assert.deepEqual(L, ["Onbekend wezen: Ongedeerd → Bloodied"]);
+  const nohp = { ...VIS, monHp: "none" };
+  assert.deepEqual(logLines(view([M({ id: "g", name: "G" })], nohp), view([M({ id: "g", name: "G", hp: 3 })], nohp)), []);
+  // hidden monster komt tevoorschijn: geen regel; naam onthuld: geen regel
+  const r = view([P({ id: "p", name: "Aria" }), M({ id: "h", name: "Lurker" }), M({ id: "x", name: "Ogre", hp: 4 })]);
+  assert.deepEqual(logLines(b, r), []);
+});
+
+test("SC9: uit in de instellingen, buiten een gevecht, reaction/verrast tellen niet", () => {
+  const off = { ...VIS, log: false };
+  const a = view([P({ id: "p", name: "Aria" })], off), b = view([P({ id: "p", name: "Aria", hp: 3 })], off);
+  assert.equal(b.nolog, 1); assert.deepEqual(logLines(a, b), []);
+  const c = view([P({ id: "p", name: "Aria" })], VIS, { round: 0 }), d = view([P({ id: "p", name: "Aria", hp: 3 })], VIS, { round: 0 });
+  assert.deepEqual(logLines(c, d), []);
+  assert.deepEqual(logLines(null, d), []);
+});
+
+test("SC9: pushLog houdt de huidige en vorige ronde, max 8", () => {
+  let L = pushLog([], ["a"], 1); L = pushLog(L, ["b"], 2); L = pushLog(L, ["c"], 3);
+  assert.deepEqual(L.map((e) => e.t), ["b", "c"]);
+  assert.deepEqual(pushLog(L, ["d"], 0), []);
+  assert.equal(pushLog([], Array.from({ length: 12 }, (_, i) => String(i)), 1).length, 8);
+});
+
+/* ---------- AF12 ---------- */
+import { readFileSync } from "node:fs";
+test("AF12: slots en death saves zonder aria-pressed, toestand in het label; aria-current op wie aan de beurt is", () => {
+  const r = readFileSync(new URL("../js/ui/render.js", import.meta.url), "utf8");
+  assert.ok(!/class="pip[^`]*aria-pressed/.test(r) && !/class="dsp[^`]*aria-pressed/.test(r));
+  assert.match(r, /van \$\{n0\(o\.max\)\}, \$\{i >= o\.left \? "gebruikt" : "beschikbaar"\}/);
+  assert.match(r, /aria-current="true"/);
+  const css = readFileSync(new URL("../css/app.css", import.meta.url), "utf8");
+  assert.match(css, /\.pip\[data-used="true"\]::before/); assert.match(css, /\.c\.k\.mon \.av,\.pvc\.monster \.av\{border-radius:6px\}/);
+});

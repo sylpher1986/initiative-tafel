@@ -2,7 +2,7 @@
 // Staat in Instellingen → Spelersscherm. Kamer (code + DM-token) in localStorage: na herladen loopt het delen door.
 // Alleen UI- en verbindingstoestand: niets hiervan zit in undo, opslag of export.
 import { roomChannel, dmLink, createRoom, normCode, fmtCode } from "../share.js";
-import { $, esc, toast, toastHtml } from "./util.js";
+import { $, esc, toast, toastHtml, closeToast } from "./util.js";
 import { canWrite } from "../storage.js";
 import { qrSvg } from "../qr.js";
 
@@ -118,11 +118,13 @@ function detach() {
 }
 
 /** SC7: Stop met delen = de kamer pauzeert; code en token blijven (12 u), na herladen niet vanzelf weer delen */
-async function stop() {
+async function stop(fromBtn = false) {
   const c = detach();
   room = { code: room.code, token: room.token, stopped: true, at: Date.now() };
   saveRoom(room); st = "uit"; err = ""; ask = false; again = false;
   paint();
+  // AF10: geen "Zeker?" (Stop = pauze, omkeerbaar met dezelfde code), wel de weg terug in de melding
+  if (fromBtn) toastHtml(`Delen gestopt. Code ${esc(fmtCode(room.code))} blijft. <button class="tundo" id="toast-weer">Opnieuw delen</button>`);
   if (!c) return;
   stopping = c;
   const ok = await c.stop();
@@ -285,7 +287,7 @@ export function bindSharing(view, links) {
     if (!b) return;
     const k = b.dataset.kamer;
     if (k === "start") { room = null; saveRoom(null); start(); }
-    else if (k === "stop") stop();
+    else if (k === "stop") stop(true);
     else if (k === "weer") shareAgain();
     else if (k === "qr") openQr(b);
     else if (k === "nieuw") { ask = true; paint(); $('#kamer-box [data-kamer="nieuw-nee"]')?.focus(); } // focus niet op de knop die alles loskoppelt
@@ -296,7 +298,10 @@ export function bindSharing(view, links) {
     else if (k === "hervat") resume();
     else if (k === "deel") navigator.share({ title: "Initiative Tafel · spelersscherm", text: `Volg het gevecht: code ${fmtCode(room.code)}`, url: shareUrl() }).catch(() => {});
   });
-  $("#toast")?.addEventListener("click", (e) => { if (e.target.closest("#toast-kamer")) resume(); });
+  $("#toast")?.addEventListener("click", (e) => {
+    if (e.target.closest("#toast-kamer")) resume();
+    else if (e.target.closest("#toast-weer") && room && room.stopped) { closeToast(); shareAgain(); }
+  });
   room = loadRoom();
   if (room && !room.stopped) connect(); // gestopt (SC7): niet vanzelf weer delen
   paint();

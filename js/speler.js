@@ -1,5 +1,5 @@
 // Spelersscherm: toont alleen de snapshot die het DM-scherm stuurt (js/playerview.js), nooit eigen data.
-import { cleanView, headHtml, findMe, meState, buzzFor, dsText } from "./playerview.js";
+import { cleanView, headHtml, findMe, meState, buzzFor, dsText, logLines, pushLog } from "./playerview.js";
 import { ORD } from "./rules/spells.js";
 import { localChannel, roomChannel, normCode, fmtCode } from "./share.js";
 import { esc } from "./ui/util.js";
@@ -169,6 +169,7 @@ function paint(V) {
   if (j !== lastJson) { lastJson = j; lastAt = Date.now(); }
   const wasLost = netLost; // vóór netOk(): na verbinding kwijt niet trillen om een oude overgang
   paused = false; netOk();
+  log = V.nolog ? [] : pushLog(log, logLines(lastV, V), V.round); // SC9
   lastV = V;
   const mine = findMe(V, me);
   if (mine && (mine.id !== me.id || mine.name !== me.name)) { me.id = mine.id; me.name = mine.name; saveMe(); } // id (op naam gevonden) of naam (DM hernoemde) bijwerken
@@ -178,6 +179,7 @@ function paint(V) {
   if (pat && canBuzz()) try { navigator.vibrate(pat); } catch { /* geen probleem */ }
   $("#pv-now").innerHTML = headHtml(V, meId);
   $("#pv-now").classList.toggle("me", ms === "turn");
+  paintLog();
   stickOff();
   paintMe(V, mine);
   // dode monsters niet in de volgorde maar als één regel onderaan (zoals het blok "Neer" bij de DM)
@@ -196,6 +198,14 @@ function paint(V) {
   }
 }
 
+/* ---------- SC9: wat er net gebeurde (telefoon 2 regels in de vaste kop, tv 3) ---------- */
+let log = [];
+function paintLog() {
+  const el = $("#pv-log"), L = log.slice(TV_MQ.matches ? -3 : -2);
+  el.hidden = !L.length;
+  el.innerHTML = L.map((e) => `<li>${esc(e.t)}</li>`).join("");
+}
+
 /* ---------- tv (SC6): één brede regel per deelnemer, letter passend op de hoogte; QR vóór het gevecht (SC1) ---------- */
 const TV_MQ = matchMedia("(orientation:landscape) and (min-width:900px) and (min-height:501px)");
 let tvSig = "";
@@ -206,7 +216,7 @@ function fitTv(force) {
   b.classList.toggle("tv", tv);
   if (!tv) { b.classList.remove("cols"); b.style.removeProperty("--tvfs"); tvSig = ""; return; }
   const n = $("#pv-list").children.length;
-  const sig = [n, vis("#pv-mecard"), vis("#pv-down"), vis("#pv-net"), vis("#pv-wait"), vis("#pv-qr"), !!$("#pv-now").innerHTML, !!document.fullscreenElement, innerWidth, innerHeight].join();
+  const sig = [n, vis("#pv-mecard"), vis("#pv-log"), vis("#pv-down"), vis("#pv-net"), vis("#pv-wait"), vis("#pv-qr"), !!$("#pv-now").innerHTML, !!document.fullscreenElement, innerWidth, innerHeight].join();
   const doc = document.documentElement, over = () => doc.scrollHeight > innerHeight + 1;
   // past het niet eens op de kleinste maat, dan is overlopen geaccepteerd (geen nieuwe zoektocht bij elke stand)
   if (!force && (sig === tvSig || sig + "|over" === tvSig) && (tvSig.endsWith("|over") || !over())) return;
@@ -346,6 +356,7 @@ function clear() {
   clearTimeout(lostT); clearTimeout(dmT); dmT = 0; netLost = dmGone = false; lastAt = 0; lastJson = ""; bar();
   $("#pv-now").innerHTML = ""; $("#pv-list").innerHTML = "";
   $("#pv-down").hidden = true; $("#pv-down").innerHTML = "";
+  log = []; paintLog();
   const had = $("#pv-mepick").contains(document.activeElement);
   $("#pv-now").classList.remove("me"); lastV = null; prevMs = null; pickOpen = false; paintMe(null, null);
   stickOff();

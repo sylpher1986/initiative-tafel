@@ -281,7 +281,22 @@ const row = {
   sur(c) { const r = toggleSurprise(c, app.S); if (!r) return false; apply(r); },
   dropconc(c) { apply(R.dropConc(c, "beëindigd")); },
   topty(c) { const ex = app.party.find((m) => m.name.toLowerCase() === c.name.toLowerCase()); c.pid = ex ? ex.pid : uid(); toast(`${c.name} staat nu in de vaste party.`); },
-  "ds-roll": (c) => apply(R.rollDs(c)),
+  "ds-roll": (c) => { ui.dsPad = null; apply(R.rollDs(c)); },
+  /* RE15: eigen worp via het cijferpad; pas bij een volledige worp één undo-stap met melding + Ongedaan */
+  "ds-own"(c) { ui.dsPad = ui.dsPad && ui.dsPad.id === c.id ? null : { id: c.id, v: "" }; renderFocus(c, ui.dsPad ? '[data-a="ds-k"]:not([disabled])' : '[data-a="ds-own"]'); return false; },
+  "ds-k"(c, b) {
+    const p = ui.dsPad; if (!p || p.id !== c.id) return false;
+    const k = b.dataset.v;
+    if (k === "back") p.v = p.v.slice(0, -1);
+    else if (k !== "ok") p.v = (p.v + k).slice(0, 2);
+    const done = k === "ok" || p.v.length === 2 || +p.v >= 3;
+    if (!done) { renderFocus(c, `[data-a="ds-k"][data-v="${k}"]:not([disabled])`, '[data-a="ds-k"]:not([disabled])'); return false; }
+    const r = +p.v; ui.dsPad = null;
+    const f = R.dsResult(c, r);
+    if (!f.why.length) { toast("Een death save is 1 t/m 20."); render(); return false; }
+    addWhy(f.why);
+    return { undoToast: dsToast(c, r) };
+  },
   "ds-crit": (c) => apply(R.critAtZero(c)),
   "cast-reset"(c) {
     c.casting.slots.forEach((x) => (x.left = x.max));
@@ -297,6 +312,23 @@ const row = {
   "lair-del"(c, b) { app.lairs[c.key].splice(+b.dataset.i, 1); saveLairs(); },
   "lair-use"(c, b) { c.last = app.lairs[c.key][+b.dataset.i].n; },
 };
+
+/** AF10: na Toevoegen naar het naamveld voor de volgende speler, maar alleen met muis/toetsenbord (telefoon: geen toetsenbord dat opspringt) */
+function nextPcFocus() { if (matchMedia("(hover:hover) and (pointer:fine)").matches) $("#pc-name").focus(); else $("#f-pc")?.closest(".sheet")?.focus?.({ preventScroll: true }); }
+/** Na een UI-tik op de kaart: opnieuw tekenen en de focus terug (toetsenbord; op touch onschadelijk) */
+function renderFocus(c, ...sels) {
+  render();
+  const li = cardEl(c.id);
+  for (const s of sels) { const el = li && li.querySelector(s); if (el) { el.focus({ preventScroll: true }); return; } }
+}
+/** RE15: "Aria: 14, success (2/3)" / "nat 20, staat op met 1 HP" / "nat 1, twee failures (2/3)" */
+function dsToast(c, r) {
+  if (r === 20) return `${c.name}: nat 20, staat op met 1 HP.`;
+  const d = c.ds || {};
+  if (d.dead) return `${c.name}: ${r === 1 ? "nat 1" : r}, derde failure · gestorven.`;
+  if (d.stable) return `${c.name}: ${r}, derde success · stabiel.`;
+  return r === 1 ? `${c.name}: nat 1, twee failures (${d.f}/3).` : r >= 10 ? `${c.name}: ${r}, success (${d.s}/3).` : `${c.name}: ${r}, failure (${d.f}/3).`;
+}
 
 /* ---------- schade-paneel (data-sk) ---------- */
 function sheetKey(k, v) {
@@ -597,6 +629,12 @@ export function onClick(e) {
   if (condSheetClick(e)) return; // conditie-uitleg (RE10): het paneel sluiten
   const ci = e.target.closest("button[data-cinfo]");
   if (ci) { openCondFor(ci); return; }
+  if (e.target.closest("[data-impw]")) { // AF10: import vanaf de welkomstkaart; de bevestiging staat in Instellingen → Opslag
+    openPrep("data");
+    const sec = document.querySelector('.setsec[data-sec="store"]'); if (sec) sec.open = true;
+    $("#imp-backup").click(); // nog binnen de tik: anders blokkeert de browser de bestandskiezer
+    return;
+  }
   const pick = e.target.closest("[data-file]"); // eigen knop voor een verborgen bestandskiezer (geen Engelse "Choose File")
   if (pick) { document.getElementById(pick.dataset.file)?.click(); return; }
   const sk = e.target.closest("[data-sk]");
@@ -651,7 +689,7 @@ export function onClick(e) {
       // een niet-opgeslagen bewerking blijft open staan; anders volgt de open kaart de beurt
       if (ui.edit && ui.edit.dirty) { ui.open = ui.edit.id; rekeyEdit(); } else { ui.open = null; ui.panel = null; ui.edit = null; }
       ui.fromDown = null;
-      ui.castPick = null; ui.effWho = null; ui.atkOpen = null; ui.atkRx = null; ui.atkAdv = null; ui.atk = null;
+      ui.castPick = null; ui.effWho = null; ui.dsPad = null; ui.atkOpen = null; ui.atkRx = null; ui.atkAdv = null; ui.atk = null;
     }
     render();
     ui.laPulse = false; // alleen de render direct na Volgende laat de legendary-knoppen oplichten
@@ -1014,7 +1052,7 @@ export function bindForms() {
       if (plan !== "upd") { seatMember(ex, init); ui.prepLast = app.S.list[app.S.list.length - 1].id; }
       app.S.sample = false; saveParty();
       const what = ch.length ? ` (${ch.join(", ")})` : "";
-      resetPcForm(); render(); $("#pc-name").focus();
+      resetPcForm(); render(); nextPcFocus();
       const msg = here ? `${ex.name} zit al aan tafel: bijgewerkt${what}. Initiative blijft.`
         : sh ? `${ex.name} bijgewerkt${what} en aan tafel gezet. Schade en verbruik blijven staan.`
         : `${ex.name} aan tafel gezet met ${n0(ex.hp)}/${n0(ex.max)} HP${ex.ds && ex.ds.dead ? " (dood)" : ex.max && ex.hp <= 0 ? " (bewusteloos)" : ""}.`;
@@ -1038,7 +1076,7 @@ export function bindForms() {
       ...(sh && cleanDr(sh.dr) ? { dr: cleanDr(sh.dr) } : {}), // resistances uit de D&D Beyond-link (SP2)
     });
     app.S.sample = false; ui.prepLast = app.S.list[app.S.list.length - 1].id;
-    resetPcForm(); render(); $("#pc-name").focus();
+    resetPcForm(); render(); nextPcFocus();
     ui.addPid = pid ? { pid, step: stepNo() } : null;
     toastHtml(`${esc(`${nm} toegevoegd${init != null ? ` op initiative ${init}` : ""} (${pcCount()}).`)} <button class="tundo" id="toast-undo">Ongedaan</button>`); // AF9
     // level hoort bij de party (syncParty neemt lvl niet over: het Party-paneel is de bron)
@@ -2013,6 +2051,7 @@ export function bindBackup(afterImport) {
     $("#imp-confirm").innerHTML = `<div class="confirmbox"><p style="margin:0">Deze export bevat <b>${data.party.length}</b> partyleden, <b>${data.S.list.length}</b> deelnemers aan tafel, <b>${nMon}</b> eigen/geïmporteerde monsters, <b>${nLair}</b> lairs en <b>${data.encounters.length}</b> klaargezette encounters.
       Importeren <b>vervangt</b> alles wat nu in de app staat.</p>
       <div class="bar"><button type="button" class="btn primary" id="imp-yes">Vervang en importeer</button><button type="button" class="btn small" id="imp-no">Annuleer</button></div></div>`;
+    $("#imp-confirm").scrollIntoView({ block: "nearest" }); // ook vanaf de welkomstkaart in beeld (AF10)
   };
   const read = (text) => {
     try { ask(parseImport(JSON.parse(text))); }

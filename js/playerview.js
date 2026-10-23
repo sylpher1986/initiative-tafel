@@ -14,8 +14,9 @@ export const VIS = {
   monHp: "status", // monsters: "status" (Ongedeerd … Bijna dood) | "none" | "exact"
   init: false,     // initiativegetallen tonen (anders alleen de volgorde)
   tags: "all",     // condities en effecten (alleen namen): "all" | "pc" (alleen bij spelers) | "none"
+  log: true,       // SC9: "wat er net gebeurde" op het spelersscherm (afgeleid uit de snapshots zelf, dus niets extra's)
 };
-export const VIS_OPTS = { monHp: ["status", "none", "exact"], init: [false, true], tags: ["all", "pc", "none"] };
+export const VIS_OPTS = { monHp: ["status", "none", "exact"], init: [false, true], tags: ["all", "pc", "none"], log: [true, false] };
 
 /** Onbetrouwbare instelling (localStorage) → geldige VIS; per sleutel terug naar de standaard */
 export function cleanVis(v) {
@@ -163,6 +164,7 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS, prev = null, opts 
     return r;
   });
   const out = { v: 1, round: vt.round, active, next, list };
+  if (vis.log === false) out.nolog = 1;
   if (!fight && S.endSum) out.end = Math.max(0, S.endSum.r | 0);
   if (inTurn.size > 1) Object.assign(out, { group: [...inTurn], gname: groupName(list.filter((c) => inTurn.has(c.id))) });
   return out;
@@ -260,8 +262,43 @@ export function cleanView(d) {
   const ids = new Set(list.map((c) => c.id));
   const pick = (v) => (typeof v === "string" && ids.has(v) ? v : null);
   const out = { v: 1, round: Math.max(0, int(d.round)), active: pick(d.active), next: pick(d.next), list };
+  if (d.nolog) out.nolog = 1;
   if (!out.round && d.end != null) out.end = Math.max(0, Math.min(9999, int(d.end)));
   const group = Array.isArray(d.group) ? [...new Set(d.group.map(pick).filter(Boolean))].slice(0, 20) : [];
   if (out.active && group.length > 1 && group.includes(out.active)) Object.assign(out, { group, gname: str(d.gname, 200) || null });
   return out;
+}
+
+/* ---------- SC9: "wat er net gebeurde" (spelerskant) ---------- */
+// Alleen afgeleid uit twee opeenvolgende, al opgeschoonde snapshots: wat spelers niet zien, kan er niet in staan.
+// Geen regels voor verschijnen/verdwijnen (verborgen monsters), naamwissels (onthulling) of beurtwissels (staan in de kop).
+const DOWN_ST = ["Bewusteloos", "Stabiel", "Dood"];
+const QUIET = new Set([REACT_TAG, "Verrast"]);
+
+/** Regels voor de overgang a → b (beide uit cleanView). Leeg buiten een gevecht of zonder vorige stand. */
+export function logLines(a, b) {
+  if (!a || !b || !b.round || !a.round || b.nolog) return [];
+  const old = new Map(a.list.map((c) => [c.id, c])), out = [];
+  for (const c of b.list) {
+    const o = old.get(c.id);
+    if (!o || c.kind === "lair") continue;
+    const parts = [];
+    const h0 = o.hp, h1 = c.hp, exact = h0 && h1 && h0.max != null && h1.max != null;
+    if (exact && h1.hp !== h0.hp) parts.push(`${h1.hp < h0.hp ? "−" : "+"}${Math.abs(h1.hp - h0.hp)} HP`);
+    if (c.kind === "monster" && c.out && !o.out) parts.push("neer");
+    else if (h0 && h1 && h1.st !== h0.st && h1.st && (!exact || DOWN_ST.includes(h1.st) || DOWN_ST.includes(h0.st))) parts.push(exact ? h1.st.toLowerCase() : `${h0.st || "?"} → ${h1.st}`);
+    const t0 = new Set(o.tags.filter((t) => !QUIET.has(t))), t1 = new Set(c.tags.filter((t) => !QUIET.has(t)));
+    const add = [...t1].filter((t) => !t0.has(t)), gone = [...t0].filter((t) => !t1.has(t));
+    if (add.length) parts.push(add.join(", "));
+    if (gone.length) parts.push(`${gone.join(", ")} weg`);
+    if (!parts.length) continue;
+    out.push(`${c.name}${parts[0].startsWith("−") || parts[0].startsWith("+") || parts[0] === "neer" ? " " : ": "}${parts.join(" · ")}`);
+  }
+  return out;
+}
+
+/** Bijhouden: nieuwste onderaan, max 8, alleen de huidige en vorige ronde; zonder gevecht leeg */
+export function pushLog(log, lines, round) {
+  if (!round) return [];
+  return [...log.filter((e) => e.r >= round - 1), ...lines.map((t) => ({ t, r: round }))].slice(-8);
 }

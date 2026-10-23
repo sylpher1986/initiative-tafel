@@ -97,7 +97,7 @@ ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 /* AF6: tikvlak 44×44 zonder overlap, het zichtbare bolletje is ::before */
 .pip{width:44px;height:44px;border:0;background:none;padding:0;display:inline-grid;place-items:center;color:var(--accent);border-radius:8px}
 .pip::before{content:"";box-sizing:border-box;width:24px;height:24px;border-radius:50%;border:2px solid currentColor;background:currentColor}
-.pip[aria-pressed="true"]::before{background:transparent;opacity:.55}
+.pip[data-used="true"]::before{background:transparent;opacity:.55}
 .pip:focus-visible{outline-offset:-6px}
 .lacts{display:grid;gap:8px;margin-top:8px}
 .lact{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
@@ -110,7 +110,7 @@ ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .dsp{width:44px;height:44px;border:0;background:none;padding:0;display:inline-grid;place-items:center;border-radius:8px}
 .dsp::before{content:"";box-sizing:border-box;width:26px;height:26px;border-radius:50%;border:2px solid currentColor;background:transparent}
 .dsp.s{color:var(--good)} .dsp.f{color:var(--bad)}
-.dsp[aria-pressed="true"]::before{background:currentColor}
+.dsp[data-on="true"]::before{background:currentColor}
 .dsp:focus-visible{outline-offset:-6px}
 .ds .st{font-weight:700}
 .ds .st.ok{color:var(--good)} .ds .st.dead{color:var(--bad)}
@@ -223,7 +223,7 @@ textarea{min-height:120px;resize:vertical}
 .sb h2{font-family:var(--display);color:var(--accent);font-size:1.6rem;margin:0;line-height:1.1}
 .sb .meta,.sbx .meta{font-style:italic;color:var(--muted);margin:2px 0 8px}
 .sb hr,.sbx hr{border:0;height:2px;background:linear-gradient(90deg,var(--accent),transparent);margin:8px 0}
-.sb p,.sbx p{margin:4px 0}
+.sb p,.sbx p{margin:4px 0;line-height:1.9}
 .sb .k,.sbx .k{color:var(--accent);font-weight:700}
 .abil{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));text-align:center;font-variant-numeric:tabular-nums;gap:2px}
 .abil b{display:block;color:var(--accent);font-size:.8rem;letter-spacing:.06em}
@@ -250,7 +250,8 @@ textarea{min-height:120px;resize:vertical}
 .slotin label{font-size:.7rem;text-align:center}
 .slotin input{padding:6px 2px;text-align:center;min-height:44px}
 @media (max-width:420px){.slotin{grid-template-columns:repeat(5,minmax(0,1fr))}}
-.dice{border:0;border-bottom:1px dotted var(--accent);background:none;padding:0 1px;color:var(--accent);font-weight:700}
+/* AF14: inline in een zin (WCAG 2.5.8-uitzondering), daarom geen 44 px; wel ± 28 px hoog met een ruimere regel in het statblock */
+.dice{border:0;border-bottom:1px dotted var(--accent);background:none;padding:4px 3px;margin:0 -1px;border-radius:6px;line-height:1.25;color:var(--accent);font-weight:700}
 .dice:hover{background:var(--accent-soft)}
 .sbempty{color:var(--muted);text-align:center;padding:30px 10px}
 .sbhead{display:flex;justify-content:space-between;align-items:start;gap:8px}
@@ -352,6 +353,8 @@ ol.order{gap:6px}
 .av img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}
 .ic{fill:currentColor}
 .c.k.out .av{filter:grayscale(1)}
+/* AF12: monster of speler niet alleen via kleur: speler rond, monster afgeronde rechthoek */
+.c.k.mon .av,.pvc.monster .av{border-radius:6px}
 .hint .pv{width:28px;height:28px;border-radius:50%;object-fit:cover;object-position:50% 20%;vertical-align:middle}
 .badges{display:flex;gap:5px;flex-wrap:wrap;padding:0 12px 10px 48px}
 .kbody .badges{padding:0 0 8px}
@@ -758,6 +761,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .order .welcome{list-style:none;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:10px}
 .welcome h2{margin:0;font-family:var(--display);font-size:1.4rem;color:var(--accent)}
 .welcome p{margin:0}
+.welcome .wimp{margin-top:6px}
 .welcome .wbtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
 .welcome .btn{min-height:48px}
 .order .empty{list-style:none;padding:20px;text-align:center}
@@ -805,6 +809,12 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 /* SC4: kop (verbinding + aan de beurt) vast bovenaan; de titel scrolt weg. Eén regel per naam, zodat de kop nooit groeit */
 .pvstick{position:sticky;top:0;z-index:5;background:var(--bg);display:grid;grid-template-columns:minmax(0,1fr);gap:.4em}
 .pvstick.off{display:none}
+/* SC9: wat er net gebeurde, onder "aan de beurt" in de vaste kop; nieuwste onderaan iets donkerder; tv houdt 3 regels vrij (letter springt niet) */
+.pvlog{list-style:none;margin:0;padding:0 .3em;font-size:.85em;line-height:1.35;color:var(--muted)}
+.pvlog[hidden]{display:none}
+.pvlog li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pvlog li:last-child{color:var(--fg)}
+body.tv .pvlog{min-height:calc(3 * 1.35em)}
 /* als app op het beginscherm: de vaste kop niet onder de notch */
 @media (display-mode:standalone){.pvstick{top:env(safe-area-inset-top,0px)}.pvstick::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:env(safe-area-inset-top,0px);background:var(--bg)}}
 .pvstick .pvnow b,.pvstick .pvnow .r{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;max-width:100%}
@@ -1045,7 +1055,9 @@ button.dchip{min-height:44px;cursor:pointer}
 .tbtns .link{margin-right:auto}
 .tbtns .btn{min-height:44px}
 .tbtns .btn[hidden]{display:none}
-@media (prefers-reduced-motion:no-preference){.tspot,.tbox{transition:top .2s ease,left .2s ease,width .2s ease,height .2s ease}}
+/* AF10: het vak schuift niet (dan mis je Volgende tijdens de beweging), alleen een korte fade; scrollen gaat direct */
+@media (prefers-reduced-motion:no-preference){.tspot{transition:top .2s ease,left .2s ease,width .2s ease,height .2s ease}.tbox.fade{animation:tfade .15s ease}}
+@keyframes tfade{from{opacity:0}}
 /* AF5: Instellingen in inklapbare secties met een statusregel in de kop */
 .setsec{border-top:1px solid var(--line)}
 .setsec:last-of-type{border-bottom:1px solid var(--line)}
