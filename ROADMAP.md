@@ -69,7 +69,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | ~~**WP14**~~ | Kleur: semantische tokens, goud = actie/focus/beurt, contrasttest (klaar) | HS2, HS3 | 1.45.0 |
 | ~~**WP15**~~ | Typografie: Playfair Display + Inter zelf meegeleverd (klaar) | HS4 | 1.46.0 |
 | ~~**WP16**~~ | Logo en app-icoon (klaar) | HS5 | 1.47.0 |
-| **WP17** | Componenten, lijn-iconen, spelersscherm in huisstijl | HS6, HS7, HS8 | 1.48.0 |
+| ~~**WP17**~~ | Componenten, lijn-iconen, spelersscherm in huisstijl (klaar) | HS6, HS7, HS8 | 1.48.0 |
 | Backlog | Niet ingepland | RE4, RE5, RE6, TA1, TS1, fase 2 en 3 | |
 
 ---
@@ -115,9 +115,9 @@ Plan, palet, contrastmetingen en het kleurbesluit van Michiel: projectdoc `claud
 - [x] **HS3** Automatische contrasttest WCAG 2.2 AA over alle toestanden, beide thema's
 - [x] **HS4** Playfair Display (merk, grote koppen) + Inter (rest), zelf meegeleverd (WP15)
 - [x] **HS5** Logo in de kop van Voorbereiden, favicon, app-iconen, lichte variant (WP16)
-- [ ] **HS6** Componenten: knoppen, perkament-kaarten, chips, meldingen met icoon, lege toestanden, statblock
-- [ ] **HS7** Lijn-iconen in plaats van tekenglyphs (⚙ ✎ ⋯ ↶ ▸)
-- [ ] **HS8** Spelersscherm en tv-stand in huisstijl
+- [x] **HS6** Componenten: knoppen, perkament-kaarten, chips, meldingen met icoon, lege toestanden, statblock
+- [x] **HS7** Lijn-iconen in plaats van tekenglyphs (⚙ ✎ ⋯ ↶ ▸)
+- [x] **HS8** Spelersscherm en tv-stand in huisstijl
 
 ## Taal
 - [ ] **TA1 Taaloptie Nederlands / English** (Instellingen, keuze bewaard op het apparaat). Bij English alle Nederlandse tekst vervangen: knoppen, labels, meldingen, logboek, hints, formulieren, spelersscherm en foutmeldingen (ook van de Worker). D&D-termen zijn al Engels. Aanpak: teksten centraal in een vertaalbestand per taal (`js/i18n/nl.js`, `en.js`) met een `t("sleutel")`-functie; logboekregels als sleutel + waarden opslaan zodat ze na wisselen ook vertaald zijn; test die bewaakt dat elke sleutel in beide talen bestaat
