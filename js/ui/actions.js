@@ -20,7 +20,7 @@ import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDu
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, saveAdv, DTYPES, targetMode, drToggle, drKind, DR_LBL, cleanDr } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage, multiSeq, seqAfter } from "../rules/attacks.js";
-import { ufNeed, ufApply, parseRider, applyRider, parryOf, canParry, useParry } from "../rules/monrules.js";
+import { ufNeed, ufApply, ufInfo, monSave, parseRider, applyRider, riderOutcome, parryOf, canParry, useParry } from "../rules/monrules.js";
 import { castInfo, legInfo, rcInfo, pickList, isConc, edFor, ORD } from "../rules/spells.js";
 import { rulesEd, setRulesEd } from "./spellrules.js";
 import { initRoll, setInitRoll } from "./initroll.js";
@@ -53,8 +53,7 @@ const concNote = (f) => {
 function ufRoll(c, was, dealt, info) {
   const m = c.ref ? findMon(c.ref) : null, need = ufNeed(c, m, was, dealt, info);
   if (!need) return "";
-  let x = null;
-  if (!need.skip) { const sa = saveAdv(c, "CON"); x = rollSave(saveBonus(m, "CON"), sa.v, Math.random, saveMods(c, "CON"), sa.why); }
+  const x = need.skip ? null : monSave(c, m, "CON");
   const r = ufApply(c, need, x, x ? rollText(x, 0) : "");
   addWhy(r.why);
   return r.txt;
@@ -1153,7 +1152,7 @@ export function bindForms() {
       dexScore: parseInt($("#cu-dex").value) || 10, text: $("#cu-text").value };
   }
   $("#cu-text").addEventListener("input", () => { clearTimeout(cuT); cuT = setTimeout(cuParse, 300); });
-  for (const [id] of CU) $("#" + id).addEventListener("input", (e) => { cuAuto(e.target, false); if (cuPrev) cuParse(); });
+  for (const [id] of CU) $("#" + id).addEventListener("input", (e) => { cuAuto(e.target, false); if (cuPrev) { clearTimeout(cuT); cuT = setTimeout(cuParse, 300); } });
   $("#cu-parse").addEventListener("click", (e) => { if (!e.target.closest("[data-cuprev]")) return; cuPrev = !cuPrev; cuParse(); $("#cu-parse [data-cuprev]")?.focus(); });
 
   $("#f-custom").addEventListener("submit", (e) => {
@@ -1257,13 +1256,13 @@ function svRoll(sid, adv = false, quiet = false) {
 function svDone(c, sid, ok, note, shown, quiet = false, adv = false) {
   const s = (app.S.saves || []).find((x) => x.sid === sid);
   if (!s || !isValid(app.S, s)) return ""; // bijv. tweede concentration save nadat de eerste al faalde
-  const f = resolveSave(app.S, sid, ok, note), was = c.hp;
+  const was = c.hp, f = resolveSave(app.S, sid, ok, note); // was vóór de rider-schade
   addWhy(f.why); // de melding hieronder zegt al wat er gebeurde
   if (f.saves) f.saves.forEach((x) => addSave(app.S, x)); // rider-schade: concentration save
   if (!quiet) render(); // "Rol alle monsters" rendert één keer: één undo-stap
   const m = c.kind === "monster" && c.ref ? findMon(c.ref) : null;
   const res = s.kind === "conc" ? (ok ? "blijft concentreren" : "concentratie weg")
-    : s.kind === "rider" ? riderRes(s.rd, ok, was - c.hp) + concNote(f)
+    : s.kind === "rider" ? riderOutcome(s.rd, ok, was - c.hp) + concNote(f)
     : ok ? `${s.n} weg` : `${s.n} blijft`;
   const line = esc(`${c.name}: ${shown || `${s.ab}-save ${ok ? "geslaagd" : "gefaald"}`} · ${res}`);
   if (quiet) return line;
@@ -1273,15 +1272,6 @@ function svDone(c, sid, ok, note, shown, quiet = false, adv = false) {
       + (!adv && s.kind === "cond" && hasMagicRes(m) ? `<button class="tundo" id="toast-svadv">Spell? Advantage</button>` : "");
   toastHtml(`${line} ${extra}<button class="tundo" id="toast-undo">Ongedaan</button>`);
   return line;
-}
-
-/** RE13: uitkomst van een rider in de melding: "Prone", "−9 HP", "half: −4 HP", "geen gevolg" */
-function riderRes(rd, ok, lost) {
-  const p = [];
-  if (!ok && rd.conds.length) p.push(rd.conds.join(" + "));
-  if (lost > 0) p.push(`${ok ? "half: " : ""}−${lost} HP`);
-  if (!ok && !rd.conds.length && !rd.dmg && rd.note) p.push(rd.note);
-  return p.join(", ") || "geen gevolg";
 }
 
 /** Laatste gefaalde save terugdraaien en anders afhandelen (alleen als er sindsdien niets gebeurde) */
@@ -1592,7 +1582,7 @@ function openAtk(cid, name, label, laI, from) {
   const o = laI != null && laI !== "" ? laOpts(by)[+laI] : null, laBack = ui.la || by.id; // "*" = paneel met alle monsters
   ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = null; ui.sv = false;
   // GV11: volgorde uit de Multiattack ("one with its bite and two with its claws"); niet vanuit het legendary-paneel
-  const seq = o ? null : multiSeq(monsterActions(findMon(by.ref))), rest = seqAfter(seq, a.n);
+  const seq = o || by.id !== app.S.active ? null : multiSeq(monsterActions(findMon(by.ref))), rest = seqAfter(seq, a.n); // niet bij een opportunity attack
   ui.atk = newAtk(by, a, label, o ? { i: +laI, n: o.n, cost: o.cost, on: true, back: laBack } : null, rest ? { left: rest, i: 1, n: seq.length } : null);
   atkFrom = o ? null : from || null;
   render();
@@ -1646,7 +1636,7 @@ function atkTarget(x, id) {
     x.r = rollAttack(x.bo); x.parts = x.key ? rollDmgCrit(x.key, (e) => rollExpr(e)) || [] : [];
     if (x.rid && x.rid.dmg) { const r = rollExpr(x.rid.dmg.e); if (r) x.rroll = { total: r.total, txt: `${x.rid.dmg.e} [${r.rolls.join(", ")}] = ${r.total} ${x.rid.dmg.type}` }; } // RE13: rider-schade vooraf
   }
-  x.force = {}; x.rs = null; x.rx = null; x.acp = 0; // save, Parry en "toch raak" horen bij het doel
+  x.force = {}; x.rs = null; x.rx = null; // save en "toch raak" horen bij het doel; Parry onthoudt zelf het doel (acp.id)
   // resistance/immuniteit: monster uit het statblock (onvoorwaardelijk), speler uit zijn opgeslagen resistances (SP2)
   const m = c.ref ? findMon(c.ref) : null;
   x.modes = {};
@@ -1659,14 +1649,15 @@ function atkGo() {
   const { r } = atkRoll(x, by, c), ac = atkAc(x, c), res = atkResult(r, ac, x.parts, x.modes, x.force);
   if (!res.hit) return;
   const sim = structuredClone(c); atkDamage(sim, res);
-  const ri = atkRider(x, c, res, sim.hp); // RE13: vóór de schade bepaald, zoals het paneel het toonde
-  if (!res.dealt && !(ri && ri.act)) return;
+  const ri = atkRider(x, c, res, sim); // RE13: vóór de schade bepaald, zoals het paneel het toonde
+  const rOn = ri && ri.act && ri.choice !== "na";
+  if (!res.dealt && !rOn) return;
   const before = c.hp;
   because(atkWhy(`${x.label} (${by.name})`, r, ac || null, x.parts, res), c.id);
   const f = res.dealt ? atkDamage(c, res) : R.fx();
   apply(f);
-  const uf = res.dealt ? ufRoll(c, before, res.dealt, { crit: res.crit, radiant: res.types.some((t) => t.type === "radiant" && t.dealt > 0) }) : "";
-  const rt = ri && ri.act ? atkRiderGo(x, c, ri) : "";
+  const uf = res.dealt ? ufRoll(c, before, res.dealt, ufInfo(res)) : "";
+  const rt = rOn ? atkRiderGo(x, c, ri) : "";
   const la = atkLa(x, by); // na de schade: een monster dat zichzelf raakt en neergaat kan geen LA meer
   ui.atkPrev = { by: by.id, id: c.id };
   const hasNext = x.sq && x.sq.left.length && atkNext(x, c.id); // GV11: door naar de volgende aanval, zelfde doel
@@ -1690,10 +1681,7 @@ function atkRiderGo(x, c, ri) {
   const hp = c.hp, f = applyRider(c, full, ri.choice === "ok", app.S.active);
   addWhy(f.why);
   if (f.saves) f.saves.forEach((s) => addSave(app.S, s));
-  const lost = hp - c.hp, p = [];
-  if (ri.choice === "fail" && rd.conds.length) p.push(rd.conds.join(" + "));
-  if (lost > 0) p.push(`−${lost} ${rd.dmg ? rd.dmg.type : "HP"}`);
-  return ` · ${rd.ab} ${rd.dc} ${ri.choice === "ok" ? "geslaagd" : "gefaald"}${p.length ? `: ${p.join(", ")}` : ""}${concNote(f)}`;
+  return ` · ${rd.ab} ${rd.dc} ${ri.choice === "ok" ? "geslaagd" : "gefaald"}: ${riderOutcome(rd, ri.choice === "ok", hp - c.hp)}${concNote(f)}`;
 }
 
 /** Mis met de LA-schakelaar aan: legendary action is toch gebruikt */
@@ -1719,11 +1707,11 @@ export function bindAtk() {
     if (k === "rs") { x.rs = x.rs === b.dataset.v ? null : b.dataset.v; } // RE13: nog eens tikken = weer open (beurtbalk)
     if (k === "rroll") { // monster als doel: save rollen, uitslag zet de seg (blijft om te zetten)
       const c = app.S.list.find((t) => t.id === x.tid), rd = x.rid;
-      if (c && rd) { const m = findMon(c.ref), sa = saveAdv(c, rd.ab); x.rx = rollSave(saveBonus(m, rd.ab), sa.v, Math.random, saveMods(c, rd.ab), sa.why); x.rs = x.rx.tot >= rd.dc ? "ok" : "fail"; }
+      if (c && rd) { x.rx = monSave(c, findMon(c.ref), rd.ab); x.rs = x.rx.tot >= rd.dc ? "ok" : "fail"; }
     }
     if (k === "parry") { // RE13: Parry van het doelmonster (monster tegen monster): reaction weg, +N AC voor deze aanval
       const c = app.S.list.find((t) => t.id === x.tid), n = c && c.ref ? parryOf(findMon(c.ref)) : 0;
-      if (c && n && canParry(c, app.S.round)) { because("Parry"); apply(useParry(c, n)); x.acp = n; render(); toastHtml(`${esc(`${c.name}: Parry +${n} AC · reaction gebruikt`)} <button class="tundo" id="toast-undo">Ongedaan</button>`); focusAtk(); return; }
+      if (c && n && canParry(c, app.S.round)) { because("Parry"); apply(useParry(c, n)); x.acp = { id: c.id, n }; render(); toastHtml(`${esc(`${c.name}: Parry +${n} AC · reaction gebruikt`)} <button class="tundo" id="toast-undo">Ongedaan</button>`); focusAtk(); return; }
     }
     if (k === "la") x.la.on = !x.la.on;
     if (k === "free") { // oude gedrag: alleen de worp als melding

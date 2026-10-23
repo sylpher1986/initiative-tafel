@@ -27,7 +27,7 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 17. ~~RE1/RE2~~ klaar in 1.41.0 (WP9, zie Klaar)
 18. ~~RE11~~ klaar in 1.40.0 (WP8, zie Klaar)
 19. **SP5** Passive Perception / Insight / Investigation per speler
-20. **RE13** Hints voor monsterregels die je vergeet (Undead Fortitude, Prone bij Wolf Bite, Parry)
+20. ~~RE13~~ klaar in 1.42.0 (WP10, zie Klaar)
 
 **Eigen test Michiel (21-10-2026, aan tafel)**, ingedeeld in P2 en verdeeld over de werkpakketten:
 - ~~**RE18** Schade-spells (Fireball) in AoE: spell kiezen, schade rollen, upcasten~~ klaar in 1.41.0
@@ -40,9 +40,9 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 **P3: later**
 - Spelersscherm: ~~SC8~~ (klaar in 1.38.0), **SC9** (mini-log)
 - Afwerking: ~~AF8~~ (klaar in 1.40.0), **AF10–AF12**
-- Regels: **RE3–RE6**, **RE14** (eigen monster beter inlezen), **RE15** (eigen death save-worp)
+- Regels: **RE3–RE6**, ~~RE14~~ (klaar in 1.42.0), **RE15** (eigen death save-worp)
 - Voorbereiding: **VB4** (zoeken NL/typfouten), **VB5** (lege encounter maken)
-- Gevecht: ~~GV10~~ (klaar in 1.37.1), **GV11** (minder klikken na een misser)
+- Gevecht: ~~GV10~~ (klaar in 1.37.1), ~~GV11~~ (klaar in 1.42.0)
 - Taal: **TA1**
 - Technische schuld: **TS1** (oppakken wanneer je die code toch aanraakt)
 - Fase 2 en 3
@@ -62,7 +62,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | ~~**WP7**~~ | Tv en koppelen: leesbaarheid, zelfde code, QR (klaar) | SC6, SC7, SC1 | 1.39.0 |
 | ~~**WP8**~~ | Condities en statussen aan tafel: uitleg, Exhaustion, Rage, Deadly/Verrast (klaar) | RE10, RE11, RE16, AF8 | 1.40.0 |
 | ~~**WP9**~~ | Spells van spelers: schade-spells in AoE (Fireball), slots verbruiken, Pact Magic (klaar) | RE18, RE1, RE2, RE3 | 1.41.0 |
-| **WP10** | Monsterregels en minder klikken | RE13, RE14, GV11 | 1.42.0 |
+| ~~**WP10**~~ | Monsterregels en minder klikken: Undead Fortitude, save-riders, Parry, eigen monster inlezen, multiattack-volgorde (klaar) | RE13, RE14, GV11 | 1.42.0 |
 | **WP11** | Voorbereiding: passives, zoeken, lege encounter | SP5, VB4, VB5 | 1.43.0 |
 | **WP12** | Afwerking: haperingen, kleine fouten, toegankelijkheid, death save-worp, mini-log, dobbelstenen in statblocktekst | AF10, AF11, AF12, AF14, RE15, SC9 | 1.43.x |
 | Backlog | Niet ingepland | RE4, RE5, RE6, TA1, TS1, fase 2 en 3 | |
@@ -73,7 +73,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 - Geen open punten (IN8 en IN9 klaar in 1.35.1, zie Klaar).
 
 ## Gevecht aan tafel
-- [ ] **GV11 Minder klikken na een misser** (P3): misser sluit vanzelf of biedt "Volgende aanval" (multiattack); "+ meer doelen" bij concentratie-effecten. UX-agent kiest.
+- Geen open punten (GV11 klaar in 1.42.0, zie Klaar).
 
 ## Voorbereiding en encounters
 - [ ] **VB4 Monsters zoeken** (P3): "bandiet"/"gobin" vinden niets. Typfouttolerantie (afstand 1–2 op naam) en een kleine NL-synoniemenlijst (bandiet, skelet, draak, rat…). Meteen meenemen (klein): de lege-lijsttekst zegt "Eigen monster" terwijl de tab "Eigen" heet.
@@ -82,8 +82,6 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 ## Spelregels
 - [ ] **RE4 2024-regels buiten spells** (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen
 - [ ] **RE5 Surprise:** keuze ook zonder spelers aan tafel (paneel opent dan niet)
-- [ ] **RE13 Monsterregels die je vergeet** (P2): prompt zoals de concentration save: Undead Fortitude ("CON DC 5 + schade"), save-riders na een treffer (Wolf Bite "STR DC 11 of Prone?"), Parry als reaction met +AC. Herkenning in `js/rules/attacks.js` uit de statblocktekst, alleen de bekende SRD-patronen.
-- [ ] **RE14 Eigen monster beter inlezen** (P3): geplakt statblock krijgt geen aanvalsknoppen, geen LA en geen resistances; losse "+6 to hit" zonder crit-knop. Zelfde parser als voor SRD-monsters.
 - [ ] **RE15 Eigen death save-worp invoeren** (P3): getal typen (nat 20 = 1 HP, nat 1 = twee fails), zoals het cijferpad bij initiative.
 - [ ] **RE6 Spell-uitleg:** link vanuit AoE-Spell en Effect-presets; eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie)
 
@@ -265,3 +263,6 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **RE18** (1.41.0, WP9) Schade-spells in AoE: tab Schade met caster, chips met de schade-spells van de caster en een zoekveld (38 SRD-spells met save, tabel gegenereerd uit `data/spells.json`), slot-segment, veld "Dobbelstenen" (ook XdY+Z voor homebrew) met Rol; type, save, half en DC worden ingevuld, upcast en cantrip-schaling in de dobbelstenen, worp in het logboek. Tab Spell heeft een tegel "Schade-spell". Concentratie-spells starten concentratie; herhaalschade (Moonbeam) kost geen nieuw slot.
 - **RE1/RE2** (1.41.0, WP9) Slots verbruiken in dezelfde stap (één Ongedaan): AoE-schade-spell en tab Spell met een slot-segment (standaard laagste vrije slot, Pact eerst; meer doelen = hoger slot), Shield en een nieuwe cast via Effect automatisch. "Zelf" per caster onthouden (alleen als de DM het tikt). Niets meer over: niet blokkeren, wel melden. Monsters: statblock-slots en x/day.
 - **RE3** (1.41.0, WP9) Pact Magic apart (`casting.pact`): eigen regel "Pact 3rd" op de kaart, terug na short en long rest. Bestaande warlocks: opnieuw ophalen via D&D Beyond.
+- **RE13** (1.42.0, WP10) Monsterregels die je vergeet: **Undead Fortitude** rolt de app bij toepassen (CON DC 5 + schade, geslaagd = 1 HP; niet bij radiant of een crit; schadepaneel met knop "Radiant of kritiek", aanvalspaneel en AoE weten het zelf). **Save-riders** na een treffer (67 SRD-aanvallen: Prone, Poisoned/Paralyzed met duur en herhaalsave, gif-schade met of zonder half; ziekte, Life Drain e.d. als herinnering): rij in het aanvalspaneel met Gefaald/Geslaagd (monster: Rol +N), niet ingevuld = open save in de beurtbalk; één undo-stap met de schade. **Parry**: knop "Parry +2 → mis" in het schadepaneel van het monster (reaction gebruikt) en "Parry +N" in het aanvalspaneel bij monster tegen monster.
+- **RE14** (1.42.0, WP10) Eigen monster: geplakt statblock krijgt dezelfde structuur als een SRD-monster (aanvallen, LA, reactions, resistances, ability scores, saving throws); live "Herkend: …" onder de tekst, lege velden (naam, CR, AC, HP, Dex) ingevuld met "uit tekst", Voorbeeld ▾. Ook D&D Beyond-kopie en de 2024-schrijfwijze.
+- **GV11** (1.42.0, WP10) Multiattack-volgorde in het aanvalspaneel ("Claw 2/3"): bij een misser "Volgende: Claw ▸", na toepassen meteen de volgende aanval op hetzelfde doel. "+ meer doelen" niet gebouwd: tab Spell in AoE doet dat al (hint in het Effect-paneel).

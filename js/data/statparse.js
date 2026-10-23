@@ -19,6 +19,8 @@ const KEY_RE = new RegExp(`^(${KEYS.join("|")}|AC|HP|CR|Saves|Resistances|Immuni
 const ALIAS = { ac: "Armor Class", hp: "Hit Points", cr: "Challenge", saves: "Saving Throws", resistances: "Damage Resistances",
   vulnerabilities: "Damage Vulnerabilities", immunities: "Damage Immunities" };
 const IN_X = ["Saving Throws", "Skills", "Damage Vulnerabilities", "Damage Resistances", "Damage Immunities", "Condition Immunities", "Senses", "Languages"];
+const LIST_RE = /^(?:[*•-]\s*)?(?:cantrips?|at will|\d+(?:st|nd|rd|th)[- ]level|\d+\/day)\b/i;
+const CONDS_RE = /^(?:(?:blinded|charmed|deafened|exhaustion|frightened|grappled|incapacitated|invisible|paralyzed|petrified|poisoned|prone|restrained|stunned|unconscious)(?:,\s*|\s+and\s+|$))+$/i;
 const ABN = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
 const SMALL = /^(?:of|the|and|or|in|on|with|to|a|an|its|by|for|from|at|per|vs\.?)$/i;
 
@@ -65,8 +67,12 @@ function abilities(lines) {
       while (nums.length < 6 && j + 1 < lines.length && j - i < 6) { j++; nums.push(...pick(lines[j])); }
       if (nums.length >= 6) { for (let k = i; k <= j; k++) used.add(k); return { ab: nums.slice(0, 6), used }; }
     }
-    const one = s.match(/^(STR|DEX|CON|INT|WIS|CHA)\b\s*:?\s*(\d{1,2})\b/i);
-    if (one && ABN.indexOf(one[1].toUpperCase()) === ab.length) { ab.push(+one[2]); used.add(i); continue; }
+    // "STR 18 (+4)" per regel, of 2024 "Str 13 +1 +1 Dex 6 −2 −2 …" (meerdere paren op één regel)
+    if (/^(STR|DEX|CON|INT|WIS|CHA)\b\s*:?\s*\d{1,2}\b/i.test(s)) {
+      const before = ab.length;
+      for (const x of s.matchAll(/\b(STR|DEX|CON|INT|WIS|CHA)\b\s*:?\s*(\d{1,2})\b/gi)) if (ABN.indexOf(x[1].toUpperCase()) === ab.length) ab.push(+x[2]);
+      if (ab.length > before) { used.add(i); continue; }
+    }
     if (new RegExp(`^${ABN[ab.length]}$`, "i").test(s) && /^\d{1,2}\b/.test(lines[i + 1] || "")) {
       ab.push(+lines[i + 1].match(/^\d+/)[0]); used.add(i); used.add(i + 1); i++; continue;
     }
@@ -86,7 +92,7 @@ export function parseStatText(text) {
   out.ab = ab;
   // met minstens één sectiekop zijn entries vóór de eerste kop traits; zonder koppen beslist de tekst
   const hasSec = raw.some((l) => SECT.some(([re]) => re.test(l.replace(/[:.]$/, ""))));
-  let sec = hasSec ? "t0" : null, cur = null, head = true;
+  let sec = hasSec ? "t0" : null, cur = null, head = true, ents = false; // ents: kopregels (Speed, Skills) alleen vóór de eerste entry
   const rest = [];
   const push = (k, e) => { out[k].push(e); cur = e; };
   raw.forEach((line, i) => {
@@ -94,21 +100,26 @@ export function parseStatText(text) {
     const sx = SECT.find(([re]) => re.test(line.replace(/[:.]$/, "")));
     if (sx) { sec = sx[1]; cur = null; head = false; return; }
     if (sec === "rest") { rest.push(line); return; }
-    const kv = line.match(KEY_RE);
-    if (kv && (sec === null || sec === "t0")) {
+    const e0 = splitEntry(line), kv = !(e0 && e0[1] && !/\d/.test(e0[0])) && line.match(KEY_RE); // "Speed Burst. The …" is een trait
+    if (kv && !ents && (sec === null || sec === "t0")) {
       const k = ALIAS[kv[1].toLowerCase()] || KEYS.find((x) => x.toLowerCase() === kv[1].toLowerCase()) || kv[1], v = kv[2].trim();
       if (k === "Armor Class") out.ac = v;
       else if (k === "Hit Points") { const m = v.match(/^(\d+)\s*(?:\(([^)]*)\))?/); if (m) { out.hp = m[1]; out.hd = (m[2] || "").replace(/\s/g, "").replace(/−/g, "-"); } }
       else if (k === "Speed") out.spd = v;
       else if (k === "Challenge") out.cr = (v.match(/^(\d+\/\d+|\d+)/) || [""])[0];
+      else if (k === "Damage Immunities" && kv[1].toLowerCase() === "immunities") { // 2024: "Immunities Poison; Exhaustion, Poisoned"
+        const [dmg, cond] = v.includes(";") ? v.split(";").map((x) => x.trim()) : CONDS_RE.test(v) ? ["", v] : [v, ""];
+        if (dmg) out.x.push(["Damage Immunities", dmg.toLowerCase()]);
+        if (cond) out.x.push(["Condition Immunities", cond.toLowerCase()]);
+      }
       else if (IN_X.includes(k)) out.x.push([k, v]);
       cur = null; head = false; return;
     }
     if (head && !out.meta && /^(?:tiny|small|medium|large|huge|gargantuan)\b/i.test(line)) { out.meta = line; return; }
     if (head && !out.n && i === 0 && !/\.\s+\S/.test(line)) { out.n = line; return; } // eerste regel zonder zin: de naam
-    const e = splitEntry(line);
+    const e = e0;
     if (e) {
-      head = false;
+      head = false; ents = true;
       const tx = classic(e[1]);
       const k = sec === "t0" ? "t" : sec || (/^multiattack/i.test(e[0]) || /Attack:\s*[+-]\d+\s+to hit/i.test(tx) ? "a" : "t");
       push(k, [e[0], tx]);
@@ -116,7 +127,12 @@ export function parseStatText(text) {
     }
     if (sec === "l" && !out.l.length) { out.ld = out.ld ? `${out.ld} ${line}` : line; return; } // inleiding van de legendary actions
     // volgende regel van de vorige entry: midden in een zin (pdf-afbreking) met een spatie, anders een nieuwe alinea
-    if (cur) { cur[1] = classic(`${cur[1]}${/[\w,(-]$/.test(cur[1]) ? " " : "\n"}${line}`); return; }
+    // spell-lijsten ("Cantrips (at will): …", "1st level (4 slots): …", "3/day each: …") blijven eigen regels (castInfo, linkSpells)
+    if (cur) {
+      const mid = !LIST_RE.test(line) && !/^[*•]/.test(line)
+        && (/^[a-z(]/.test(line) || (/[\w,(-]$/.test(cur[1]) && !LIST_RE.test(cur[1].split("\n").pop()))); // na een spell-lijst: kleine letter = afgebroken
+      cur[1] = classic(`${cur[1]}${mid ? " " : "\n"}${line}`); return;
+    }
     head = false;
     rest.push(line);
   });
@@ -161,7 +177,8 @@ export function withParsed(m) {
   const r = !hasStructure(p) ? m : {
     ...m, t: p.rest ? [...p.t, ["Overig", p.rest]] : p.t, a: p.a, ba: p.ba, re: p.re, l: p.l, ld: p.ld, // niet herkend: trait "Overig"
     x: [...(Array.isArray(m.x) ? m.x : []), ...p.x],
-    ...(p.ab && !m.ab ? { ab: p.ab } : {}),
+    // getypte Dex gaat voor (initiative leest ab[1]); 10 is de oude standaardwaarde van het formulier, die telt niet
+    ...(p.ab && !m.ab ? { ab: m.dexScore && m.dexScore !== 10 ? [p.ab[0], +m.dexScore, ...p.ab.slice(2)] : p.ab } : {}),
     ...(p.meta && !m.meta ? { meta: p.meta } : {}),
     ...(p.spd && !m.spd ? { spd: p.spd } : {}),
     text: "",

@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { hasUF, ufDc, ufNeed, ufApply, parseRider, riderWhat, riderImmune, applyRider, parryOf, canParry, useParry } from "../js/rules/monrules.js";
+import { hasUF, ufDc, ufNeed, ufApply, ufInfo, monSave, parseRider, riderWhat, riderImmune, riderFor, riderOutcome, applyRider, parryOf, canParry, useParry } from "../js/rules/monrules.js";
 import { addSave, openSaves, resolveSave, tickSaves, label } from "../js/rules/saves.js";
 import { monsterActions, multiSeq, seqAfter } from "../js/rules/attacks.js";
 import { applyDamage, startConc } from "../js/rules/combat.js";
@@ -118,6 +118,7 @@ test("RE13: Parry uit de reactions; niet met gebruikte reaction, verrast of inca
   assert.ok(canParry(k, 2));
   assert.ok(!canParry({ ...k, reaction: true }, 2));
   assert.ok(!canParry({ ...k, sur: true }, 1) && canParry({ ...k, sur: true }, 2));
+  assert.ok(canParry({ ...k, sur: 2 }, 1), "verrast-beurt al voorbij (sur = 2): mag weer reageren");
   assert.ok(!canParry({ ...k, cond: ["Stunned"] }, 2));
   assert.ok(!canParry({ ...k, hp: 0 }, 2));
   const f = useParry(k, 2);
@@ -138,4 +139,33 @@ test("GV11: volgorde uit de Multiattack", () => {
   assert.deepEqual(seqAfter(["Bite", "Claw", "Claw"], "Bite"), ["Claw", "Claw"]);
   assert.equal(seqAfter(["Bite", "Claw"], "Tail"), null);
   assert.equal(seqAfter(null, "Bite"), null);
+});
+
+test("RE13: riderFor: neer, dood, automatisch falen, immuun, n.v.t.", () => {
+  const w = parseRider(act("Wolf", "Bite")), g = parseRider(act("Ghoul", "Claws")), sp = parseRider(act("Giant Spider", "Bite"));
+  const p = pc();
+  assert.deepEqual(riderFor(w, p, null, pc({ hp: 20 })), { rd: w, act: true, immune: false, auto: null, choice: null });
+  assert.equal(riderFor(w, p, null, pc({ hp: 20 }), "na").choice, "na");
+  assert.equal(riderFor(w, p, null, pc({ hp: 0 })), null, "bewusteloos = al prone");
+  assert.equal(riderFor(sp, p, null, pc({ hp: 0, ds: { dead: true } })), null, "gestorven");
+  assert.equal(riderFor(g, p, null, pc({ hp: 0 })).choice, null, "CON faalt niet vanzelf");
+  const pr = parseRider(act("Purple Worm", "Bite")); // DEX, alleen herinnering
+  assert.equal(riderFor(pr, p, null, pc({ hp: 0 })).auto, null, "geen act: niets automatisch");
+  const bash = { ...w, conds: ["Prone"] };
+  const par = pc({ cond: ["Paralyzed"] });
+  assert.equal(riderFor(bash, par, null, par).auto, "fail", "Paralyzed faalt STR vanzelf");
+  const m = mon(); assert.equal(riderFor(w, m, null, mon({ hp: 0 })), null, "monster neer");
+  assert.equal(riderFor(w, m, { x: [["Condition Immunities", "prone"]] }, m).immune, true);
+});
+
+test("RE13: riderOutcome, ufInfo, monSave", () => {
+  const sp = parseRider(act("Giant Spider", "Bite")), w = parseRider(act("Wolf", "Bite"));
+  assert.equal(riderOutcome(w, false, 0), "Prone");
+  assert.equal(riderOutcome(w, true, 0), "geen gevolg");
+  assert.equal(riderOutcome(sp, true, 4), "half: −4 poison");
+  assert.equal(riderOutcome(sp, false, 9), "−9 poison");
+  assert.deepEqual(ufInfo({ crit: false, types: [{ type: "radiant", dealt: 5 }] }), { crit: false, radiant: true });
+  assert.deepEqual(ufInfo({ crit: true, types: [{ type: "radiant", dealt: 0 }] }), { crit: true, radiant: false });
+  const x = monSave(mon(), M("Zombie"), "CON", false, () => 0.5);
+  assert.equal(x.bo, 3); assert.equal(x.tot, 14);
 });

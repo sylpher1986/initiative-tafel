@@ -110,3 +110,33 @@ test("RE14: een gewone zin is geen entry", () => {
   assert.deepEqual(p.t.map((e) => e[0]), ["Nimble Escape"]);
   assert.match(p.rest, /makes two attacks/);
 });
+
+test("RE14: spellcasting na plakken: castInfo gelijk aan het SRD-origineel (spell-lijsten blijven eigen regels)", async () => {
+  const { castInfo } = await import("../js/rules/spells.js");
+  const bad = [];
+  for (const m of SRD) {
+    const orig = castInfo(m);
+    if (!orig) continue;
+    const p = withParsed({ n: m.n, ac: m.ac, hp: m.hp, custom: true, text: asText(m) });
+    if (JSON.stringify(castInfo(p)) !== JSON.stringify(orig)) bad.push(m.n);
+  }
+  assert.deepEqual(bad, []);
+});
+
+test("RE14: kopregel-achtige traits, 2024-scores en Immunities met puntkomma", () => {
+  const p = parseStatText(`Thing
+Armor Class 12 (natural armor)
+Speed 30 ft.
+Str 13 +1 +1 Dex 6 -2 -2 Con 16 +3 +3
+Int 3 -4 -4 Wis 6 -2 -2 Cha 5 -3 -3
+Immunities Poison; Exhaustion, Poisoned
+Speed Burst. The thing doubles its speed.
+Actions
+Slam. Melee Attack Roll: +3, reach 5 ft. Hit: 4 (1d6 + 1) Bludgeoning damage.
+Skills Mastery. Een trait na een actie.`);
+  assert.equal(p.spd, "30 ft.");
+  assert.deepEqual(p.ab, [13, 6, 16, 3, 6, 5]);
+  assert.deepEqual(p.x, [["Damage Immunities", "poison"], ["Condition Immunities", "exhaustion, poisoned"]]);
+  assert.deepEqual(p.t.map((e) => e[0]), ["Speed Burst"]);
+  assert.deepEqual(p.a.map((e) => e[0]), ["Slam", "Skills Mastery"]);
+});

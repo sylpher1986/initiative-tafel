@@ -16,7 +16,7 @@ import { diceify, syncSB, monCard, isPhone } from "./statblock.js";
 import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
 import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
-import { hasUF, ufDc, ufNeed, riderWhat, riderImmune, parryOf, canParry } from "../rules/monrules.js";
+import { hasUF, ufDc, ufNeed, ufInfo, riderWhat, riderFor, parryOf, canParry } from "../rules/monrules.js";
 import { openSaves, lastTurn } from "../rules/saves.js";
 import { avatar, icon, monType } from "./avatar.js";
 import { SPELLS, SPELL_CONDS, customSpell, spellTargets, spellDefault, condImmune, spellFor, rulesDiffer, slotFor } from "../rules/spellcast.js";
@@ -1251,7 +1251,7 @@ export const atkTargets = (by) => sortOrder(app.S.list).filter((c) => c.kind !==
 /** Knoptekst bij een treffer: "7 schade + Prone toepassen", "7 schade toepassen · save in beurtbalk" (RE13) */
 function goLabel(dealt, ri, x) {
   const base = dealt ? `${dealt} schade` : "";
-  if (!ri || !ri.act) return dealt ? `${base} toepassen` : "Geen schade";
+  if (!ri || !ri.act || ri.choice === "na") return dealt ? `${base} toepassen` : "Geen schade";
   const rd = ri.rd, ch = ri.choice;
   if (!ch) return `${base || "Niets"} toepassen · save in beurtbalk`;
   const extra = [];
@@ -1264,32 +1264,19 @@ function goLabel(dealt, ri, x) {
 /** RE13: Parry aanbieden bij monster tegen monster: melee, raak (geen nat 20) en met +N zou het missen */
 const parryOk = (c, x, r, res) => {
   const n = c.kind === "monster" && c.ref ? parryOf(findMon(c.ref)) : 0;
-  return n > 0 && !x.acp && x.kind !== "ranged" && res.hit && !x.force.hit && r.nat !== 20 && canParry(c, app.S.round) && r.tot < atkAc(x, c) + n;
+  return n > 0 && !(x.acp && x.acp.id === c.id && c.reaction) && x.kind !== "ranged" && res.hit && !x.force.hit && r.nat !== 20 && canParry(c, app.S.round) && r.tot < atkAc(x, c) + n;
 };
 
 /** Shield (reaction, +5) aanbieden: speler die kan reageren (niet op 0 HP/incapacitated), geraakt maar niet met een natuurlijke 20, en +5 AC zou missen */
 export const shieldOk = (c, x, r, res) => c.kind === "pc" && c.hp > 0 && !c.cond.some((k) => NO_ACT.includes(k)) && res.hit && !x.force.hit && r.nat !== 20 && !c.reaction
   && !(c.eff || []).some((e) => e.n === "Shield") && r.tot < effAc(c) + 5;
 
-/** AC van het doel voor deze aanval: effecten (Shield) plus een Parry die op deze aanval gebruikt is (RE13) */
-export const atkAc = (x, c) => (effAc(c) || 0) + (x.acp && c.reaction ? x.acp : 0); // Parry ongedaan gemaakt: reaction weer vrij, bonus weg
+/** AC van het doel voor deze aanval: effecten (Shield) plus een Parry van dít doel op deze aanval (RE13; ongedaan = weg) */
+export const atkAc = (x, c) => (effAc(c) || 0) + (x.acp && x.acp.id === c.id && c.reaction ? x.acp.n : 0);
 
-/**
- * RE13: save-rider van deze aanval tegen dit doel, of null (geen rider, geen treffer, doel neer).
- * simHp = HP van het doel na de treffer. { rd, act (conditie/schade toe te passen), immune, auto ("fail": bewusteloos
- * faalt STR/DEX vanzelf), choice ("fail"|"ok"|null) }.
- */
-export function atkRider(x, c, res, simHp) {
-  const rd = x.rid;
-  if (!rd || !res.hit) return null;
-  if (c.kind === "monster" && c.max && simHp <= 0) return null; // monster neer: geen rider meer
-  const down = c.kind === "pc" && c.max > 0 && simHp <= 0;
-  if (down && !rd.dmg && rd.conds.length && rd.conds.every((k) => k === "Prone")) return null; // bewusteloos = al prone
-  const m = c.ref ? findMon(c.ref) : null;
-  if (riderImmune(rd, m)) return { rd, act: false, immune: true };
-  const act = !!(rd.conds.length || rd.dmg);
-  const auto = act && down && (rd.ab === "STR" || rd.ab === "DEX") ? "fail" : null;
-  return { rd, act, immune: false, auto, choice: auto || x.rs || null };
+/** RE13: rider van deze aanval tegen dit doel (riderFor in monrules.js); null zonder treffer */
+export function atkRider(x, c, res, sim) {
+  return res.hit ? riderFor(x.rid, c, c.ref ? findMon(c.ref) : null, sim, x.rs) : null;
 }
 
 /** Rij "Daarna · STR DC 11 · of Prone" in het aanvalspaneel (alleen bij een treffer) */
@@ -1303,7 +1290,7 @@ function riderRow(x, c, ri) {
   const canRoll = c.kind === "monster" && !selfRoll(c, rd.ab);
   return `<div class="xrider"><p class="qlbl">${head}</p>${roll}
     <div class="xrow">${canRoll ? `<button type="button" class="btn small" data-xa="rroll" aria-label="${esc(c.name)}: ${rd.ab}-save rollen, DC ${rd.dc}">Rol ${sgn(svBonus(c, rd.ab))}</button>` : ""}
-    <div class="seg2 sm" role="group" aria-label="Save ${esc(c.name)}">${[["fail", "Gefaald"], ["ok", "Geslaagd"]].map(([v, l]) => `<button type="button" data-xa="rs" data-v="${v}" aria-pressed="${x.rs === v}">${l}</button>`).join("")}</div></div>
+    <div class="seg2 sm" role="group" aria-label="Save ${esc(c.name)}">${[["fail", "Gefaald"], ["ok", "Geslaagd"], ...(rd.only ? [["na", "n.v.t."]] : [])].map(([v, l]) => `<button type="button" data-xa="rs" data-v="${v}" aria-pressed="${x.rs === v}">${l}</button>`).join("")}</div></div>
     ${x.rx ? `<p class="hint">${esc(`${rd.ab} ${rollText(x.rx, rd.dc)}`)}</p>` : ""}${only}</div>`;
 }
 
@@ -1370,12 +1357,12 @@ function atkRes(x, c, by) {
   ].filter(Boolean);
   const how = advLine(x, au, r);
   let body = "", foot = "";
-  if (x.acp && c.reaction) hints.unshift(`Parry: AC ${ac - x.acp} + ${x.acp} = ${ac}`);
+  if (x.acp && x.acp.id === c.id && c.reaction) hints.unshift(`Parry: AC ${ac - x.acp.n} + ${x.acp.n} = ${ac}`);
   if (res.hit) {
     const sim = structuredClone(c), was = c.hp;
     if (c.max) atkDamage(sim, res);
-    const uf = c.max && ufNeed(sim, c.ref ? findMon(c.ref) : null, was, res.dealt, { crit: res.crit, radiant: res.types.some((t) => t.type === "radiant" && t.dealt > 0) });
-    const ri = atkRider(x, c, res, sim.hp);
+    const uf = c.max && ufNeed(sim, c.ref ? findMon(c.ref) : null, was, res.dealt, ufInfo(res));
+    const ri = atkRider(x, c, res, sim);
     const end = !c.max ? "" : sim.ds && sim.ds.dead && !(c.ds && c.ds.dead) ? ` · <b class="bad">sterft</b>`
       : uf && uf.dc ? ` · Undead Fortitude CON DC ${uf.dc} (rolt bij toepassen)`
       : was > 0 && sim.hp <= 0 ? ` · <b class="bad">${c.kind === "pc" ? "bewusteloos" : "neer"}</b>${uf && uf.skip ? ` · geen Undead Fortitude (${uf.skip})` : ""}`
@@ -1385,10 +1372,12 @@ function atkRes(x, c, by) {
       <div class="xrow"><button type="button" class="btn small" data-xa="crit" aria-pressed="${res.crit}">Kritiek</button>
       <span class="acalc">${c.max ? `${n0(c.hp)} → ${n0(sim.hp)} HP${end}` : "HP onbekend"}</span></div>
       ${ri ? riderRow(x, c, ri) : ""}`;
-    const can = c.max && (res.dealt || (ri && ri.act));
+    const can = c.max && (res.dealt || (ri && ri.act && ri.choice !== "na"));
     const left = shieldOk(c, x, r, res) ? `<button type="button" class="btn" data-xa="shield">Shield +5</button>`
       : parryOk(c, x, r, res) ? `<button type="button" class="btn" data-xa="parry">Parry +${parryOf(findMon(c.ref))}</button>` : "<span></span>";
-    foot = `${left}<button type="button" class="btn primary qgo" data-xa="go" ${can ? "" : "disabled"}>${!c.max ? "HP onbekend" : goLabel(res.dealt, ri, x)}</button>`;
+    const nx = !can && x.sq && x.sq.left.length ? x.sq.left[0] : ""; // GV11: niets toe te passen (immuun): wel door
+    foot = `${left}${nx ? `<button type="button" class="btn primary qgo" data-xa="next">Volgende: ${esc(nx)} <span aria-hidden="true">▸</span></button>`
+      : `<button type="button" class="btn primary qgo" data-xa="go" ${can ? "" : "disabled"}>${!c.max ? "HP onbekend" : goLabel(res.dealt, ri, x)}</button>`}`;
   } else {
     const spend = x.la && x.la.on && laCan(x, by);
     const nx = !spend && x.sq && x.sq.left.length ? x.sq.left[0] : ""; // GV11: door naar de volgende aanval

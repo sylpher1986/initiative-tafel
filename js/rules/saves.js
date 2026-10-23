@@ -61,7 +61,7 @@ export function untickSaves(S) {
 export function isValid(S, s) {
   const c = S.list.find((x) => x.id === s.id);
   if (!c || isOut(c)) return false;
-  if (s.kind === "rider") return !!s.rd;
+  if (s.kind === "rider") return !!s.rd && Array.isArray(s.rd.conds); // rare data in de opslag: geen rij
   return s.kind === "conc" ? c.cond.includes("Concentrating") && (c.concSpell || "") === s.n : c.cond.includes(s.n);
 }
 

@@ -5,6 +5,17 @@
 import { fx, merge, applyDamage, dropConc } from "./combat.js";
 import { makeDur } from "./turns.js";
 import { NO_ACT } from "./legendary.js";
+import { saveAdv, rollSave, saveBonus } from "./aoe.js";
+import { saveMods } from "./effects.js";
+
+/** Monster-save rollen zoals overal: statblock-bonus, advantage/disadvantage (Rage, Exhaustion, Magic Resistance) en Bless/Bane/cover */
+export function monSave(c, m, ab, magic = false, rng = Math.random) {
+  const sa = saveAdv(c, ab, magic);
+  return rollSave(saveBonus(m, ab), sa.v, rng, saveMods(c, ab), sa.why);
+}
+
+/** Undead Fortitude-uitzondering uit een aanvalsuitslag: crit, of radiant-schade die erdoor kwam */
+export const ufInfo = (res) => ({ crit: !!res.crit, radiant: (res.types || []).some((t) => t.type === "radiant" && t.dealt > 0) });
 
 const ABIL = { strength: "STR", dexterity: "DEX", constitution: "CON", intelligence: "INT", wisdom: "WIS", charisma: "CHA" };
 const traits = (m) => (m && Array.isArray(m.t) ? m.t.filter(Array.isArray) : []);
@@ -143,6 +154,35 @@ export function applyRider(c, rd, ok, active) {
   return out;
 }
 
+const AUTO_FAIL = ["Paralyzed", "Stunned", "Unconscious", "Petrified"]; // PHB 2014: falen STR- en DEX-saves vanzelf
+
+/**
+ * Rider van een aanval tegen dit doel na de treffer, of null (geen rider, doel neer of dood).
+ * sim = het doel ná de schade (kopie); choice = keuze van de DM ("fail"|"ok"|"na"|null).
+ * { rd, act (conditie/schade toe te passen), immune, auto ("fail": faalt STR/DEX vanzelf), choice }.
+ */
+export function riderFor(rd, c, m, sim, choice = null) {
+  if (!rd || !c || !sim) return null;
+  if (sim.ds && sim.ds.dead) return null; // gestorven door de treffer
+  if (c.kind === "monster" && c.max && sim.hp <= 0) return null; // monster neer: geen rider meer
+  const down = c.kind === "pc" && c.max > 0 && sim.hp <= 0;
+  if (down && !rd.dmg && rd.conds.length && rd.conds.every((k) => k === "Prone")) return null; // bewusteloos = al prone
+  if (riderImmune(rd, m)) return { rd, act: false, immune: true, auto: null, choice: null };
+  const act = !!(rd.conds.length || rd.dmg);
+  const out = (rd.ab === "STR" || rd.ab === "DEX") && (down || (c.cond || []).some((k) => AUTO_FAIL.includes(k)));
+  const auto = act && out ? "fail" : null;
+  return { rd, act, immune: false, auto, choice: auto || choice || null };
+}
+
+/** Uitkomst als korte tekst: "Prone", "−9 poison", "half: −4 HP", "geen gevolg" (melding na toepassen) */
+export function riderOutcome(rd, ok, lost) {
+  const p = [];
+  if (!ok && rd.conds.length) p.push(rd.conds.join(" + "));
+  if (lost > 0) p.push(`${ok && rd.dmg && rd.dmg.half ? "half: " : ""}−${lost} ${rd.dmg ? rd.dmg.type : "HP"}`);
+  if (!ok && !rd.conds.length && !rd.dmg && rd.note) p.push(rd.note);
+  return p.join(", ") || "geen gevolg";
+}
+
 /* ---------- Parry ---------- */
 /** Parry-bonus uit de reactions van het statblock ("adds 2 to its AC against one melee attack"), anders 0 */
 export function parryOf(m) {
@@ -155,8 +195,8 @@ export function parryOf(m) {
   return 0;
 }
 
-/** Kan dit monster nu parryen? Reaction vrij, niet verrast in ronde 1, niet incapacitated, levend */
-export const canParry = (c, round = 0) => !!c && c.kind === "monster" && c.hp > 0 && !c.reaction && !(c.sur && round <= 1)
+/** Kan dit monster nu parryen? Reaction vrij, niet verrast in ronde 1 (zoals isSurprised), niet incapacitated, levend */
+export const canParry = (c, round = 0) => !!c && c.kind === "monster" && c.hp > 0 && !c.reaction && !(c.sur === true && round === 1)
   && !(c.cond || []).some((k) => NO_ACT.includes(k));
 
 /** Parry gebruikt: reaction weg, logoorzaak. Geeft Fx */
