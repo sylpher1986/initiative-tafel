@@ -165,6 +165,7 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS, prev = null, opts 
   });
   const out = { v: 1, round: vt.round, active, next, list };
   if (vis.log === false) out.nolog = 1;
+  out.tg = vis.tags; // SC9: instelling gewisseld → geen regelstorm (zegt niets wat spelers niet al zien)
   if (!fight && S.endSum) out.end = Math.max(0, S.endSum.r | 0);
   if (inTurn.size > 1) Object.assign(out, { group: [...inTurn], gname: groupName(list.filter((c) => inTurn.has(c.id))) });
   return out;
@@ -263,6 +264,7 @@ export function cleanView(d) {
   const pick = (v) => (typeof v === "string" && ids.has(v) ? v : null);
   const out = { v: 1, round: Math.max(0, int(d.round)), active: pick(d.active), next: pick(d.next), list };
   if (d.nolog) out.nolog = 1;
+  if (VIS_OPTS.tags.includes(d.tg)) out.tg = d.tg;
   if (!out.round && d.end != null) out.end = Math.max(0, Math.min(9999, int(d.end)));
   const group = Array.isArray(d.group) ? [...new Set(d.group.map(pick).filter(Boolean))].slice(0, 20) : [];
   if (out.active && group.length > 1 && group.includes(out.active)) Object.assign(out, { group, gname: str(d.gname, 200) || null });
@@ -287,7 +289,7 @@ export function logLines(a, b) {
     if (exact && h1.hp !== h0.hp) parts.push(`${h1.hp < h0.hp ? "−" : "+"}${Math.abs(h1.hp - h0.hp)} HP`);
     if (c.kind === "monster" && c.out && !o.out) parts.push("neer");
     else if (h0 && h1 && h1.st !== h0.st && h1.st && (!exact || DOWN_ST.includes(h1.st) || DOWN_ST.includes(h0.st))) parts.push(exact ? h1.st.toLowerCase() : `${h0.st || "?"} → ${h1.st}`);
-    const t0 = new Set(o.tags.filter((t) => !QUIET.has(t))), t1 = new Set(c.tags.filter((t) => !QUIET.has(t)));
+    const same = a.tg === b.tg, t0 = new Set(same ? o.tags.filter((t) => !QUIET.has(t)) : []), t1 = new Set(same ? c.tags.filter((t) => !QUIET.has(t)) : []);
     const add = [...t1].filter((t) => !t0.has(t)), gone = [...t0].filter((t) => !t1.has(t));
     if (add.length) parts.push(add.join(", "));
     if (gone.length) parts.push(`${gone.join(", ")} weg`);

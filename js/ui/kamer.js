@@ -300,7 +300,7 @@ export function bindSharing(view, links) {
   });
   $("#toast")?.addEventListener("click", (e) => {
     if (e.target.closest("#toast-kamer")) resume();
-    else if (e.target.closest("#toast-weer") && room && room.stopped) { closeToast(); shareAgain(); }
+    else if (e.target.closest("#toast-weer")) { closeToast(); if (room && room.stopped) shareAgain(); }
   });
   room = loadRoom();
   if (room && !room.stopped) connect(); // gestopt (SC7): niet vanzelf weer delen

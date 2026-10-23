@@ -296,7 +296,7 @@ function dsPadHtml(c) {
   const v = ui.dsPad.v, ok = (n) => (v === "" ? n > 0 : v === "1" || (v === "2" && n === 0));
   const dg = (n) => `<button type="button" data-a="ds-k" data-v="${n}" ${ok(n) ? "" : "disabled"}>${n}</button>`;
   return `<div class="dspad" role="group" aria-label="${esc(`Death save van ${c.name}`)}">
-    <p class="dsv"><span>Worp van ${esc(c.name)}</span><b aria-live="polite">${v || "—"}</b></p>
+    <p class="dsv"><span>Worp van ${esc(c.name)}</span><b>${v || "—"}</b></p>
     <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(dg).join("")}<button type="button" data-a="ds-k" data-v="back" aria-label="Wissen" ${v ? "" : "disabled"}>⌫</button>${dg(0)}<button type="button" class="ok" data-a="ds-k" data-v="ok" ${v === "1" || v === "2" ? "" : "disabled"}>OK</button></div>
     <p class="hint">1 = twee failures, 10+ = success, 20 = staat op met 1 HP.</p>
     <button type="button" class="link" data-a="ds-own">Annuleer</button></div>`;
@@ -615,7 +615,7 @@ function row(c, S, down = false) {
   const open = openId() === c.id, prep = mode() === "prep";
   const turn = c.id === S.active, hp = c.max && !down, fhp = hp && !prep;
   return `<li class="c k ${c.kind === "pc" ? "pc" : "mon"} ${open ? "open" : ""} ${turn ? "turn" : ""} ${isOut(c) ? "out" : ""}${down ? " down" : ""}${fhp ? " fhp" : ""}" data-id="${esc(c.id)}"${down ? ` data-down="1"` : ""}>
-    <button class="khead" data-a="open" aria-expanded="${open}"${turn ? ` aria-current="true"` : ""} aria-label="${esc(c.name)}, ${c.kind === "pc" ? "speler" : c.kind === "lair" ? "lair" : "monster"}${effAc(c) && !(isOut(c) && c.kind === "monster") ? `, AC ${n0(effAc(c))}` : ""}${open ? ", sluiten" : ", openen"}">
+    <button class="khead" data-a="open" aria-expanded="${open}"${turn ? ` aria-current="true"` : ""} aria-label="${esc(c.name)}, ${c.kind === "pc" ? "speler" : "monster"}${effAc(c) && !(isOut(c) && c.kind === "monster") ? `, AC ${n0(effAc(c))}` : ""}${open ? ", sluiten" : ", openen"}">
       <span class="i">${c.init == null ? "–" : n0(c.init)}${turn ? `<span class="tri" aria-hidden="true">▶</span>` : ""}</span>
       <span class="n">${avatar(c, c.ref ? findMon(c.ref)?.meta : "")}<span class="nm">${esc(c.name)}</span></span>
       <span class="meta">${isOut(c) && c.kind === "monster" ? "neer" : acMeta(c)}</span>

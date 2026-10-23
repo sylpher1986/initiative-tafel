@@ -24,7 +24,7 @@ test("RE15: getypte worp telt als death save", () => {
   const c = pc(); dsResult(c, 10); assert.equal(c.ds.s, 1, "10 is een success");
   const d = pc(); dsResult(d, 1); assert.equal(d.ds.f, 2);
   const e = pc(); const fx = dsResult(e, 20); assert.equal(e.hp, 1); assert.equal(e.ds, null); assert.ok(!e.cond.includes("Unconscious"));
-  assert.match(fx.why[0].t, /speler rolde \[20\]/);
+  assert.match(fx.why[0].t, /death save \[20\], door speler gerold/);
   const f = pc({ ds: { s: 0, f: 2, stable: false, dead: false } }); dsResult(f, 1); assert.equal(f.ds.f, 3); assert.equal(f.ds.dead, true);
 });
 
@@ -100,4 +100,26 @@ test("AF12: slots en death saves zonder aria-pressed, toestand in het label; ari
   assert.match(r, /aria-current="true"/);
   const css = readFileSync(new URL("../css/app.css", import.meta.url), "utf8");
   assert.match(css, /\.pip\[data-used="true"\]::before/); assert.match(css, /\.c\.k\.mon \.av,\.pvc\.monster \.av\{border-radius:6px\}/);
+});
+
+/* ---------- review WP12 ---------- */
+import { applyPcHp, critAtZero } from "../js/rules/combat.js";
+test("stabiel en toch schade: weer death saves, tellers vanaf nul (PHB 2014)", () => {
+  const a = pc({ ds: { s: 3, f: 1, stable: true, dead: false } }); applyPcHp(a, -3);
+  assert.deepEqual([a.ds.stable, a.ds.s, a.ds.f], [false, 0, 1]);
+  const b = pc({ ds: { s: 3, f: 0, stable: true, dead: false } }); critAtZero(b);
+  assert.deepEqual([b.ds.stable, b.ds.s, b.ds.f], [false, 0, 2]);
+  dsResult(b, 12); assert.equal(b.ds.s, 1, "de knoppen werken weer");
+});
+
+test("dsResult maakt geen ds-object bij een speler met HP", () => {
+  const c = pc({ hp: 5, ds: null }); dsResult(c, 12); assert.equal(c.ds, null);
+});
+
+test("SC9: wisselen van 'Condities en effecten' geeft geen regelstorm", () => {
+  const none = { ...VIS, tags: "none" };
+  const a = view([P({ id: "p", name: "Aria", cond: ["Prone"] }), M({ id: "g", name: "G", cond: ["Poisoned"] })], none);
+  const b = view([P({ id: "p", name: "Aria", cond: ["Prone"] }), M({ id: "g", name: "G", cond: ["Poisoned"] })]);
+  assert.deepEqual(logLines(a, b), []); assert.deepEqual(logLines(b, a), []);
+  assert.equal(cleanView({ v: 1, list: [], tg: "<x>" }).tg, undefined);
 });

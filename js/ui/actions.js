@@ -185,7 +185,7 @@ const row = {
     const isOpen = openId() === c.id;
     ui.open = isOpen ? "" : c.id;
     ui.fromDown = !isOpen && li && li.dataset.down ? c.id : null; // uit het blok "Neer" geopend: blijft daar staan
-    ui.panel = null; ui.castPick = null; ui.edit = null; ui.effWho = null; ui.effCustom = false; ui.effForm = {}; ui.drOpen = null; ui.exhOpen = false; ui.rage = null;
+    ui.panel = null; ui.castPick = null; ui.edit = null; ui.effWho = null; ui.effCustom = false; ui.effForm = {}; ui.drOpen = null; ui.exhOpen = false; ui.rage = null; ui.dsPad = null;
     return "scroll";
   },
   panel(c, b) {
@@ -281,7 +281,7 @@ const row = {
   sur(c) { const r = toggleSurprise(c, app.S); if (!r) return false; apply(r); },
   dropconc(c) { apply(R.dropConc(c, "beëindigd")); },
   topty(c) { const ex = app.party.find((m) => m.name.toLowerCase() === c.name.toLowerCase()); c.pid = ex ? ex.pid : uid(); toast(`${c.name} staat nu in de vaste party.`); },
-  "ds-roll": (c) => { ui.dsPad = null; apply(R.rollDs(c)); },
+  "ds-roll": (c) => dsDone(c, d(20), true),
   /* RE15: eigen worp via het cijferpad; pas bij een volledige worp één undo-stap met melding + Ongedaan */
   "ds-own"(c) { ui.dsPad = ui.dsPad && ui.dsPad.id === c.id ? null : { id: c.id, v: "" }; renderFocus(c, ui.dsPad ? '[data-a="ds-k"]:not([disabled])' : '[data-a="ds-own"]'); return false; },
   "ds-k"(c, b) {
@@ -289,15 +289,10 @@ const row = {
     const k = b.dataset.v;
     if (k === "back") p.v = p.v.slice(0, -1);
     else if (k !== "ok") p.v = (p.v + k).slice(0, 2);
-    const done = k === "ok" || p.v.length === 2 || +p.v >= 3;
-    if (!done) { renderFocus(c, `[data-a="ds-k"][data-v="${k}"]:not([disabled])`, '[data-a="ds-k"]:not([disabled])'); return false; }
-    const r = +p.v; ui.dsPad = null;
-    const f = R.dsResult(c, r);
-    if (!f.why.length) { toast("Een death save is 1 t/m 20."); render(); return false; }
-    addWhy(f.why);
-    return { undoToast: dsToast(c, r) };
+    if (k !== "ok" && p.v.length < 2 && !(+p.v >= 3)) { renderFocus(c, `[data-a="ds-k"][data-v="${k}"]:not([disabled])`, '[data-a="ds-k"]:not([disabled])'); return false; }
+    return dsDone(c, +p.v, false);
   },
-  "ds-crit": (c) => apply(R.critAtZero(c)),
+  "ds-crit": (c) => { ui.dsPad = null; apply(R.critAtZero(c)); },
   "cast-reset"(c) {
     c.casting.slots.forEach((x) => (x.left = x.max));
     c.casting.daily.forEach((g) => g.items.forEach((x) => (x.left = x.max)));
@@ -320,6 +315,16 @@ function renderFocus(c, ...sels) {
   render();
   const li = cardEl(c.id);
   for (const s of sels) { const el = li && li.querySelector(s); if (el) { el.focus({ preventScroll: true }); return; } }
+}
+/** RE15: death save toepassen (gerold of getypt): één stap, melding met Ongedaan, focus blijft op de kaart */
+function dsDone(c, r, byApp) {
+  ui.dsPad = null;
+  const f = R.dsResult(c, r, byApp);
+  if (!f.why.length) { toast("Geen death save nodig."); renderFocus(c, '[data-a="ds-own"]', ".khead"); return false; }
+  addWhy(f.why);
+  renderFocus(c, byApp ? '[data-a="ds-roll"]' : '[data-a="ds-own"]', ".khead");
+  toastHtml(`${esc(dsToast(c, r))} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  return false;
 }
 /** RE15: "Aria: 14, success (2/3)" / "nat 20, staat op met 1 HP" / "nat 1, twee failures (2/3)" */
 function dsToast(c, r) {

@@ -38,9 +38,9 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 - ~~**SC10** HP-balken op het spelersscherm even lang~~ klaar in 1.35.1
 
 **P3: later**
-- Spelersscherm: ~~SC8~~ (klaar in 1.38.0), **SC9** (mini-log)
-- Afwerking: ~~AF8~~ (klaar in 1.40.0), **AF10–AF12**
-- Regels: **RE3–RE6**, ~~RE14~~ (klaar in 1.42.0), **RE15** (eigen death save-worp)
+- Spelersscherm: ~~SC8~~ (klaar in 1.38.0), ~~SC9~~ (klaar in 1.44.0)
+- Afwerking: ~~AF8~~ (klaar in 1.40.0), ~~AF10–AF12, AF14~~ (klaar in 1.44.0)
+- Regels: ~~RE3~~ (klaar in 1.41.0), **RE4–RE6**, ~~RE14~~ (klaar in 1.42.0), ~~RE15~~ (klaar in 1.44.0)
 - Voorbereiding: ~~VB4~~ · ~~VB5~~ (klaar in 1.43.0, WP11)
 - Gevecht: ~~GV10~~ (klaar in 1.37.1), ~~GV11~~ (klaar in 1.42.0)
 - Taal: **TA1**
@@ -64,7 +64,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | ~~**WP9**~~ | Spells van spelers: schade-spells in AoE (Fireball), slots verbruiken, Pact Magic (klaar) | RE18, RE1, RE2, RE3 | 1.41.0 |
 | ~~**WP10**~~ | Monsterregels en minder klikken: Undead Fortitude, save-riders, Parry, eigen monster inlezen, multiattack-volgorde (klaar) | RE13, RE14, GV11 | 1.42.0 |
 | ~~**WP11**~~ | Voorbereiding: passives, zoeken, lege encounter (klaar) | SP5, VB4, VB5 | 1.43.0 |
-| **WP12** | Afwerking: haperingen, kleine fouten, toegankelijkheid, death save-worp, mini-log, dobbelstenen in statblocktekst | AF10, AF11, AF12, AF14, RE15, SC9 | 1.43.x |
+| ~~**WP12**~~ | Afwerking: haperingen, kleine fouten, toegankelijkheid, death save-worp, mini-log, dobbelstenen in statblocktekst (klaar) | AF10, AF11, AF12, AF14, RE15, SC9 | 1.44.0 |
 | Backlog | Niet ingepland | RE4, RE5, RE6, TA1, TS1, fase 2 en 3 | |
 
 ---
@@ -81,21 +81,21 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 ## Spelregels
 - [ ] **RE4 2024-regels buiten spells** (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen
 - [ ] **RE5 Surprise:** keuze ook zonder spelers aan tafel (paneel opent dan niet)
-- [ ] **RE15 Eigen death save-worp invoeren** (P3): getal typen (nat 20 = 1 HP, nat 1 = twee fails), zoals het cijferpad bij initiative.
+- [x] **RE15 Eigen death save-worp invoeren** (P3): getal typen (nat 20 = 1 HP, nat 1 = twee fails), zoals het cijferpad bij initiative.
 - [ ] **RE6 Spell-uitleg:** link vanuit AoE-Spell en Effect-presets; eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie)
 
 ## Spelers en D&D Beyond
 - Later, als het nodig blijkt: handmatige "Defenses" op de D&D Beyond-sheet (`customDefenseAdjustments`) inlezen; tijdelijke resistances (Rage, Absorb Elements, Protection from Energy) als effect-preset.
 
 ## Spelersscherm
-- [ ] **SC9 Mini-log voor spelers op afstand** (P3): optioneel een paar regels "wat gebeurde er net", alleen wat de DM vrijgeeft en altijd via `toPlayerView` (verborgen monsters en Onbekend wezen mogen niet lekken).
+- [x] **SC9 Mini-log voor spelers op afstand** (P3): optioneel een paar regels "wat gebeurde er net", alleen wat de DM vrijgeeft en altijd via `toPlayerView` (verborgen monsters en Onbekend wezen mogen niet lekken).
 
 ## Afwerking (klein)
 - AF4 is opgegaan in **OB1/OB2** (rondleiding, zie Eerste gebruik)
-- [ ] **AF14 Dobbelstenen in de statblocktekst** (P3, gevonden in WP2): de tikbare worpen in lopende tekst (`.dice`, "+11 to hit", "2d10 + 6") zijn 23 px hoog. Inline in zinnen, dus niet zomaar 44 px (regels zouden uit elkaar vallen; een `::after` naar boven en onder overlapt de regel erboven). UX-agent kiest: ruimere regelafstand in het statblock, of de worpen als knoppen uit de zin halen.
-- [ ] **AF10 Kleine haperingen** (P3): focus in het naamveld bij + Speler; rondleiding pas tikbaar na de animatie; "Zeker?" bij Stop met delen; tik op een open Instellingen-sectie klapt hem dicht (nalopen of dat bedoeld is); import ook op de welkomstkaart; hint "(bijv. uit de Claude-versie)" weg.
-- [ ] **AF11 Kleine fouten** (P3): exportbestandsnaam gebruikt UTC (`toISOString` in `js/ui/actions.js`) → lokale tijd; dode wezens uit de lijst "concentratie van"; nalopen of verborgen monsters in de XP-lijst komen (vermoeden, volgens GV2 tellen ze mee).
-- [ ] **AF12 Toegankelijkheid** (P3): slots als "1st level slot 1 van 4, beschikbaar"; `aria-current` op wie aan de beurt is; monster/speler niet alleen via kleur.
+- [x] **AF14 Dobbelstenen in de statblocktekst** (P3, gevonden in WP2): de tikbare worpen in lopende tekst (`.dice`, "+11 to hit", "2d10 + 6") zijn 23 px hoog. Inline in zinnen, dus niet zomaar 44 px (regels zouden uit elkaar vallen; een `::after` naar boven en onder overlapt de regel erboven). UX-agent kiest: ruimere regelafstand in het statblock, of de worpen als knoppen uit de zin halen.
+- [x] **AF10 Kleine haperingen** (P3): focus in het naamveld bij + Speler; rondleiding pas tikbaar na de animatie; "Zeker?" bij Stop met delen; tik op een open Instellingen-sectie klapt hem dicht (nalopen of dat bedoeld is); import ook op de welkomstkaart; hint "(bijv. uit de Claude-versie)" weg.
+- [x] **AF11 Kleine fouten** (P3): exportbestandsnaam gebruikt UTC (`toISOString` in `js/ui/actions.js`) → lokale tijd; dode wezens uit de lijst "concentratie van"; nalopen of verborgen monsters in de XP-lijst komen (vermoeden, volgens GV2 tellen ze mee).
+- [x] **AF12 Toegankelijkheid** (P3): slots als "1st level slot 1 van 4, beschikbaar"; `aria-current` op wie aan de beurt is; monster/speler niet alleen via kleur.
 
 ## Eerste gebruik (nice to have)
 - Geen open punten (OB1 en OB2 klaar in 1.33.0, zie Klaar).
@@ -267,3 +267,9 @@ Uit een volledige testsessie als DM (spelers, bugbears, Adult Black Dragon, lair
 - **SP5** (1.43.0, WP11) Passives per speler (`js/rules/passives.js`): link-sheet `passive` (10 + skill + passive-bonussen), oudere/PDF-sheets afgeleid uit senses en skills; eigen waarde onder ⋯ (Perc/Ins/Inv, leeg = sheet) gaat voor, ook na Bijwerken. Regel "Passive Perc 14 · Ins 12 · Inv 10" op de kaart in Voorbereiden, regel in het live-blok, "Passive Perc" in de Party-regel en "Passive Perception: …" (hoogste eerst) in het initiative-paneel. Nooit op het spelersscherm.
 - **VB4** (1.43.0, WP11) Zoeken met NL-woorden (bandiet, skelet, draak, geest, ondode… ± 200 vormen) en typfouten als terugval bij 0 treffers ("gobin" → goblin, afstand 1 bij 4–6 letters, 2 vanaf 7). Kop "\"bandiet\" = bandit" of "Bedoelde je: goblin". Lege-lijstteksten noemen "Eigen".
 - **VB5** (1.43.0, WP11) "+ Nieuwe encounter" opent Bewerken leeg (lege naam → "Nieuwe encounter"); aantal per regel typbaar (leeg/0 = vorige waarde, max 50 en 100 totaal); lair-vinkje bij een monster met legendary actions. Tijdens typen wint één exacte naam (ook via een NL-woord) van een eerdere keuze.
+- **AF11** (1.44.0, WP12) Exportbestandsnaam in lokale tijd (`exportName`); "Concentratie van" en "Wie cast?" tonen geen dode of uitgeschakelde wezens (`spellTargets`). Verslagen verborgen monsters tellen al mee in de XP, levende niet (nagelopen, blijft zo).
+- **RE15** (1.44.0, WP12) Eigen death save-worp: knop "Eigen worp" opent een cijferpad op de kaart (3–9 gaat meteen door, 1/2 wacht op een tweede cijfer of OK), `dsResult` puur; melding met Ongedaan, ook bij Rol death save. Fix: een stabiele speler die schade krijgt, begint weer met death saves (tellers op nul).
+- **SC9** (1.44.0, WP12) "Wat er net gebeurde" op het spelersscherm: afgeleid uit opeenvolgende snapshots (`logLines`/`pushLog`), dus lekvrij; telefoon 2 regels, tv 3, in de vaste kop; huidige en vorige ronde. Instelling Aan/Uit onder "Wat spelers zien" (standaard aan).
+- **AF10** (1.44.0, WP12) Geen focus naar het naamveld na Toevoegen op touch; rondleiding scrollt direct en het vak schuift niet; Stop met delen zonder "Zeker?", melding met "Opnieuw delen"; "Heb je een export? Importeren…" op de welkomstkaart; hint zonder "Claude-versie". Open Instellingen-sectie dichtklappen = bedoeld (`<details>`).
+- **AF12** (1.44.0, WP12) Pips en death saves met de toestand in het label ("1st-level slot 1 van 4, beschikbaar"), geen aria-pressed; `aria-current` op wie aan de beurt is; "speler"/"monster" in het label; monster-avatar afgeronde rechthoek.
+- **AF14** (1.44.0, WP12) Worpen in de statblocktekst blijven inline (WCAG 2.5.8-uitzondering), ± 29 px met ruimere regelafstand; test bewaakt het.

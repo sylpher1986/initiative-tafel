@@ -19,6 +19,9 @@ export function setUncon(c, on) {
   if (on) c.cond.push("Unconscious");
 }
 
+/** Stabiel en toch schade (PHB 2014): opnieuw death saves, tellers vanaf nul */
+function restartDs(c) { if (c.ds.stable) { c.ds.s = 0; c.ds.f = 0; } c.ds.stable = false; }
+
 /** Drie successen = stabiel, drie failures = dood */
 export function checkDs(c) {
   const out = fx(), ds = c.ds;
@@ -78,7 +81,7 @@ export function applyPcHp(c, delta) {
   if (c.ds.dead) return out;
   if (v >= c.max) { c.ds.f = 3; c.ds.dead = true; out.msgs.push(`${c.name} sterft: ${v} schade ≥ max HP op 0 HP.`); return out; }
   out.why.push({ t: "schade op 0 HP", id: c.id });
-  c.ds.stable = false; c.ds.f = Math.min(3, c.ds.f + 1);
+  restartDs(c); c.ds.f = Math.min(3, c.ds.f + 1);
   out.msgs.push(`${c.name} krijgt schade op 0 HP: één failure. Was het een kritieke treffer, tik dan op "Kritiek".`);
   return merge(out, checkDs(c));
 }
@@ -86,15 +89,14 @@ export function applyPcHp(c, delta) {
 export const rollDs = (c, rng = Math.random) => dsResult(c, d(20, rng), true);
 
 /**
- * Death save met een worp (RE15: ook een getypte worp van de speler; own = de app rolde). 20 = 1 HP, 1 = twee failures,
- * 10+ = success. Een worp buiten 1–20 doet niets.
+ * Death save met een worp (RE15: ook een getypte worp van de speler; byApp = de app rolde). 20 = 1 HP, 1 = twee
+ * failures, 10+ = success. Een worp buiten 1–20, of niemand die een save nodig heeft, doet niets.
  */
-export function dsResult(c, r, own = false) {
+export function dsResult(c, r, byApp = false) {
   const out = fx();
-  if (!Number.isInteger(r) || r < 1 || r > 20) return out;
+  if (!Number.isInteger(r) || r < 1 || r > 20 || c.hp > 0 || c.ds?.dead || c.ds?.stable) return out;
   c.ds = c.ds || newDs();
-  if (c.ds.dead || c.ds.stable || c.hp > 0) return out;
-  out.why.push({ t: `death save ${own ? "d20 " : "speler rolde "}[${r}]${r === 1 ? ", telt dubbel" : r === 20 ? ", natuurlijke 20" : ""}`, id: c.id });
+  out.why.push({ t: `death save ${byApp ? "d20 " : ""}[${r}]${byApp ? "" : ", door speler gerold"}${r === 1 ? ", telt dubbel" : r === 20 ? ", natuurlijke 20" : ""}`, id: c.id });
   if (r === 20) { c.hp = 1; c.ds = null; setUncon(c, false); out.msgs.push(`Death save ${c.name}: 20! Staat op met 1 HP.`); return out; }
   if (r === 1) { c.ds.f = Math.min(3, c.ds.f + 2); out.msgs.push(`Death save ${c.name}: 1, twee failures.`); }
   else if (r >= 10) { c.ds.s++; out.msgs.push(`Death save ${c.name}: ${r}, success.`); }
@@ -105,7 +107,7 @@ export function dsResult(c, r, own = false) {
 export function critAtZero(c) {
   const out = fx();
   out.why.push({ t: "kritieke treffer op 0 HP", id: c.id });
-  c.ds = c.ds || newDs(); c.ds.stable = false; c.ds.f = Math.min(3, c.ds.f + 2);
+  c.ds = c.ds || newDs(); restartDs(c); c.ds.f = Math.min(3, c.ds.f + 2);
   out.msgs.push(`${c.name}: kritieke treffer op 0 HP, twee failures.`);
   return merge(out, checkDs(c));
 }
