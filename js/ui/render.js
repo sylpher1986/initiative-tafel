@@ -19,6 +19,9 @@ import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
 import { openSaves, lastTurn } from "../rules/saves.js";
 import { avatar, icon, monType } from "./avatar.js";
 import { SPELLS, SPELL_CONDS, customSpell, spellTargets, spellDefault, condImmune, spellFor, rulesDiffer, slotFor } from "../rules/spellcast.js";
+import { DMG_SPELLS } from "../rules/dmgtable.js";
+import { spellDice, casterLevel, ownDmgSpells, findDmgSpells } from "../rules/dmgspells.js";
+import { slotChoices, defaultSlot, slotLevel, slotName } from "../rules/slots.js";
 import { rulesEd } from "./spellrules.js";
 import { initRoll } from "./initroll.js";
 import { ANON, anonName } from "../playerview.js";
@@ -243,7 +246,7 @@ function badges(c, S) {
     const d = c.ds || R.newDs();
     out.push(d.dead ? `<span class="bd r">Dood</span>` : d.stable ? `<span class="bd g">Stabiel</span>` : `<span class="bd r">Death saves ✓${d.s} ✗${d.f}</span>`);
   }
-  if (c.casting && c.casting.slots.length) out.push(`<span class="bd b">Slots ${c.casting.slots.map((x) => n0(x.left)).join("·")}</span>`);
+  if (c.casting && (c.casting.slots.length || c.casting.pact)) out.push(`<span class="bd b">Slots ${slotSum(c.casting, "·")}</span>`);
   else if (c.casting && c.casting.daily.length) out.push(`<span class="bd b">Spells</span>`);
   (c.res || []).forEach((r) => out.push(`<span class="bd b">${esc(r.n)} ${n0(r.left)}/${n0(r.max)}</span>`));
   (c.rc || []).forEach((r) => out.push(`<span class="bd ${r.ready ? "g" : ""}">${esc(r.n)} ${r.ready ? "klaar" : "op"}</span>`));
@@ -286,16 +289,20 @@ const spLinks = (t, c) => splitSpells(String(t || "")).map((n) => {
   return name ? spellLink(name, name, c.kind === "pc" ? c.id : "") + esc(rest) : esc(n);
 }).join(", ");
 
+/** RE3: "P3:2 · 1:4 · 2:3" (kaart-samenvatting) of "P2·4·3" (badge); Pact vooraan */
+const slotSum = (k, sep) => [...(k.pact ? [sep === "·" ? `P${n0(k.pact.left)}` : `P${k.pact.lvl}:${n0(k.pact.left)}`] : []), ...k.slots.map((x) => (sep === "·" ? n0(x.left) : `${x.lvl}:${n0(x.left)}`))].join(sep);
+
 function castBlock(c) {
   const k = c.casting;
-  if (!k || (!k.slots.length && !k.daily.length)) return "";
+  if (!k || (!k.slots.length && !k.daily.length && !k.pact)) return "";
   const pp = (o, attr) => Array.from({ length: n0(o.max) }, (_, i) => `<button class="pip" ${attr} data-i="${i}" aria-pressed="${i >= o.left}" aria-label="slot ${i + 1}"></button>`).join("");
-  const sum = k.slots.length ? k.slots.map((x) => `${x.lvl}:${n0(x.left)}`).join(" · ") : k.daily.map((g) => esc(g.label)).join(", ");
-  const pick = (x) => ui.castPick && ui.castPick.id === c.id && ui.castPick.lvl === x.lvl
+  const sum = k.slots.length || k.pact ? slotSum(k, " · ") : k.daily.map((g) => esc(g.label)).join(", ");
+  const pick = (x, p = false) => ui.castPick && ui.castPick.id === c.id && ui.castPick.lvl === x.lvl && !!ui.castPick.p === p
     ? `<div class="pick"><span class="hint">Welke spell?</span>${pickList(c, x.lvl, rulesEd()).map((sp) =>
       `<button class="btn small ${sp.conc ? "conc" : ""}" data-pickspell="${esc(sp.n)}" data-conc="${sp.conc ? 1 : ""}">${esc(sp.n)}${sp.lv < x.lvl ? ` (${sp.lv}e, upcast)` : ""}${sp.conc ? " · conc." : ""}</button>`).join("")}<button class="link" data-pickspell="">Andere / overslaan</button></div>` : "";
   return `<details class="cast" data-cast ${ui.openCast.has(c.id) || ui.castPick?.id === c.id ? "open" : ""}><summary class="link strong">Spells <span style="font-weight:400">(${sum})</span></summary>
     <div class="castbox">${rageOf(c) ? `<p class="hint">Rage: geen spells casten.</p>` : ""}
+      ${k.pact ? `<div class="slotrow"><span class="lv">Pact ${ORD[k.pact.lvl] || ""}</span><span class="pp">${pp(k.pact, `data-slot="p"`)}</span><span class="sp">${spLinks(k.pact.spells || "", c)}</span></div>${pick(k.pact, true)}` : ""}
       ${k.slots.map((x, i) => `<div class="slotrow"><span class="lv">${ORD[x.lvl] || ""}</span><span class="pp">${pp(x, `data-slot="${i}"`)}</span><span class="sp">${spLinks(x.spells, c)}</span></div>${pick(x)}`).join("")}
       ${k.daily.map((g, gi) => g.items.map((it, ii) => `<div class="slotrow"><span class="lv">${esc(g.label.split(" ")[0])}</span><span class="pp">${pp(it, `data-daily="${gi}.${ii}"`)}</span><span class="sp">${spLinks(it.n, c)}</span></div>`).join("")).join("")}
       <div><button class="link" data-a="cast-reset">Alles herstellen (long rest)</button></div>
@@ -996,6 +1003,51 @@ function aoeRow(a, c, p, o, n) {
   </div>`;
 }
 
+/* ---------- RE18/RE1: schade-spell, caster, slot en dobbelstenen (tab Schade, niet bij een save-actie van de kaart) ---------- */
+/** Gekozen schade-spell (tabel) of null */
+export const dmgSp = (a) => (a && a.dsp ? DMG_SPELLS.find((s) => s.n === a.dsp) || null : null);
+/** Caster in het AoE-paneel (geen lair) of null */
+export const aoeCaster = (a) => app.S.list.find((x) => x.id === a.by && x.kind !== "lair") || null;
+/** Slotkeuze: wat de DM tikte, anders de standaard ("" = niets te kiezen: geen caster, geen slots, cantrip) */
+export const dmgSlot = (a, c, sp) => (!sp || !c || !sp.lv || !slotChoices(c, sp.lv, sp.n).length ? "" : a.slot || defaultSlot(c, sp.lv, sp.n));
+/** Dobbelstenen voor de gekozen spell, caster en slot */
+export const dmgDice = (a, c, sp) => spellDice(sp, slotLevel(c, dmgSlot(a, c, sp), sp.lv), casterLevel(c, c && c.ref ? findMon(c.ref) : null));
+
+/** Segment "Slot: 3rd ·2 | 4th ·1 | Pact ·2 | Zelf" (gedeeld met de tab Spell); ao = data-ao van de knoppen */
+function slotSeg(c, lv, n, k, ao) {
+  const opts = slotChoices(c, lv, n);
+  if (!opts.length) return "";
+  const cur = opts.find((o) => o.k === k), empty = cur && !(cur.left > 0);
+  return `<div class="aslot"><span class="qlbl">Slot</span><div class="seg2 sm" role="group" aria-label="Slot van ${esc(c.name)}">${opts.map((o) => `<button type="button" data-ao="${ao}" data-v="${o.k}" aria-pressed="${k === o.k}" aria-label="${esc(o.k === "p" ? slotName(c, "p") : o.k[0] === "d" ? o.l : `${o.l}-level slot`)}, ${o.left} over">${esc(o.l)} <small>·${o.left}</small></button>`).join("")}<button type="button" data-ao="${ao}" data-v="self" aria-pressed="${k === "self"}" title="Slots zelf bijhouden (onthouden voor ${esc(c.name)})">Zelf</button></div></div>
+    ${empty ? `<p class="hint"><b class="bad">Geen ${esc(slotName(c, k))} meer over</b>: er wordt niets afgeschreven.</p>` : k === "self" ? `<p class="hint">${esc(c.name)} houdt de slots zelf bij: er wordt niets afgeschreven.</p>` : ""}`;
+}
+
+/** Suggestieknoppen (zoeken of de spells van de caster) */
+const dmgBtns = (L) => L.map((s) => `<button type="button" class="btn small" data-ao="dsp" data-v="${esc(s.n)}">${esc(s.n)}<small>${s.lv ? ORD[s.lv] : "cantrip"}</small></button>`).join("");
+/** Alleen de suggesties opnieuw (tijdens typen: het zoekveld houdt focus) */
+export function paintDmgSugg(a) {
+  const el = $("#a-sugg"); if (!el) return;
+  const L = findDmgSpells(DMG_SPELLS, a.dq);
+  el.innerHTML = a.dq && !L.length ? `<p class="hint">Niet in de lijst: vul de dobbelstenen hieronder zelf in.</p>` : dmgBtns(L);
+}
+
+/** Caster, spell en slot bovenaan de tab Schade */
+function dmgCastHtml(a) {
+  const c = aoeCaster(a), sp = dmgSp(a), cs = spellTargets(app.S.list);
+  const casterSel = `<label class="scast">Caster<select id="a-by"><option value="">geen caster</option>${cs.map((x) => `<option value="${esc(x.id)}" ${x.id === a.by ? "selected" : ""}>${esc(x.name)}${x.id === app.S.active ? " (aan de beurt)" : ""}</option>`).join("")}</select></label>`;
+  if (!sp) {
+    const own = ownDmgSpells(c, DMG_SPELLS);
+    return `${casterSel}<div class="aspell">${own.length ? `<div class="dchips">${dmgBtns(own)}</div>` : ""}
+      <label class="dq">Schade-spell<input id="a-q" type="search" value="${esc(a.dq || "")}" placeholder="Zoek: fireball, sacred flame…" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"></label>
+      <div class="dchips" id="a-sugg"></div></div>`;
+  }
+  const lvl = casterLevel(c, c && c.ref ? findMon(c.ref) : null);
+  const meta = [sp.lv ? ORD[slotLevel(c, dmgSlot(a, c, sp), sp.lv)] : "cantrip", `${sp.ab} ${sp.half ? "½" : "0"}`, sp.type].join(" · ");
+  const cant = !sp.lv && sp.cant ? `<p class="hint">${lvl ? `Cantrip · level ${lvl} → ${esc(dmgDice(a, c, sp))}` : `Cantrip · level onbekend: ${esc(sp.dice)}`}</p>` : "";
+  return `${casterSel}<div class="aspell"><div class="dsel"><span><b>${esc(sp.n)}</b> · ${esc(meta)}${sp.conc ? " · conc" : ""}</span><button type="button" class="link" data-ao="dspx" aria-label="Andere spell kiezen">✕</button></div>${cant}
+    ${c && sp.lv ? slotSeg(c, sp.lv, sp.n, dmgSlot(a, c, sp), "slot") : ""}</div>`;
+}
+
 /** Paneel één keer opbouwen; daarna alleen de lijst en de knop, zodat het schadeveld focus houdt */
 export function paintAoe() {
   const el = $("#asheet"), a = ui.aoe;
@@ -1007,6 +1059,8 @@ export function paintAoe() {
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3 id="a-title">${a.title ? esc(a.title) : "AoE-schade"}</h3><button type="button" class="link" data-ao="close">Annuleer</button></div>
       ${aoeTabs(a)}
+      ${a.src ? "" : `<div class="acast">${dmgCastHtml(a)}</div>
+      <div class="adice"><label>Dobbelstenen<input id="a-dice" value="${esc(a.dice || "")}" placeholder="8d6 of 2d6+3" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"></label><button type="button" class="btn" data-ao="droll">Rol</button></div>`}
       <div class="arow">
         <label>Schade<input id="a-dmg" type="number" inputmode="numeric" min="0" max="999" placeholder="28" enterkeyhint="done"></label>
         <label>Damage type<select id="a-type"><option value="">geen / onbekend</option>${DTYPES.map((t) => `<option value="${t}">${t[0].toUpperCase() + t.slice(1)}</option>`).join("")}</select></label>
@@ -1022,11 +1076,13 @@ export function paintAoe() {
     </div>`;
     $("#a-dmg").value = a.dmg; $("#a-type").value = a.type; $("#a-ab").value = a.ab; $("#a-dc").value = a.dc;
     el.hidden = false;
+    if (!a.src && !a.dsp) paintDmgSugg(a);
   }
   // per paint één keer per doel: keuze (statblock-opzoeking) en uitkomst (gesimuleerd op een kopie)
   const src = $("#a-src");
   src.hidden = !a.roll;
-  if (a.roll) src.innerHTML = `${esc(a.roll)} <button type="button" class="link" data-ao="reroll">Opnieuw</button>${a.extra ? `<br>${esc(a.extra)}: apart toepassen` : ""}${a.used ? `<br><b class="bad">${esc(a.act)} is nog niet herladen</b>` : ""}`;
+  const edited = a.rtot != null && clampDmg(a.dmg) !== a.rtot ? ` · aangepast (worp ${a.rtot})` : "";
+  if (a.roll) src.innerHTML = `${esc(a.roll + edited)} <button type="button" class="link" data-ao="reroll">Opnieuw</button>${a.extra ? `<br>${esc(a.extra)}: apart toepassen` : ""}${a.alt ? `<br>${esc(`Of ${a.alt} (naar keuze van de caster): kies het type.`)}` : ""}${a.used ? `<br><b class="bad">${esc(a.act)} is nog niet herladen</b>` : ""}`;
   const L = aoeTargets(a.src), n = clampDmg(a.dmg);
   const rows = L.map((c) => { const p = aoePick(a, c); return { c, p, o: p.sel && n ? aoeOutcome(c, p, n) : { dealt: 0, steps: [], res: "", hp: c.hp } }; });
   const sel = rows.filter((x) => x.p.sel);
@@ -1036,7 +1092,9 @@ export function paintAoe() {
   $("#a-sum").textContent = n && sel.length ? `Totaal ${total} schade${down ? ` · ${down} neer` : ""}` : "";
   const go = el.querySelector(".ago");
   go.disabled = !n || !sel.length;
-  go.textContent = !n ? "Vul de schade in" : !sel.length ? "Kies doelwitten" : `${n}${a.type ? " " + a.type : ""} toepassen op ${sel.length} doel${sel.length === 1 ? "" : "en"}`;
+  const sp = !a.src && dmgSp(a), c = sp && aoeCaster(a), k = sp ? dmgSlot(a, c, sp) : "";
+  const slotT = k && k !== "self" ? ` · ${slotName(c, k)}` : "";
+  go.textContent = !n ? "Vul de schade in" : !sel.length ? "Kies doelwitten" : `${n}${a.type ? " " + a.type : ""} op ${sel.length} doel${sel.length === 1 ? "" : "en"}${slotT}`;
 }
 
 /* ---------- Spell op doelen (tab in het AoE-paneel): Bless, Hold Person e.d. op meerdere doelen ---------- */
@@ -1080,6 +1138,12 @@ function spellRow(a, sp, caster, c, p) {
   </div>`;
 }
 
+/** RE2: slot voor een spell uit de tab Spell: wat de DM tikte, anders de standaard (meer doelen = hoger slot). "" = niets te kiezen */
+export function spellSlot(a, sp, caster, n) {
+  if (!sp || sp.custom || !sp.lvl || !caster || !slotChoices(caster, sp.lvl, sp.n).length) return "";
+  return a.sslot || defaultSlot(caster, sp.lvl, sp.n, slotFor(sp, n) || sp.lvl);
+}
+
 /** Spell-tab: opbouw één keer per tab/spell/caster (velden houden focus), daarna alleen lijst, waarschuwing en knop */
 function paintSpell(el, a) {
   const S = app.S, sp = curSpell(a), caster = S.list.find((x) => x.id === a.by && x.kind !== "lair") || null;
@@ -1100,8 +1164,9 @@ function paintSpell(el, a) {
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3 id="a-title">Spell op doelen</h3><button type="button" class="link" data-ao="close">Annuleer</button></div>
       ${aoeTabs(a)}
-      <div class="effgrid spgrid">${SPELLS.map((x, i) => (spellFor(x, presetEd(caster, x.n)) ? `<button type="button" class="btn tap" data-ao="sp" data-v="${i}" aria-pressed="${a.sp === i}"><span>${esc(x.n)}${edTag(caster, x.n, x) ? ` <span class="tag">${esc(edTag(caster, x.n, x))}</span>` : ""}</span><small>${esc(x.sub)}</small></button>` : "")).join("")}<button type="button" class="btn tap" data-ao="sp" data-v="own" aria-pressed="${a.sp === "own"}">+ Eigen<small>conditie + save</small></button></div>
+      <div class="effgrid spgrid">${SPELLS.map((x, i) => (spellFor(x, presetEd(caster, x.n)) ? `<button type="button" class="btn tap" data-ao="sp" data-v="${i}" aria-pressed="${a.sp === i}"><span>${esc(x.n)}${edTag(caster, x.n, x) ? ` <span class="tag">${esc(edTag(caster, x.n, x))}</span>` : ""}</span><small>${esc(x.sub)}</small></button>` : "")).join("")}<button type="button" class="btn tap" data-ao="todmg">Schade-spell<small>Fireball, Sacred Flame …</small></button><button type="button" class="btn tap" data-ao="sp" data-v="own" aria-pressed="${a.sp === "own"}">+ Eigen<small>conditie + save</small></button></div>
       <label class="scast">Caster<select id="s-by"><option value="">kies wie cast</option>${cs.map((x) => `<option value="${esc(x.id)}" ${x.id === a.by ? "selected" : ""}>${esc(x.name)}${x.id === S.active ? " (aan de beurt)" : ""}</option>`).join("")}</select></label>
+      <div id="s-slot"></div>
       ${own}
       ${sp && sp.ab ? `<div class="asave"><span class="qlbl">Save</span><b>${esc(sp.ab)}</b>
         <input id="s-dc" type="number" inputmode="numeric" placeholder="DC" aria-label="DC" min="1" max="40" value="${esc(a.sdc || "")}">
@@ -1129,11 +1194,25 @@ function paintSpell(el, a) {
   const lose = caster && sp.conc && caster.cond.includes("Concentrating") && caster.concSpell && caster.concSpell !== sp.n ? caster.concSpell : "";
   $("#s-info").innerHTML = `${esc(bits.join(" · "))}${lose ? `<br><b class="bad">${esc(caster.name)} concentreert nu op ${esc(lose)}: die vervalt.</b>` : ""}${a.redc ? `<br>${esc(`Gerolde saves nu tegen DC ${a.redc} (nieuwe caster).`)}` : ""}`;
   $("#a-list").innerHTML = rows.map((x) => spellRow(a, sp, caster, x.c, x.p)).join("") || `<p class="hint">Niemand om te kiezen.</p>`;
-  // RE8: maximum aantal doelen (Hold Person 1, Bless/Bane 3, +1 per hoger slot); niet blokkeren, slots komen later (RE1/RE2)
-  const need = slotFor(sp, sel.length), slot = need ? (need > 9 ? "meer doelen dan een 9th-level slot" : `${ORD[need]}-level slot`) : "";
+  // RE8: maximum aantal doelen (Hold Person 1, Bless/Bane 3, +1 per hoger slot); niet blokkeren.
+  // RE2: heeft de caster slots, dan kiest het segment het slot (standaard schuift mee met het aantal doelen) en volgt het maximum daaruit
+  const k = spellSlot(a, sp, caster, sel.length), ss = $("#s-slot");
+  const html = caster && sp.lvl && !sp.custom ? slotSeg(caster, sp.lvl, sp.n, k, "sslot") : "";
+  if (ss.innerHTML !== html) ss.innerHTML = html;
   const cnt = $("#a-cnt");
-  cnt.textContent = sp.max && !sp.custom ? `Doelen · ${sel.length} van ${sp.max}${slot ? ` · ${slot}` : ""}` : `Doelen · ${sel.length} gekozen`;
-  cnt.classList.toggle("over", !!slot);
+  let slot = "", over = false;
+  if (k) {
+    const L = slotLevel(caster, k, sp.lvl), mx = sp.max ? sp.max + L - sp.lvl : 0;
+    over = !!mx && sel.length > mx;
+    cnt.textContent = mx ? `Doelen · ${sel.length} van ${mx}${k !== "self" ? ` · ${ORD[L]}` : ""}` : `Doelen · ${sel.length} gekozen`;
+    slot = k !== "self" ? slotName(caster, k) : "";
+  } else {
+    const need = slotFor(sp, sel.length);
+    slot = need ? (need > 9 ? "meer doelen dan een 9th-level slot" : `${ORD[need]}-level slot`) : "";
+    over = !!slot;
+    cnt.textContent = sp.max && !sp.custom ? `Doelen · ${sel.length} van ${sp.max}${slot ? ` · ${slot}` : ""}` : `Doelen · ${sel.length} gekozen`;
+  }
+  cnt.classList.toggle("over", over);
   const hit = sel.filter((x) => !x.p.immune && !x.p.ok && !x.p.lr).length, ok = sel.length - hit;
   $("#a-sum").textContent = sp.ab && sel.length ? `${hit} ${sp.eff ? "geraakt" : sp.conds[0]}${ok ? ` · ${ok} geen effect` : ""}` : "";
   go.disabled = !caster || !sel.length;
@@ -1298,7 +1377,7 @@ export function paintParty() {
     return;
   }
   el.innerHTML = `<div>${app.party.map((m) => {
-    const sl = m.casting && m.casting.slots.length ? " · slots " + m.casting.slots.map((x) => `${n0(x.left)}/${n0(x.max)}`).join(" ") : "";
+    const sl = m.casting && (m.casting.slots.length || m.casting.pact) ? " · slots " + [...(m.casting.pact ? [`Pact ${n0(m.casting.pact.left)}/${n0(m.casting.pact.max)}`] : []), ...m.casting.slots.map((x) => `${n0(x.left)}/${n0(x.max)}`)].join(" ") : "";
     const rs = (m.res || []).map((r) => ` · ${esc(r.n)} ${n0(r.left)}/${n0(r.max)}`).join("");
     // level voor de moeilijkheid: uit de klasse-string van de sheet, anders zelf invullen
     const lv = m.sheet && clsLevel(m.sheet.cls) ? "" : `<label class="plvl">Level <input data-plvl="${esc(m.pid)}" type="number" min="1" max="20" inputmode="numeric" value="${esc(m.lvl ?? "")}" aria-label="Level ${esc(m.name)}"></label>`;

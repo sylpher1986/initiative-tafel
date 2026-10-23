@@ -2,8 +2,11 @@
 import { openSettings } from "./settings.js";
 import { $, esc, n0, toast, toastHtml, closeToast, show } from "./util.js";
 import { app, because, addWhy, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
-import { render, ui, openId, mode, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
+import { render, ui, openId, mode, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintDmgSugg, dmgSp, aoeCaster, dmgSlot, dmgDice, spellSlot, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
+import { DMG_SPELLS } from "../rules/dmgtable.js";
+import { rollDice, diceText, normDice } from "../rules/dmgspells.js";
+import { spendSlot, autoSpend, slotLevel as slotLevelOf } from "../rules/slots.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
 import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc, effSpec, setExh, startRage, rageOf } from "../rules/effects.js";
@@ -16,7 +19,7 @@ import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDu
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, saveAdv, DTYPES, targetMode, drToggle, drKind, DR_LBL, cleanDr } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage } from "../rules/attacks.js";
-import { castInfo, legInfo, rcInfo, pickList, isConc, edFor } from "../rules/spells.js";
+import { castInfo, legInfo, rcInfo, pickList, isConc, edFor, ORD } from "../rules/spells.js";
 import { rulesEd, setRulesEd } from "./spellrules.js";
 import { initRoll, setInitRoll } from "./initroll.js";
 import { visNow, setVis } from "./playervis.js";
@@ -120,7 +123,7 @@ export function normalize(c) {
 function applyEff(c, p, byId, join = null) {
   const S = app.S, out = R.fx();
   const d = ["inf", "lr"].includes(p.dur) ? null : makeDur(c, { dur: p.dur }, S.active);
-  let by = null, cast = join || castKey(S.round, S.active), old = null;
+  let by = null, cast = join || castKey(S.round, S.active), old = null, newCast = false;
   if (p.conc) {
     const caster = S.list.find((x) => x.id === byId);
     if (caster) {
@@ -133,17 +136,22 @@ function applyEff(c, p, byId, join = null) {
             out.why.push(...endOtherCasts(S.list, by, p.n, cast, S.active).why, { t: `${p.n} opnieuw gecast`, id: by }); // meldingen: één samenvatting hieronder
           }
         }
-      } else R.merge(out, R.startConc(caster, p.n));
+      } else { R.merge(out, R.startConc(caster, p.n)); newCast = true; }
     }
   }
   R.merge(out, addEffect(c, p, d, { lr: p.dur === "lr", by, spell: p.n, cast }));
   if (p.react) c.reaction = true;
+  // RE1: slot afschrijven bij Shield (eigen reaction) en bij een nieuwe cast van een concentratie-spell; niet bij aansluiten
+  // (Bless op het 2e en 3e doel) of een spell zonder bekende caster (Mage Armor, Aid: de DM gebruikt de pips op de kaart)
+  const sc = p.lv && !join ? (p.react ? c : p.conc && by && (newCast || old) ? S.list.find((x) => x.id === by) : null) : null;
+  const sl = sc ? autoSpend(sc, p.n, p.lv) : { why: [], txt: "" };
+  out.why.push(...sl.why);
   addWhy(out.why);
   ui.effWho = null;
-  if (!old) return { undoToast: out.msgs.join(" ") };
+  if (!old) return { undoToast: [...out.msgs, ...(sl.txt ? [`${p.n}: ${sc.name} · ${sl.txt}.`] : [])].join(" ") };
   ui.effJoin = { id: c.id, p, by, cast: old.cast, step: stepNo() + 1 }; // alleen geldig zolang dit de laatste stap is (commit volgt in render)
   const caster = S.list.find((x) => x.id === by);
-  return { undoToast: `${p.n}: nieuwe cast van ${caster.name}. Vervalt bij ${old.names.join(", ")}.`, extra: `<button class="tundo" id="toast-join">Hoort erbij</button> ` };
+  return { undoToast: `${p.n}: nieuwe cast van ${caster.name}${sl.txt ? ` (${sl.txt})` : ""}. Vervalt bij ${old.names.join(", ")}.`, extra: `<button class="tundo" id="toast-join">Hoort erbij</button> ` };
 }
 
 /* ---------- acties per deelnemer: (c, knop, rij-element) ---------- */
@@ -259,6 +267,7 @@ const row = {
   "cast-reset"(c) {
     c.casting.slots.forEach((x) => (x.left = x.max));
     c.casting.daily.forEach((g) => g.items.forEach((x) => (x.left = x.max)));
+    if (c.casting.pact) c.casting.pact.left = c.casting.pact.max;
     (c.res || []).forEach((x) => (x.left = x.max));
   },
   "lair-add"(c, b, li) {
@@ -314,11 +323,11 @@ function rowData(c, b) {
     return true;
   }
   if (ds.slot !== undefined || ds.daily !== undefined) {
-    const o = ds.slot !== undefined ? c.casting.slots[+ds.slot] : (([g, i]) => c.casting.daily[g].items[i])(ds.daily.split(".").map(Number));
+    const o = ds.slot === "p" ? c.casting.pact : ds.slot !== undefined ? c.casting.slots[+ds.slot] : (([g, i]) => c.casting.daily[g].items[i])(ds.daily.split(".").map(Number));
     const spend = +ds.i < o.left;
     toggle(o, +ds.i);
     ui.castPick = null;
-    if (spend && ds.slot !== undefined && pickList(c, o.lvl, rulesEd()).some((x) => x.conc)) ui.castPick = { id: c.id, lvl: o.lvl };
+    if (spend && ds.slot !== undefined && pickList(c, o.lvl, rulesEd()).some((x) => x.conc)) ui.castPick = { id: c.id, lvl: o.lvl, p: ds.slot === "p" };
     if (spend && ds.daily !== undefined && isConc(o.n, edFor(c, o.n, rulesEd()))) apply(R.startConc(c, o.n.replace(/\(.*?\)/g, "").trim()));
     return true;
   }
@@ -1275,7 +1284,8 @@ function rebuildAoe(focus) {
 function spellField(a, t) {
   const id = t.id;
   if (id === "s-by") { // RE8: de keuze per doel blijft; alleen de nieuwe caster gaat uit, gerolde saves gelden tegen de nieuwe DC
-    a.by = t.value;
+    a.by = t.value; a.sslot = null; a.slot = null;
+    if (a.dsp) a.dsp = null; // schade-spell hoort bij de vorige caster (DC, slots)
     const dc0 = a.sdc; a.sdc = spellDC(a);
     if (a.by) a.s[a.by] = { ...(a.s[a.by] || {}), sel: false };
     const dc = parseInt(a.sdc), rolled = Object.values(a.s).filter((x) => x.roll);
@@ -1302,9 +1312,10 @@ const spellDC = (a) => { const c = app.S.list.find((x) => x.id === a.by); return
 function spellClick(a, k, b) {
   const sp = curSpell(a), id = b.dataset.id, caster = app.S.list.find((x) => x.id === a.by);
   const set = (patch) => { a.s[id] = { ...(a.s[id] || {}), ...patch }; };
-  if (k === "sp") { const v = b.dataset.v === "own" ? "own" : +b.dataset.v; if (a.sp !== v) { a.sp = v; a.s = {}; a.redc = ""; if (!a.sdc) a.sdc = spellDC(a); } rebuildAoe(`[data-ao="sp"][data-v="${b.dataset.v}"]`); return true; }
+  if (k === "sp") { const v = b.dataset.v === "own" ? "own" : +b.dataset.v; if (a.sp !== v) { a.sp = v; a.s = {}; a.redc = ""; a.sslot = null; if (!a.sdc) a.sdc = spellDC(a); } rebuildAoe(`[data-ao="sp"][data-v="${b.dataset.v}"]`); return true; }
   if (k === "sgo") { spellGo(); return true; }
   if (!sp) return k.startsWith("s");
+  if (k === "sslot") { a.sslot = b.dataset.v; paintAoe(); $(`#s-slot [data-v="${CSS.escape(b.dataset.v)}"]`)?.focus(); return true; }
   if (k === "ssave") set({ ok: b.dataset.v === "1", lr: false });
   else if (k === "slr") set({ ok: false, lr: true });
   else if (k === "sall") spellTargets(app.S.list).forEach((c) => { // niet de caster, niet wie immuun of (Hold Person) geen humanoid is
@@ -1332,13 +1343,38 @@ function spellGo() {
   const picks = sortOrder(spellTargets(S.list)).map((c) => ({ c, p: spellPick(a, sp, caster, c) })).filter((x) => x.p.sel)
     .map(({ c, p }) => ({ c, m: p.m, ok: !!sp.ab && p.ok, lr: !!sp.ab && p.lr, note: p.roll ? `${sp.ab} save ${rollText(p.roll, dc)}` : "" }));
   if (!picks.length) return;
+  const k = spellSlot(a, sp, caster, picks.length); // RE2: zelfde stap
   const r = castSpell(S.list, sp, caster, picks, { round: S.round, active: S.active, dc: a.sdc, ed: edFor(caster, sp.n, rulesEd()) });
-  addWhy(r.why);
+  const sl = spendSlot(caster, k, sp.n, sp.lvl);
+  addWhy([...r.why, ...sl.why]);
   ui.aoe = null;
   render();
   const parts = [r.hit.length ? `${r.hit.join(", ")}${sp.conds ? ` ${sp.conds.join(" + ")}` : ""}` : sp.ab ? "niemand geraakt" : "", r.ok.length ? `${r.ok.length} geslaagd` : "", r.immune.length ? `${r.immune.length} immuun` : ""].filter(Boolean);
-  toastHtml(`${esc(`${sp.n} (${caster.name}): ${parts.join(" · ")}${sp.conc ? " · conc" : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  toastHtml(`${esc(`${sp.n} (${caster.name}): ${parts.join(" · ")}${sp.conc ? " · conc" : ""}${sl.txt ? ` · ${sl.txt}` : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
   $("#aoe")?.focus();
+}
+
+/** RE18: rol de dobbelstenen en zet de uitkomst in het schadeveld (aanpasbaar); worp onthouden voor de regel en het logboek */
+function rollNow(a, e) {
+  a.dice = e;
+  const r = rollDice(e);
+  if (!r) return;
+  a.dmg = String(r.tot); a.rtot = r.tot; a.roll = `${a.dsp ? a.dsp + " " : ""}${diceText(r)}`;
+}
+
+/** RE18: schade-spell kiezen (of null = weg): type, save, half en DC invullen, slot terug naar de standaard, meteen rollen */
+function chooseDmg(a, sp) {
+  const c = aoeCaster(a);
+  a.dsp = sp ? sp.n : null; a.slot = null; a.dq = "";
+  Object.values(a.t).forEach((t) => { t.roll = null; t.lr = false; }); // andere save of DC: oude worpen gelden niet meer
+  if (!sp) { a.half = undefined; a.extra = ""; a.alt = ""; a.roll = ""; a.rtot = null; return; }
+  if (DTYPES.includes(sp.type)) a.type = ui.aoeLast.type = sp.type;
+  a.ab = ui.aoeLast.ab = sp.ab; a.half = sp.half;
+  const dc = c ? casterDC(c, c.ref ? findMon(c.ref) : null) : "";
+  if (dc) a.dc = ui.aoeLast.dc = dc;
+  a.extra = sp.x.map((x) => `${x.dice} ${x.type}`).join(", "); a.alt = sp.alt || "";
+  Object.values(a.t).forEach((t) => { if (t.save === "half" || t.save === "none") t.save = "fail"; });
+  rollNow(a, dmgDice(a, c, sp));
 }
 
 export function bindAoe() {
@@ -1347,6 +1383,9 @@ export function bindAoe() {
     const a = ui.aoe; if (!a) return;
     if (a.tab === "spell") { spellField(a, e.target); return; }
     const id = e.target.id;
+    if (id === "a-by") { a.by = e.target.value; a.sslot = null; a.slot = null; a.sdc = spellDC(a); if (a.dsp) chooseDmg(a, dmgSp(a)); rebuildAoe("#a-by"); return; }
+    if (id === "a-q") { a.dq = e.target.value; paintDmgSugg(a); return; }
+    if (id === "a-dice") { a.dice = e.target.value; return; }
     if (id === "a-dmg") a.dmg = e.target.value;
     else if (id === "a-type") a.type = ui.aoeLast.type = e.target.value;
     else if (id === "a-ab") { a.ab = ui.aoeLast.ab = e.target.value; Object.values(a.t).forEach((t) => { t.roll = null; t.lr = false; }); }
@@ -1372,8 +1411,16 @@ export function bindAoe() {
     const k = b.dataset.ao, id = b.dataset.id;
     if (k === "close") { closeAoe(); return; }
     if (k === "tab") { const v = b.dataset.v === "spell" ? "spell" : "dmg"; if ((a.tab || "dmg") !== v) { a.tab = ui.aoeLast.tab = v; rebuildAoe(`[data-ao="tab"][data-v="${v}"]`); } return; }
+    if (k === "todmg") { a.tab = ui.aoeLast.tab = "dmg"; rebuildAoe("#a-q"); return; }
     if (a.tab === "spell" && spellClick(a, k, b)) return;
     if (k === "go") { aoeGo(); return; }
+    if (k === "dsp") { chooseDmg(a, DMG_SPELLS.find((x) => x.n === b.dataset.v) || null); rebuildAoe('[data-ao="dspx"]'); return; }
+    if (k === "dspx") { chooseDmg(a, null); rebuildAoe("#a-q"); return; }
+    if (k === "slot") { const sp = dmgSp(a), cur = dmgSlot(a, aoeCaster(a), sp); a.slot = b.dataset.v; if (sp && cur !== a.slot) rollNow(a, dmgDice(a, aoeCaster(a), sp)); rebuildAoe(`[data-ao="slot"][data-v="${b.dataset.v}"]`); return; }
+    if (k === "droll" || (k === "reroll" && !a.src)) {
+      if (!normDice(a.dice)) { toast("Dobbelstenen als 8d6 of 2d6+3."); $("#a-dice")?.focus(); return; }
+      rollNow(a, a.dice); $("#a-dmg").value = a.dmg; paintAoe(); return;
+    }
     if (k === "save") aoeSet(a, id, { save: b.dataset.v, lr: false });
     if (k === "mode") aoeSet(a, id, { mode: +b.dataset.v });
     if (k === "lr") aoeSet(a, id, { save: okSave(a), lr: true });
@@ -1428,9 +1475,18 @@ function aoeGo() {
     .map(({ c, p }) => ({ c, save: p.save, mode: p.mode, lr: p.lr, note: p.roll ? `${a.ab} save ${rollText(p.roll, dc)}` : "", up: c.hp > 0 }));
   if (!n || !picks.length) return;
   const L = picks.map((x) => x.c);
-  const label = `${a.act ? `${a.srcName}: ${a.act} ` : ""}${n}${a.type ? " " + a.type : ""}${dc > 0 ? ` (${a.ab} DC ${dc})` : ""}`;
+  // RE18/RE1: schade-spell van een caster: slot afschrijven, concentratie, worp in het logboek (alles in dezelfde stap)
+  const sp = !a.src && dmgSp(a), c = !a.src && aoeCaster(a), k = sp ? dmgSlot(a, c, sp) : "";
+  const lv = sp ? (k ? slotLevelOf(c, k, sp.lv) : sp.lv) : 0;
+  const name = sp ? `${sp.n}${sp.lv ? ` (${ORD[lv]})` : ""}${c ? ` · ${c.name}` : ""}: ` : "";
+  const label = `${a.act ? `${a.srcName}: ${a.act} ` : name}${n}${a.type ? " " + a.type : ""}${dc > 0 ? ` (${a.ab} DC ${dc})` : ""}`;
   const r = applyAoe(picks, n, label);
   apply(r);
+  const sl = c && sp ? spendSlot(c, k, sp.n, sp.lv) : { why: [], txt: "" };
+  if (!a.src && a.roll) addWhy([{ t: `${c ? `${c.name} cast ` : ""}${a.roll}${a.rtot != null && a.rtot !== n ? `, aangepast naar ${n}` : ""}${a.type ? ` ${a.type}` : ""}`, id: (c || L[0]).id }]);
+  addWhy(sl.why);
+  let conc = "";
+  if (c && sp && isConc(sp.n, edFor(c, sp.n, rulesEd())) && !(c.cond.includes("Concentrating") && c.concSpell === sp.n)) { apply(R.startConc(c, sp.n)); conc = " · conc"; }
   // recharge-actie: pas bij toepassen op "op", in dezelfde stap (één keer Ongedaan)
   const src = a.src && app.S.list.find((x) => x.id === a.src), ri = src ? rcIndex(src.rc, a.act) : -1;
   const rcUsed = ri >= 0 && src.rc[ri].ready;
@@ -1438,7 +1494,7 @@ function aoeGo() {
   const down = picks.filter((x) => x.up && x.c.hp <= 0).length;
   ui.aoe = null;
   render();
-  toastHtml(`${esc(`${a.act || `AoE ${label}`}: ${L.length} doel${L.length === 1 ? "" : "en"}, ${r.hits.reduce((s, h) => s + h.dealt, 0)} schade${down ? `, ${down} neer` : ""}${rcUsed ? " · recharge op" : ""}${concNote(r)}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  toastHtml(`${esc(`${a.act || (sp ? sp.n : `AoE ${label}`)}: ${L.length} doel${L.length === 1 ? "" : "en"}, ${r.hits.reduce((s, h) => s + h.dealt, 0)} schade${down ? `, ${down} neer` : ""}${rcUsed ? " · recharge op" : ""}${sl.txt ? ` · ${sl.txt}` : ""}${conc}${concNote(r)}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
   const ab = $("#aoe"); if (ab) ab.focus();
 }
 
@@ -1723,7 +1779,8 @@ export function bindParty() {
       app.party.forEach((m) => R.restMember(m, long));
       app.S.list.forEach((c) => { if (c.pid) R.restMember(c, long); });
       const exT = ex.length ? ` Exhaustion: ${ex.map(([n, x]) => `${n} ${x} → ${x - 1}`).join(", ")}.` : ""; // RE11: één niveau minder
-      saveParty(); toast(long ? `Long rest: HP, spell slots en resources hersteld.${exT}` : "Short rest: short-rest resources hersteld."); render();
+      const pact = [...app.party, ...app.S.list].some((m) => m.casting && m.casting.pact); // RE3
+      saveParty(); toast(long ? `Long rest: HP, spell slots en resources hersteld.${exT}` : `Short rest: ${pact ? "Pact Magic-slots en " : ""}short-rest resources hersteld.`); render();
     }
   });
 }

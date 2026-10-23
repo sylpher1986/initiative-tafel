@@ -9,20 +9,21 @@ import { EXH, isExh, exhLevel } from "./conditions.js";
  * Presets. dur: sleutel uit DURS (turns.js) of "lr" (tot long rest). dex: 13 + Dex-mod (Mage Armor).
  * after: effect dat volgt als dit effect afloopt (Haste → Lethargy, tot na de volgende beurt van het doelwit); after.cond = ook die conditie.
  * r24: afwijkingen volgens de spellregels van 2024 (instelling "Spells"), zie presetsFor.
+ * lv: spell-level (WP9: slot afschrijven bij Shield en bij een nieuwe cast van de caster).
  * sv: invloed op saves ({ ab, b } vaste bonus, alleen op die ability; { d } = ±1dN op elke save). grp: sluiten elkaar uit (cover).
  */
 export const PRESETS = [
-  { n: "Shield", st: "ac", op: "+", v: 5, dur: "tstart", react: true, txt: "reaction; ook geen schade van Magic Missile" },
-  { n: "Shield of Faith", st: "ac", op: "+", v: 2, dur: "r100", conc: true },
-  { n: "Haste", st: "ac", op: "+", v: 2, dur: "r10", conc: true, txt: "speed ×2, advantage op Dex saves, extra action", after: { n: "Lethargy", txt: "geen beweging of acties" },
+  { n: "Shield", lv: 1, st: "ac", op: "+", v: 5, dur: "tstart", react: true, txt: "reaction; ook geen schade van Magic Missile" },
+  { n: "Shield of Faith", lv: 1, st: "ac", op: "+", v: 2, dur: "r100", conc: true },
+  { n: "Haste", lv: 3, st: "ac", op: "+", v: 2, dur: "r10", conc: true, txt: "speed ×2, advantage op Dex saves, extra action", after: { n: "Lethargy", txt: "geen beweging of acties" },
     r24: { after: { n: "Lethargy", txt: "speed 0", cond: "Incapacitated" } } },
-  { n: "Mage Armor", st: "ac", op: "=", v: 13, dex: true, dur: "lr", txt: "alleen zonder armor" },
-  { n: "Barkskin", st: "ac", op: "min", v: 16, dur: "inf", conc: true, r24: { v: 17, conc: false, txt: "1 uur, geen concentratie" } },
+  { n: "Mage Armor", lv: 1, st: "ac", op: "=", v: 13, dex: true, dur: "lr", txt: "alleen zonder armor" },
+  { n: "Barkskin", lv: 2, st: "ac", op: "min", v: 16, dur: "inf", conc: true, r24: { v: 17, conc: false, txt: "1 uur, geen concentratie" } },
   { n: "Half cover", st: "ac", op: "+", v: 2, dur: "inf", txt: "ook +2 op Dex saves", sv: { ab: "DEX", b: 2 }, grp: "cover" },
   { n: "Three-quarters cover", st: "ac", op: "+", v: 5, dur: "inf", txt: "ook +5 op Dex saves", sv: { ab: "DEX", b: 5 }, grp: "cover" },
-  { n: "Aid", st: "max", op: "+", v: 5, dur: "lr", txt: "+5 per slot-level boven de 2e" },
-  { n: "Bless", st: "", v: 0, dur: "r10", conc: true, txt: "+1d4 op attack rolls en saves", sv: { d: 4 } },
-  { n: "Bane", st: "", v: 0, dur: "r10", conc: true, txt: "−1d4 op attack rolls en saves", sv: { d: -4 } },
+  { n: "Aid", lv: 2, st: "max", op: "+", v: 5, dur: "lr", txt: "+5 per slot-level boven de 2e" },
+  { n: "Bless", lv: 1, st: "", v: 0, dur: "r10", conc: true, txt: "+1d4 op attack rolls en saves", sv: { d: 4 } },
+  { n: "Bane", lv: 1, st: "", v: 0, dur: "r10", conc: true, txt: "−1d4 op attack rolls en saves", sv: { d: -4 } },
   // RE16: barbarian (2014). Geen spell: geen caster-koppeling en geen 2024-variant. rs = tijdelijke resistance.
   { n: "Rage", st: "", v: 0, dur: "r10", rage: true, pc: true, rs: ["bludgeoning", "piercing", "slashing"], txt: "resist B/P/S, adv. STR, geen spells" },
 ];

@@ -508,6 +508,18 @@ body:has(.sheet-wrap:not([hidden])) .toast{top:calc(8px + env(safe-area-inset-to
 .asheet{gap:12px}
 .arow{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;align-items:end}
 .arow #a-dmg{font-family:var(--display);font-weight:800;font-size:1.5rem;text-align:center;padding:4px}
+/* RE18/RE1: caster, schade-spell, slot en dobbelstenen bovenaan de tab Schade */
+.acast,.aspell{display:grid;gap:8px}
+.dchips{display:flex;flex-wrap:wrap;gap:6px}
+.dchips:empty{display:none}
+.dchips .btn{display:inline-flex;align-items:baseline;gap:6px}
+.dchips .btn small{font-size:.72rem;color:var(--muted);font-weight:400}
+.dsel{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:0 0 0 10px;border-radius:10px;background:var(--accent-soft)}
+.dsel button.link{min-width:44px;justify-content:center;font-size:1.1rem}
+.aslot{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px}
+.aslot .seg2 button small{font-weight:400}
+.adice{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
+.adice .btn{min-width:64px}
 .asave{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--active-soft)}
 .asave select,.asave input{min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:0 8px;font-size:1rem}
 .asave input{width:72px;text-align:center}

@@ -27,11 +27,14 @@ const arr = (v) => (Array.isArray(v) ? v : []);
 /** Teller (legendary actions/resistance): hele getallen, max 0–20, left 0–max (een import kan rare waarden bevatten) */
 const counter = (o) => { if (!obj(o)) return null; const max = Math.min(20, Math.max(0, Math.trunc(num(o.max)))); return { max, left: Math.min(max, Math.max(0, Math.trunc(num(o.left)))) }; };
 
+/** Pact Magic: één slot-level 1–5, max 0–4, left 0–max */
+const cleanPact = (p) => { const max = lim(p.max, 0, 4); return { lvl: lim(p.lvl, 1, 5), max, left: Math.min(max, lim(p.left, 0, 4)), spells: str(p.spells) }; };
 function cleanCasting(k) {
   if (!obj(k)) return null;
   return {
     slots: arr(k.slots).map((s) => ({ lvl: Math.min(9, Math.max(1, num(s.lvl, 1))), max: num(s.max), left: num(s.left), spells: str(s.spells) })),
     daily: arr(k.daily).map((g) => ({ label: str(g.label, 40), items: arr(g.items).map((i) => ({ n: str(i.n, 200), max: num(i.max), left: num(i.left) })) })),
+    ...(obj(k.pact) ? { pact: cleanPact(k.pact) } : {}), // RE3: Pact Magic apart
   };
 }
 function cleanSheet(h) {
@@ -97,6 +100,7 @@ export function cleanCombatant(c) {
     rc: c.rc === undefined ? undefined : arr(c.rc).map((r) => ({ n: str(r.n, 120), min: r.min == null ? null : num(r.min), rest: !!r.rest, ready: !!r.ready })),
     casting: c.casting === undefined ? undefined : cleanCasting(c.casting), res: cleanRes(c.res), sheet: cleanSheet(c.sheet),
     dr: kind === "pc" ? cleanDr(c.dr) : undefined, // weerstanden van een speler (SP2)
+    slotSelf: c.slotSelf === true ? true : undefined, // RE1: slots zelf bijhouden (WP9)
   });
   if (obj(c.cd)) {
     out.cd = {};

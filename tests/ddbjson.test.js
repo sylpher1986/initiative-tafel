@@ -161,7 +161,8 @@ test("multiclass: slots via caster level (PHB), pools, warlock pact", () => {
   assert.equal(r.sheet.prof, "+3");
 
   const wl = parseDdbJson({ name: "W", stats: stats(10, 10, 10, 10, 10, 16), baseHitPoints: 20, classes: [cls("Warlock", 5, { def: { canCastSpells: true, spellCastingAbilityId: 6, spellRules: { multiClassSpellSlotDivisor: 1, levelSpellSlots: FULL } } })] });
-  assert.deepEqual(wl.sheet.casting.slots.map((s) => [s.lvl, s.max]), [[3, 2]], "pact magic: 2 slots van 3e level");
+  assert.deepEqual(wl.sheet.casting.slots, [], "RE3: pact magic niet bij de gewone slots");
+  assert.deepEqual([wl.sheet.casting.pact.lvl, wl.sheet.casting.pact.max, wl.sheet.casting.pact.left], [3, 2, 2], "pact magic: 2 slots van 3e level");
   assert.match(wl.sheet.features, /Pact Magic/);
 
   const ek = parseDdbJson({ name: "E", stats: stats(10, 10, 10, 14, 10, 10), baseHitPoints: 20, classes: [cls("Fighter", 7, { sub: { name: "Eldritch Knight", canCastSpells: true, spellCastingAbilityId: 4, spellRules: { multiClassSpellSlotDivisor: 3, levelSpellSlots: [] } } })] });

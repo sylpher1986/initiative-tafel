@@ -284,7 +284,7 @@ function liveHtml(c, chips) {
   const ds = c.max && c.hp <= 0 ? (d.dead ? `<span class="bd r">Dood</span>` : d.stable ? `<span class="bd g">Stabiel</span>`
     : `<span class="bd r">Death saves ✓${n0(d.s)} ✗${n0(d.f)}</span>`) : "";
   const k = c.casting, cnt = (l, o) => `<span class="cnt"><b>${esc(l)}</b> ${n0(o.left)}/${n0(o.max)}</span>`;
-  const slots = k ? [...k.slots.map((x) => cnt(ORD[x.lvl] || "", x)), ...k.daily.flatMap((g) => g.items.map((it) => cnt(it.n, it)))] : [];
+  const slots = k ? [...(k.pact ? [cnt(`Pact ${ORD[k.pact.lvl] || ""}`, k.pact)] : []), ...k.slots.map((x) => cnt(ORD[x.lvl] || "", x)), ...k.daily.flatMap((g) => g.items.map((it) => cnt(it.n, it)))] : [];
   const res = (c.res || []).map((r) => cnt(r.n, r));
   const tags = (chips ? chips(c) : "") + ds;
   return `<div class="livest">

@@ -92,7 +92,8 @@ function tagsFor(c, S, pcr, name) {
 function slotsFor(c) {
   const k = c.casting || {}, n = (v) => Math.max(0, v | 0);
   const s = (k.slots || []).filter((x) => x && x.max > 0).map((x) => ({ l: x.lvl | 0, left: n(x.left), max: n(x.max) }));
-  const d = (k.daily || []).flatMap((g) => (g && g.items) || []).filter((x) => x && x.max > 0).map((x) => ({ n: String(x.n || ""), left: n(x.left), max: n(x.max) }));
+  const p = k.pact && k.pact.max > 0 ? [{ n: `Pact ${["", "1st", "2nd", "3rd", "4th", "5th"][k.pact.lvl | 0] || ""}`.trim(), left: n(k.pact.left), max: n(k.pact.max) }] : []; // RE3: als regel, zelfde vorm
+  const d = [...p, ...(k.daily || []).flatMap((g) => (g && g.items) || []).filter((x) => x && x.max > 0).map((x) => ({ n: String(x.n || ""), left: n(x.left), max: n(x.max) }))];
   const r = (c.res || []).filter((x) => x && x.max > 0).map((x) => ({ n: String(x.n || ""), left: n(x.left), max: n(x.max) }));
   return s.length || d.length || r.length ? { s, d, r } : null;
 }

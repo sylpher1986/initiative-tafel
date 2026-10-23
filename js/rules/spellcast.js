@@ -11,7 +11,7 @@ import { NO_ACT } from "./legendary.js";
 /**
  * Presets. eff = effect-preset (effects.js), conds = condities bij een gefaalde save (de eerste bepaalt immuniteit),
  * rep = herhaalsave aan het einde van de beurt (open save, saves.js), side = wie standaard aan staat ("own" = kant van de caster).
- * max/lvl = aantal doelen op het laagste slot en dat slot (+1 doel per hoger slot; 2014 en 2024 gelijk); max 1 = geen voorselectie (RE8).
+ * lvl = spell-level (slot afschrijven, WP9); max = aantal doelen op slot lvl (+1 doel per hoger slot; 2014 en 2024 gelijk); max 1 = geen voorselectie (RE8).
  * brk = condities vervallen per doel bij schade (combat.js applyDamage); then = gefaalde herhaalsave → deze conditie i.p.v. de eerste
  * (Sleep 2024: Incapacitated → Unconscious); auto = conditie-immuniteit waardoor de save vanzelf slaagt; ed = alleen bij die spellregels.
  * Index in deze lijst is stabiel (de UI bewaart hem): nieuwe presets achteraan, verbergen gaat via `ed`.
@@ -20,14 +20,14 @@ export const SPELLS = [
   { n: "Bless", eff: "Bless", conc: true, side: "own", max: 3, lvl: 1, sub: "+1d4 · conc" },
   { n: "Bane", eff: "Bane", ab: "CHA", conc: true, side: "other", max: 3, lvl: 1, sub: "CHA · −1d4" },
   { n: "Hold Person", ab: "WIS", conds: ["Paralyzed"], rep: true, dur: "r10", conc: true, side: "other", humanoid: true, max: 1, lvl: 2, sub: "WIS · Paralyzed" },
-  { n: "Hypnotic Pattern", ab: "WIS", conds: ["Charmed", "Incapacitated"], dur: "r10", conc: true, side: "other", sub: "WIS · Charmed", brk: true,
+  { n: "Hypnotic Pattern", lvl: 3, ab: "WIS", conds: ["Charmed", "Incapacitated"], dur: "r10", conc: true, side: "other", sub: "WIS · Charmed", brk: true,
     note: "vervalt vanzelf bij schade; ook als iemand een actie gebruikt om het doel wakker te schudden (conditie uitzetten)" },
   // Web duurt (concentratie) tot 1 uur: geen rondeteller, de concentratie van de caster beëindigt het
-  { n: "Web", ab: "DEX", conds: ["Restrained"], dur: "inf", conc: true, side: "other", sub: "DEX · Restrained",
+  { n: "Web", lvl: 2, ab: "DEX", conds: ["Restrained"], dur: "inf", conc: true, side: "other", sub: "DEX · Restrained",
     note: "losbreken: actie, STR-check tegen de DC" },
   // Sleep: Incapacitated blijft staan tot de tweede save is afgehandeld (geen eigen duur), zodat een vergeten save
   // de DM niet een gratis wakker doelwit kost; de save komt elke beurt terug tot hij is gerold
-  { n: "Sleep", ed: "2024", ab: "WIS", conds: ["Incapacitated"], dur: "inf", rep: true, then: "Unconscious", conc: true, side: "other", brk: true, auto: "exhaustion",
+  { n: "Sleep", lvl: 1, ed: "2024", ab: "WIS", conds: ["Incapacitated"], dur: "inf", rep: true, then: "Unconscious", conc: true, side: "other", brk: true, auto: "exhaustion",
     sub: "WIS · 2e keer Unconscious",
     note: "einde volgende beurt opnieuw WIS-save, gefaald = Unconscious zolang de concentratie duurt. Vervalt bij schade of als iemand binnen 5 ft hem wakker maakt (conditie uitzetten). Wie niet slaapt (elfs, immuun voor exhaustion) slaagt vanzelf" },
 ];

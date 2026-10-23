@@ -40,6 +40,8 @@ export function diffLog(prev, cur) {
         const y = o.casting.slots[i];
         if (y && y.left !== x.left) m.push(x.left < y.left ? `${ORD[x.lvl]}-level slot gebruikt (${x.left}/${x.max} over)` : `${ORD[x.lvl]}-level slot terug (${x.left}/${x.max})`);
       });
+      const P = c.casting.pact, Q = o.casting.pact; // RE3
+      if (P && Q && P.left !== Q.left) m.push(P.left < Q.left ? `Pact-slot gebruikt (${P.left}/${P.max} over)` : `Pact-slot terug (${P.left}/${P.max})`);
       (c.casting.daily || []).forEach((g, gi) => g.items.forEach((x, ii) => {
         const y = o.casting.daily?.[gi]?.items?.[ii];
         if (y && x.left < y.left) m.push(`${x.n} gebruikt (${x.left}/${x.max} ${g.label.split(" ")[0]})`);

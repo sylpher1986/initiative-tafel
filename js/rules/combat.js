@@ -242,5 +242,6 @@ export function restMember(m, long) {
       (m.casting.daily || []).forEach((g) => g.items.forEach((x) => (x.left = x.max)));
     }
   }
+  if (m.casting && m.casting.pact) m.casting.pact.left = m.casting.pact.max; // RE3: Pact Magic terug na elke rust
   (m.res || []).forEach((r) => { if (long || r.rest === "Short Rest") r.left = r.max; });
 }

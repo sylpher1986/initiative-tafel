@@ -6,6 +6,7 @@
 import { setMax } from "./rules/combat.js";
 import { baseMax } from "./rules/effects.js";
 import { cleanDr, drDiff, DTYPES } from "./rules/aoe.js";
+import { pactSlots } from "./rules/slots.js";
 
 const AB = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
 const SHORT = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
@@ -242,7 +243,7 @@ export function parseDdbJson(json) {
   }
   const slotMax = Array(10).fill(0);
   slotRow.slice(0, 9).forEach((n, i) => (slotMax[i + 1] = clamp(n, 0, 9)));
-  if (pact) slotMax[Math.min(5, Math.ceil(pact / 2))] += pact >= 17 ? 4 : pact >= 11 ? 3 : pact >= 2 ? 2 : 1;
+  const pk = pactSlots(pact); // RE3: Pact Magic apart (komt terug na een short rest), niet bij de gewone slots
 
   // spells per level
   const rows = [];
@@ -257,6 +258,9 @@ export function parseDdbJson(json) {
     if (sp.length || (l && slotMax[l])) levels.push({ lvl: l, max: l ? slotMax[l] : 0, spells: sp });
   }
   const slots = levels.filter((l) => l.lvl && l.max).map((l) => ({ lvl: l.lvl, max: l.max, left: l.max, spells: l.spells.map((s) => s.n).join(", ") }));
+  // Pact-regel: spells van de levels t/m het pact-level zonder eigen slotregel (pure warlock: Hex, Misty Step, …)
+  const pactSp = pk ? levels.filter((l) => l.lvl && l.lvl <= pk.lvl && !l.max).flatMap((l) => l.spells.map((x) => x.n)).filter((v, i, a) => a.indexOf(v) === i).join(", ") : "";
+  const pactObj = pk ? { lvl: pk.lvl, max: pk.max, left: pk.max, spells: pactSp } : null;
   const caster = classes.find((c) => int(c.definition.spellCastingAbilityId) >= 1) ||
     classes.find((c) => obj(c.subclassDefinition) && int(c.subclassDefinition.spellCastingAbilityId) >= 1);
   const castAb = caster ? int(caster.definition.spellCastingAbilityId) || int(caster.subclassDefinition.spellCastingAbilityId) : 0;
@@ -312,8 +316,8 @@ export function parseDdbJson(json) {
     ab, saves, saveNotes: "", skills,
     senses: [...sense.map(([s, v]) => `${s} ${v} ft.`), `passive Perception ${10 + skillVal.Perception + sum("bonus", "passive-perception")}`].join(", "),
     attacks, levels, spellDC: spellMod == null ? "" : String(8 + prof + spellMod + dcPlus), spellAtk: spellMod == null ? "" : sg(prof + spellMod + atkPlus), spellAbility: castAb ? SHORT[castAb - 1] : "",
-    features: [sub.length ? `Subclass: ${sub.join(", ")}` : "", feats, pact ? "Pact Magic: slots komen terug na een short rest (hier bij de gewone slots opgeteld)." : ""].filter(Boolean).join("\n"),
-    casting: slots.length ? { slots, daily: [] } : null, res,
+    features: [sub.length ? `Subclass: ${sub.join(", ")}` : "", feats, pact ? "Pact Magic: slots komen terug na een short rest." : ""].filter(Boolean).join("\n"),
+    casting: slots.length || pactObj ? { slots, daily: [], ...(pactObj ? { pact: pactObj } : {}) } : null, res,
     dr: drOf(mods), // SP2: altijd aanwezig bij een link-sheet ({} = geen), een PDF-sheet heeft het niet
   };
   const id = int(d.id);
@@ -347,11 +351,13 @@ export function mergeSheet(t, f) {
   if (f.img) t.img = f.img;
   if (f.casting) {
     const old = t.casting && Array.isArray(t.casting.slots) ? t.casting : null;
-    const sig = (c) => (c ? c.slots.map((s) => s.lvl + ":" + s.max).join() : "");
+    const sig = (c) => (c ? c.slots.map((s) => s.lvl + ":" + s.max).join() + (c.pact ? `|p${c.pact.lvl}:${c.pact.max}` : "") : "");
     if (sig(old) !== sig(f.casting)) ch.push("spell slots");
+    const fp = f.casting.pact, op = old && old.pact;
     t.casting = {
       slots: f.casting.slots.map((s) => { const o = old && old.slots.find((x) => x.lvl === s.lvl); return { ...s, left: o ? keep(o.max, o.left, s.max) : s.max }; }),
       daily: f.casting.daily && f.casting.daily.length ? f.casting.daily : old ? old.daily || [] : [],
+      ...(fp ? { pact: { ...fp, left: op ? keep(op.max, op.left, fp.max) : fp.max } } : {}),
     };
   }
   if (Array.isArray(f.res)) {
