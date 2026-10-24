@@ -20,7 +20,7 @@ test("elk app-bestand staat in de offline-cache van sw.js", async () => {
     const p = dir + n;
     return statSync(new URL(p, root)).isDirectory() ? walk(p + "/") : [p];
   });
-  const files = ["css/", "data/", "fonts/", "icons/", "js/"].flatMap(walk).filter((p) => !p.endsWith(".txt"));
+  const files = ["css/", "data/", "fonts/", "icons/", "js/", "locales/"].flatMap(walk).filter((p) => !p.endsWith(".txt"));
   const missing = files.filter((p) => !sw.includes(`"./${p}"`));
   assert.deepEqual(missing, [], "ontbreekt in ASSETS van sw.js");
 });

@@ -16,7 +16,7 @@ const walk = (dir) => readdirSync(root + dir).flatMap((n) => {
   const p = dir + n;
   return statSync(root + p).isDirectory() ? walk(p + "/") : [p];
 });
-const files = ["js/", "worker/", "tools/"].flatMap(walk).filter((p) => /\.m?js$/.test(p));
+const files = ["js/", "locales/", "worker/", "tools/"].flatMap(walk).filter((p) => /\.m?js$/.test(p));
 
 test("alle JS-bestanden zijn syntactisch geldig", async () => {
   assert.ok(files.length > 30, "te weinig bestanden gevonden");

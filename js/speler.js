@@ -1,5 +1,6 @@
 // Spelersscherm: toont alleen de snapshot die het DM-scherm stuurt (js/playerview.js), nooit eigen data.
 import { APP } from "./version.js";
+import { initI18n } from "./i18n/boot.js";
 import { ico } from "./ui/icons.js";
 import { cleanView, headHtml, findMe, meState, buzzFor, dsText, logLines, pushLog } from "./playerview.js";
 import { ORD } from "./rules/spells.js";
@@ -407,4 +408,4 @@ function tryJoin(submit) {
   $("#pv-joinmsg").textContent = "Een code heeft 6 tekens, bijvoorbeeld K7M 3QX.";
 }
 
-boot();
+initI18n().then(boot); // vertalingen vóór de eerste weergave (WP20; initI18n gooit nooit)

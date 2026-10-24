@@ -5,6 +5,9 @@
 //   node tools/browsercheck.mjs                 alle scenario's
 //   node tools/browsercheck.mjs prep fight      alleen deze scenario's
 //   node tools/browsercheck.mjs --shots=fight   ook screenshots van "fight" in shots/ (komma's voor meer)
+//   node tools/browsercheck.mjs --i18n=xx       alles in de testtaal (lange tekst, accenten; WP20) of --i18n=debug
+//
+// Altijd FOUT: een ⟦ op het scherm (ontbrekende vertaling in de debugstand, js/i18n/boot.js).
 //
 // Playwright staat niet in package.json (geen dependencies). Het script zoekt het via PW_MODULE, gewone resolutie
 // of /opt/npm-tools; browsers in PLAYWRIGHT_BROWSERS_PATH (standaard /opt/pw-browsers).
@@ -142,13 +145,15 @@ function measure() {
       small.push(`${el.tagName.toLowerCase()}${id.startsWith("#") || id.startsWith(".") ? id : ""} ${Math.round(r.width)}×${Math.round(r.height)} "${(el.textContent || el.getAttribute("aria-label") || "").trim().slice(0, 24)}"`);
     }
   }
-  return { hscroll: Math.max(de.scrollWidth, document.body.scrollWidth) - vw, small };
+  return { hscroll: Math.max(de.scrollWidth, document.body.scrollWidth) - vw, small, unt: (document.body.innerText.match(/⟦[^⟧]*⟧/g) || []).slice(0, 3) };
 }
 
 async function main() {
   const args = process.argv.slice(2);
   const shots = new Set((args.find((a) => a.startsWith("--shots=")) || "").slice(8).split(",").filter(Boolean));
   const only = args.filter((a) => !a.startsWith("--"));
+  const i18n = (args.find((a) => a.startsWith("--i18n=")) || "").slice(7);
+  if (i18n && !["xx", "debug"].includes(i18n)) throw new Error("--i18n=xx of --i18n=debug");
   const names = only.length ? only : Object.keys(SCEN);
   const bad = names.filter((n) => !(n in SCEN));
   if (bad.length) throw new Error("Onbekend scenario: " + bad.join(", "));
@@ -161,7 +166,7 @@ async function main() {
   try {
     for (const name of names) for (const w of WIDTHS) for (const scheme of SCHEMES) {
       const ctx = await browser.newContext({ viewport: { width: w, height: 740 }, hasTouch: true, isMobile: true, colorScheme: scheme, deviceScaleFactor: 2, serviceWorkers: "block" });
-      await ctx.addInitScript(() => { try { localStorage.setItem("it-tour", "pf"); } catch { /* geen opslag */ } });
+      await ctx.addInitScript((m) => { try { localStorage.setItem("it-tour", "pf"); if (m) localStorage.setItem("kevs-i18n-debug", m); } catch { /* geen opslag */ } }, i18n);
       const page = await ctx.newPage(), errs = [];
       page.on("pageerror", (e) => errs.push(e.message));
       page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource/.test(m.text())) errs.push(m.text()); });
@@ -174,6 +179,7 @@ async function main() {
         await page.waitForTimeout(150);
       } catch (e) { errs.push("scenario: " + e.message.split("\n")[0]); }
       const m = await page.evaluate(measure).catch((e) => ({ hscroll: NaN, small: [], err: e.message }));
+      if (m.unt && m.unt.length) errs.push("niet vertaald: " + m.unt.join(" "));
       const ok = m.hscroll <= 0 && !errs.length;
       if (!ok) fails++;
       console.log(`${ok ? "ok  " : "FOUT"} ${name.padEnd(9)} ${w} ${scheme.padEnd(5)} hscroll ${m.hscroll > 0 ? m.hscroll + "px" : 0} · tikdoelen<44 ${m.small.length}${errs.length ? " · JS: " + errs.join(" | ") : ""}`);
@@ -182,7 +188,7 @@ async function main() {
       await ctx.close();
     }
   } finally { await browser.close(); srv.close(); }
-  console.log(fails ? `\n${fails} combinatie(s) met horizontaal scrollen of JS-fouten.` : "\nGeen horizontaal scrollen, geen JS-fouten.");
+  console.log(fails ? `\n${fails} combinatie(s) met horizontaal scrollen, JS-fouten of ⟦…⟧.` : "\nGeen horizontaal scrollen, geen JS-fouten, geen ⟦…⟧.");
   process.exitCode = fails ? 1 : 0;
 }
 
