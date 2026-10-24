@@ -20,7 +20,8 @@ test("elk app-bestand staat in de offline-cache van sw.js", async () => {
     const p = dir + n;
     return statSync(new URL(p, root)).isDirectory() ? walk(p + "/") : [p];
   });
-  const files = ["css/", "data/", "fonts/", "icons/", "js/", "locales/"].flatMap(walk).filter((p) => !p.endsWith(".txt"));
+  // locales/src/ = bron van de catalogi (tools/i18n-build.mjs), niet gepubliceerd en niet geladen
+  const files = ["css/", "data/", "fonts/", "icons/", "js/", "locales/"].flatMap(walk).filter((p) => !p.endsWith(".txt") && !p.startsWith("locales/src/"));
   const missing = files.filter((p) => !sw.includes(`"./${p}"`));
   assert.deepEqual(missing, [], "ontbreekt in ASSETS van sw.js");
 });

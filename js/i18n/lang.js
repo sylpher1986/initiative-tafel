@@ -15,7 +15,7 @@ export const LIVE = ["nl"];
 /** Standaard- en terugvaltaal */
 export const DEFAULT = "en";
 /** Intl-locale per taal (getallen, datums); één plek om te wijzigen */
-export const LOCALES = { en: "en", nl: "nl-NL" };
+export const LOCALES = { en: "en-GB", nl: "nl-NL" }; // en-GB: "12 Oct 2026" en 24-uursklok (vertaalagent WP20); spelling blijft Amerikaans (PHB)
 /** localStorage-sleutel van de voorkeur (platformbreed voorvoegsel kevs-) */
 export const PREF_KEY = "kevs-lang";
 

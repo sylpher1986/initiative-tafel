@@ -408,4 +408,4 @@ function tryJoin(submit) {
   $("#pv-joinmsg").textContent = "Een code heeft 6 tekens, bijvoorbeeld K7M 3QX.";
 }
 
-initI18n().then(boot); // vertalingen vóór de eerste weergave (WP20; initI18n gooit nooit)
+initI18n().then(boot).catch((e) => console.error(e)); // vertalingen vóór de eerste weergave (WP20; gooit nooit, wacht max. 3 s)

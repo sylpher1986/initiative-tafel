@@ -9,7 +9,7 @@ import { pcReact } from "./ui/pcreact.js";
 import { localChannel, dmLink } from "./share.js";
 import { bindSharing, dropSharing } from "./ui/kamer.js";
 import { setWriteGuard } from "./storage.js";
-import { initI18n } from "./i18n/boot.js";
+import { initI18n, i18nDebug } from "./i18n/boot.js";
 import { claimTab } from "./tablock.js";
 import { $, toastBad } from "./ui/util.js";
 import { VERSION, APP } from "./version.js";
@@ -66,7 +66,8 @@ async function boot() {
   const pv = document.querySelector('meta[name="it-version"]')?.content;
   $("#app-version").textContent = `${APP} ${VERSION}${pv === VERSION ? "" : ` · pagina ${pv || "ouder"}`}`;
   try {
-    await Promise.all([load(), loadSrd(), initI18n()]); // vertalingen vóór de eerste render (WP20; initI18n gooit nooit)
+    await Promise.all([load(), loadSrd(), initI18n()]); // vertalingen vóór de eerste render (WP20; gooit nooit, wacht max. 3 s)
+    if (i18nDebug()) $("#app-version").textContent += ` · i18n ${i18nDebug()} (?i18n=off)`; // debugstand blijft bewaard: altijd zichtbaar
   } catch (e) {
     $("#order").innerHTML = `<li class="hint" style="padding:20px">De monsterdata kon niet laden (${String(e.message).replace(/</g, "&lt;")}). Ververs de pagina.</li>`;
     return;
