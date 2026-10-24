@@ -39,7 +39,7 @@ en hoort erbij derde gestorven kritiek voorbij bijgewerkt geladen ophalen vul he
  *  Regex-literals worden herkend aan het teken ervoor (zoals in de meeste lexers). Geeft [{ text, line }]. */
 export function jsStrings(src) {
   const out = [];
-  let i = 0, line = 1, prev = "";
+  let i = 0, line = 1, prev = "", gap = false;
   const n = src.length;
   const isRegexStart = () => /^$|[(,=:[!&|?{};+\-*%<>~^]$/.test(prev) || /\b(return|typeof|case|of|in|else|void|yield|await)$/.test(prev);
   // code tot de bijpassende } (voor ${…} in een template); geeft de positie na de }
@@ -47,7 +47,7 @@ export function jsStrings(src) {
     let depth = 0;
     while (i < n) {
       const c = src[i], d = src[i + 1];
-      if (c === "\n") { line++; i++; continue; }
+      if (c === "\n") { line++; i++; gap = true; continue; }
       if (c === "/" && d === "/") { while (i < n && src[i] !== "\n") i++; continue; }
       if (c === "/" && d === "*") { i += 2; while (i < n && !(src[i] === "*" && src[i + 1] === "/")) { if (src[i] === "\n") line++; i++; } i += 2; continue; }
       if (c === '"' || c === "'") { str(c); prev = "x"; continue; }
@@ -55,14 +55,22 @@ export function jsStrings(src) {
       if (c === "/" && isRegexStart()) { regex(); prev = "x"; continue; }
       if (c === "{") depth++;
       if (c === "}") { if (stopAtBrace && depth === 0) { i++; return; } depth--; }
-      if (!/\s/.test(c)) prev = /[\w$]/.test(c) ? (prev.match(/[\w$]*$/)[0] + c).slice(-8) : c;
+      if (/\s/.test(c)) gap = true;
+      else { prev = /[\w$]/.test(c) ? ((gap ? "" : prev.match(/[\w$]*$/)[0]) + c).slice(-8) : c; gap = false; }
       i++;
     }
+  };
+  // escape vanaf src[i] (de backslash): \n \t \r = spatie, \uXXXX, \u{…} en \xXX gedecodeerd, verder het teken zelf
+  const esc = () => {
+    const c = src[i + 1], m = /^u\{([0-9a-fA-F]+)\}|^u([0-9a-fA-F]{4})|^x([0-9a-fA-F]{2})/.exec(src.slice(i + 1, i + 12));
+    if (m) { i += 1 + m[0].length; return String.fromCodePoint(parseInt(m[1] || m[2] || m[3], 16)); }
+    i += 2;
+    return /[ntr\n]/.test(c) ? " " : c;
   };
   const str = (q) => {
     const start = line; let s = ""; i++;
     while (i < n && src[i] !== q) {
-      if (src[i] === "\\") { s += src[i + 1] === "n" ? " " : src[i + 1]; i += 2; continue; }
+      if (src[i] === "\\") { if (src[i + 1] === "\n") line++; s += esc(); continue; }
       if (src[i] === "\n") break; // onaf: stoppen
       s += src[i++];
     }
@@ -72,7 +80,7 @@ export function jsStrings(src) {
   const tpl = () => {
     const start = line; let s = ""; i++;
     while (i < n && src[i] !== "`") {
-      if (src[i] === "\\") { s += src[i + 1]; i += 2; continue; }
+      if (src[i] === "\\") { if (src[i + 1] === "\n") line++; s += esc(); continue; }
       if (src[i] === "$" && src[i + 1] === "{") { i += 2; s += "{}"; code(true); continue; }
       if (src[i] === "\n") line++;
       s += src[i++];
@@ -95,7 +103,7 @@ export function jsStrings(src) {
   return out;
 }
 
-const ATTRS = /\s(aria-label|placeholder|title|alt|content|data-label)\s*=\s*"([^"]*)"/g;
+const ATTRS = /\s(aria-label|placeholder|title|alt|content|data-label|on[a-z]+)\s*=\s*(["'])(.*?)\2/g;
 const ent = (s) => s.replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").replace(/&[a-z]+;|&#\d+;/g, " ");
 
 /** Tekst uit HTML: tekstknopen en zichtbare attributen; <script> gaat door jsStrings, <style> en commentaar niet. */
@@ -110,7 +118,11 @@ export function htmlStrings(src) {
       jsStrings(js).forEach((x) => scripts.push({ text: x.text, line: x.line + base }));
       return a + js.replace(/[^\n]/g, " ") + b;
     });
-  for (const m of body.matchAll(/<[^>]+>/g)) for (const a of m[0].matchAll(ATTRS)) out.push({ text: ent(a[2]), line: lineAt(m.index) });
+  for (const m of body.matchAll(/<[^>]+>/g)) for (const a of m[0].matchAll(ATTRS)) {
+    const v = ent(a[3]), ln = lineAt(m.index);
+    if (a[1].startsWith("on")) jsStrings(v).forEach((x) => out.push({ text: x.text, line: ln })); // onerror="…('tekst')"
+    else out.push({ text: v, line: ln });
+  }
   for (const m of body.matchAll(/>([^<]+)</g)) {
     const t = ent(m[1]).replace(/\s+/g, " ").trim();
     if (t) out.push({ text: t, line: lineAt(m.index) });
@@ -118,8 +130,10 @@ export function htmlStrings(src) {
   return [...out, ...scripts].sort((a, b) => a.line - b.line);
 }
 
-/** Bevat de tekst een Nederlands woord? (alleen letters, kleine letters, ook met ë/é) */
-export const isDutch = (s) => (s.toLowerCase().match(/[a-zà-ÿ]+/g) || []).some((w) => NL_WORDS.has(w));
+/** Bevat de tekst een Nederlands woord? (alleen letters, kleine letters, ook met ë/é). Een string die alleen een
+ *  taalcode is ("en", "de", "nl-BE") telt niet: die zijn er straks volop in js/i18n/, en een losse meervoudsuitgang
+ *  ("scherm" + "en") verdwijnt bij de migratie toch ({ one, other }). */
+export const isDutch = (s) => !/^\s*[a-z]{2}(-[A-Z]{2})?\s*$/.test(s) && (s.toLowerCase().match(/[a-zà-ÿ]+/g) || []).some((w) => NL_WORDS.has(w));
 
 /** Nederlandse teksten in één bestand: [{ text, line }] */
 export function dutchIn(path, src) {
@@ -145,7 +159,7 @@ export const PLAN = {
   "js/rules/conditions.js": "WP29",
 };
 /** Pakket voor een bestand: vaste lijst, anders alle regels in js/rules/ naar WP27 */
-export const planFor = (f) => PLAN[f] || (/^js\/rules\//.test(f) ? "WP27" : null);
+export const planFor = (f) => PLAN[f] || (/^js\/rules\//.test(f) ? "WP27" : /^js\/i18n\//.test(f) ? "WP19" : null);
 
 /** Bestanden die meetellen: alle JS onder js/, de twee pagina's en het manifest. Niet: data, tests, tools, worker
  *  (de Worker geeft alleen codes terug), sw.js (geen tekst voor de gebruiker). */
@@ -174,6 +188,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
   const args = process.argv.slice(2);
   if (args[0] === "--list") {
     const f = args[1];
+    if (!f) { console.error("Gebruik: node tools/i18n-audit.mjs --list <bestand>"); process.exit(1); }
     for (const x of dutchIn(f, readFileSync(ROOT + f, "utf8"))) console.log(String(x.line).padStart(5), x.text.slice(0, 110));
   } else {
     const res = audit();
