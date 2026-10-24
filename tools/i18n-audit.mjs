@@ -132,8 +132,8 @@ export function htmlStrings(src) {
 
 /** Bevat de tekst een Nederlands woord? (alleen letters, kleine letters, ook met ë/é). Een string die alleen een
  *  taalcode is ("en", "de", "nl-BE") telt niet: die zijn er straks volop in js/i18n/, en een losse meervoudsuitgang
- *  ("scherm" + "en") verdwijnt bij de migratie toch ({ one, other }). */
-export const isDutch = (s) => !/^\s*[a-z]{2}(-[A-Z]{2})?\s*$/.test(s) && (s.toLowerCase().match(/[a-zà-ÿ]+/g) || []).some((w) => NL_WORDS.has(w));
+ *  ("scherm" + "en") verdwijnt bij de migratie toch ({ one, other }). Een pad ("/speler.html") is geen tekst. */
+export const isDutch = (s) => !/^\s*[a-z]{2}(-[A-Z]{2})?\s*$/.test(s) && !/^\/[\w./-]*$/.test(s) && (s.toLowerCase().match(/[a-zà-ÿ]+/g) || []).some((w) => NL_WORDS.has(w));
 
 /** Nederlandse teksten in één bestand: [{ text, line }] */
 export function dutchIn(path, src) {

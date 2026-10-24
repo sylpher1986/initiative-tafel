@@ -43,7 +43,7 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 - Regels: ~~RE3~~ (klaar in 1.41.0), **RE4–RE6**, ~~RE14~~ (klaar in 1.42.0), ~~RE15~~ (klaar in 1.44.0)
 - Voorbereiding: ~~VB4~~ · ~~VB5~~ (klaar in 1.43.0, WP11)
 - Gevecht: ~~GV10~~ (klaar in 1.37.1), ~~GV11~~ (klaar in 1.42.0)
-- Taal: **TA1** (uitgewerkt tot TA2–TA16 en WP18–WP33, zie "Taal" en `docs/i18n.md`; WP18 klaar, volgende WP19)
+- Taal: **TA1** (uitgewerkt tot TA2–TA16 en WP18–WP33, zie "Taal" en `docs/i18n.md`; WP18 en WP19 klaar, volgende WP20)
 - Technische schuld: **TS1** (oppakken wanneer je die code toch aanraakt)
 - Fase 2 en 3
 - Bewust niet: zie "Persona-test 3 → Niet overgenomen"
@@ -78,7 +78,7 @@ Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (g
 | WP | Inhoud | Codes | Afhankelijk van | Versie |
 |---|---|---|---|---|
 | ~~**WP18**~~ | Inventaris NL-tekst (audit + ratel-nulpunt) en architectuurbesluit, open vragen V1–V7 (klaar) | TA2 | – | geen |
-| **WP19** | i18n-runtime (`t`, meervoud, formatters, terugval op Engels) en taalbepaling `resolveLang` | TA3 | WP18 | 1.48.1 |
+| ~~**WP19**~~ | i18n-runtime (`t`, meervoud, formatters, terugval op Engels) en taalbepaling `resolveLang` (klaar) | TA3 | WP18 | 1.48.1 |
 | **WP20** | Catalogi `locales/{en,nl,xx}/`, debugmodus, tests (sleutelpariteit, placeholders, ratel) | TA4 | WP19 | 1.48.2 |
 | **WP21** | Paden `/{lang}/initiative/(player/)`, doorverwijzers (`/`, `/speler`, `/initiative/`), manifest `id: "/"`, service worker | TA5 | WP20 | 1.49.0 |
 | **WP22** | Taalkiezer (Instellingen, spelersscherm) en voorkeur per apparaat | TA6 | WP21 | 1.49.1 |
@@ -148,6 +148,7 @@ Afgerond in WP13–WP17 (1.44.1–1.48.0); keuzes in CLAUDE.md, overzicht in pro
   - **Indexeren**: alleen de nieuwe homepage `/en/`, `/nl/` (hreflang + x-default, canonical); de app en het spelersscherm krijgen `noindex`. Er is nu geen publieke pagina: `/` is de app.
   - **Nooit vertalen**: namen van deelnemers, eigen monsters, encounters en notities, logboeknotities, D&D Beyond-sheets. Spelregeldata blijft Engels (SRD); alleen eigen uitleg (conditie-uitleg `CINFO`) krijgt een Engelse versie. Gelokaliseerde D&D-termen voor een derde taal pas na licentie-onderzoek (V7).
   - [x] **TA2** (WP18, 24-10-2026) Inventaris en besluiten: `tools/i18n-audit.mjs`, nulpunt 1.191 teksten in 46 bestanden (`tests/i18n-baseline.json`), ratel `tests/i18n-ratchet.test.js` (meer Nederlandse tekst in een bestand = test faalt; bewust verhogen met `node tools/i18n-audit.mjs --write`)
+  - [x] **TA3** (WP19, 1.48.1) Runtime en taalbepaling in `js/i18n/` (core, msg, lang), puur en getest; nog nergens aangesloten
   - **Afhankelijkheden buiten dit plan**: accounts/sync (Fase 2) alleen voor het bewaren van de voorkeur in een account; `kevs-inn.com` is in het Cloudflare-dashboard gekoppeld (V1, bevestigd 24-10-2026), niet in `wrangler.jsonc`.
 
 ## Technische schuld

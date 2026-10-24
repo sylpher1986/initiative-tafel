@@ -53,6 +53,8 @@ test("herkenning: Nederlandse zin wel, D&D-termen en Engels niet", () => {
   assert.ok(isDutch("Save vervallen zonder uitslag"));
   assert.ok(isDutch("Hoort erbij"));
   for (const s of ["en", "de", "nl", "nl-BE"]) assert.ok(!isDutch(s), `taalcode ${s}`);
+  for (const s of ["/speler", "/speler.html", "/nl/initiative/player/"]) assert.ok(!isDutch(s), `pad ${s}`);
+  assert.ok(isDutch("/speler opent het spelersscherm"), "zin die met een pad begint telt wel");
   for (const s of ["Legendary actions", "Death saves", "WIS DC 13", "Short Rest", "Damage Resistances", "Concentrating", "Bear Totem"])
     assert.ok(!isDutch(s), s);
 });
