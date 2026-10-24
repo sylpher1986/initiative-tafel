@@ -43,7 +43,7 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 - Regels: ~~RE3~~ (klaar in 1.41.0), **RE4–RE6**, ~~RE14~~ (klaar in 1.42.0), ~~RE15~~ (klaar in 1.44.0)
 - Voorbereiding: ~~VB4~~ · ~~VB5~~ (klaar in 1.43.0, WP11)
 - Gevecht: ~~GV10~~ (klaar in 1.37.1), ~~GV11~~ (klaar in 1.42.0)
-- Taal: **TA1**
+- Taal: **TA1** (uitgewerkt tot TA2–TA16 en WP18–WP33, zie "Taal" en `docs/i18n.md`; WP18 klaar, volgende WP19)
 - Technische schuld: **TS1** (oppakken wanneer je die code toch aanraakt)
 - Fase 2 en 3
 - Bewust niet: zie "Persona-test 3 → Niet overgenomen"
@@ -70,7 +70,29 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | ~~**WP15**~~ | Typografie: Playfair Display + Inter zelf meegeleverd (klaar) | HS4 | 1.46.0 |
 | ~~**WP16**~~ | Logo en app-icoon (klaar) | HS5 | 1.47.0 |
 | ~~**WP17**~~ | Componenten, lijn-iconen, spelersscherm in huisstijl (klaar) | HS6, HS7, HS8 | 1.48.0 |
-| Backlog | Niet ingepland | RE4, RE5, RE6, TA1, TS1, fase 2 en 3 | |
+| Backlog | Niet ingepland | RE4, RE5, RE6, TS1, fase 2 en 3 | |
+
+### Werkpakketten meertaligheid (besloten 24-10-2026)
+Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (geen cookie), Engelse padsegmenten, `/` opent de app, Engels live als 2.0.0, Engelse tekst nagelezen door een aparte vertaalagent met D&D-kennis (zie `docs/i18n.md` §0). Plan en details per pakket (doel, scope, bestanden, acceptatie, risico's, operationele acties): `docs/i18n.md`. Volgorde = uitvoervolgorde; kritiek pad WP19 → WP21 → WP27 → WP28 → WP32 → WP33. Tot WP33 blijft alleen Nederlands zichtbaar (`LIVE = ["nl"]`), zodat er nooit een half vertaalde app live staat.
+
+| WP | Inhoud | Codes | Afhankelijk van | Versie |
+|---|---|---|---|---|
+| ~~**WP18**~~ | Inventaris NL-tekst (audit + ratel-nulpunt) en architectuurbesluit, open vragen V1–V7 (klaar) | TA2 | – | geen |
+| **WP19** | i18n-runtime (`t`, meervoud, formatters, terugval op Engels) en taalbepaling `resolveLang` | TA3 | WP18 | 1.48.1 |
+| **WP20** | Catalogi `locales/{en,nl,xx}/`, debugmodus, tests (sleutelpariteit, placeholders, ratel) | TA4 | WP19 | 1.48.2 |
+| **WP21** | Paden `/{lang}/initiative/(player/)`, doorverwijzers (`/`, `/speler`, `/initiative/`), manifest `id: "/"`, service worker | TA5 | WP20 | 1.49.0 |
+| **WP22** | Taalkiezer (Instellingen, spelersscherm) en voorkeur per apparaat | TA6 | WP21 | 1.49.1 |
+| **WP23** | Statische teksten in de pagina's (gegenereerd per taal) | TA7 | WP21 | 1.49.2 |
+| **WP24** | DM-app 1: Voorbereiden, + Speler, Party, + Monster, moeilijkheid | TA8 | WP20, WP23 | 1.49.3 |
+| **WP25** | DM-app 2: Gevecht (kaarten, beurtbalk, panelen) | TA9 | WP24 | 1.49.4 |
+| **WP26** | DM-app 3: Encounters, afronden, kamer, rondleiding, instellingen, import | TA10 | WP25 | 1.49.5 |
+| **WP27** | Regelmeldingen en logboek als descriptoren (sleutel + waarden) | TA11 | WP20, WP26 | 1.50.0 |
+| **WP28** | Spelersscherm in de eigen taal: snapshot met codes, overgang v1/v2 | TA12 | WP21, WP27 | 1.51.0 |
+| **WP29** | D&D-termen: id's vs labels, conditie-uitleg EN, zoekwoorden per taal, getal/datum-formattering | TA13 | WP27 | 1.51.1 |
+| **WP30** | Publieke homepage `/en/`, `/nl/`: meta, Open Graph, hreflang, canonical, robots, sitemap | TA14 | WP21, WP29 | 1.52.0 |
+| **WP31** | Conventies voor alle tools (CLAUDE.md, `docs/i18n.md`) | TA15 | WP27, WP28 | geen |
+| **WP32** | Verificatie: offline, import/export, spelersscherm gemengde talen, gevecht, persona-test EN | TA16 | WP22–WP30 | 1.52.1 |
+| **WP33** | Engels live: standaard en terugval, kiezer zichtbaar, homepage indexeerbaar | TA1 | WP32 | 2.0.0 |
 
 ---
 
@@ -121,6 +143,12 @@ Afgerond in WP13–WP17 (1.44.1–1.48.0); keuzes in CLAUDE.md, overzicht in pro
 
 ## Taal
 - [ ] **TA1 Taaloptie Nederlands / English** (Instellingen, keuze bewaard op het apparaat). Bij English alle Nederlandse tekst vervangen: knoppen, labels, meldingen, logboek, hints, formulieren, spelersscherm en foutmeldingen (ook van de Worker). D&D-termen zijn al Engels. Aanpak: teksten centraal in een vertaalbestand per taal (`js/i18n/nl.js`, `en.js`) met een `t("sleutel")`-functie; logboekregels als sleutel + waarden opslaan zodat ze na wisselen ook vertaald zijn; test die bewaakt dat elke sleutel in beide talen bestaat
+  - **Uitgewerkt (24-10-2026)** voor heel Kev's Inn (Initiative nu, later Characters, Campaigns, Companion): plan in `docs/i18n.md`, pakketten WP18–WP33 hierboven. TA1 zelf = het eindpakket WP33 (Engels live). Bijstellingen op de oorspronkelijke tekst, na inspectie van de code: (1) de Worker geeft al alleen foutcodes terug (`private`, `rate`, …), de tekst maakt de client (`ddbMsg`); (2) catalogi per laag i.p.v. één bestand per taal (`locales/{en,nl}/{common,initiative,rules,log,player,dnd,pages}.js`, ± 1.000 teksten); (3) URL's krijgen een taalprefix (`/en/`, `/nl/`), de keuze in Instellingen blijft daarnaast; (4) Engels wordt standaard en terugval, Nederlands blijft voor bestaande gebruikers; (5) de snapshot naar spelers bevat nu NL-woorden (HP-status, "Onbekend wezen", duur) en gaat naar codes, zodat speler en DM elk hun eigen taal hebben.
+  - **Taalbepaling** (`resolveLang`, één functie voor alle tools): 1. prefix in de URL (`/en/…`, `/nl/…`) wint altijd, zonder doorverwijzen of melding, en verandert de opgeslagen voorkeur niet; 2. ongeldig/niet-ondersteund prefix → `/en/…`; 3. zonder prefix (`/`, `/initiative/`, `/speler`): opgeslagen voorkeur (`localStorage` `kevs-lang`) → eerste ondersteunde browsertaal (`nl-BE` → nl) → Engels. Alleen de taalkiezer schrijft de voorkeur; account-opslag volgt met Fase 2 (nieuwste keuze wint). De spelerslink/QR (`/speler?k=`) blijft zonder taal, zodat elke speler zijn eigen taal krijgt en bestaande QR's blijven werken.
+  - **Indexeren**: alleen de nieuwe homepage `/en/`, `/nl/` (hreflang + x-default, canonical); de app en het spelersscherm krijgen `noindex`. Er is nu geen publieke pagina: `/` is de app.
+  - **Nooit vertalen**: namen van deelnemers, eigen monsters, encounters en notities, logboeknotities, D&D Beyond-sheets. Spelregeldata blijft Engels (SRD); alleen eigen uitleg (conditie-uitleg `CINFO`) krijgt een Engelse versie. Gelokaliseerde D&D-termen voor een derde taal pas na licentie-onderzoek (V7).
+  - [x] **TA2** (WP18, 24-10-2026) Inventaris en besluiten: `tools/i18n-audit.mjs`, nulpunt 1.204 teksten in 46 bestanden (`tests/i18n-baseline.json`), ratel `tests/i18n-ratchet.test.js` (meer Nederlandse tekst in een bestand = test faalt; bewust verhogen met `node tools/i18n-audit.mjs --write`)
+  - **Afhankelijkheden buiten dit plan**: accounts/sync (Fase 2) alleen voor het bewaren van de voorkeur in een account; `kevs-inn.com` is in het Cloudflare-dashboard gekoppeld (V1, bevestigd 24-10-2026), niet in `wrangler.jsonc`.
 
 ## Technische schuld
 - [ ] **TS1** pdf.js zelf hosten (nu via CDN, zonder SRI)
@@ -129,11 +157,13 @@ Afgerond in WP13–WP17 (1.44.1–1.48.0); keuzes in CLAUDE.md, overzicht in pro
 - [ ] Login en sync tussen apparaten (bijv. Supabase), local-first blijft de basis. Eerste collectie: `encounters` (heeft al `id` + `updatedAt`, nieuwste wint); tot dan wisselen via Delen/Importeren per encounter
 - [ ] Delen met een co-DM
 - [ ] Spelersscherm-kamer: vaste code per campagne zodra er accounts zijn (`isOwner` in `worker/room.js`)
+- [ ] Taalvoorkeur in het account (TA6 levert een opslag-adapter; nieuwste keuze wint, sync wijzigt nooit midden in een sessie)
 
 ## Fase 3: AI (via Cloudflare Worker, sleutel nooit in de browser)
 - [ ] AI-gestuurde vijanden: voorgestelde actie op basis van statblock, HP, condities en logboek
 - [ ] Battle maps: bij voorkeur als gestructureerde data (grid, muren, terrein) die de app tekent
 - [ ] Kostenbeheer: login en een limiet per gebruiker voordat dit publiek gaat
+- AI en taal (zie `docs/i18n.md` §5): elke Worker-aanroep krijgt `lang`; voorstellen verwijzen naar id's (deelnemer, actie uit het statblock), gegenereerde tekst is daarna inhoud en wordt niet opnieuw vertaald; battle maps met labelsleutels
 
 ---
 
