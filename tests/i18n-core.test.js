@@ -1,7 +1,7 @@
 // Meertaligheid WP19 (TA3): vertaalfunctie t, meervoud, formatters, terugval op Engels, descriptoren.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createI18n } from "../js/i18n/core.js";
+import { createI18n, MAX_DEPTH } from "../js/i18n/core.js";
 import { M, isMsg } from "../js/i18n/msg.js";
 
 const catalogs = {
@@ -133,4 +133,36 @@ test("onbekende taal of ontbrekende catalogi: Engels, en zonder catalogi de sleu
   assert.equal(createI18n({ lang: "de", catalogs }).t("common.close"), "Close");
   assert.equal(createI18n({ lang: "nl" }).t("common.close"), "common.close");
   assert.equal(createI18n().t("a"), "a");
+});
+
+test("placeholders lezen alleen eigen waarden: {toString} en {constructor} blijven staan", () => {
+  const { t } = createI18n({ lang: "nl", catalogs: { en: {}, nl: { k: "{constructor} {toString} {__proto__} {name}" } } });
+  assert.equal(t("k", { name: "Aram" }), "{constructor} {toString} {__proto__} Aram");
+  assert.equal(t("k", "geen object"), "{constructor} {toString} {__proto__} {name}");
+});
+
+test("geneste descriptoren: een lus of te diepe nesting stopt, geen stack overflow", () => {
+  const { t, tr } = createI18n({ lang: "nl", catalogs: { en: {}, nl: { a: "<{x}>" } } });
+  const loop = { k: "a", p: {} }; loop.p.x = loop;
+  const s = tr(loop);
+  const n = (s.match(/</g) || []).length;
+  assert.ok(n > 1 && n <= MAX_DEPTH + 2, `begrensd op ± MAX_DEPTH niveaus, kreeg ${n}`);
+  assert.ok(s.includes(">"));
+  let deep = "eind"; for (let i = 0; i < 20000; i++) deep = [deep];
+  assert.doesNotThrow(() => t("a", { x: deep }));
+});
+
+test("time() zonder Intl geeft HH:MM, date(null) en date('') geven niets, -0 wordt 0", () => {
+  const bare = createI18n({ lang: "nl", catalogs, intl: {} });
+  assert.equal(bare.time(new Date(2026, 9, 12, 9, 5)), "09:05");
+  const nl = createI18n({ lang: "nl", catalogs });
+  assert.equal(nl.date(null), "");
+  assert.equal(nl.date(""), "");
+  assert.equal(nl.time(undefined), "");
+  assert.equal(nl.num(-0), "0");
+});
+
+test("taal __proto__ of constructor lekt geen catalogus", () => {
+  assert.equal(createI18n({ lang: "__proto__", catalogs }).t("common.close"), "Close");
+  assert.equal(createI18n({ lang: "constructor", catalogs }).t("hasOwnProperty"), "hasOwnProperty");
 });

@@ -20,8 +20,11 @@ export const LOCALES = { en: "en", nl: "nl-NL" };
 export const PREF_KEY = "kevs-lang";
 
 // Eerste padsegment dat op een taalcode lijkt ("nl", "en-gb"); mappen van de app tellen nooit als taal.
-const CODE = /^[a-z]{2}(-[a-z]{2})?$/i;
+// Een nieuwe map of pagina van twee letters (/qr/, /tv/) moet in RESERVED, anders telt hij als ongeldig taalprefix.
+const CODE = /^[a-z]{2}([-_][a-z]{2})?$/i;
 const RESERVED = new Set(["js"]);
+/** Is er een homepage op /{lang}/? Pas vanaf WP30; tot dan gaat een kaal prefix (/xx/, /EN/) naar de app. */
+export const HOME = false;
 
 /** Taalcode naar ondersteunde taal: "nl-BE" → "nl", "EN" → "en", onbekend of leeg → null */
 export function normLang(tag, list = SUPPORTED) {
@@ -58,10 +61,11 @@ const slash = (p) => "/" + String(p || "/").replace(/^\/+/, "");
  *  pathFor("nl", "/") → "/nl/initiative/" (V4) */
 export const pathFor = (lang, path = "/") => `/${lang}${pageFor(slash(path))}`;
 /** Rest van een pad dat al een prefix had, in een andere taal: langPath("en", "/") → "/en/" (homepage) */
-const langPath = (lang, rest) => `/${lang}${slash(rest)}`;
+const langPath = (lang, rest) => { const r = slash(rest); return `/${lang}${r === "/" && !HOME ? "/initiative/" : r}`; };
 
 /** Zelfde pagina in een andere taal (taalkiezer): "/nl/initiative/" → "/en/initiative/" */
 export function switchPath(path, lang) {
+  lang = normLang(lang) || DEFAULT;
   const { prefix, rest } = parsePath(path);
   return prefix ? langPath(lang, rest) : pathFor(lang, path);
 }
@@ -89,7 +93,8 @@ export function resolveLang({ path = "/", search = "", hash = "", pref = null, l
   const { prefix, lang, rest } = parsePath(path);
   const fb = fallbackIn(live);
   if (prefix && lang) { // 1. ondersteund prefix wint, ook als de voorkeur anders is; alleen de schrijfwijze rechtzetten
-    return { lang, source: "path", redirect: prefix === lang ? null : langPath(lang, rest) + tail };
+    const to = langPath(lang, rest); // zonder homepage (HOME) gaat /en/ naar /en/initiative/
+    return { lang, source: "path", redirect: prefix === lang && to === `/${lang}${slash(rest)}` ? null : to + tail };
   }
   if (prefix) return { lang: fb, source: "default", redirect: langPath(fb, rest) + tail }; // 2. ongeldig prefix
   const p = normLang(pref, live), b = browserLang(languages, live); // 3. geen prefix

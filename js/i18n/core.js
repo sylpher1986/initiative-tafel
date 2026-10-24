@@ -9,10 +9,15 @@
 // actieve taal, dan meldt onMissing dat; in debugmodus staat de tekst tussen ⟦ ⟧, zodat het op het scherm opvalt.
 //
 // Veiligheid: t() escapet niets. Wie de uitkomst in HTML zet, gebruikt esc() zoals nu (ook voor de waarden).
+// Placeholders lezen alleen eigen sleutels van params ({toString} wordt nooit een functie); een punt in de naam is
+// gewoon deel van de sleutel (params["a.b"]), geen pad. Geneste descriptoren/arrays stoppen na MAX_DEPTH niveaus
+// (vanaf WP27 komen descriptoren uit opgeslagen en geïmporteerde data: een lus mag nooit de stack opblazen).
 import { isMsg } from "./msg.js";
 
 const PH = /\{([A-Za-z_][\w.]*)\}/g;
 const own_ = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+export const MAX_DEPTH = 8;
+const pad2 = (n) => String(n).padStart(2, "0");
 
 /** Meervoudsregel zonder Intl.PluralRules (Safari < 13): klopt voor Engels en Nederlands */
 const basicPlural = (n) => (Math.abs(n) === 1 ? "one" : "other");
@@ -28,7 +33,8 @@ const basicPlural = (n) => (Math.abs(n) === 1 ? "one" : "other");
  * @param {object} [o.intl]          Intl-vervanger (tests); standaard globalThis.Intl
  */
 export function createI18n({ lang, catalogs = {}, fallback = "en", locale, debug = false, onMissing, intl = globalThis.Intl } = {}) {
-  const own = catalogs[lang] || {}, back = lang === fallback ? {} : catalogs[fallback] || {};
+  const cat = (l) => (own_(catalogs, l) && catalogs[l]) || {};
+  const own = cat(lang), back = lang === fallback ? {} : cat(fallback);
   const loc = locale || lang;
   const missing = new Map(); // key → kind (één keer per sleutel melden)
   const miss = (key, kind) => {
@@ -46,18 +52,20 @@ export function createI18n({ lang, catalogs = {}, fallback = "en", locale, debug
   /** Getal in de taal: 1950 → "1.950" (nl) of "1,950" (en); geen getal = String(x) */
   const num = (n, opts) => {
     if (typeof n !== "number" || !Number.isFinite(n)) return String(n);
+    if (n === 0) n = 0; // -0 → 0
     const f = make("NumberFormat", opts);
     return f ? f.format(n) : String(n);
   };
   /** Datum (Date of ms); opts zoals Intl.DateTimeFormat */
-  const date = (t, opts = { day: "numeric", month: "short", year: "numeric" }) => {
+  const date = (t, opts = { day: "numeric", month: "short", year: "numeric" }, bare) => {
+    if (t == null || t === "") return ""; // new Date(null) zou 1 jan 1970 zijn
     const d = t instanceof Date ? t : new Date(t);
     if (Number.isNaN(d.getTime())) return "";
     const f = make("DateTimeFormat", opts);
-    return f ? f.format(d) : d.toISOString().slice(0, 10);
+    return f ? f.format(d) : bare ? bare(d) : d.toISOString().slice(0, 10);
   };
-  /** Tijd HH:MM */
-  const time = (t) => date(t, { hour: "2-digit", minute: "2-digit" });
+  /** Tijd HH:MM (zonder Intl: lokale uren en minuten) */
+  const time = (t) => date(t, { hour: "2-digit", minute: "2-digit" }, (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`);
   /** Opsomming "a, b en c" / "a, b, and c"; zonder Intl.ListFormat (Safari < 14.1) met komma's */
   const list = (items, type = "conjunction") => {
     const L = (items || []).map(String);
@@ -77,20 +85,26 @@ export function createI18n({ lang, catalogs = {}, fallback = "en", locale, debug
     }
     return v;
   };
-  const value = (x) => (isMsg(x) ? t(x.k, x.p) : Array.isArray(x) ? list(x.map(value)) : typeof x === "number" ? num(x) : String(x));
-  const fill = (s, params) => (params ? String(s).replace(PH, (m, name) => (params[name] === undefined || params[name] === null ? m : value(params[name]))) : String(s));
+  const value = (x, depth) => {
+    if (depth > MAX_DEPTH) return isMsg(x) ? x.k : "…";
+    return isMsg(x) ? look(x.k, x.p, depth + 1) : Array.isArray(x) ? list(x.map((y) => value(y, depth + 1))) : typeof x === "number" ? num(x) : String(x);
+  };
+  const fill = (s, params, depth) => (params && typeof params === "object"
+    ? String(s).replace(PH, (m, name) => (own_(params, name) && params[name] != null ? value(params[name], depth) : m))
+    : String(s));
 
   /** Vertaal een sleutel; params vullen {placeholders} in, params.n kiest het meervoud */
-  function t(key, params) {
-    if (own_(own, key)) return fill(pick(own[key], params), params);
+  function look(key, params, depth) {
+    if (own_(own, key)) return fill(pick(own[key], params), params, depth);
     if (own_(back, key)) {
       miss(key, "fallback");
-      const s = fill(pick(back[key], params), params);
+      const s = fill(pick(back[key], params), params, depth);
       return debug ? `⟦${s}⟧` : s;
     }
     miss(key, "none");
     return debug ? `⟦${key}⟧` : key;
   }
+  const t = (key, params) => look(key, params, 0);
   /** Descriptor { k, p } vertalen (geen descriptor: als tekst) */
   const tr = (d) => (isMsg(d) ? t(d.k, d.p) : d == null ? "" : String(d));
   /** Bestaat de sleutel in de actieve taal of de terugval? */
