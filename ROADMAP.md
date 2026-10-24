@@ -79,7 +79,7 @@ Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (g
 |---|---|---|---|---|
 | ~~**WP18**~~ | Inventaris NL-tekst (audit + ratel-nulpunt) en architectuurbesluit, open vragen V1–V7 (klaar) | TA2 | – | geen |
 | ~~**WP19**~~ | i18n-runtime (`t`, meervoud, formatters, terugval op Engels) en taalbepaling `resolveLang` (klaar) | TA3 | WP18 | 1.48.1 |
-| ~~**WP20**~~ | Catalogi `locales/{en,nl,xx}/`, debugmodus, tests (sleutelpariteit, placeholders, ratel) (klaar)  | TA4 | WP19 | 1.48.2 |
+| ~~**WP20**~~ | Catalogi (`locales/src/` → `locales/{en,nl,xx}.js`), laden bij opstarten (max. 3 s), debugmodus, tests (klaar) | TA4 | WP19 | 1.48.2 |
 | **WP21** | Paden `/{lang}/initiative/(player/)`, doorverwijzers (`/`, `/speler`, `/initiative/`), manifest `id: "/"`, service worker | TA5 | WP20 | 1.49.0 |
 | **WP22** | Taalkiezer (Instellingen, spelersscherm) en voorkeur per apparaat | TA6 | WP21 | 1.49.1 |
 | **WP23** | Statische teksten in de pagina's (gegenereerd per taal) | TA7 | WP21 | 1.49.2 |
