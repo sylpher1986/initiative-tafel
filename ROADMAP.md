@@ -83,7 +83,7 @@ Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (g
 | ~~**WP21**~~ | Paden `/{lang}/initiative/(player/)`, doorverwijzers (`/`, `/speler`, `/initiative/`), manifest `id: "/"`, service worker (klaar) | TA5 | WP20 | 1.49.0 |
 | ~~**WP22**~~ | Taalkiezer (Instellingen, spelersscherm) en voorkeur per apparaat (klaar) | TA6 | WP21 | 1.49.1 |
 | ~~**WP23**~~ | Statische teksten in de pagina's (gegenereerd per taal) (klaar) | TA7 | WP21 | 1.49.2 |
-| **WP24** | DM-app 1: Voorbereiden, + Speler, Party, + Monster, moeilijkheid | TA8 | WP20, WP23 | 1.49.3 |
+| ~~**WP24**~~ | DM-app 1: Voorbereiden, + Speler, Party, + Monster, moeilijkheid (klaar) | TA8 | WP20, WP23 | 1.49.3 |
 | **WP25** | DM-app 2: Gevecht (kaarten, beurtbalk, panelen) | TA9 | WP24 | 1.49.4 |
 | **WP26** | DM-app 3: Encounters, afronden, kamer, rondleiding, instellingen, import | TA10 | WP25 | 1.49.5 |
 | **WP27** | Regelmeldingen en logboek als descriptoren (sleutel + waarden) | TA11 | WP20, WP26 | 1.50.0 |

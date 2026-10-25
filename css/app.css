@@ -1050,7 +1050,7 @@ button.dchip{min-height:44px;cursor:pointer}
 .erow .step .btn{min-width:44px;min-height:44px;padding:0;font-size:1.2rem}
 .erow .step b{min-width:2ch;text-align:center;font-variant-numeric:tabular-nums}
 .erow .step .encnum{width:56px;min-height:44px;padding:0 4px;text-align:center;font:inherit;font-weight:700;font-variant-numeric:tabular-nums;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px}
-.pm .plvl{display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--muted);margin-top:4px}
+.pm .plvl{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:.85rem;color:var(--muted);margin-top:4px}
 .pm .pupd{display:block;min-height:44px;padding:0 8px;margin-left:-8px;text-align:left}
 .pm .pupd[aria-disabled="true"]:not([aria-busy]){opacity:.55;cursor:default}
 .pm .pupdbox{grid-column:1/-1;margin:0}

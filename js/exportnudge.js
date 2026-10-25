@@ -4,6 +4,8 @@
 // it-dirty = eerste wijziging aan waardevolle data (party, lairs, encounters, eigen/geïmporteerde monsters) na it-exp
 // it-snooze = "Later": strook weg tot dit tijdstip
 
+import { t, i18n } from "./i18n/boot.js";
+
 export const DAY = 864e5;
 export const DUE_DAYS = 14, SNOOZE_DAYS = 7;
 const K = { exp: "it-exp", dirty: "it-dirty", snooze: "it-snooze" };
@@ -15,21 +17,22 @@ export function exportDue({ dirty, snooze } = {}, now = Date.now()) {
   return now - Math.min(dirty, now) >= DUE_DAYS * DAY;
 }
 
-const MON = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
-/** "Laatste export: 12 okt (8 dagen geleden)" of "Nog nooit geëxporteerd"; kalenderdagen in lokale tijd */
-export function lastExportText(exp, now = Date.now()) {
-  if (!(exp > 0)) return "Nog nooit geëxporteerd";
-  const d = new Date(exp), n = new Date(now);
+/** "vandaag", "gisteren", "8 dagen geleden": kalenderdagen in lokale tijd (klok teruggezet: nooit negatief) */
+function agoText(d, n) {
   const days = Math.max(0, Math.round((new Date(n.getFullYear(), n.getMonth(), n.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / DAY));
-  const ago = days === 0 ? "vandaag" : days === 1 ? "gisteren" : `${days} dagen geleden`;
-  const yr = d.getFullYear() !== n.getFullYear() ? ` ${d.getFullYear()}` : "";
-  return `Laatste export: ${d.getDate()} ${MON[d.getMonth()]}${yr} (${ago})`;
+  return days === 0 ? t("common.time.today") : days === 1 ? t("common.time.yesterday") : t("common.time.daysAgo", { n: days });
+}
+/** "Laatste export: 12 okt (8 dagen geleden)" of "Nog nooit geëxporteerd"; jaar alleen als het een ander jaar is */
+export function lastExportText(exp, now = Date.now()) {
+  if (!(exp > 0)) return t("init.exp.never");
+  const d = new Date(exp), n = new Date(now);
+  const date = i18n().date(d, { day: "numeric", month: "short", ...(d.getFullYear() !== n.getFullYear() ? { year: "numeric" } : {}) });
+  return t("init.exp.last", { date, ago: agoText(d, n) });
 }
 
 /** AF5: korte vorm voor de kop van Instellingen → Opslag: "Export: 8 dagen geleden" */
 export function exportStat(exp, now = Date.now()) {
-  const m = lastExportText(exp, now).match(/\((.+)\)$/);
-  return m ? `Export: ${m[1]}` : "Nog nooit geëxporteerd";
+  return exp > 0 ? t("init.exp.stat", { ago: agoText(new Date(exp), new Date(now)) }) : t("init.exp.never");
 }
 
 /* ---------- localStorage (privémodus of geblokkeerd: dan gewoon geen herinnering) ---------- */

@@ -2,6 +2,7 @@
 // parseDdbFields is puur (testbaar); readSheetPdf laadt pdf.js pas als het nodig is.
 import { isBlank, cleanImg } from "./ui/avatar.js";
 import { parseDdbJson } from "./ddbjson.js";
+import { t } from "./i18n/boot.js";
 
 export function parseDdbFields(annots){
   const F={}; // genormaliseerde naam -> waarde (eerste niet-lege wint)
@@ -179,16 +180,11 @@ async function shrink(blob) {
 }
 
 // Foutteksten bij ophalen; de staart verschilt per plek (Speler-formulier heeft de PDF-upload eronder, de Party niet)
-const DDB_MSG = {
-  bad: "Geen D&D Beyond-link. Plak de link van de sheet of alleen het nummer.",
-  format: "D&D Beyond gaf onverwachte gegevens terug.",
-  notfound: "Niet gevonden op D&D Beyond. Controleer de link en of de sheet op Public staat (Character Settings → Character Privacy → Public).",
-  upstream: "D&D Beyond gaf een fout. Waarschijnlijk staat de sheet niet op Public (Character Settings → Character Privacy → Public). Anders: probeer het zo opnieuw.",
-  private: "Ophalen lukte niet. Waarschijnlijk staat de sheet niet op Public (Character Settings → Character Privacy → Public).",
-};
+const DDB_MSG = new Map([["format", "init.ddb.format"], ["notfound", "init.ddb.notfound"], ["upstream", "init.ddb.upstream"], ["private", "init.ddb.private"]]);
 /** `party`: Bijwerken in het Party-paneel (SP1) */
 export function ddbMsg(code, party) {
-  if (code === "offline") return party ? "Geen internet. Bijwerken werkt alleen online." : "Geen internet. Ophalen werkt alleen online.";
-  if (code === "bad") return DDB_MSG.bad;
-  return (DDB_MSG[code] || DDB_MSG.private) + (party ? " Werk anders bij via + Speler met de PDF-upload." : " Gebruik anders de PDF-upload hieronder.");
+  if (code === "offline") return t(party ? "init.ddb.offlineUpd" : "init.ddb.offline");
+  if (code === "bad") return t("init.ddb.bad");
+  return `${t(DDB_MSG.get(code) || "init.ddb.private")} ${t(party ? "init.ddb.tailParty" : "init.ddb.tail")}`;
 }
+

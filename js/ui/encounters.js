@@ -3,6 +3,7 @@
 import { APP } from "../version.js";
 import { ico, chev } from "./icons.js";
 import { $, esc, toast, toastHtml, closeToast, toastBad } from "./util.js";
+import { t, i18n } from "../i18n/boot.js";
 import { app, because, addWhy, logAs, commit, saveEncounters, saveLairs, saveLibrary } from "../state.js";
 import { render, ui, monListHtml } from "./render.js";
 import { addMonsters, scrollToCard, newLair, CLEAR_UI } from "./actions.js";
@@ -12,9 +13,9 @@ import { findMon, allMonsters, filterMonsters, sanitizeOwn } from "../data/monst
 import * as E from "../rules/encounters.js";
 import { addEnc, encName } from "../rules/fight.js";
 
-const fmt = (n) => Math.round(n).toLocaleString("nl-NL");
-const multTxt = (m) => String(m).replace(".", ",");
-const plural = (n, one, more) => `${n} ${n === 1 ? one : more}`;
+const fmt = (n) => i18n().num(Math.round(n)); // 1.950 (nl) / 1,950 (en)
+const multTxt = (m) => i18n().num(m); // 1,5 (nl) / 1.5 (en)
+const plural = (n, one, more) => `${n} ${n === 1 ? one : more}`; // WP26: naar de catalogus
 const dateTxt = (t) => new Date(t).toLocaleDateString("nl-NL", { day: "numeric", month: "short", ...(new Date(t).getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) });
 const monCount = (L) => L.filter((c) => c.kind === "monster").length;
 const hasLair = (L) => L.some((c) => c.kind === "lair");
@@ -25,30 +26,30 @@ export const diffList = () => E.difficulty(E.listMons(app.S.list, findMon), part
 const diffEnc = (enc) => E.difficulty(E.encMons(enc, findMon), partyNow().who, !!enc.all);
 
 /** Korte tekst voor de chip: "Hard", "level onbekend", "geen party" */
-const chipLbl = (r) => E.ratingName(r.rating) || E.noRating(r);
+const NO_RATING = { party: "init.diff.noParty", lvl: "init.diff.noLvl", cr: "init.diff.noCr" };
+const chipLbl = (r) => E.ratingName(r.rating) || t(NO_RATING[E.noRatingCode(r)]);
 const chipCls = (r) => (r.rating == null ? "unk" : `r${r.rating + 1}`);
 
 /** Uitleg: ruwe XP × multiplier = aangepaste XP, party, drempels */
 function diffWhy(r, lair, tog, mons) {
   const P = partyNow();
   const tip = r.rating === 3 && mons ? E.deadlyTip(mons, P.who, r.all) : null; // AF8: eerste regel bij Deadly
-  const cnt = r.nm < r.n ? `${r.nm} van ${r.n} monsters tellen` : plural(r.n, "monster", "monsters");
-  const lines = [`${fmt(r.xp)} XP × ${multTxt(r.mult)} (${cnt}${r.pcs ? `, ${plural(r.pcs, "speler", "spelers")}` : ""}) = <b>${fmt(r.adj)} XP</b>`];
-  if (!r.pcs) lines.push("Geen spelers: zet de party aan tafel of voeg partyleden toe.");
-  else lines.push(`${P.src === "list" ? "Aan tafel" : "Vaste party"}: level ${P.who.map((p) => p.lvl || "?").join(", ")}`);
+  const T = (k, p) => esc(t(k, p)); // regels hieronder zijn HTML
+  const cnt = r.nm < r.n ? t("init.diff.counted", { nm: r.nm, n: r.n }) : t("init.diff.mons", { n: r.n });
+  const lines = [`${fmt(r.xp)} XP × ${multTxt(r.mult)} (${esc(cnt)}${r.pcs ? `, ${T("init.diff.pcs", { n: r.pcs })}` : ""}) = <b>${fmt(r.adj)} XP</b>`];
+  if (!r.pcs) lines.push(T("init.diff.noPcs"));
+  else lines.push(T(P.src === "list" ? "init.diff.atTable" : "init.diff.saved", { lv: P.who.map((p) => p.lvl || "?").join(", ") }));
   if (r.th) lines.push(E.RATINGS.map((k, i) => `${k} ${fmt(r.th[i])}`).join(" · "));
-  if (r.noXp.length) lines.push(`Zonder CR (telt niet mee): ${esc(r.noXp.join(", "))}`);
-  if (r.pcs && (r.pcs < 3 || r.pcs >= 6)) lines.push(r.pcs < 3 ? "Kleine party: multiplier een stap hoger." : "Grote party: multiplier een stap lager.");
-  if (lair) lines.push("Lair telt niet mee.");
+  if (r.noXp.length) lines.push(T("init.diff.withoutCr", { names: r.noXp.join(", ") }));
+  if (r.pcs && (r.pcs < 3 || r.pcs >= 6)) lines.push(T(r.pcs < 3 ? "init.diff.small" : "init.diff.big"));
+  if (lair) lines.push(T("init.diff.lair"));
   return `<div class="dwhy">${tip ? `<p class="dtip">${esc(deadlyText(tip))}</p>` : ""}${lvlRows(P.who)}${lines.map((l) => `<p>${l}</p>`).join("")}${weakRow(r, tog)}</div>`;
 }
 
 /** AF8: één zin bij Deadly, met advies */
-export function deadlyText(t) {
-  const head = "Deadly: een speler kan sterven.";
-  if (t.one) return `${head} Kies een lagere CR voor Hard.`;
-  if (t.stays) return `${head} Ook met 1 monster minder blijft het Deadly.`;
-  return `${head} Met 1 ${t.name} minder wordt het ${E.ratingName(t.rating)}.`;
+export function deadlyText(d) {
+  const tail = d.one ? t("init.diff.deadlyOne") : d.stays ? t("init.diff.deadlyStays") : t("init.diff.deadlyLess", { name: d.name, rating: E.ratingName(d.rating) });
+  return `${t("init.diff.deadly")} ${tail}`;
 }
 
 /**
@@ -57,9 +58,9 @@ export function deadlyText(t) {
  */
 function weakRow(r, tog) {
   if (!r.weak.length) return "";
-  const who = esc(r.weak.map((w) => `${w.n}× ${w.name}`).join(", "));
-  return `<p>${r.all ? `Telt mee voor ×, ook met veel lagere CR: ${who}` : `Niet meegeteld voor ×: ${who} (XP onder 1/10 van het sterkste monster)`}</p>
-    ${tog ? `<button type="button" class="btn small dall" ${tog} aria-pressed="${r.all}">${r.all ? ico("check") + " " : ""}Toch meetellen</button>` : ""}`;
+  const who = r.weak.map((w) => `${w.n}× ${w.name}`).join(", ");
+  return `<p>${esc(t(r.all ? "init.diff.weakAll" : "init.diff.weakNot", { who }))}</p>
+    ${tog ? `<button type="button" class="btn small dall" ${tog} aria-pressed="${r.all}">${r.all ? ico("check") + " " : ""}${esc(t("init.diff.countAnyway"))}</button>` : ""}`;
 }
 
 /**
@@ -68,12 +69,12 @@ function weakRow(r, tog) {
  */
 function lvlRows(who) {
   const lost = who.filter((p) => !p.lvl && !p.cid && !p.pid); // oude/rare data zonder verwijzing: dan in elk geval de naam
-  const note = lost.length ? `<p>Level onbekend: ${esc(lost.map((p) => p.name).join(", "))} (vul in onder Party).</p>` : "";
+  const note = lost.length ? `<p>${esc(t("init.diff.lvlLost", { names: lost.map((p) => p.name).join(", ") }))}</p>` : "";
   const miss = who.filter((p) => !p.lvl && (p.cid || p.pid));
   if (!miss.length) return note;
   const inParty = miss.filter((p) => p.pid).length;
-  const where = inParty === miss.length ? "Bewaard in de party." : inParty ? "Partyleden: bewaard in de party." : "Bewaard bij de speler.";
-  return `<p class="dlvlh"><b>Vul het level in.</b> ${where}</p><div class="dlvls">${miss.map((p, i) => `<label class="dlvl"><span>${esc(p.name)}</span><input data-dlvl type="number" min="1" max="20" inputmode="numeric" placeholder="?" enterkeyhint="${i < miss.length - 1 ? "next" : "done"}"${p.cid ? ` data-cid="${esc(p.cid)}"` : ""}${p.pid ? ` data-pid="${esc(p.pid)}"` : ""} aria-label="${esc(`Level ${p.name}`)}"></label>`).join("")}</div>${note}`;
+  const where = t(inParty === miss.length ? "init.diff.lvlParty" : inParty ? "init.diff.lvlMixed" : "init.diff.lvlPc");
+  return `<p class="dlvlh"><b>${esc(t("init.diff.lvlFill"))}</b> ${esc(where)}</p><div class="dlvls">${miss.map((p, i) => `<label class="dlvl"><span>${esc(p.name)}</span><input data-dlvl type="number" min="1" max="20" inputmode="numeric" placeholder="?" enterkeyhint="${i < miss.length - 1 ? "next" : "done"}"${p.cid ? ` data-cid="${esc(p.cid)}"` : ""}${p.pid ? ` data-pid="${esc(p.pid)}"` : ""} aria-label="${esc(`Level ${p.name}`)}"></label>`).join("")}</div>${note}`;
 }
 
 /**
@@ -95,9 +96,9 @@ export function encBanner(S, prep) {
   if (!prep) return "";
   const n = monCount(S.list);
   if (!n) return S.list.length && !hasLair(S.list) && app.encounters.length
-    ? `<li class="sbanner encb"><span>Geen monsters</span><button type="button" class="btn small primary" data-prep="enc">Encounter inladen</button></li>` : "";
+    ? `<li class="sbanner encb"><span>${esc(t("init.diff.noMons"))}</span><button type="button" class="btn small primary" data-prep="enc">${esc(t("init.empty.loadEnc"))}</button></li>` : "";
   const r = diffList();
-  return `<li class="dbanner"><button type="button" class="dbtn" data-enc="difftog" aria-expanded="${!!ui.diffOpen}">Moeilijkheid <b class="dchip ${chipCls(r)}">${esc(chipLbl(r))}</b> · ${fmt(r.adj)} XP ${chev(ui.diffOpen)}</button>${ui.diffOpen ? diffWhy(r, hasLair(S.list), `data-enc="allmon"`, E.listMons(app.S.list, findMon)) : ""}</li>`;
+  return `<li class="dbanner"><button type="button" class="dbtn" data-enc="difftog" aria-expanded="${!!ui.diffOpen}">${esc(t("init.diff.title"))} <b class="dchip ${chipCls(r)}">${esc(chipLbl(r))}</b> · ${fmt(r.adj)} XP ${chev(ui.diffOpen)}</button>${ui.diffOpen ? diffWhy(r, hasLair(S.list), `data-enc="allmon"`, E.listMons(app.S.list, findMon)) : ""}</li>`;
 }
 
 /**

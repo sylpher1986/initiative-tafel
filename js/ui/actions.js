@@ -2,9 +2,10 @@
 import { APP } from "../version.js";
 import { chev } from "./icons.js";
 import { openSettings } from "./settings.js";
-import { $, esc, n0, toast, toastHtml, closeToast, show, toastBad } from "./util.js";
+import { $, esc, n0, toast, toastHtml, closeToast, show, toastBad, tb, undoBtn } from "./util.js";
+import { t } from "../i18n/boot.js";
 import { app, because, addWhy, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
-import { render, ui, openId, mode, atkAc, atkRider, atkTargets, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, HID_HINT, ANON_HINT, paintAoe, paintDmgSugg, dmgSp, aoeCaster, dmgSlot, dmgDice, dmgLevel, spellSlot, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, edNow, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
+import { render, ui, openId, mode, atkAc, atkRider, atkTargets, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, hidHint, anonHint, paintAoe, paintDmgSugg, dmgSp, aoeCaster, dmgSlot, dmgDice, dmgLevel, spellSlot, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, edNow, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
 import { PAS, pasVal, cleanPas } from "../rules/passives.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { DMG_SPELLS } from "../rules/dmgtable.js";
@@ -35,7 +36,7 @@ import { readSheetPdf, fetchDdb, ddbMsg } from "../ddb.js";
 import { parseDdbLink, findMember, mergeSheet, partyUpdate, seatPlan } from "../ddbjson.js";
 import { RACE_OPTS, raceKey, pickRace, cleanImg } from "./avatar.js";
 import { buildExport, parseImport, exportName } from "../backup.js";
-import { markExported, snoozeNudge } from "../exportnudge.js";
+import { markExported, snoozeNudge, SNOOZE_DAYS } from "../exportnudge.js";
 import { cleanLvl } from "../rules/encounters.js";
 import { startFight, oldMons, dropOld } from "../rules/fight.js";
 import { finishFight, closeEnd } from "./einde.js";
@@ -111,7 +112,7 @@ export function addMonsters(name, n, hpmode, initmode, silent, fixed = null, hid
   if (!silent) {
     S.sample = false;
     wantSB(out[out.length - 1].id); // zijkolom toont het net toegevoegde monster
-    toastHtml(out.map((c) => `${esc(c.name)}: ${c.roll === undefined ? "initiative" : `d20 [${c.roll}] ${sgn(c.dex)} =`} <b>${c.init}</b>`).join("<br>") + (hidden ? "<br>Verborgen voor spelers" : "") + (anon ? "<br>Naam onbekend voor spelers" : ""));
+    toastHtml(out.map((c) => `${esc(c.name)}: ${c.roll === undefined ? "initiative" : `d20 [${c.roll}] ${sgn(c.dex)} =`} <b>${c.init}</b>`).join("<br>") + (hidden ? `<br>${esc(t("init.mon.hidden"))}` : "") + (anon ? `<br>${esc(t("init.mon.anon"))}` : ""));
   }
 }
 
@@ -325,7 +326,7 @@ function dsDone(c, r, byApp) {
   if (!f.why.length) { toastBad("Geen death save nodig."); renderFocus(c, '[data-a="ds-own"]', ".khead"); return false; }
   addWhy(f.why);
   renderFocus(c, byApp ? '[data-a="ds-roll"]' : '[data-a="ds-own"]', ".khead");
-  toastHtml(`${esc(dsToast(c, r))} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  toastHtml(`${esc(dsToast(c, r))} ${undoBtn()}`);
   return false;
 }
 /** RE15: "Aria: 14, success (2/3)" / "nat 20, staat op met 1 HP" / "nat 1, twee failures (2/3)" */
@@ -372,7 +373,7 @@ function sheetKey(k, v) {
 /** Na een schadepaneel-toets: melding, en bij sluiten de focus terug naar wat het paneel opende (toetsenbord) */
 function sheetDone(res) {
   if (!res) return;
-  if (res.undoToast) toastHtml(`${esc(res.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  if (res.undoToast) toastHtml(`${esc(res.undoToast)} ${undoBtn()}`);
   const s = res.back;
   if (!s) return;
   const li = document.querySelector(`.c[data-id="${CSS.escape(s.id)}"]`);
@@ -429,7 +430,7 @@ const global = {
     const j = ui.effJoin; closeToast(); ui.effJoin = null;
     if (!j || stepNo() !== j.step || !undo()) return;
     const c = app.S.list.find((x) => x.id === j.id);
-    if (c) { const r = applyEff(c, j.p, j.by, j.cast || "-"); toastHtml(`${esc(r.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`); }
+    if (c) { const r = applyEff(c, j.p, j.by, j.cast || "-"); toastHtml(`${esc(r.undoToast)} ${undoBtn()}`); }
   },
   /** Gefaalde monster-save: toch Legendary Resistance, of opnieuw met advantage (Magic Resistance tegen een spell) */
   "toast-svlr"() { svRetry((c, sid) => { if (!c.lr || c.lr.left < 1) return; c.lr.left--; because("legendary resistance gebruikt", c.id); svDone(c, sid, true, "legendary resistance", ""); }); },
@@ -477,7 +478,7 @@ const global = {
     because("oude monsters gewist");
     const n = dropOld(app.S);
     render();
-    toastHtml(`${esc(`${n} oude monster${n === 1 ? "" : "s"} gewist.`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+    toastHtml(`${esc(`${n} oude monster${n === 1 ? "" : "s"} gewist.`)} ${undoBtn()}`);
     $("#start:not([disabled])")?.focus();
     return false;
   },
@@ -490,7 +491,7 @@ const global = {
     finishFight();
     apply(stopCombat(app.S)); ui.mode = null; rekeyEdit();
     render();
-    toastHtml(`${esc(`Gevecht afgerond na ronde ${r}.`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+    toastHtml(`${esc(`Gevecht afgerond na ronde ${r}.`)} ${undoBtn()}`);
     $("#esheet .esheet")?.focus();
     return false;
   },
@@ -501,7 +502,8 @@ const global = {
     apply(r);
     Object.assign(ui, CLEAR_UI, { mode: null });
     render();
-    toastHtml(`${esc(`${r.n ? `${r.n} monster${r.n === 1 ? "" : "s"}` : ""}${r.n && r.lairs ? " en " : ""}${r.lairs ? "lair" : ""} gewist. Spelers blijven; hun initiative vul je in bij Start gevecht.`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+    const what = [r.n && t("init.diff.mons", { n: r.n }), r.lairs && "lair"].filter(Boolean); // array: opsomming in de taal ("en"/"and")
+    toastHtml(`${esc(t("init.prep.wiped", { what }))} ${undoBtn()}`);
     return false;
   },
   qadd() { ui.qadd = { q: "", sel: null, n: 1, fixOn: false, fix: "", hid: false, anon: false }; },
@@ -527,12 +529,12 @@ const global = {
   "tour-again"() { stopPUpd(); ui.prep = null; ui.prepLast = null; ui.mode = null; restartTour(); },
   /** DA1: strook "Geen recente export" in Voorbereiden */
   "exp-now"() { exportFile().then((ok) => { if (ok) { render(); focusAfterStrip(); } }); return false; },
-  "exp-later"() { snoozeNudge(); render(); focusAfterStrip(); toast("Herinnering over 7 dagen weer."); return false; },
+  "exp-later"() { snoozeNudge(); render(); focusAfterStrip(); toast(t("init.exp.snoozed", { n: SNOOZE_DAYS })); return false; },
   /** Voorbeeld weg: zelfde als "Alles wissen", met Ongedaan */
   "sample-clear"() {
     app.S = { list: [], round: 0, active: null, sample: false }; Object.assign(ui, { welcome: false, open: null, panel: null, mode: null, confirmReset: false });
     render();
-    toastHtml(`Voorbeeld gewist. <button class="tundo" id="toast-undo">Ongedaan</button>`);
+    toastHtml(`${esc(t("init.prep.sampleGone"))} ${undoBtn()}`);
     return false;
   },
   reset() { ui.confirmReset = true; },
@@ -589,8 +591,8 @@ function keepCard(id, y0) {
 /** Voorbeeld-encounter: twee spelers (level 3, zodat de moeilijkheid meteen een oordeel geeft: Hard), twee Goblins en een Hobgoblin (één undo-stap) */
 export function loadSample() {
   app.S.list.push(
-    { id: uid(), name: "Thalia (voorbeeld)", kind: "pc", race: "Elf", lvl: 3, init: 17, dex: 3, ac: 15, hp: 24, max: 24, cond: [] },
-    { id: uid(), name: "Brom (voorbeeld)", kind: "pc", race: "Dwarf", lvl: 3, init: 9, dex: 0, ac: 18, hp: 31, max: 31, cond: [] },
+    { id: uid(), name: t("init.sample.pc1"), kind: "pc", race: "Elf", lvl: 3, init: 17, dex: 3, ac: 15, hp: 24, max: 24, cond: [] },
+    { id: uid(), name: t("init.sample.pc2"), kind: "pc", race: "Dwarf", lvl: 3, init: 9, dex: 0, ac: 18, hp: 31, max: 31, cond: [] },
   );
   addMonsters("Goblin", 2, "avg", "each", true);
   addMonsters("Hobgoblin", 1, "avg", "each", true);
@@ -680,7 +682,7 @@ export function onClick(e) {
     because("Rage voorbij");
     const out = removeEffect(c, e.id, "geen aanval of schade sinds vorige beurt", { active: app.S.active });
     addWhy(out.why); render();
-    toastHtml(`${esc(out.msgs.join(" "))} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+    toastHtml(`${esc(out.msgs.join(" "))} ${undoBtn()}`);
     return;
   }
   if (b.dataset.svok) { const s = (app.S.saves || []).find((x) => x.sid === b.dataset.svok), c = s && app.S.list.find((x) => x.id === s.id); if (c) svDone(c, s.sid, b.dataset.v === "1", "", ""); return; }
@@ -720,7 +722,7 @@ export function onClick(e) {
   if (fn === row["sheet-open"]) $("#sheet .sheet")?.focus({ preventScroll: true }); // cijfers en Enter werken via onKey
   if (res === "scroll") keepCard(c.id, y0);
   if (pnl && ui.panel === pnl) reveal(cardEl(c.id)?.querySelector(".kpanel")); // AF6: paneel niet achter de dock
-  if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} ${res.extra || ""}<button class="tundo" id="toast-undo">Ongedaan</button>`);
+  if (res && res.undoToast) toastHtml(`${esc(res.undoToast)} ${res.extra || ""}${undoBtn()}`);
 }
 
 export function onChange(e) {
@@ -766,7 +768,7 @@ export function saveLevel({ cid, pid }, raw) {
   const m = p && app.party.find((x) => x.pid === p);
   if (!c && !m) return true; // intussen weg
   const v = cleanLvl(raw);
-  if (raw !== "" && !v) { toastBad("Level is 1 t/m 20."); return false; }
+  if (raw !== "" && !v) { toastBad(t("init.prep.errLvl")); return false; }
   if (m) { if ((m.lvl ?? null) !== v) { m.lvl = v; saveParty(); } return true; }
   if (c && (c.lvl ?? null) !== v) { c.lvl = v ?? undefined; because("level", c.id); commit(); }
   return true;
@@ -777,27 +779,27 @@ export function saveLevel({ cid, pid }, raw) {
  * logboek, opslag) maar niet renderen: dan zou de tik op het volgende veld of een knop verloren gaan. main.js
  * rendert na het verlaten van de velden (focusout). Ongeldig: oude waarde terug en een melding.
  */
-function prepField(c, t) {
-  const k = t.dataset.pf, raw = t.value.trim();
-  const back = (msg) => { toastBad(msg); t.value = { init: c.init, max: baseMax(c) || "", hp: c.hp, ac: c.ac || "" }[k] ?? t.value; };
-  if (k === "lvl") { if (!saveLevel({ cid: c.id }, raw)) { const m = c.pid && app.party.find((x) => x.pid === c.pid); t.value = (m ? m.lvl : c.lvl) ?? ""; } return; }
+function prepField(c, inp) {
+  const k = inp.dataset.pf, raw = inp.value.trim();
+  const back = (key) => { toastBad(t(key)); inp.value = { init: c.init, max: baseMax(c) || "", hp: c.hp, ac: c.ac || "" }[k] ?? inp.value; };
+  if (k === "lvl") { if (!saveLevel({ cid: c.id }, raw)) { const m = c.pid && app.party.find((x) => x.pid === c.pid); inp.value = (m ? m.lvl : c.lvl) ?? ""; } return; }
   const n = parseInt(raw);
   if (k === "init") {
     const v = parseInit(raw);
-    if (v === null) return back("Initiative moet een getal zijn.");
+    if (v === null) return back("init.prep.errInit");
     if (v === c.init) return;
     because("in Voorbereiden aangepast", c.id); apply(setInit(app.S, c, v)); // RE9: tijdens een gevecht
   } else if (k === "max") {
-    if (!(n > 0)) return back("Max HP moet minstens 1 zijn.");
+    if (!(n > 0)) return back("init.prep.errMax");
     if (n === baseMax(c)) return;
     R.setMax(c, n + ((c.max || 0) - baseMax(c))); because("in Voorbereiden aangepast", c.id); // effecten (Aid) blijven bovenop
   } else if (k === "hp") {
-    if (!Number.isFinite(n) || n < 0) return back("HP moet 0 of meer zijn.");
+    if (!Number.isFinite(n) || n < 0) return back("init.prep.errHp");
     if (n === c.hp) return;
     const fx = R.setHp(c, n); because("HP bijgewerkt in Voorbereiden", c.id); apply(fx);
-    if (c.hp !== n) t.value = c.hp; // begrensd op max, of dood
+    if (c.hp !== n) inp.value = c.hp; // begrensd op max, of dood
   } else if (k === "ac") {
-    if (raw !== "" && !(n >= 0 && n <= 40)) return back("AC is 0 t/m 40.");
+    if (raw !== "" && !(n >= 0 && n <= 40)) return back("init.prep.errAc");
     const v = raw === "" ? 0 : n;
     if (v === (c.ac || 0)) return;
     c.ac = v; because("in Voorbereiden aangepast", c.id);
@@ -890,11 +892,11 @@ const inRange = (v, lo, hi) => { const t = String(v).trim(); if (t === "") retur
 /** SP4: eigen controle i.p.v. de browser-bubbel ("Please fill out this field"). Eerste fout veld krijgt de focus. */
 function pcValid(plan) {
   const errs = [];
-  if (!$("#pc-name").value.trim()) errs.push(["name", "Vul een naam in."]);
-  if (needInit(plan) && parseInit($("#pc-init").value) === null) errs.push(["init", "Vul initiative in of tik op Rol."]);
-  if (!inRange($("#pc-ac").value, 1, 40)) errs.push(["ac", "AC tussen 1 en 40, of leeg laten."]); // zelfde grens als de sheet-parser
-  if (!inRange($("#pc-hp").value, 1, 999)) errs.push(["hp", "Max HP tussen 1 en 999, of leeg laten."]);
-  if (!inRange($("#pc-lvl").value, 1, 20)) errs.push(["lvl", "Level tussen 1 en 20, of leeg laten."]);
+  if (!$("#pc-name").value.trim()) errs.push(["name", t("init.pc.errName")]);
+  if (needInit(plan) && parseInit($("#pc-init").value) === null) errs.push(["init", t("init.pc.errInit")]);
+  if (!inRange($("#pc-ac").value, 1, 40)) errs.push(["ac", t("init.pc.errAc")]); // zelfde grens als de sheet-parser
+  if (!inRange($("#pc-hp").value, 1, 999)) errs.push(["hp", t("init.pc.errHp")]);
+  if (!inRange($("#pc-lvl").value, 1, 20)) errs.push(["lvl", t("init.pc.errLvl")]);
   $("#pc-initl").hidden = !needInit(plan); // nooit een fout op een verborgen veld
   clearErrs();
   for (const [k, m] of errs) setErr(k, m);
@@ -902,7 +904,7 @@ function pcValid(plan) {
   return !errs.length;
 }
 /** AF9: "Sanne toegevoegd (4 spelers aan tafel)." */
-const pcCount = () => { const n = app.S.list.filter((c) => c.kind === "pc" && !(c.ds && c.ds.dead)).length; return `${n} speler${n === 1 ? "" : "s"} aan tafel`; };
+const pcCount = () => { const n = app.S.list.filter((c) => c.kind === "pc" && !(c.ds && c.ds.dead)).length; return t("init.pc.count", { n }); };
 
 /** Bijwerken toepassen: partylid én wie aan tafel zit (zelfde pid). Eén undo-stap voor de tafel; geeft de wijzigingen terug */
 function updMember(m, f) {
@@ -919,7 +921,7 @@ function setCheck(check) {
   for (const [k, lbl] of [["ac", "AC"], ["hp", "max HP"]]) {
     const r = check ? check[k] : [];
     $("#pc-" + k).closest("label").classList.toggle("warn", r.length > 0);
-    if (r.length) why.push(`Controleer ${lbl}: ${r.join(", ")}.`);
+    if (r.length) why.push(t("init.pc.checkWhy", { what: lbl, why: r.join(", ") }));
   }
   $("#pc-check").hidden = !why.length;
   $("#pc-check").textContent = why.join(" ");
@@ -938,8 +940,8 @@ function fillSheet(h, img) {
   $("#pc-bonh").hidden = true; // Dex voor gelijke stand komt uit de sheet
   clearErrs();
   $("#pc-race").value = RACE_OPTS.find((r) => raceKey(r) === raceKey(h.race)) || "";
-  const sl = h.casting ? h.casting.slots.map((x) => `${x.lvl}e: ${x.max}`).join(", ") : "geen";
-  $("#pc-sheetinfo").innerHTML = `<b>${esc(h.name)}</b> geladen (${esc([h.race, h.cls].filter(Boolean).join(", "))})${pendingImg ? `, met portret <img class="pv" src="${esc(pendingImg)}" alt="">` : ""}. Spell slots: ${esc(sl)}${h.res.length ? `. Resources: ${esc(h.res.map((r) => r.n + " " + r.max).join(", "))}` : ""}.${app.S.round ? " Vul initiative in of tik op Rol." : ""}`;
+  const sl = h.casting && h.casting.slots.length ? h.casting.slots.map((x) => `${t(`init.pc.sl${x.lvl}`)}: ${x.max}`).join(", ") : t("init.pc.slotsNone");
+  $("#pc-sheetinfo").innerHTML = `${tb("init.pc.loaded", { what: [h.race, h.cls].filter(Boolean).join(", ") }, h.name)}${pendingImg ? `${esc(t("init.pc.withImg"))} <img class="pv" src="${esc(pendingImg)}" alt="">` : ""}. Spell slots: ${esc(sl)}${h.res.length ? `. Resources: ${esc(h.res.map((r) => r.n + " " + r.max).join(", "))}` : ""}.${app.S.round ? ` ${esc(t("init.pc.errInit"))}` : ""}`;
 }
 
 /** Wat Bijwerken overneemt: formulierwaarden (de DM kan AC/HP gecorrigeerd hebben) + sheet */
@@ -967,35 +969,32 @@ function showMatch() {
   const m = curMatch(), btn = $("#pc-add");
   const here = !!m && app.S.list.some((c) => c.pid === m.pid), plan = seatPlan(!!m, here, !!pendingSheet);
   btn.disabled = plan === "none";
-  btn.textContent = PLAN_LBL[plan];
+  btn.textContent = t(PLAN_LBL[plan]);
   $("#pc-initl").hidden = !needInit(plan); // SP4: buiten een gevecht komt initiative bij Start
   $("#pc-bon").closest(".lab").hidden = plan === "seat"; // partylid zonder sheet: bewaarde stand, de stepper doet dan niets
   if ($("#pc-initl").hidden) setErr("init", "");
   if (!m) { $("#pc-match").innerHTML = dupHint(); return; }
-  const nm = `<b>${esc(m.name)}</b>`;
   let txt;
   if (pendingSheet) {
     const ck = pendingCheck || { ac: [], hp: [] };
     const ch = mergeSheet(structuredClone(m), structuredClone(formUpdate())) // alleen voorproefje, op een kopie
-      .map((t) => (/^AC /.test(t) && ck.ac.length) || (/^max HP /.test(t) && ck.hp.length) ? t + " (controleer)" : t);
-    const what = ch.length ? esc(ch.join(" · ")) : "geen wijzigingen in klasse, AC, HP of spell slots";
-    txt = here ? `${nm} staat al in de party en zit aan tafel. Bijwerken: ${what}. Schade en verbruik blijven staan, initiative ook.`
-      : `${nm} staat al in de party. Toevoegen werkt de sheet bij: ${what}. Schade en verbruik blijven staan.`;
+      .map((x) => (/^AC /.test(x) && ck.ac.length) || (/^max HP /.test(x) && ck.hp.length) ? `${x} (${t("init.pc.check")})` : x); // regels uit mergeSheet (WP27)
+    const what = ch.length ? ch.join(" · ") : t("init.pc.noChange");
+    txt = tb(here ? "init.pc.mUpdHere" : "init.pc.mUpd", { what }, m.name);
   } else {
-    txt = here ? `${nm} staat in de party en zit al aan tafel.`
-      : `${nm} staat al in de party${m.max ? ` (${n0(m.hp)}/${n0(m.max)} HP)` : ""}. Toevoegen zet ${esc(m.name)} aan tafel met de bewaarde HP en slots.`;
+    txt = here ? tb("init.pc.mHere", {}, m.name) : tb("init.pc.mSeat", { hp: m.max ? ` (${n0(m.hp)}/${n0(m.max)} HP)` : "", name: m.name }, m.name);
   }
   $("#pc-match").innerHTML = `<div class="confirmbox"><p class="hint" style="margin:0">${txt}</p>
-    <div class="bar"><button type="button" class="btn tap" id="pc-new">Als nieuwe speler</button></div></div>`;
+    <div class="bar"><button type="button" class="btn tap" id="pc-new">${esc(t("init.pc.asNew"))}</button></div></div>`;
 }
 
-const PLAN_LBL = { add: "Speler toevoegen", upd: "Bijwerken", none: "Zit al aan tafel", updSeat: "Bijwerken en aan tafel", seat: "Aan tafel zetten" };
+const PLAN_LBL = { add: "init.pc.add", upd: "init.pc.planUpd", none: "init.pc.planNone", updSeat: "init.pc.planUpdSeat", seat: "init.pc.planSeat" }; // sleutels
 /** Meerdere partyleden met deze naam: findMember kiest er geen, dan wordt het een nieuw lid; zeg dat */
 function dupHint() {
   if (pendingNew || !$("#pc-party").checked) return "";
   const n = ($("#pc-name").value.trim() || (pendingSheet && pendingSheet.name) || "").toLowerCase();
   if (!n || app.party.filter((x) => String(x.name || "").trim().toLowerCase() === n).length < 2) return "";
-  return `<p class="hint">Meerdere partyleden heten ${esc($("#pc-name").value.trim())}. Dit wordt een nieuw lid; een bestaand lid zet je aan tafel via Party.</p>`;
+  return `<p class="hint">${esc(t("init.pc.dup", { name: $("#pc-name").value.trim() }))}</p>`;
 }
 
 /** Partylid aan tafel zetten met de bewaarde stand (HP, slots, death saves, lange effecten); gedeeld met "Party aan tafel zetten" */
@@ -1011,7 +1010,7 @@ async function ddbFetch() {
   if (ddbBusy) ddbBusy.abort(); // laatste verzoek wint
   pdfSeq++; // een PDF die nog gelezen wordt, overschrijft deze sheet niet meer
   const ctl = ddbBusy = new AbortController();
-  btn.disabled = true; btn.setAttribute("aria-busy", "true"); info.textContent = "Sheet ophalen…";
+  btn.disabled = true; btn.setAttribute("aria-busy", "true"); info.textContent = t("init.pc.fetching");
   try {
     const got = await fetchDdb(id, ctl.signal);
     if (ctl !== ddbBusy) return;
@@ -1060,11 +1059,12 @@ export function bindForms() {
       app.S.sample = false; saveParty();
       const what = ch.length ? ` (${ch.join(", ")})` : "";
       resetPcForm(); render(); nextPcFocus();
-      const msg = here ? `${ex.name} zit al aan tafel: bijgewerkt${what}. Initiative blijft.`
-        : sh ? `${ex.name} bijgewerkt${what} en aan tafel gezet. Schade en verbruik blijven staan.`
-        : `${ex.name} aan tafel gezet met ${n0(ex.hp)}/${n0(ex.max)} HP${ex.ds && ex.ds.dead ? " (dood)" : ex.max && ex.hp <= 0 ? " (bewusteloos)" : ""}.`;
+      const st = ex.ds && ex.ds.dead ? "init.pc.stDead" : ex.max && ex.hp <= 0 ? "init.pc.stUnc" : null;
+      const msg = here ? t("init.pc.hereDone", { name: ex.name, what })
+        : sh ? t("init.pc.updSeated", { name: ex.name, what })
+        : t("init.pc.seated", { name: ex.name, hp: n0(ex.hp), max: n0(ex.max), st: st ? ` (${t(st)})` : "" });
       // AF9: aan tafel zetten is terug te draaien; bijwerken van de party niet (undo dekt alleen de tafel)
-      if (here) toast(msg); else toastHtml(`${esc(msg)}${sh ? " Bijwerken in de party blijft." : ""} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+      if (here) toast(msg); else toastHtml(`${esc(msg)}${sh ? ` ${esc(t("init.pc.partyKeeps"))}` : ""} ${undoBtn()}`);
       return;
     }
     const max = parseInt($("#pc-hp").value) || 0;
@@ -1085,7 +1085,7 @@ export function bindForms() {
     app.S.sample = false; ui.prepLast = app.S.list[app.S.list.length - 1].id;
     resetPcForm(); render(); nextPcFocus();
     ui.addPid = pid ? { pid, step: stepNo() } : null;
-    toastHtml(`${esc(`${nm} toegevoegd${init != null ? ` op initiative ${init}` : ""} (${pcCount()}).`)} <button class="tundo" id="toast-undo">Ongedaan</button>`); // AF9
+    toastHtml(`${esc(init != null ? t("init.pc.addedInit", { name: nm, init, count: pcCount() }) : t("init.pc.added", { name: nm, count: pcCount() }))} ${undoBtn()}`); // AF9
     // level hoort bij de party (syncParty neemt lvl niet over: het Party-paneel is de bron)
     const pm = pid && lvl && app.party.find((x) => x.pid === pid);
     if (pm && pm.lvl !== lvl) { pm.lvl = lvl; saveParty(); render(); }
@@ -1106,7 +1106,7 @@ export function bindForms() {
   $("#pc-ddb").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); ddbFetch(); } }); // niet de submit (eerst de sheet ophalen)
   for (const k of ["ac", "hp"]) $("#pc-" + k).addEventListener("input", (e) => e.target.closest("label").classList.remove("warn"));
   $("#pc-match").addEventListener("click", (e) => {
-    if (e.target.closest("#pc-new")) { pendingNew = true; showMatch(); toast(`Wordt als nieuwe speler toegevoegd.${app.S.round ? " Vul initiative in." : ""}`); }
+    if (e.target.closest("#pc-new")) { pendingNew = true; showMatch(); toast(app.S.round ? `${t("init.pc.asNewDone")} ${t("init.pc.fillInit")}` : t("init.pc.asNewDone")); }
   });
   $("#pc-name").addEventListener("input", () => showMatch());
   $("#pc-party").addEventListener("change", (e) => { savePty(e.target.checked); showMatch(); }); // AF9: alleen een keuze van de DM onthouden
@@ -1115,13 +1115,13 @@ export function bindForms() {
     e.target.value = ""; // zelfde bestand opnieuw kiezen moet weer werken, ook na een fout
     stopDdb();
     const seq = ++pdfSeq; // laatste keuze wint (link ophalen, andere PDF, formulier verstuurd)
-    $("#pc-sheetinfo").textContent = `${f.name} wordt gelezen…`;
+    $("#pc-sheetinfo").textContent = t("init.pc.reading", { file: f.name });
     try {
       const got = await readSheetPdf(f), h = got && got.sheet;
       if (seq !== pdfSeq) return;
-      if (!h) { $("#pc-sheetinfo").textContent = "Geen D&D Beyond-formuliervelden gevonden. Is dit een PDF-export van D&D Beyond?"; return; }
+      if (!h) { $("#pc-sheetinfo").textContent = t("init.pc.noPdf"); return; }
       clearPending(); fillSheet(h, got.img); showMatch();
-    } catch { if (seq === pdfSeq) $("#pc-sheetinfo").textContent = "De PDF-lezer kon niet laden of het bestand niet openen. Controleer je verbinding en probeer het opnieuw."; }
+    } catch { if (seq === pdfSeq) $("#pc-sheetinfo").textContent = t("init.pc.pdfFail"); }
   });
 
   // bedieningsblok (IN4, zelfde als snel toevoegen): opnieuw tekenen, behalve tijdens typen in het getalveld (focus)
@@ -1129,7 +1129,7 @@ export function bindForms() {
     const btn = $("#mon-add"), st = ui.monAdd, m = selMon && findMon(selMon);
     if (typing) $("#mon-addh").textContent = addHint(st, m); else $("#mon-blk").innerHTML = addBlockHtml("mon", st, m);
     btn.disabled = !selMon || (st.fixOn && parseInit(st.fix) === null);
-    btn.textContent = selMon ? addLabel(st.n, selMon, $("#mon-hid").checked, $("#mon-anon").checked) : "Kies een monster";
+    btn.textContent = selMon ? addLabel(st.n, selMon, $("#mon-hid").checked, $("#mon-anon").checked) : t("init.mon.pick");
     $("#mon-hidh").hidden = !$("#mon-hid").checked;
     $("#mon-anonh").hidden = !$("#mon-anon").checked;
   };
@@ -1140,7 +1140,7 @@ export function bindForms() {
     monBtn();
     const lbl = monLabel(f), m = selMon && findMon(selMon);
     $("#mon-lbl").hidden = !lbl; $("#mon-lbl").textContent = lbl;
-    $("#mon-list").innerHTML = monListHtml(f, selMon, "data-pick", `Niets gevonden. Voeg het toe onder "Eigen".`);
+    $("#mon-list").innerHTML = monListHtml(f, selMon, "data-pick", t("init.mon.noneTab"));
     $("#mon-prev").innerHTML = monPrev(m, ui.monFull, true);
     if (ui.prep === "mon") previewSB(m || null); // tablet/desktop: volledig statblock in de zijkolom (geen keuze: terug)
   };
@@ -1152,17 +1152,17 @@ export function bindForms() {
     if (f) $("#mon-fix")?.focus(); else if (had) refocusAb($("#mon-blk"), b);
   });
   $("#mon-blk").addEventListener("input", (e) => { if (e.target.dataset.ab === "fix") { ui.monAdd.fix = e.target.value; monBtn(true); } });
-  $("#mon-hidh").textContent = HID_HINT; // één tekst voor Monster-tab en snel toevoegen
-  $("#mon-anonh").textContent = ANON_HINT;
+  $("#mon-hidh").textContent = hidHint(); // één tekst voor Monster-tab en snel toevoegen
+  $("#mon-anonh").textContent = anonHint();
   $("#mon-hid").addEventListener("change", () => monBtn());
   $("#mon-anon").addEventListener("change", () => monBtn());
   $("#mon-list").addEventListener("click", (e) => { const b = e.target.closest("[data-pick]"); if (!b) return; if (selMon !== b.dataset.pick) ui.monFull = false; selMon = b.dataset.pick; renderMonList(); });
   $("#mon-prev").addEventListener("click", (e) => { if (!e.target.closest("[data-mpfull]")) return; ui.monFull = !ui.monFull; renderMonList(); });
   $("#f-mon").addEventListener("submit", (e) => {
     e.preventDefault();
-    if (!selMon) { toastBad("Tik eerst een monster in de lijst aan."); return; }
+    if (!selMon) { toastBad(t("init.mon.errPick")); return; }
     const st = ui.monAdd, fix = parseInit(st.fix);
-    if (st.fixOn && fix === null) { toastBad("Vul de initiative in."); $("#mon-fix")?.focus(); return; }
+    if (st.fixOn && fix === null) { toastBad(t("init.mon.errInit")); $("#mon-fix")?.focus(); return; }
     $("#mon-q").blur();
     addMonsters(selMon, st.n, addHp(findMon(selMon)), addInit(st), false, fix, $("#mon-hid").checked, $("#mon-anon").checked);
     Object.assign(st, { n: 1, fixOn: false, fix: "" }); // aantal en ingevulde initiative gelden één keer; HP en Per monster/Groep blijven
@@ -1184,21 +1184,21 @@ export function bindForms() {
       el.value = v; cuAuto(el, !!v);
     }
     const box = $("#cu-parse");
-    if (!p) { box.innerHTML = `<p class="hint">Plak een statblock (bijv. van D&amp;D Beyond): aanvallen, legendary actions, resistances en ability scores worden herkend en lege velden hierboven ingevuld.</p>`; cuPrev = false; return; }
-    if (!ok) { box.innerHTML = `<p class="hint">Geen statblock herkend, wordt als vrije tekst bewaard.</p>`; cuPrev = false; return; }
+    if (!p) { box.innerHTML = `<p class="hint">${esc(t("init.custom.textHint"))}</p>`; cuPrev = false; return; }
+    if (!ok) { box.innerHTML = `<p class="hint">${esc(t("init.custom.none"))}</p>`; cuPrev = false; return; }
     const rest = p.rest ? p.rest.split("\n").length : 0;
     const m = cuMon();
-    box.innerHTML = `<p class="hint cuok">Herkend: ${esc(foundText(p))}</p>
-      ${rest ? `<p class="hint">Niet herkend: ${rest} ${rest === 1 ? "regel blijft" : "regels blijven"} als tekst onder Overig.</p>` : ""}
-      <button type="button" class="link" data-cuprev aria-expanded="${cuPrev}">Voorbeeld ${chev(cuPrev)}</button>
+    box.innerHTML = `<p class="hint cuok">${esc(t("init.custom.found", { list: foundText(p) }))}</p>
+      ${rest ? `<p class="hint">${esc(t("init.custom.rest", { n: rest }))}</p>` : ""}
+      <button type="button" class="link" data-cuprev aria-expanded="${cuPrev}">${esc(t("init.custom.preview"))} ${chev(cuPrev)}</button>
       ${cuPrev && m ? monCard(withParsed(m), false, false) : ""}`;
   };
   /** Monster uit het formulier (null = nog niet compleet); HP: getal of dobbelstenen */
   function cuMon() {
     const hpIn = $("#cu-hp").value.replace(/\s/g, "");
     let hp = parseInt(hpIn), hd = null;
-    if (/d/i.test(hpIn)) { if (!HD_RE.test(hpIn)) return { err: "HP als getal (22) of als dobbelstenen (5d8 of 5d8+10)." }; hd = hpIn; hp = avgExpr(hpIn); }
-    return { n: $("#cu-name").value.trim() || "Eigen monster", cr: $("#cu-cr").value.trim(), ac: $("#cu-ac").value, hp, hd,
+    if (/d/i.test(hpIn)) { if (!HD_RE.test(hpIn)) return { err: t("init.custom.errHp") }; hd = hpIn; hp = avgExpr(hpIn); }
+    return { n: $("#cu-name").value.trim() || t("init.custom.defName"), cr: $("#cu-cr").value.trim(), ac: $("#cu-ac").value, hp, hd,
       dexScore: parseInt($("#cu-dex").value) || 10, text: $("#cu-text").value };
   }
   $("#cu-text").addEventListener("input", () => { clearTimeout(cuT); cuT = setTimeout(cuParse, 300); });
@@ -1210,17 +1210,17 @@ export function bindForms() {
     clearTimeout(cuT); cuParse(); // net geplakt en meteen opslaan: eerst herkennen
     const m = cuMon();
     if (m.err) { toastBad(m.err); $("#cu-hp").focus(); return; }
-    if (!$("#cu-name").value.trim()) { toastBad("Vul een naam in."); $("#cu-name").focus(); return; }
-    if (!(parseInt(m.ac) > 0)) { toastBad("Vul AC in, of plak een statblock met Armor Class."); $("#cu-ac").focus(); return; }
-    if (!(m.hp > 0)) { toastBad("Vul geldige HP in, of plak een statblock met Hit Points."); $("#cu-hp").focus(); return; }
+    if (!$("#cu-name").value.trim()) { toastBad(t("init.pc.errName")); $("#cu-name").focus(); return; }
+    if (!(parseInt(m.ac) > 0)) { toastBad(t("init.custom.errAc")); $("#cu-ac").focus(); return; }
+    if (!(m.hp > 0)) { toastBad(t("init.custom.errHp2")); $("#cu-hp").focus(); return; }
     app.custom = [m, ...app.custom.filter((x) => x.n !== m.n)]; saveLibrary();
     e.target.reset(); for (const [id] of CU) cuAuto($("#" + id), false); cuPrev = false; cuParse();
     selMon = m.n; $("#mon-q").value = "";
-    ui.prep = "mon"; renderMonList(); render(); $("#mon-add").focus(); toast(`${m.n} opgeslagen. Kies aantal en voeg toe.`);
+    ui.prep = "mon"; renderMonList(); render(); $("#mon-add").focus(); toast(t("init.custom.saved", { name: m.n }));
   });
 
   const impStatus = () => {
-    $("#imp-status").innerHTML = app.imported.length ? `${app.imported.length} geïmporteerde monsters actief. <button type="button" class="link" id="imp-clear">Import verwijderen</button>` : "";
+    $("#imp-status").innerHTML = app.imported.length ? `${esc(t("init.custom.imported", { n: app.imported.length }))} <button type="button" class="link" id="imp-clear">${esc(t("init.custom.impClear"))}</button>` : "";
   };
   bindForms.impStatus = impStatus;
   $("#imp-status").addEventListener("click", (e) => { if (e.target.id === "imp-clear") { app.imported = []; saveLibrary(); renderMonList(); impStatus(); } });
@@ -1228,14 +1228,14 @@ export function bindForms() {
     const f = e.target.files[0]; if (!f) return;
     e.target.value = ""; // ook na een fout opnieuw te kiezen
     let j;
-    try { j = JSON.parse(await f.text()); } catch { toastBad("Dit bestand is geen geldige JSON. Kies het .json-bestand met monsters."); return; }
+    try { j = JSON.parse(await f.text()); } catch { toastBad(t("init.custom.errJson")); return; }
     const conv = parseMonsterFile(j);
-    if (!conv.length) { toastBad("Geen monsters gevonden in dit bestand."); return; }
+    if (!conv.length) { toastBad(t("init.custom.errEmpty")); return; }
     const before = app.imported.length;
     const map = new Map(app.imported.map((m) => [m.n.toLowerCase(), m]));
     conv.forEach((m) => map.set(m.n.toLowerCase(), m));
     app.imported = [...map.values()]; saveLibrary(); renderMonList(); impStatus();
-    toast(`${conv.length} monsters ingelezen, ${app.imported.length - before} nieuw.`);
+    toast(t("init.custom.impDone", { n: conv.length, k: app.imported.length - before }));
   });
 }
 
@@ -1320,7 +1320,7 @@ function svDone(c, sid, ok, note, shown, quiet = false, adv = false) {
   const extra = !ui.svRetry ? ""
     : (c.lr && c.lr.left > 0 ? `<button class="tundo" id="toast-svlr">Legendary Resistance (${c.lr.left})</button>` : "")
       + (!adv && s.kind === "cond" && hasMagicRes(m) ? `<button class="tundo" id="toast-svadv">Spell? Advantage</button>` : "");
-  toastHtml(`${line} ${extra}<button class="tundo" id="toast-undo">Ongedaan</button>`);
+  toastHtml(`${line} ${extra}${undoBtn()}`);
   return line;
 }
 
@@ -1344,7 +1344,7 @@ function svRollAll() {
   const lines = ids.map((sid) => svRoll(sid, false, true)).filter(Boolean);
   ui.svRetry = null;
   render();
-  if (lines.length) toastHtml(`${lines.join("<br>")} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  if (lines.length) toastHtml(`${lines.join("<br>")} ${undoBtn()}`);
 }
 
 /* ---------- legendary actions (regel in de beurtbalk) ---------- */
@@ -1370,7 +1370,7 @@ function laUse(id, i) {
   // paneel is opnieuw opgebouwd: focus terug op dezelfde knop (of het paneel als die nu uit staat)
   const nb = document.querySelector(`#lsheet [data-lause="${CSS.escape(id)}"][data-i="${i}"]`);
   (nb && !nb.disabled ? nb : $("#lsheet .lsheet"))?.focus();
-  toastHtml(`${esc(`${c.name}: ${o.n} (−${o.cost} LA) · ${c.la.left} over`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  toastHtml(`${esc(`${c.name}: ${o.n} (−${o.cost} LA) · ${c.la.left} over`)} ${undoBtn()}`);
 }
 
 /* ---------- AoE: één schadeworp op meerdere doelen (knop AoE in de beurtbalk) ---------- */
@@ -1461,7 +1461,7 @@ function spellGo() {
   ui.aoe = null;
   render();
   const parts = [r.hit.length ? `${r.hit.join(", ")}${sp.conds ? ` ${sp.conds.join(" + ")}` : ""}` : sp.ab ? "niemand geraakt" : "", r.ok.length ? `${r.ok.length} geslaagd` : "", r.immune.length ? `${r.immune.length} immuun` : ""].filter(Boolean);
-  toastHtml(`${esc(`${sp.n} (${caster.name}): ${parts.join(" · ")}${sp.conc ? " · conc" : ""}${sl.txt ? ` · ${sl.txt}` : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  toastHtml(`${esc(`${sp.n} (${caster.name}): ${parts.join(" · ")}${sp.conc ? " · conc" : ""}${sl.txt ? ` · ${sl.txt}` : ""}`)} ${undoBtn()}`);
   $("#aoe")?.focus();
 }
 
@@ -1608,7 +1608,7 @@ function aoeGo() {
   const down = picks.filter((x) => x.up && x.c.hp <= 0).length;
   ui.aoe = null;
   render();
-  toastHtml(`${esc(`${a.act || (sp ? sp.n : `AoE ${label}`)}: ${L.length} doel${L.length === 1 ? "" : "en"}, ${r.hits.reduce((s, h) => s + h.dealt, 0)} schade${down ? `, ${down} neer` : ""}${rcUsed ? " · recharge op" : ""}${sl.txt ? ` · ${sl.txt}` : ""}${conc}${concNote(r)}${ufs.length ? ` · ${ufs.join(" · ")}` : ""}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  toastHtml(`${esc(`${a.act || (sp ? sp.n : `AoE ${label}`)}: ${L.length} doel${L.length === 1 ? "" : "en"}, ${r.hits.reduce((s, h) => s + h.dealt, 0)} schade${down ? `, ${down} neer` : ""}${rcUsed ? " · recharge op" : ""}${sl.txt ? ` · ${sl.txt}` : ""}${conc}${concNote(r)}${ufs.length ? ` · ${ufs.join(" · ")}` : ""}`)} ${undoBtn()}`);
   const ab = $("#aoe"); if (ab) ab.focus();
 }
 
@@ -1713,7 +1713,7 @@ function atkGo() {
   const hasNext = x.sq && x.sq.left.length && atkNext(x, c.id); // GV11: door naar de volgende aanval, zelfde doel
   if (!hasNext) ui.atk = null;
   render();
-  toastHtml(`${esc(`${c.name}: −${res.dealt} HP${res.crit ? " (kritiek)" : ""} → ${n0(c.hp)}/${n0(c.max)}${before > 0 && c.hp <= 0 ? (c.kind === "pc" ? ", bewusteloos" : ", neer") : ""}${uf ? ` · ${uf}` : ""}${rt}${la}${concNote(f)}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  toastHtml(`${esc(`${c.name}: −${res.dealt} HP${res.crit ? " (kritiek)" : ""} → ${n0(c.hp)}/${n0(c.max)}${before > 0 && c.hp <= 0 ? (c.kind === "pc" ? ", bewusteloos" : ", neer") : ""}${uf ? ` · ${uf}` : ""}${rt}${la}${concNote(f)}`)} ${undoBtn()}`);
   if (hasNext) focusAtk(); else atkBack(x, false);
 }
 
@@ -1741,7 +1741,7 @@ function atkMiss() {
   const la = atkLa(x, by);
   ui.atk = null;
   render();
-  if (la) toastHtml(`${esc(`${x.label}: mis${la}`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  if (la) toastHtml(`${esc(`${x.label}: mis${la}`)} ${undoBtn()}`);
   atkBack(x, false);
 }
 
@@ -1761,7 +1761,7 @@ export function bindAtk() {
     }
     if (k === "parry") { // RE13: Parry van het doelmonster (monster tegen monster): reaction weg, +N AC voor deze aanval
       const c = app.S.list.find((t) => t.id === x.tid), n = c && c.ref ? parryOf(findMon(c.ref)) : 0;
-      if (c && n && canParry(c, app.S.round)) { because("Parry"); apply(useParry(c, n)); x.acp = { id: c.id, n }; render(); toastHtml(`${esc(`${c.name}: Parry +${n} AC · reaction gebruikt`)} <button class="tundo" id="toast-undo">Ongedaan</button>`); focusAtk(); return; }
+      if (c && n && canParry(c, app.S.round)) { because("Parry"); apply(useParry(c, n)); x.acp = { id: c.id, n }; render(); toastHtml(`${esc(`${c.name}: Parry +${n} AC · reaction gebruikt`)} ${undoBtn()}`); focusAtk(); return; }
     }
     if (k === "la") x.la.on = !x.la.on;
     if (k === "free") { // oude gedrag: alleen de worp als melding
@@ -1777,7 +1777,7 @@ export function bindAtk() {
     if (k === "force") x.force.hit = true;
     if (k === "shield") {
       const c = app.S.list.find((t) => t.id === x.tid), p = PRESETS.find((q) => q.n === "Shield");
-      if (c && p) { const r = applyEff(c, p, null); render(); if (r.undoToast) toastHtml(`${esc(r.undoToast)} <button class="tundo" id="toast-undo">Ongedaan</button>`); focusAtk(); return; }
+      if (c && p) { const r = applyEff(c, p, null); render(); if (r.undoToast) toastHtml(`${esc(r.undoToast)} ${undoBtn()}`); focusAtk(); return; }
     }
     paintAtk();
     focusAtk();
@@ -1886,7 +1886,7 @@ async function partyFetch(pid) {
     const { f, kept } = partyUpdate(cur, got);
     const ch = mergeSheet(structuredClone(cur), structuredClone(f)); // voorproefje op een kopie
     if (!ch.length && !kept.length) { // niets te bevestigen: sheet-details (spells, portret) stil verversen
-      const was = document.activeElement; updMember(cur, f); ui.pUpd = null; render(); pFocus(pLink(pid), was); toast(`${cur.name}: sheet ververst, verder niets veranderd.`); return;
+      const was = document.activeElement; updMember(cur, f); ui.pUpd = null; render(); pFocus(pLink(pid), was); toast(t("init.party.fresh", { name: cur.name })); return;
     }
     ui.pUpd = { pid, st: "ask", f, ch, kept }; pPaint("[data-pupdok]");
   } catch (e) {
@@ -1905,7 +1905,7 @@ export function bindParty() {
     const pid = e.target.dataset.plvl; if (!pid) return;
     const m = app.party.find((x) => x.pid === pid); if (!m) return;
     const v = cleanLvl(e.target.value);
-    if (e.target.value !== "" && !v) { toastBad("Level is 1 t/m 20."); e.target.value = m.lvl ?? ""; return; } // ongeldig: oude waarde blijft
+    if (e.target.value !== "" && !v) { toastBad(t("init.prep.errLvl")); e.target.value = m.lvl ?? ""; return; } // ongeldig: oude waarde blijft
     m.lvl = v; // de party is de bron (geen undo-stap: hoort niet bij de encounter)
     saveParty(); render();
   });
@@ -1921,25 +1921,25 @@ export function bindParty() {
       if (!m) { pPaint(); return; }
       const ch = updMember(m, u.f);
       render(); pFocus(pLink(m.pid), b);
-      toast(`${m.name} bijgewerkt${ch.length ? ": " + ch.join(", ") : ""}.`);
+      toast(ch.length ? t("init.party.updatedCh", { name: m.name, list: ch.join(", ") }) : t("init.party.updated", { name: m.name }));
       return;
     }
     if (b.dataset.proll) { toastHtml(rollFor(app.party.find((x) => x.pid === b.dataset.proll))); paintParty(); return; }
     if (b.dataset.pdel) {
       const m = app.party.find((x) => x.pid === b.dataset.pdel);
       if (b.dataset.sure) { if (ui.pUpd?.pid === m.pid) stopPUpd(); app.party = app.party.filter((x) => x !== m); app.S.list.forEach((c) => { if (c.pid === m.pid) c.pid = null; }); saveParty(); render(); }
-      else { b.dataset.sure = "1"; b.textContent = "Zeker? Tik nogmaals"; }
+      else { b.dataset.sure = "1"; b.textContent = t("init.party.sure"); }
       return;
     }
-    if (b.id === "p-rollall") { toastHtml(app.party.filter((m) => !at.has(m.pid)).map(rollFor).join("<br>") || "Iedereen zit al aan tafel."); paintParty(); return; }
+    if (b.id === "p-rollall") { toastHtml(app.party.filter((m) => !at.has(m.pid)).map(rollFor).join("<br>") || esc(t("init.party.allHere"))); paintParty(); return; }
     if (b.id === "p-add") {
       const todo = app.party.filter((m) => !at.has(m.pid));
       const fight = !!app.S.round; // SP4: vóór het gevecht null, het paneel bij Start vraagt het
       const missing = fight ? todo.filter((m) => parseInit(ui.partyInit[m.pid]) === null) : [];
-      if (missing.length) { toastBad(`Nog geen initiative voor: ${missing.map((m) => m.name).join(", ")}. Vul in of tik op "Rol voor iedereen".`); return; }
+      if (missing.length) { toastBad(t("init.party.noInit", { names: missing.map((m) => m.name).join(", ") })); return; }
       because("party aan tafel gezet");
       todo.forEach((m) => { seatMember(m, fight ? parseInit(ui.partyInit[m.pid]) : null); delete ui.partyInit[m.pid]; });
-      app.S.sample = false; ui.prepLast = app.S.list[app.S.list.length - 1].id; toast(`${todo.length} speler${todo.length === 1 ? "" : "s"} aan tafel gezet.`);
+      app.S.sample = false; ui.prepLast = app.S.list[app.S.list.length - 1].id; toast(t("init.party.seated", { n: todo.length }));
       if (ui.prep === "party") closePrep(); else render();
       return;
     }
@@ -1951,7 +1951,7 @@ export function bindParty() {
       app.S.list.forEach((c) => { if (c.pid) R.restMember(c, long); });
       const exT = ex.length ? ` Exhaustion: ${ex.map(([n, x]) => `${n} ${x} → ${x - 1}`).join(", ")}.` : ""; // RE11: één niveau minder
       const pact = [...app.party, ...app.S.list].some((m) => m.casting && m.casting.pact); // RE3
-      saveParty(); toast(long ? `Long rest: HP, spell slots en resources hersteld.${exT}` : `Short rest: ${pact ? "Pact Magic-slots en " : ""}short-rest resources hersteld.`); render();
+      saveParty(); toast(long ? t("init.party.long", { ex: exT }) : t(pact ? "init.party.shortPact" : "init.party.short")); render();
     }
   });
 }

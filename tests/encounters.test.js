@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { noRating, crXp, multiplier, clsLevel, pcLevel, partyFor, difficulty, ratingName, fromList, cleanEncounter, cleanEncounters, loadPlan,
+import { noRatingCode, crXp, multiplier, clsLevel, pcLevel, partyFor, difficulty, ratingName, fromList, cleanEncounter, cleanEncounters, loadPlan,
   buildEncFile, parseEncFile, mergeEnc, duplicate, total, listMons, encMons, ENC_FORMAT, MAX_TOTAL } from "../js/rules/encounters.js";
 import { parseImport, VERSION, buildExport } from "../js/backup.js";
 
@@ -188,11 +188,11 @@ test("party: verwijzing waar een ontbrekend level heen gaat (VB1)", () => {
 
 test("geen oordeel: level buiten 1–20 telt als onbekend (geen crash), alleen monsters zonder CR = CR onbekend", () => {
   const bad = difficulty([{ name: "G", cr: "1", n: 1 }], [{ name: "a", lvl: 25 }, { name: "b", lvl: 0 }]);
-  assert.equal(bad.rating, null); assert.deepEqual(bad.noLvl, ["a", "b"]); assert.equal(noRating(bad), "level onbekend");
+  assert.equal(bad.rating, null); assert.deepEqual(bad.noLvl, ["a", "b"]); assert.equal(noRatingCode(bad), "lvl");
   const cr = difficulty([{ name: "Eigen", cr: "", n: 3 }], [{ name: "a", lvl: 3 }]);
-  assert.equal(cr.rating, null); assert.equal(noRating(cr), "CR onbekend");
-  assert.equal(noRating(difficulty([{ cr: "1", n: 1 }], [])), "geen party");
-  assert.equal(noRating(difficulty([{ cr: "1", n: 1 }], [{ name: "a", lvl: 3 }])), null);
+  assert.equal(cr.rating, null); assert.equal(noRatingCode(cr), "cr");
+  assert.equal(noRatingCode(difficulty([{ cr: "1", n: 1 }], [])), "party");
+  assert.equal(noRatingCode(difficulty([{ cr: "1", n: 1 }], [{ name: "a", lvl: 3 }])), null);
   const mix = difficulty([{ name: "Eigen", cr: "", n: 1 }, { name: "G", cr: "1", n: 1 }], [{ name: "a", lvl: 3 }]);
   assert.notEqual(mix.rating, null, "deels bekend: wel een oordeel, met melding");
 });

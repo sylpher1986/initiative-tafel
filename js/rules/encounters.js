@@ -125,7 +125,8 @@ export function deadlyTip(mons, who, all = false) {
 
 export const ratingName = (r) => (r == null ? null : r < 0 ? "Trivial" : RATINGS[r]);
 /** Waarom er geen oordeel is: "level onbekend", "geen party", "CR onbekend"; null = er is een oordeel */
-export const noRating = (r) => (r.rating != null ? null : !r.pcs ? "geen party" : r.noLvl.length ? "level onbekend" : "CR onbekend");
+/** Waarom er geen oordeel is: "party", "lvl" of "cr" (null = wel een oordeel); de UI vertaalt de code (WP24) */
+export const noRatingCode = (r) => (r.rating != null ? null : !r.pcs ? "party" : r.noLvl.length ? "lvl" : "cr");
 
 /** Monsters van een encounter als invoer voor difficulty (CR via de bibliotheek) */
 export const encMons = (enc, find) => (enc.monsters || []).map((m) => { const s = find(m.ref); return { name: m.ref, n: m.n, cr: s ? s.cr : null, xp: s ? s.xp : null }; });
