@@ -90,12 +90,14 @@ test("gebouwde catalogi zijn actueel (opnieuw maken: node tools/i18n-build.mjs)"
 // t(c ? "a.b" : "c.d"). Bestandsnamen ("log.js") tellen niet.
 const PRE = Object.values(NS).map((p) => p.replace(".", "\\.")).join("|");
 const KEY_IN_CODE = new RegExp(`["'\`]((?:${PRE})[A-Za-z0-9.]*[A-Za-z0-9])["'\`]`, "g");
-export const keysIn = (text) => [...text.matchAll(KEY_IN_CODE)].map((m) => m[1]).filter((k) => !/\.(m?js|json|html|css)$/.test(k) && KEY.test(k));
+const KEY_IN_TPL = /\{\{t(?:js)?:([A-Za-z0-9.]+)\}\}/g; // sjablonen in pages/ (WP23, tools/pages.mjs)
+export const keysIn = (text) => [...[...text.matchAll(KEY_IN_CODE)].map((m) => m[1]), ...[...text.matchAll(KEY_IN_TPL)].map((m) => m[1])]
+  .filter((k) => !/\.(m?js|json|html|css)$/.test(k) && KEY.test(k));
 
 test("scanner voor sleutels in de code: herkent sleutels, slaat bestandsnamen en ander tekst over", () => {
   const sample = `t("init.fight.next"); x ? t('common.close') : t(\`rules.save.lost\`); const L = ["dnd.cond.Prone", "page.home.title"];
-    import("./log.js"); m("player."); s = "init"; u = "common.time.daysAgo"; v = "logboek.x";`;
-  assert.deepEqual(keysIn(sample), ["init.fight.next", "common.close", "rules.save.lost", "dnd.cond.Prone", "page.home.title", "common.time.daysAgo"]);
+    import("./log.js"); m("player."); s = "init"; u = "common.time.daysAgo"; v = "logboek.x"; <p>{{t:init.set.look}}</p> '{{tjs:page.err.bar}}'`;
+  assert.deepEqual(keysIn(sample), ["init.fight.next", "common.close", "rules.save.lost", "dnd.cond.Prone", "page.home.title", "common.time.daysAgo", "init.set.look", "page.err.bar"]);
 });
 
 const walk = (dir) => readdirSync(ROOT + dir).flatMap((n) => { const p = dir + n; return statSync(ROOT + p).isDirectory() ? walk(p + "/") : [p]; });

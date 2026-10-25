@@ -43,7 +43,7 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 - Regels: ~~RE3~~ (klaar in 1.41.0), **RE4–RE6**, ~~RE14~~ (klaar in 1.42.0), ~~RE15~~ (klaar in 1.44.0)
 - Voorbereiding: ~~VB4~~ · ~~VB5~~ (klaar in 1.43.0, WP11)
 - Gevecht: ~~GV10~~ (klaar in 1.37.1), ~~GV11~~ (klaar in 1.42.0)
-- Taal: **TA1** (uitgewerkt tot TA2–TA16 en WP18–WP33, zie "Taal" en `docs/i18n.md`; WP18–WP22 klaar, volgende WP23)
+- Taal: **TA1** (uitgewerkt tot TA2–TA16 en WP18–WP33, zie "Taal" en `docs/i18n.md`; WP18–WP23 klaar, volgende WP24)
 - Technische schuld: **TS1** (oppakken wanneer je die code toch aanraakt)
 - Fase 2 en 3
 - Bewust niet: zie "Persona-test 3 → Niet overgenomen"
@@ -82,7 +82,7 @@ Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (g
 | ~~**WP20**~~ | Catalogi (`locales/src/` → `locales/{en,nl,xx}.js`), laden bij opstarten (max. 3 s), debugmodus, tests (klaar) | TA4 | WP19 | 1.48.2 |
 | ~~**WP21**~~ | Paden `/{lang}/initiative/(player/)`, doorverwijzers (`/`, `/speler`, `/initiative/`), manifest `id: "/"`, service worker (klaar) | TA5 | WP20 | 1.49.0 |
 | ~~**WP22**~~ | Taalkiezer (Instellingen, spelersscherm) en voorkeur per apparaat (klaar) | TA6 | WP21 | 1.49.1 |
-| **WP23** | Statische teksten in de pagina's (gegenereerd per taal) | TA7 | WP21 | 1.49.2 |
+| ~~**WP23**~~ | Statische teksten in de pagina's (gegenereerd per taal) (klaar) | TA7 | WP21 | 1.49.2 |
 | **WP24** | DM-app 1: Voorbereiden, + Speler, Party, + Monster, moeilijkheid | TA8 | WP20, WP23 | 1.49.3 |
 | **WP25** | DM-app 2: Gevecht (kaarten, beurtbalk, panelen) | TA9 | WP24 | 1.49.4 |
 | **WP26** | DM-app 3: Encounters, afronden, kamer, rondleiding, instellingen, import | TA10 | WP25 | 1.49.5 |
@@ -152,6 +152,7 @@ Afgerond in WP13–WP17 (1.44.1–1.48.0); keuzes in CLAUDE.md, overzicht in pro
   - [x] **TA4** (WP20, 1.48.2) Catalogi (`locales/src/` → `locales/<taal>.js`), laden bij het opstarten (max. 3 s), debugstand `?i18n=debug|xx|off`, bewakingstests; Engelse woordenlijst in `docs/i18n.md` §3.2.1
   - [x] **TA5** (WP21, 1.49.0) Paden per taal: `/{nl,en}/initiative/(player/)` gegenereerd uit `pages/` (`tools/pages.mjs`), doorverwijzers `/`, `/speler(.html)`, `/player`, `/initiative/(player/)` (ook offline), manifest per taal met `id: "/"`, service worker scope `/`; `/en/` bestaat maar is niet live. Nog te doen door Michiel: iPhone-check (beginscherm-app en offline openen)
   - [x] **TA6** (WP22, 1.49.1) Taalkiezer **Nederlands | English** (seg, elke taal in haar eigen taal) in Instellingen → Weergave (tussen thema en Reaction, label "Taal · Language") en op het spelersscherm (`.pvtools`, smal een eigen rij); voorkeur `kevs-lang`, wisselen = `location.replace` naar dezelfde pagina; tot WP33 alleen in de i18n-debugstand (`offered`), en alleen dan telt een Engelse voorkeur in de doorverwijzer
+  - [x] **TA7** (WP23, 1.49.2) Statische tekst van beide sjablonen uit de catalogi: plaatshouders `{{t:sleutel}}` (HTML) en `{{tjs:sleutel}}` (inline script), ingevuld door `tools/pages.mjs`; ratel voor `pages/` op 0, NL-pagina tekstueel gelijk, EN-pagina zonder Nederlands, skelet per taal gelijk (tests)
   - **Afhankelijkheden buiten dit plan**: accounts/sync (Fase 2) alleen voor het bewaren van de voorkeur in een account; `kevs-inn.com` is in het Cloudflare-dashboard gekoppeld (V1, bevestigd 24-10-2026), niet in `wrangler.jsonc`.
 
 ## Technische schuld

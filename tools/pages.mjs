@@ -5,6 +5,9 @@
 // Uitvoer:
 //   /{taal}/initiative/index.html, /{taal}/initiative/player/index.html   app-pagina's uit pages/*.html, per taal in
 //                                                  SUPPORTED ({{lang}} ingevuld); /en/ bestaat al maar is pas live in WP33
+// Tekst in de sjablonen (WP23): {{t:sleutel}} = catalogustekst, geëscaped voor HTML (tekst en attributen);
+// {{tjs:sleutel}} = binnen een JS-string in een inline script of on…-attribuut (alles wat de string of het attribuut
+// kan breken als \uXXXX). Een onbekende sleutel is een fout: dan wordt er niets geschreven.
 //   /{taal}/manifest.webmanifest                   manifest per taal; id "/" houdt bestaande installaties één app
 //   /manifest.webmanifest                          zelfde als de terugvaltaal: oude installaties vragen dit adres op
 //   /index.html, /speler.html, /player.html, /initiative/index.html, /initiative/player/index.html
@@ -47,9 +50,22 @@ export function manifest(lang, cat) {
 
 const banner = (src) => `<!-- Gegenereerd door tools/pages.mjs uit ${src}: wijzig het sjabloon en draai node tools/pages.mjs -->\n`;
 
-/** App-pagina in een taal: banner na de doctype, {{lang}} ingevuld */
-export function appPage(tpl, src, lang) {
-  const out = tpl.replaceAll("{{lang}}", lang);
+const escHtml = (v) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const escJs = (v) => v.replace(/[\\"'`<>&\n\r\u2028\u2029]/g, (c) => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
+/** Plaatshouders {{t:…}} en {{tjs:…}} invullen uit een catalogus (sleutel → tekst) */
+export function fillText(tpl, cat, src = "") {
+  return tpl.replace(/\{\{(t|tjs):([A-Za-z0-9.]+)\}\}/g, (m, kind, key) => {
+    const v = cat[key];
+    if (typeof v !== "string") throw new Error(`${src}: geen tekst voor ${key}`);
+    if (/\{[A-Za-z]/.test(v)) throw new Error(`${src}: ${key} heeft een placeholder; sjablonen vullen geen waarden in`);
+    return kind === "t" ? escHtml(v) : escJs(v);
+  });
+}
+
+/** App-pagina in een taal: banner na de doctype, {{lang}} en de teksten ingevuld */
+export function appPage(tpl, src, lang, cat = {}) {
+  const out = fillText(tpl.replaceAll("{{lang}}", lang), cat, src);
+  if (out.includes("{{")) throw new Error(`${src}: onbekende plaatshouder ${out.slice(out.indexOf("{{"), out.indexOf("{{") + 30)}`);
   return out.replace(/^(<!doctype html>\n)/i, `$1${banner(src)}`);
 }
 
@@ -85,7 +101,7 @@ export async function build(root = ROOT) {
   const fb = fallbackIn(LIVE);
   for (const lang of SUPPORTED) {
     const cat = (await import(pathToFileURL(`${root}locales/${lang}.js`).href)).default;
-    for (const [rest, src] of Object.entries(APP_PAGES)) out[`${lang}/${rest}index.html`] = appPage(readFileSync(root + src, "utf8"), src, lang);
+    for (const [rest, src] of Object.entries(APP_PAGES)) out[`${lang}/${rest}index.html`] = appPage(readFileSync(root + src, "utf8"), src, lang, cat);
     out[`${lang}/manifest.webmanifest`] = manifest(lang, cat);
     if (lang === fb) out["manifest.webmanifest"] = manifest(lang, cat);
   }

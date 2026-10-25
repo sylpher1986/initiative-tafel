@@ -107,6 +107,9 @@ const SCEN = {
     await page.waitForSelector(".sb h2", { state: "visible" });
   },
   speler: null, // eigen startpagina, zie START
+  // WP23: formulieren met de statische tekst (met --i18n=debug de Engelse pagina)
+  async pcform(page) { await SCEN.prep(page); await tap(page, '#dock [data-prep="pc"]'); await page.waitForSelector("#f-pc", { state: "visible" }); },
+  async eigen(page) { await SCEN.monster(page); await tap(page, '#p-montabs [data-prep="custom"]'); await page.waitForSelector("#f-custom", { state: "visible" }); },
   // WP22: taalkiezer in Weergave (alleen met --i18n=debug zichtbaar) met de lange statusregel ("Spelers zelf")
   async lang(page) {
     await SCEN.settings(page);

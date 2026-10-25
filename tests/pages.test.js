@@ -2,7 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { build, urlOf, APP_PAGES, REDIRECTS } from "../tools/pages.mjs";
+import { build, urlOf, APP_PAGES, REDIRECTS, fillText } from "../tools/pages.mjs";
+import { htmlStrings, isDutch } from "../tools/i18n-audit.mjs";
 import { target } from "../js/i18n/redirect.js";
 import { SUPPORTED } from "../js/i18n/lang.js";
 
@@ -112,4 +113,53 @@ test("geen relatieve paden naar eigen bestanden in js/ (fetch, sprites): de pagi
     for (const m of read(f).matchAll(/(?:window\.open|location\.(?:assign|replace))\(\s*["'`]([^"'`]*)/g)) if (!/^(\/|https?:|player\/$)/.test(m[1])) bad.push(`${f}: ${m[0]}`);
   }
   assert.deepEqual(bad, []);
+});
+
+// WP23 (TA7): teksten in de sjablonen komen uit de catalogus ({{t:…}} / {{tjs:…}}), ingevuld door tools/pages.mjs.
+test("fillText: HTML-escape voor tekst en attributen, JS-escape binnen een string, onbekende sleutel = fout", () => {
+  const cat = { "a.b": `Tom & "Jerry" <x>`, "a.js": `it's "ok"\n</script>` };
+  assert.equal(fillText(`<p title="{{t:a.b}}">{{t:a.b}}</p>`, cat), `<p title="Tom &amp; &quot;Jerry&quot; &lt;x&gt;">Tom &amp; &quot;Jerry&quot; &lt;x&gt;</p>`);
+  const js = fillText(`<b onerror="f('{{tjs:a.js}}')">`, cat);
+  assert.equal(js, `<b onerror="f('it\\u0027s \\u0022ok\\u0022\\u000a\\u003c/script\\u003e')">`);
+  assert.equal(new Function(`return '${/f\('(.*)'\)/.exec(js)[1]}'`)(), cat["a.js"], "JS leest de tekst ongewijzigd terug");
+  assert.throws(() => fillText("{{t:a.nope}}", cat, "x.html"), /a\.nope/);
+  assert.throws(() => fillText("{{t:a.p}}", { "a.p": "Hi {name}" }), /placeholder/, "{name} zou letterlijk op de pagina staan");
+  assert.equal(fillText("'{{tjs:a.q}}'", { "a.q": "a`b" }), "'a\\u0060b'");
+});
+
+// Skelet van een pagina zonder tekst: tags met attributen, behalve vertaalbare attributen en lang. Zo blijven id's,
+// formulieren en hidden gelijk in elke taal (listeners en statische formulieren in de Voorbereiden-indeling).
+const skeleton = (h) => [...h.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "<script/>").replace(/<!--[\s\S]*?-->/g, "").matchAll(/<[^>]+>/g)]
+  .map((m) => m[0].replace(/\s(aria-label|placeholder|title|alt|content|data-label|on[a-z]+|lang)="[^"]*"/g, " $1"));
+test("elke taal heeft hetzelfde skelet als het sjabloon (alleen tekst verschilt)", () => {
+  for (const [rest, src] of Object.entries(APP_PAGES)) {
+    for (const lang of SUPPORTED) assert.deepEqual(skeleton(files[`${lang}/${rest}index.html`]), skeleton(read(src).replaceAll("{{lang}}", lang)), `${lang}/${rest}`);
+  }
+});
+
+test("Engelse pagina's zonder Nederlandse tekst (paden als src/2014/en tellen niet)", () => {
+  for (const rest of Object.keys(APP_PAGES)) {
+    const p = `en/${rest}index.html`;
+    const nl = htmlStrings(files[p]).map((x) => x.text.replace(/\S*\/\S*/g, " ")).filter(isDutch);
+    assert.deepEqual(nl, [], p);
+  }
+});
+
+test("pagina's: geen sleutel of plaatshouder zichtbaar, vet deel van een zin per taal", () => {
+  for (const rest of Object.keys(APP_PAGES)) {
+    const h = files[`nl/${rest}index.html`];
+    assert.doesNotMatch(h, /\{\{|\b(init|player|page|common)\.[a-z]+\.[A-Za-z0-9.]+/, rest);
+  }
+  assert.match(files["nl/initiative/index.html"], /<b>Geldt alleen voor spells:<\/b> de rest van de app/);
+  assert.match(files["en/initiative/index.html"], /<b>Applies to spells only:<\/b>/);
+});
+
+test("plaatshouders op de juiste plek: {{tjs:}} alleen in script of on…=\"…\", {{t:}} nooit daar of in een attribuut met ' of zonder aanhalingstekens", () => {
+  for (const src of Object.values(APP_PAGES)) {
+    const h = read(src), js = [];
+    for (const m of h.matchAll(/<script\b[^>]*>[\s\S]*?<\/script>|\son[a-z]+="[^"]*"/g)) js.push([m.index, m.index + m[0].length]);
+    const inJs = (i) => js.some(([a, b]) => i >= a && i < b);
+    for (const m of h.matchAll(/\{\{(t|tjs):/g)) assert.equal(inJs(m.index), m[1] === "tjs", `${src}: ${h.slice(m.index, m.index + 40)}`);
+    assert.doesNotMatch(h, /=\s*'[^']*\{\{t:|=\s*\{\{t:/, src + ": {{t:}} escapet geen enkele aanhalingstekens");
+  }
 });
