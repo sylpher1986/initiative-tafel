@@ -3,7 +3,8 @@
 import { MAC } from "./keys.js";
 import { ico, chev, dsMini } from "./icons.js";
 import { paintSetStat } from "./settings.js";
-import { $, esc, n0, spellLink } from "./util.js";
+import { $, esc, n0, spellLink, tb } from "./util.js";
+import { t } from "../i18n/boot.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
 import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf, isSurprised, reactUsed, REACT_TAG, canToggleSurprise, nextUp, freshRoll, initPlan, initText } from "../rules/turns.js";
@@ -26,7 +27,7 @@ import { spellDice, casterLevel, ownDmgSpells, findDmgSpells } from "../rules/dm
 import { slotChoices, defaultSlot, slotLevel, slotName } from "../rules/slots.js";
 import { rulesEd } from "./spellrules.js";
 import { initRoll } from "./initroll.js";
-import { ANON, anonName } from "../playerview.js";
+import { anonName } from "../playerview.js";
 import { paintEnc, encBanner, encStrip } from "./encounters.js";
 import { paintEnd, endBanner } from "./einde.js";
 import { PAS, passives, pasText, sheetPassives, percList } from "../rules/passives.js";
@@ -143,13 +144,13 @@ function paintMode() {
       <button type="button" class="fb" data-setmode="prep" aria-label="Voorbereiden: lijst aanpassen"><span class="fi">${PEN}</span><span class="fl">Voorbereiden</span></button>
       <button type="button" class="fb ic" id="qadd" aria-label="Monster toevoegen aan het gevecht" title="Monster toevoegen aan het gevecht">${PLUS}</button></div>`
     : S.round
-      ? `<p class="runbar" role="status">Gevecht loopt · ronde ${n0(S.round)} · je past de lijst aan</p>`
-      : `<p class="phase" aria-label="Fase: Voorbereiden, daarna Gevecht"><span class="st on"><span class="dot" aria-hidden="true">1</span>Voorbereiden</span><span class="ln" aria-hidden="true"></span><span class="st"><span class="dot" aria-hidden="true">2</span>Gevecht</span></p>`;
+      ? `<p class="runbar" role="status">${esc(t("init.prep.runbar", { n: n0(S.round) }))}</p>`
+      : `<p class="phase" aria-label="${esc(t("init.prep.phase"))}"><span class="st on"><span class="dot" aria-hidden="true">1</span>${esc(t("init.prep.phase1"))}</span><span class="ln" aria-hidden="true"></span><span class="st"><span class="dot" aria-hidden="true">2</span>${esc(t("init.prep.phase2"))}</span></p>`;
   if (m !== "prep") ui.prep = null;
 }
 
 /* ---------- Voorbereiden: één paneel met de bestaande formulieren (statisch in index.html, alleen hidden wisselt) ---------- */
-const PREP = { pc: "Speler toevoegen", mon: "Monster toevoegen", custom: "Monster toevoegen", enc: "Encounters", party: "Party", data: "Instellingen" };
+const PREP = { pc: "init.prep.tPc", mon: "init.prep.tMon", custom: "init.prep.tMon", enc: "init.add.enc", party: "init.prep.tParty", data: "init.dock.settings" }; // sleutels: vertaald bij het tekenen
 const MONTABS = ["mon", "custom", "enc"];
 /** Instellingen → Opslag: "Laatste export: …" (DA1) */
 export const paintExpLast = () => { $("#exp-last").textContent = lastExportText(nudgeState().exp); paintSetStat(); }; // ook de kop van Opslag (AF5)
@@ -157,7 +158,7 @@ export function paintPrep() {
   const el = $("#psheet"), p = PREP[ui.prep] ? ui.prep : null;
   el.hidden = !p;
   if (!p) return;
-  $("#p-title").textContent = PREP[p];
+  $("#p-title").textContent = t(PREP[p]);
   $("#p-montabs").hidden = !MONTABS.includes(p);
   $("#p-montabs").querySelectorAll("[data-prep]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.prep === p));
   el.querySelectorAll("[data-panel]").forEach((x) => (x.hidden = x.dataset.panel !== p));
@@ -513,27 +514,27 @@ const sheetLvl = (c, m) => clsLevel((m && m.sheet && m.sheet.cls) || (c.sheet &&
 function prepFields(c) {
   const fld = (k, lbl, val, { of = "", ph = "", aria = lbl } = {}) => `<label class="pf"><span class="pl">${lbl}</span><span class="pbox${val === "" || val == null ? " nv" : ""}">
     <input data-pf="${k}" type="number" inputmode="numeric" enterkeyhint="done" value="${esc(val ?? "")}"${ph ? ` placeholder="${ph}"` : ""} aria-label="${esc(`${aria} ${c.name}`)}">${of ? `<span class="of">/${of}</span>` : ""}</span></label>`;
-  const hpd = (c.max || 0) - baseMax(c), eff = hpd ? ` <small>${hpd > 0 ? "+" : "−"}${Math.abs(hpd)} effect</small>` : "";
+  const hpd = (c.max || 0) - baseMax(c), eff = hpd ? ` <small>${esc(t("init.prep.effDelta", { d: (hpd > 0 ? "+" : "−") + Math.abs(hpd) }))}</small>` : "";
   if (c.kind === "monster") {
     const hd = c.ref && findMon(c.ref)?.hd;
-    const now = c.max && c.hp < c.max ? `<p class="hint pnow">Nu ${n0(c.hp)} van ${n0(c.max)} HP</p>` : "";
+    const now = c.max && c.hp < c.max ? `<p class="hint pnow">${esc(t("init.prep.hpNow", { hp: n0(c.hp), max: n0(c.max) }))}</p>` : "";
     return `<div class="pfs two">${fld("init", "Init", c.init, { aria: "Initiative" })}${fld("max", `Max HP${hd ? ` <small>${esc(hd)}</small>` : ""}${eff}`, c.max ? baseMax(c) : "", { ph: "?", aria: "Max HP" })}</div>${now}`;
   }
   const m = c.pid && app.party.find((x) => x.pid === c.pid);
   const lv = sheetLvl(c, m) ? "" : fld("lvl", "Level", (m ? m.lvl : c.lvl) ?? "", { ph: "?" });
-  const hp = c.max ? fld("hp", `HP${eff}`, n0(c.hp), { of: n0(c.max), aria: "Huidige HP" }) : fld("max", "Max HP", "", { ph: "?" });
+  const hp = c.max ? fld("hp", `HP${eff}`, n0(c.hp), { of: n0(c.max), aria: t("init.prep.hpAria") }) : fld("max", "Max HP", "", { ph: "?" });
   const pt = pasText(passives(c)); // SP5: alleen lezen; invullen onder ⋯
-  return `<div class="pfs${lv ? "" : " two"}">${hp}${fld("ac", (c.eff || []).some((e) => e.st === "ac") ? "Basis-AC" : "AC", c.ac || "", { ph: "?" })}${lv}</div>${pt ? `<p class="hint ppas">Passive ${esc(pt)}</p>` : ""}`;
+  return `<div class="pfs${lv ? "" : " two"}">${hp}${(() => { const l = (c.eff || []).some((e) => e.st === "ac") ? t("init.prep.baseAc") : "AC"; return fld("ac", esc(l), c.ac || "", { ph: "?", aria: l }); })()}${lv}</div>${pt ? `<p class="hint ppas">Passive ${esc(pt)}</p>` : ""}`;
 }
 
 function prepActions(c) {
   const b = c.kind === "monster"
-    ? [`<button data-a="hide" aria-pressed="${!!c.hidden}" title="Spelers zien dit monster niet">${c.hidden ? "Verborgen" : "Verbergen"}</button>`]
+    ? [`<button data-a="hide" aria-pressed="${!!c.hidden}" title="${esc(t("init.prep.hideTip"))}">${esc(t(c.hidden ? "init.prep.hidden" : "init.prep.hide"))}</button>`]
     : [];
-  b.push(`<button data-a="panel" data-p="conds" aria-pressed="${ui.panel === "conds"}">Conditie</button>`,
-    `<button data-a="panel" data-p="eff" aria-pressed="${ui.panel === "eff"}">Effect</button>`);
-  if (c.ref) b.push(`<button data-a="sb">Statblock</button>`); else if (c.sheet) b.push(`<button data-a="sheet">Sheet</button>`);
-  b.push(`<button data-a="panel" data-p="more" aria-pressed="${ui.panel === "more"}" aria-label="Meer: naam${c.kind === "pc" ? ", max HP, party" : ", AC, naam voor spelers"}, verwijderen">${ico("more")}</button>`);
+  b.push(`<button data-a="panel" data-p="conds" aria-pressed="${ui.panel === "conds"}">${esc(t("init.prep.cond"))}</button>`,
+    `<button data-a="panel" data-p="eff" aria-pressed="${ui.panel === "eff"}">${esc(t("init.prep.eff"))}</button>`);
+  if (c.ref) b.push(`<button data-a="sb">${esc(t("init.prep.sb"))}</button>`); else if (c.sheet) b.push(`<button data-a="sheet">Sheet</button>`);
+  b.push(`<button data-a="panel" data-p="more" aria-pressed="${ui.panel === "more"}" aria-label="${esc(t(c.kind === "pc" ? "init.prep.morePc" : "init.prep.moreMon"))}">${ico("more")}</button>`);
   return `<div class="acts pacts n${b.length}">${b.join("")}</div>${kPanels(c, true, false)}`;
 }
 
@@ -638,7 +639,7 @@ function row(c, S, down = false) {
 
 /** DA1: alleen in Voorbereiden zonder gevecht; nooit aan tafel tijdens een gevecht. Geen melding of stip (stip op ⚙ = kamer) */
 const expBanner = (calm) => calm && exportDue(nudgeState())
-  ? `<li class="sbanner expb"><span>Geen recente export · je data staat alleen op dit apparaat</span><span class="sbtns"><button type="button" class="btn small primary" id="exp-now">Exporteer</button><button type="button" class="btn small" id="exp-later">Later</button></span></li>` : "";
+  ? `<li class="sbanner expb"><span>${esc(t("init.exp.banner"))}</span><span class="sbtns"><button type="button" class="btn small primary" id="exp-now">${esc(t("init.exp.now"))}</button><button type="button" class="btn small" id="exp-later">${esc(t("init.exp.later"))}</button></span></li>` : "";
 
 function paintEncounter() {
   const S = app.S;
@@ -646,13 +647,13 @@ function paintEncounter() {
   $("#sum").innerHTML = L.length ? sumHtml(S, true) : "";
   const prep = mode() === "prep", calm = prep && !S.round; // tijdens een gevecht geen Begin leeg en geen moeilijkheid
   $("#order").innerHTML = L.length
-    ? (S.sample && calm ? `<li class="sbanner"><span>Voorbeeld-encounter</span><button type="button" class="btn small" id="sample-clear">Begin leeg</button></li>` : "") + endBanner(S, calm) + encStrip(S, prep) + encBanner(S, calm) + expBanner(calm) + listHtml(S, L, prep)
+    ? (S.sample && calm ? `<li class="sbanner"><span>${esc(t("init.prep.sample"))}</span><button type="button" class="btn small" id="sample-clear">${esc(t("init.welcome.empty"))}</button></li>` : "") + endBanner(S, calm) + encStrip(S, prep) + encBanner(S, calm) + expBanner(calm) + listHtml(S, L, prep)
     : expBanner(calm) + emptyState(S, prep);
   $("#resetbar").innerHTML = ui.confirmReset
     ? S.list.some((c) => c.kind !== "pc")
-      ? `<div class="confirm">Wat wissen?<button class="btn small primary" id="reset-mons">Monsters wissen, spelers houden</button><button class="btn small ghost" id="reset-yes">Alles</button><button class="btn small" id="reset-no">Annuleer</button></div>`
-      : `<div class="confirm">Alles wissen?<button class="btn small primary" id="reset-yes">Ja, wis encounter</button><button class="btn small" id="reset-no">Annuleer</button></div>`
-    : `${S.list.length ? `<button class="btn small ghost" id="reset">Encounter wissen</button>` : ""}${S.round ? `<button class="btn small ghost" id="stop">Gevecht afronden</button>` : ""}`;
+      ? `<div class="confirm">${esc(t("init.prep.wipeWhat"))}<button class="btn small primary" id="reset-mons">${esc(t("init.prep.wipeMons"))}</button><button class="btn small ghost" id="reset-yes">${esc(t("init.prep.wipeAll"))}</button><button class="btn small" id="reset-no">${esc(t("common.cancel"))}</button></div>`
+      : `<div class="confirm">${esc(t("init.prep.wipeAllQ"))}<button class="btn small primary" id="reset-yes">${esc(t("init.prep.wipeYes"))}</button><button class="btn small" id="reset-no">${esc(t("common.cancel"))}</button></div>`
+    : `${S.list.length ? `<button class="btn small ghost" id="reset">${esc(t("init.prep.wipe"))}</button>` : ""}${S.round ? `<button class="btn small ghost" id="stop">${esc(t("init.prep.end"))}</button>` : ""}`;
 }
 
 /**
@@ -676,16 +677,18 @@ function listHtml(S, L, prep) {
 
 /** Lege lijst: welkomstkaart (echt de eerste keer), knop voor de party, of een korte hint */
 function emptyState(S, prep) {
-  if (!prep) return `<li class="welcome"><p>Er staat niemand meer in de lijst.</p><div class="wbtns"><button type="button" class="btn primary tap" data-setmode="prep">Naar Voorbereiden</button></div></li>`;
-  const encBtn = app.encounters.length ? `<button type="button" class="btn tap" data-prep="enc">Encounter inladen</button>` : "";
-  if (app.party.length) return `<li class="welcome"><p>Nog niemand aan tafel. Je party staat klaar.</p><div class="wbtns"><button type="button" class="btn primary tap" data-prep="party">Party aan tafel zetten</button>${encBtn}</div></li>`;
-  if (encBtn) return `<li class="welcome"><p>Nog niemand aan tafel.</p><div class="wbtns">${encBtn.replace('class="btn tap"', 'class="btn primary tap"')}</div><p class="hint">Spelers voeg je toe met + Speler onderaan.</p></li>`;
-  if (ui.welcome) return `<li class="welcome"><h2>Welkom aan tafel</h2>
-    <p>Houd initiative, HP, condities en spell slots bij voor D&amp;D 5e (2014). Alles blijft op dit apparaat en werkt ook offline.</p>
-    <div class="wbtns"><button type="button" class="btn primary tap" id="welcome-sample">Start met voorbeeld</button><button type="button" class="btn tap" id="welcome-empty">Begin leeg</button></div>
-    <button type="button" class="link wimp" data-impw="1">Heb je een export? Importeren…</button>
-    <p class="hint">Voorbeeld: 2 spelers, 2 Goblins en een Hobgoblin. Probeer daarna Start gevecht. Encounters zet je klaar onder + Monster.</p></li>`;
-  return `<li class="empty">Nog niemand aan tafel. Voeg spelers en monsters toe met de knoppen onderaan.</li>`;
+  const T = (k) => esc(t(k));
+  if (!prep) return `<li class="welcome"><p>${T("init.empty.none")}</p><div class="wbtns"><button type="button" class="btn primary tap" data-setmode="prep">${T("init.empty.toPrep")}</button></div></li>`;
+  const encBtn = (cls) => `<button type="button" class="btn${cls} tap" data-prep="enc">${T("init.empty.loadEnc")}</button>`;
+  const enc = app.encounters.length > 0;
+  if (app.party.length) return `<li class="welcome"><p>${T("init.empty.partyReady")}</p><div class="wbtns"><button type="button" class="btn primary tap" data-prep="party">${T("init.party.seat")}</button>${enc ? encBtn("") : ""}</div></li>`;
+  if (enc) return `<li class="welcome"><p>${T("init.empty.nobody")}</p><div class="wbtns">${encBtn(" primary")}</div><p class="hint">${T("init.empty.pcHint")}</p></li>`;
+  if (ui.welcome) return `<li class="welcome"><h2>${T("init.welcome.title")}</h2>
+    <p>${T("init.welcome.text")}</p>
+    <div class="wbtns"><button type="button" class="btn primary tap" id="welcome-sample">${T("init.welcome.sample")}</button><button type="button" class="btn tap" id="welcome-empty">${T("init.welcome.empty")}</button></div>
+    <button type="button" class="link wimp" data-impw="1">${T("init.welcome.import")}</button>
+    <p class="hint">${T("init.welcome.hint")}</p></li>`;
+  return `<li class="empty">${T("init.empty.hint")}</li>`;
 }
 
 const GEAR = ico("gear", "big");
@@ -702,16 +705,16 @@ function oldAsk(S) {
 function paintDock() {
   const S = app.S;
   const L = sortOrder(S.list);
-  const undoBtn = `<button id="undo" ${canUndo() ? "" : "disabled"} aria-label="Ongedaan maken" title="Ongedaan maken (${MAC ? "⌘Z" : "Ctrl+Z"})" aria-keyshortcuts="Meta+Z Control+Z">${ico("undo")}</button>`;
+  const undoBtn = `<button id="undo" ${canUndo() ? "" : "disabled"} aria-label="${esc(t("init.dock.undo"))}" title="${esc(t("init.dock.undoTip", { key: MAC ? "⌘Z" : "Ctrl+Z" }))}" aria-keyshortcuts="Meta+Z Control+Z">${ico("undo")}</button>`;
   const pb = (k, l, al) => `<button type="button" data-prep="${k}" aria-pressed="${ui.prep === k || (k === "mon" && MONTABS.includes(ui.prep))}"${al ? ` aria-label="${al}" title="${al}"` : ""}>${l}</button>`;
-  const prepRow = mode() === "prep" ? `<div class="prow">${pb("mon", `<span class="pp">+&nbsp;</span>Monster`, "")}${pb("pc", `<span class="pp">+&nbsp;</span>Speler`, "")}${pb("party", "Party", "")}${pb("data", GEAR, "Instellingen")}</div>` : "";
+  const prepRow = mode() === "prep" ? `<div class="prow">${pb("mon", `<span class="pp">+&nbsp;</span>Monster`, "")}${pb("pc", `<span class="pp">+&nbsp;</span>${esc(t("init.dock.pc"))}`, "")}${pb("party", esc(t("init.prep.tParty")), "")}${pb("data", GEAR, esc(t("init.dock.settings")))}</div>` : "";
   if (!S.round) {
-    $("#dock").innerHTML = `${prepRow}${svBar(S)}${oldAsk(S)}<div class="row one">${undoBtn}<button class="nx" id="start" ${L.length ? "" : `disabled aria-describedby="start-why"`}>Start gevecht</button></div>
-      ${L.length ? "" : `<p class="why" id="start-why">Voeg eerst iemand toe</p>`}`;
+    $("#dock").innerHTML = `${prepRow}${svBar(S)}${oldAsk(S)}<div class="row one">${undoBtn}<button class="nx" id="start" ${L.length ? "" : `disabled aria-describedby="start-why"`}>${esc(t("init.dock.start"))}</button></div>
+      ${L.length ? "" : `<p class="why" id="start-why">${esc(t("init.dock.startWhy"))}</p>`}`;
     return;
   }
   if (prepRow) { // Voorbereiden tijdens een gevecht: geen beurtbalk, één knop terug (IN5: dock niet twee rijen hoog)
-    $("#dock").innerHTML = `${prepRow}${svBar(S)}<div class="row one">${undoBtn}<button class="nx" data-setmode="fight">Terug naar gevecht · ronde ${n0(S.round)}</button></div>`;
+    $("#dock").innerHTML = `${prepRow}${svBar(S)}<div class="row one">${undoBtn}<button class="nx" data-setmode="fight">${esc(t("init.dock.back", { n: n0(S.round) }))}</button></div>`;
     return;
   }
   const i = L.findIndex((c) => c.id === S.active);
@@ -911,49 +914,50 @@ function paintSheet() {
 /* ---------- monsterlijst (Monster-paneel en snel toevoegen) ---------- */
 /** Lijst + kopregel + lege/foutmelding. attr = data-attribuut van de rijknoppen; none = tekst als er zonder filter niets is */
 export function monListHtml(f, sel, attr, none) {
-  const rows = f.L.map((m) => `<button type="button" ${attr}="${esc(m.n)}" aria-pressed="${m.n === sel}"><span>${icon("m-" + monType(m.meta), "mi")}${esc(m.n)}${m.custom ? " · eigen" : ""}</span><span class="cr">CR ${esc(m.cr || "?")} · AC ${parseInt(m.ac) || "?"} · ${n0(m.hp) || "?"} HP</span></button>`).join("");
-  const empty = f.label ? `Niets gevonden voor ${esc(f.label)}. Probeer een ruimer bereik (bijv. cr 1-6) of een ander type.` : none;
+  const rows = f.L.map((m) => `<button type="button" ${attr}="${esc(m.n)}" aria-pressed="${m.n === sel}"><span>${icon("m-" + monType(m.meta), "mi")}${esc(m.n)}${m.custom ? ` · ${esc(t("init.mon.own"))}` : ""}</span><span class="cr">CR ${esc(m.cr || "?")} · AC ${parseInt(m.ac) || "?"} · ${n0(m.hp) || "?"} HP</span></button>`).join("");
+  const empty = f.label ? esc(t("init.mon.none", { q: f.label })) : esc(none);
   return rows || `<p class="hint" style="padding:10px">${empty}</p>`;
 }
 /** Kopregel boven de lijst: "Undead · CR 2–4 · 6 monsters", of uitleg bij een onleesbaar CR-woord; "" = verbergen */
-export const monLabel = (f) => (f.bad ? "CR niet herkend. Gebruik bijv. cr 5, cr 1/2 of cr 2-4."
-  : f.label ? `${f.label} · ${f.L.length} ${f.L.length === 1 ? "monster" : "monsters"}` : "");
+export const monLabel = (f) => (f.bad ? t("init.mon.badCr")
+  : f.label ? t("init.mon.found", { label: f.label, n: f.L.length }) : "");
 /** Preview van de keuze: telefoon met knop naar het volledige statblock, tablet/desktop zonder (zijkolom toont het) */
 export const monPrev = (m, full, side) => (m ? monCard(m, full, !side || isPhone()) : "");
 
 /** Knoptekst bij monsters toevoegen: "2× Goblin verborgen toevoegen" (verborgen staat in de knop, zodat je het niet mist) */
-export const addLabel = (n, name, hid, anon) => `${n > 1 ? `${n}× ` : ""}${name}${[hid && " verborgen", anon && " onbekend"].filter(Boolean).join(",")} toevoegen`;
-export const HID_HINT = "Spelers zien ze niet, ook hun beurt niet. Later tonen via ⋯ → Tonen aan spelers.";
-export const ANON_HINT = `Spelers zien "${ANON}" met een algemeen icoon. Later tonen via ⋯ → Naam tonen aan spelers.`;
+export const addLabel = (n, name, hid, anon) => {
+  const what = `${n > 1 ? `${n}× ` : ""}${name}`, flags = [hid && t("init.mon.flagHid"), anon && t("init.mon.flagAnon")].filter(Boolean);
+  return t("init.mon.addBtn", { what: flags.length ? t("init.mon.flags", { what, flags: flags.join(", ") }) : what });
+};
+export const hidHint = () => t("init.mon.hidHint");
+export const anonHint = () => t("init.mon.anonHint", { anon: t("init.mon.anonName") }); // naam = die op het spelersscherm (ANON, WP28)
 
 /* ---------- één bedieningsblok voor monsters toevoegen (IN4): Monster-paneel en snel toevoegen ---------- */
 /**
  * st = { n, fixOn, fix } per paneel; HP en Per monster/Groep komen uit ui.addOpts (onthouden), Invullen geldt één keer.
  * Rollen staat uit zonder hit dice. pre = id-voorvoegsel ("mon" of "q"). Knoppen dragen data-ab, het getalveld data-ab="fix".
  */
-export const INIT_OPTS = [["each", "Per monster"], ["group", "Groep"], ["fixed", "Invullen"]];
+export const INIT_OPTS = [["each", "init.mon.initEach"], ["group", "init.mon.initGroup"], ["fixed", "init.mon.initFixed"]]; // [waarde, sleutel]
 export const addInit = (st) => (st.fixOn ? "fixed" : ui.addOpts.init);
 export const addHp = (m) => (ui.addOpts.hp === "roll" && m && m.hd ? "roll" : "avg");
 export function addHint(st, m) {
   const n = st.n, v = parseInit(st.fix), init = addInit(st);
-  const t = init === "fixed" ? (n > 1 ? `Alle ${n} op ${v ?? "dit getal"} · één groepsbeurt.` : `Initiative ${v ?? "invullen"}.`)
-    : init === "group" ? (n > 1 ? `Eén d20 voor alle ${n} · één groepsbeurt.` : "Eén d20 (een groep vanaf 2 monsters).")
-    : n > 1 ? "Elk monster een eigen d20." : "d20 + Dex.";
-  const hd = ui.addOpts.hp === "roll" && m && !m.hd ? " Geen hit dice: HP gemiddeld." : "";
-  const late = app.S.round ? " Zit dat vóór wie nu aan de beurt is, dan doen ze pas volgende ronde mee." : "";
-  return t + hd + late;
+  const k = init === "fixed" ? (n > 1 ? (v == null ? "init.mon.hintFixedN0" : "init.mon.hintFixedN") : v == null ? "init.mon.hintFixed10" : "init.mon.hintFixed1")
+    : init === "group" ? (n > 1 ? "init.mon.hintGroupN" : "init.mon.hintGroup1")
+    : n > 1 ? "init.mon.hintEachN" : "init.mon.hintEach1";
+  return [t(k, { n, v }), ui.addOpts.hp === "roll" && m && !m.hd && t("init.mon.hintNoHd"), app.S.round && t("init.mon.hintLate")].filter(Boolean).join(" ");
 }
 export function addBlockHtml(pre, st, m) {
-  const init = addInit(st), seg = (k, opts, cur, dis) => opts.map(([v, l]) => `<button type="button" data-ab="${k}" data-v="${v}" aria-pressed="${cur === v}"${dis && dis(v) ? " disabled" : ""}>${l}</button>`).join("");
+  const init = addInit(st), seg = (k, opts, cur, dis) => opts.map(([v, l]) => `<button type="button" data-ab="${k}" data-v="${v}" aria-pressed="${cur === v}"${dis && dis(v) ? " disabled" : ""}>${esc(t(l))}</button>`).join("");
   return `<div class="qrow">
-      <div class="qcol"><span class="qlbl" id="${pre}-nl">Aantal</span>
-        <div class="stepper" role="group" aria-labelledby="${pre}-nl"><button type="button" data-ab="n" data-v="-1" aria-label="Minder" ${st.n <= 1 ? "disabled" : ""}>−</button><output aria-live="polite">${st.n}</output><button type="button" data-ab="n" data-v="1" aria-label="Meer" ${st.n >= 20 ? "disabled" : ""}>+</button></div></div>
+      <div class="qcol"><span class="qlbl" id="${pre}-nl">${esc(t("init.mon.qty"))}</span>
+        <div class="stepper" role="group" aria-labelledby="${pre}-nl"><button type="button" data-ab="n" data-v="-1" aria-label="${esc(t("init.mon.less"))}" ${st.n <= 1 ? "disabled" : ""}>−</button><output aria-live="polite">${st.n}</output><button type="button" data-ab="n" data-v="1" aria-label="${esc(t("init.mon.more"))}" ${st.n >= 20 ? "disabled" : ""}>+</button></div></div>
       <div class="qcol"><span class="qlbl" id="${pre}-hl">HP</span>
-        <div class="seg2" role="group" aria-labelledby="${pre}-hl">${seg("hp", [["avg", "Gemiddeld"], ["roll", "Rollen"]], m && !m.hd ? "avg" : ui.addOpts.hp, (v) => v === "roll" && m && !m.hd)}</div></div>
+        <div class="seg2" role="group" aria-labelledby="${pre}-hl">${seg("hp", [["avg", "init.mon.hpAvg"], ["roll", "init.mon.hpRoll"]], m && !m.hd ? "avg" : ui.addOpts.hp, (v) => v === "roll" && m && !m.hd)}</div></div>
     </div>
     <div class="qcol"><span class="qlbl" id="${pre}-il">Initiative</span>
       <div class="seg2 init3" role="group" aria-labelledby="${pre}-il">${seg("init", INIT_OPTS, init)}</div></div>
-    ${init === "fixed" ? `<label>${st.n > 1 ? `Getal voor alle ${st.n}` : "Getal"}<input id="${pre}-fix" data-ab="fix" type="number" inputmode="numeric" enterkeyhint="done" placeholder="bijv. 14" value="${esc(st.fix)}"></label>` : ""}
+    ${init === "fixed" ? `<label>${esc(st.n > 1 ? t("init.mon.fixAll", { n: st.n }) : t("init.mon.fix"))}<input id="${pre}-fix" data-ab="fix" type="number" inputmode="numeric" enterkeyhint="done" placeholder="${esc(t("init.mon.fixPh"))}" value="${esc(st.fix)}"></label>` : ""}
     <p class="hint addh" id="${pre}-addh">${esc(addHint(st, m))}</p>`;
 }
 /** Tik in het blok: past st of ui.addOpts aan; geeft "fix" terug als het getalveld de focus moet krijgen */
@@ -976,16 +980,16 @@ export function paintQadd() {
     el.innerHTML = `<div class="dim" data-q="close"></div>
     <div class="sheet qsheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="q-title">
       <div class="grab" aria-hidden="true"></div>
-      <div class="shead"><h3 id="q-title">Mee in het gevecht</h3><button type="button" class="link" data-q="close">Annuleer</button></div>
-      <label>Zoek monster<input id="q-q" placeholder="naam, type of CR: undead cr 2-4" autocomplete="off" enterkeyhint="search"></label>
+      <div class="shead"><h3 id="q-title">${esc(t("init.qadd.title"))}</h3><button type="button" class="link" data-q="close">${esc(t("common.cancel"))}</button></div>
+      <label>${esc(t("init.mon.search"))}<input id="q-q" placeholder="${esc(t("init.mon.searchPh"))}" autocomplete="off" enterkeyhint="search"></label>
       <p class="mlbl" id="q-lbl" aria-live="polite" hidden></p>
       <div class="mlist qlist" id="q-list"></div>
       <div id="q-prev"></div>
       <div class="addblk" id="q-blk"></div>
-      <label class="chk"><input type="checkbox" data-q="hid" id="q-hid"> Verborgen voor spelers</label>
-      <p class="hint" id="q-hidh" hidden>${HID_HINT}</p>
-      <label class="chk"><input type="checkbox" data-q="anon" id="q-anon"> Naam onbekend voor spelers</label>
-      <p class="hint" id="q-anonh" hidden>${ANON_HINT}</p>
+      <label class="chk"><input type="checkbox" data-q="hid" id="q-hid"> ${esc(t("init.mon.hidden"))}</label>
+      <p class="hint" id="q-hidh" hidden>${esc(hidHint())}</p>
+      <label class="chk"><input type="checkbox" data-q="anon" id="q-anon"> ${esc(t("init.mon.anon"))}</label>
+      <p class="hint" id="q-anonh" hidden>${esc(anonHint())}</p>
       <div class="sfoot"><button type="button" class="btn primary qgo" data-q="go"></button></div>
     </div>`;
     el.hidden = false;
@@ -995,13 +999,13 @@ export function paintQadd() {
   q.sel = f.sel; // UI-toestand: de selectie volgt wat zichtbaar is (zoals in de Monster-tab)
   const lbl = monLabel(f);
   $("#q-lbl").hidden = !lbl; $("#q-lbl").textContent = lbl;
-  $("#q-list").innerHTML = monListHtml(f, q.sel, "data-qpick", "Niets gevonden. Eigen monsters maak je onder Voorbereiden → + Monster → Eigen.");
+  $("#q-list").innerHTML = monListHtml(f, q.sel, "data-qpick", t("init.qadd.none"));
   $("#q-prev").innerHTML = monPrev(q.sel && findMon(q.sel), q.full, false); // snel toevoegen: geen zijkolom (die volgt de beurt)
   if (!q.typing) $("#q-blk").innerHTML = addBlockHtml("q", q, q.sel && findMon(q.sel)); // tijdens typen in het getalveld niet vervangen (focus)
   else $("#q-addh").textContent = addHint(q, q.sel && findMon(q.sel));
   const go = el.querySelector(".qgo");
   go.disabled = !q.sel || (q.fixOn && parseInit(q.fix) === null);
-  go.textContent = q.sel ? addLabel(q.n, q.sel, q.hid, q.anon) : "Kies een monster";
+  go.textContent = q.sel ? addLabel(q.n, q.sel, q.hid, q.anon) : t("init.mon.pick");
   $("#q-anon").checked = q.anon; $("#q-anonh").hidden = !q.anon;
   $("#q-hid").checked = q.hid; $("#q-hidh").hidden = !q.hid;
 }
@@ -1473,13 +1477,13 @@ export function paintInit() {
 
 /* ---------- party en logboek ---------- */
 /** VB2: wie een sessie voorbereidt zoekt bij Party; de encounters staan onder + Monster */
-const ENC_LINK = `<button type="button" class="btn tap enclink" data-prep="enc">Encounters klaarzetten ${chev(false)}</button>`;
+const encLink = () => `<button type="button" class="btn tap enclink" data-prep="enc">${esc(t("init.party.encLink"))} ${chev(false)}</button>`;
 export function paintParty() {
   const el = $("#party-panel");
   const at = new Set(app.S.list.filter((c) => c.pid).map((c) => c.pid));
   const fight = !!app.S.round; // SP4: initiative pas bij Start gevecht; tijdens een gevecht meteen (het paneel opent niet meer)
   if (!app.party.length) {
-    el.innerHTML = `<p class="empty">Nog geen vaste party. Spelers die je toevoegt met "Ook opslaan in vaste party" komen hier, inclusief geïmporteerde sheets. HP, spell slots en resources lopen dan door van gevecht naar gevecht tot een rust.</p>${ENC_LINK}`;
+    el.innerHTML = `<p class="empty">${esc(t("init.party.empty"))}</p>${encLink()}`;
     return;
   }
   el.innerHTML = `<div>${app.party.map((m) => {
@@ -1490,19 +1494,19 @@ export function paintParty() {
     const lv = m.sheet && clsLevel(m.sheet.cls) ? "" : `<label class="plvl">Level <input data-plvl="${esc(m.pid)}" type="number" min="1" max="20" inputmode="numeric" value="${esc(m.lvl ?? "")}" aria-label="Level ${esc(m.name)}"></label>`;
     // SP1: Bijwerken alleen met D&D Beyond-link; in de middenkolom, ver van "Uit party"
     const u = ui.pUpd && ui.pUpd.pid === m.pid ? ui.pUpd : null, busy = ui.pUpd && ui.pUpd.st === "busy";
-    const upd = m.ddbId ? `<button type="button" class="link pupd" data-pupd="${esc(m.pid)}" aria-label="${esc(m.name)} bijwerken van D&amp;D Beyond"${busy ? ` aria-disabled="true"` : ""}${u && u.st === "busy" ? ` aria-busy="true"` : ""}>${u && u.st === "busy" ? "Ophalen…" : ico("refresh") + (u && u.st === "err" ? " Opnieuw" : " Bijwerken")}</button>` : "";
+    const upd = m.ddbId ? `<button type="button" class="link pupd" data-pupd="${esc(m.pid)}" aria-label="${esc(t("init.party.updAria", { name: m.name }))}"${busy ? ` aria-disabled="true"` : ""}${u && u.st === "busy" ? ` aria-busy="true"` : ""}>${u && u.st === "busy" ? esc(t("init.party.loading")) : ico("refresh") + " " + esc(t(u && u.st === "err" ? "init.party.retry" : "init.party.update"))}</button>` : "";
     const box = !u || u.st === "busy" ? "" : u.st === "err" ? `<p class="hint warnline pupdbox"${u.said ? "" : ` role="alert"`}>${esc(u.msg)}</p>`
-      : `<div class="confirmbox pupdbox"><p style="margin:0"><b>${esc(m.name)}</b> bijwerken van D&amp;D Beyond${at.has(m.pid) ? " (zit aan tafel)" : ""}.</p>
-        <p class="hint">${esc([...u.ch, ...u.kept].join(" · "))}. Schade en verbruik blijven staan.</p>
-        <div class="bar"><button type="button" class="btn primary tap" data-pupdok="${esc(m.pid)}">Bijwerken</button><button type="button" class="btn tap" data-pupdno="${esc(m.pid)}">Annuleer</button></div></div>`;
+      : `<div class="confirmbox pupdbox"><p style="margin:0">${tb(at.has(m.pid) ? "init.party.updQHere" : "init.party.updQ", {}, m.name)}</p>
+        <p class="hint">${esc(t("init.party.updKeep", { list: [...u.ch, ...u.kept].join(" · ") }))}</p>
+        <div class="bar"><button type="button" class="btn primary tap" data-pupdok="${esc(m.pid)}">${esc(t("init.party.update"))}</button><button type="button" class="btn tap" data-pupdno="${esc(m.pid)}">${esc(t("common.cancel"))}</button></div></div>`;
     return `<div class="pm">${avatar({ ...m, kind: "pc" })}<div><div class="pn">${esc(m.name)}</div><div class="pi">${m.sheet && m.sheet.cls ? esc(m.sheet.cls) + " · " : ""}${m.ac ? `AC ${n0(m.ac)} · ` : ""}${m.max ? `HP ${n0(m.hp)}/${n0(m.max)}${m.temp ? ` +${n0(m.temp)}` : ""}` : ""}${sl}${pp != null ? ` · Passive Perc ${n0(pp)}` : ""}${rs}</div>${lv}${upd}</div>
-      <div class="pc">${at.has(m.pid) ? `<span class="here">aan tafel</span>` : !fight ? "" : `<input data-pinit="${esc(m.pid)}" type="number" inputmode="numeric" placeholder="init" aria-label="Initiative ${esc(m.name)}" value="${esc(ui.partyInit[m.pid] ?? "")}"><button type="button" class="btn small" data-proll="${esc(m.pid)}">Rol</button>`}
-        <button type="button" class="link" data-pdel="${esc(m.pid)}">Uit party</button></div>${box}</div>`;
+      <div class="pc">${at.has(m.pid) ? `<span class="here">${esc(t("init.party.here"))}</span>` : !fight ? "" : `<input data-pinit="${esc(m.pid)}" type="number" inputmode="numeric" placeholder="init" aria-label="Initiative ${esc(m.name)}" value="${esc(ui.partyInit[m.pid] ?? "")}"><button type="button" class="btn small" data-proll="${esc(m.pid)}">${esc(t("init.pc.roll"))}</button>`}
+        <button type="button" class="link" data-pdel="${esc(m.pid)}">${esc(t("init.party.del"))}</button></div>${box}</div>`;
   }).join("")}</div>
-    <div class="bar">${fight ? `<button type="button" class="btn small" id="p-rollall">Rol voor iedereen</button>` : ""}<button type="button" class="btn primary" id="p-add">Party aan tafel zetten</button></div>
-    ${fight ? "" : `<p class="hint">Initiative vullen ze in bij Start gevecht.</p>`}
+    <div class="bar">${fight ? `<button type="button" class="btn small" id="p-rollall">${esc(t("init.party.rollAll"))}</button>` : ""}<button type="button" class="btn primary" id="p-add">${esc(t("init.party.seat"))}</button></div>
+    ${fight ? "" : `<p class="hint">${esc(t("init.party.initLater"))}</p>`}
     <div class="bar"><button type="button" class="btn small" id="p-short">Short rest</button><button type="button" class="btn small" id="p-long">Long rest</button></div>
-    <p class="hint">Rust geldt voor de hele party, ook wie aan tafel zit. Long rest: volle HP, slots en resources. Short rest: resources met "per short rest".</p>${ENC_LINK}`;
+    <p class="hint">${esc(t("init.party.restHint"))}</p>${encLink()}`;
 }
 
 const logCount = (S) => (S.log || []).filter((e) => !e.type).length;

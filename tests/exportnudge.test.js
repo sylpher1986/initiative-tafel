@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { exportDue, lastExportText, markDirty, markExported, snoozeNudge, nudgeState, DAY } from "../js/exportnudge.js";
+import { initI18n } from "../js/i18n/boot.js";
+
+const lang = (l) => initI18n({ doc: { documentElement: { lang: l } }, search: "", storage: null });
+await lang("nl"); // teksten en datums komen uit de catalogus en Intl (WP24)
 
 const T = new Date(2026, 9, 20, 12).getTime(); // 20 okt 2026, lokale tijd
 
@@ -62,4 +66,16 @@ test("AF5: korte exportstatus voor de kop van Opslag", async () => {
   assert.equal(exportStat(0, now), "Nog nooit geëxporteerd");
   assert.equal(exportStat(now - 8 * 864e5, now), "Export: 8 dagen geleden");
   assert.equal(exportStat(now, now), "Export: vandaag");
+});
+
+test("lastExportText en exportStat in het Engels (en-GB-datum)", async () => {
+  await lang("en");
+  try {
+    assert.equal(lastExportText(0, T), "Never exported");
+    assert.equal(lastExportText(new Date(2026, 9, 12, 18).getTime(), T), "Last export: 12 Oct (8 days ago)");
+    assert.equal(lastExportText(new Date(2025, 11, 31).getTime(), T), "Last export: 31 Dec 2025 (293 days ago)");
+    assert.equal(lastExportText(new Date(2026, 9, 19, 23).getTime(), T), "Last export: 19 Oct (yesterday)");
+    const { exportStat } = await import("../js/exportnudge.js");
+    assert.equal(exportStat(T - DAY, T), "Export: yesterday");
+  } finally { await lang("nl"); }
 });

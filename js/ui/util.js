@@ -1,7 +1,12 @@
 // Kleine DOM-hulpjes en meldingen.
 import { ico } from "./icons.js";
+import { t } from "../i18n/boot.js";
 export const $ = (s) => document.querySelector(s);
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+/** Vertaalde tekst als HTML met één vet deel: {b} in de catalogus wordt <b>b</b> (geen HTML in een catalogus, WP24) */
+export const tb = (key, p, b) => esc(t(key, { ...p, b: "\u0001" })).replace("\u0001", () => `<b>${esc(b)}</b>`); // functie: geen $-patronen uit de naam
+/** Knop Ongedaan in een melding (id toast-undo: alleen de nieuwste melding houdt hem) */
+export const undoBtn = () => `<button class="tundo" id="toast-undo">${esc(t("common.undo"))}</button>`;
 export const n0 = (v) => (Number.isFinite(+v) ? +v : 0);
 
 let tLast = 0, tEl = null;

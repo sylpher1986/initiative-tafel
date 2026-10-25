@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseDdbFields, ddbMsg } from "../js/ddb.js";
+import { initI18n } from "../js/i18n/boot.js";
+
+const lang = (l) => initI18n({ doc: { documentElement: { lang: l } }, search: "", storage: null });
+await lang("nl"); // teksten komen uit de catalogus (WP24)
 
 // Verzonnen sheet in het veldformaat van een D&D Beyond PDF-export
 const f = (page, fieldName, fieldValue, y = 0, x = 40) => ({ page, fieldName, fieldValue, rect: [x, y, x + 100, y + 10] });
@@ -40,4 +44,13 @@ test("foutteksten: staart per plek (formulier vs Party), onbekende code = privat
   assert.equal(ddbMsg("offline"), "Geen internet. Ophalen werkt alleen online.");
   assert.equal(ddbMsg("raar", true), ddbMsg("private", true));
   assert.ok(!/PDF/.test(ddbMsg("bad")));
+  assert.equal(ddbMsg("toString"), ddbMsg("private"), "geen sleutel uit het prototype");
+});
+
+test("foutteksten in het Engels (WP24)", async () => {
+  await lang("en");
+  try {
+    assert.equal(ddbMsg("offline", true), "No internet. Updating only works online.");
+    assert.match(ddbMsg("notfound"), /^Not found on D&D Beyond\..* Otherwise, use the PDF upload below\.$/);
+  } finally { await lang("nl"); }
 });

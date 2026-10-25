@@ -109,6 +109,22 @@ const SCEN = {
   speler: null, // eigen startpagina, zie START
   // WP23: formulieren met de statische tekst (met --i18n=debug de Engelse pagina)
   async pcform(page) { await SCEN.prep(page); await tap(page, '#dock [data-prep="pc"]'); await page.waitForSelector("#f-pc", { state: "visible" }); },
+  // WP24: Party met een lid (Bijwerken/Uit party), moeilijkheid met uitleg en levelveld, snel toevoegen met het toevoegblok
+  async party(page) {
+    await SCEN.pcform(page);
+    await page.fill("#pc-name", "Aurelianus Vandermeer");
+    if (!(await page.isChecked("#pc-party"))) await page.locator("#pc-party").check();
+    await tap(page, "#pc-add");
+    await page.waitForSelector("#order .c.k.pc >> nth=2");
+    await page.$eval('#psheet [data-prep="close"]', (b) => b.click()); await page.waitForSelector("#psheet", { state: "hidden" }); // melding kan boven de knop liggen
+    await tap(page, '#dock [data-prep="party"]'); await page.waitForSelector("#party-panel .pm", { state: "visible" });
+  },
+  async diff(page) {
+    await SCEN.pcform(page); await page.fill("#pc-name", "Zonder Level"); await tap(page, "#pc-add"); // speler zonder level: veld in de uitleg
+    await page.$eval('#psheet [data-prep="close"]', (b) => b.click()); await page.waitForSelector("#psheet", { state: "hidden" });
+    await tap(page, '[data-enc="difftog"]'); await page.waitForSelector(".dwhy [data-dlvl]");
+  },
+  async qadd(page) { await SCEN.fight(page); await tap(page, "#qadd"); await page.fill("#q-q", "gob"); await page.waitForSelector("#q-blk .qrow"); },
   async eigen(page) { await SCEN.monster(page); await tap(page, '#p-montabs [data-prep="custom"]'); await page.waitForSelector("#f-custom", { state: "visible" }); },
   // WP22: taalkiezer in Weergave (alleen met --i18n=debug zichtbaar) met de lange statusregel ("Spelers zelf")
   async lang(page) {
