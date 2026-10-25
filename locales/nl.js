@@ -8,7 +8,6 @@ export default {
   "common.save": "Opslaan",
   "common.err.generic": "Er ging iets mis.",
   "common.err.load": "Laden mislukt ({reason}).",
-  "common.lang.label": "Taal",
   "common.lang.en": "English",
   "common.lang.nl": "Nederlands",
   "common.time.today": "vandaag",

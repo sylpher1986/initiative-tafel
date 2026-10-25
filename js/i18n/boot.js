@@ -9,11 +9,10 @@
 //   ?i18n=xx     testtaal: lange tekst met accenten (tools/i18n-pseudo.mjs); wat niet verandert, is nog niet vertaald
 //   ?i18n=off    weer normaal
 import { createI18n } from "./core.js";
-import { normLang, LOCALES, DEFAULT } from "./lang.js";
+import { normLang, LOCALES, DEFAULT, DEBUG_KEY, DEBUG_MODES as MODES } from "./lang.js";
 
-export const DEBUG_KEY = "kevs-i18n-debug";
+export { DEBUG_KEY };
 export const WAIT_MS = 3000;
-const MODES = ["debug", "xx"];
 
 /** Debugstand uit de query (wint en wordt bewaard) of de opgeslagen stand. Puur.
  *  → { mode: "debug" | "xx" | null, store: undefined (niets doen) | null (wissen) | "debug" | "xx" } */

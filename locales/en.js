@@ -8,7 +8,6 @@ export default {
   "common.save": "Save",
   "common.err.generic": "Something went wrong.",
   "common.err.load": "Couldn't load ({reason}).",
-  "common.lang.label": "Language",
   "common.lang.en": "English",
   "common.lang.nl": "Nederlands",
   "common.time.today": "today",

@@ -159,3 +159,53 @@ test("geen open redirect: elke doorverwijzing blijft op dezelfde host onder /{ta
       assert.equal(new URL(redirect, "https://kevs-inn.com").host, "kevs-inn.com", `${path} → ${redirect}`);
     }
 });
+
+test("WP22: offered en debugStored: kiezer en automatische keuze uit LIVE, in de debugstand alle talen", async () => {
+  const { offered, debugStored, DEBUG_KEY, DEBUG_MODES } = await import("../js/i18n/lang.js");
+  assert.deepEqual(offered(false), LIVE);
+  assert.deepEqual(offered(true), SUPPORTED);
+  const st = (v) => ({ getItem: (k) => (k === DEBUG_KEY ? v : null) });
+  assert.deepEqual(DEBUG_MODES, ["debug", "xx"]);
+  assert.equal(debugStored(st("debug")), true);
+  assert.equal(debugStored(st("xx")), true);
+  assert.equal(debugStored(st("off")), false);
+  assert.equal(debugStored(st(null)), false);
+  assert.equal(debugStored(null), false, "geen opslag = uit");
+  assert.equal(debugStored({ getItem() { throw new Error("geblokkeerd"); } }), false, "nooit een fout");
+  const boot = await import("../js/i18n/boot.js");
+  assert.equal(boot.DEBUG_KEY, DEBUG_KEY, "één sleutel voor boot en doorverwijzer");
+});
+
+test("WP22: taalkiezer wisselt naar dezelfde pagina in de andere taal, query en hash blijven; voorkeur altijd bewaard", async () => {
+  const { switchLang, langSegHtml, langLabelHtml, langLabelText, pageLang } = await import("../js/ui/langpick.js");
+  const d = (lang) => ({ documentElement: { lang } });
+  assert.equal(pageLang(d("nl")), "nl"); assert.equal(pageLang(d("en-GB")), "en");
+  assert.equal(pageLang(d("xx")), DEFAULT); assert.equal(pageLang(d("")), DEFAULT);
+  await (await import("../js/i18n/boot.js")).initI18n({ doc: { documentElement: { lang: "nl" } }, search: "", storage: null });
+  const mem = {}, store = prefStore({ getItem: (k) => mem[k] ?? null, setItem: (k, v) => { mem[k] = v; } });
+  const loc = (pathname, search = "", hash = "") => ({ pathname, search, hash, to: null, replace(u) { this.to = u; } });
+  let l = loc("/nl/initiative/player/", "?k=ABC234", "#x");
+  assert.equal(switchLang("en", { loc: l, store, cur: "nl" }), true);
+  assert.equal(l.to, "/en/initiative/player/?k=ABC234#x");
+  assert.equal(store.get(), "en");
+  l = loc("/en/initiative/");
+  assert.equal(switchLang("nl", { loc: l, store, cur: "en" }), true);
+  assert.equal(l.to, "/nl/initiative/");
+  l = loc("/nl/initiative/");
+  assert.equal(switchLang("nl", { loc: l, store, cur: "nl" }), false, "zelfde taal: niet herladen");
+  assert.equal(l.to, null);
+  assert.equal(store.get(), "nl", "maar de keuze telt wel als voorkeur");
+  assert.equal(switchLang("de", { loc: l, store, cur: "nl" }), false, "onbekende taal: niets");
+  assert.equal(store.get(), "nl");
+  // geen opslag (privémodus): wisselt toch
+  l = loc("/nl/initiative/");
+  assert.equal(switchLang("en", { loc: l, store: prefStore(null), cur: "nl" }), true);
+  assert.equal(l.to, "/en/initiative/");
+  // knoppen: elke taal in haar eigen taal met lang, huidige ingedrukt; label tweetalig, huidige taal eerst
+  const h = langSegHtml("nl", ["en", "nl"]);
+  assert.match(h, /data-lang="en" lang="en" aria-pressed="false">English</);
+  assert.match(h, /data-lang="nl" lang="nl" aria-pressed="true">Nederlands</);
+  assert.equal(langLabelHtml("nl", ["en", "nl"]), 'Taal · <span lang="en">Language</span>');
+  assert.equal(langLabelHtml("en", ["en", "nl"]), 'Language · <span lang="nl">Taal</span>');
+  assert.equal(langLabelText("en", ["en", "nl"]), "Language, Taal");
+});

@@ -11,7 +11,6 @@ export default {
   "common.save": "Opslaan",
   "common.err.generic": "Er ging iets mis.",
   "common.err.load": "Laden mislukt ({reason}).", // reason: vertaalde tekst of descriptor, nooit een vaste NL-zin
-  "common.lang.label": "Taal",
   "common.lang.en": "English",
   "common.lang.nl": "Nederlands",
   "common.time.today": "vandaag",

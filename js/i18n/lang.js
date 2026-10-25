@@ -18,6 +18,18 @@ export const DEFAULT = "en";
 export const LOCALES = { en: "en-GB", nl: "nl-NL" }; // en-GB: "12 Oct 2026" en 24-uursklok (vertaalagent WP20); spelling blijft Amerikaans (PHB)
 /** localStorage-sleutel van de voorkeur (platformbreed voorvoegsel kevs-) */
 export const PREF_KEY = "kevs-lang";
+/** localStorage-sleutel van de i18n-debugstand (?i18n=debug|xx|off, zie boot.js) */
+export const DEBUG_KEY = "kevs-i18n-debug";
+/** Geldige debugstanden (boot.js) */
+export const DEBUG_MODES = ["debug", "xx"];
+
+/** Talen in de taalkiezer en voor de automatische keuze: LIVE, in de debugstand alle ondersteunde (WP22: testen vóór
+ *  WP33). De kiezer is er alleen bij meer dan één taal. */
+export const offered = (debug) => (debug ? SUPPORTED : LIVE);
+/** Staat de debugstand aan volgens de opslag? Nooit een fout (geen opslag = uit). */
+export function debugStored(storage) {
+  try { const s = storage === undefined ? globalThis.localStorage : storage; return DEBUG_MODES.includes(s ? s.getItem(DEBUG_KEY) : null); } catch { return false; }
+}
 
 // Eerste padsegment dat op een taalcode lijkt ("nl", "en-gb"); mappen van de app tellen nooit als taal.
 // Een nieuwe map of pagina van twee letters (/qr/, /tv/) moet in RESERVED, anders telt hij als ongeldig taalprefix.

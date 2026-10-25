@@ -8,7 +8,6 @@ export default {
   "common.save": "[Sávé ··]",
   "common.err.generic": "[Söméthíñg wéñt wröñg. ········]",
   "common.err.load": "[Çöüldñ't löád ({reason}). ······]",
-  "common.lang.label": "[Láñgüágé ···]",
   "common.lang.en": "[Éñglísh ···]",
   "common.lang.nl": "[Ñédérláñds ····]",
   "common.time.today": "[tödáý ··]",

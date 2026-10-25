@@ -11,6 +11,7 @@ import { tvPlan } from "./tvfit.js";
 import { qrSvg } from "./qr.js";
 import { CINFO } from "./rules/conditions.js";
 import { openCond, closeCond, condOpen, condSheetClick } from "./ui/condinfo.js";
+import { mountLangPick } from "./ui/langpick.js";
 
 const $ = (s) => document.querySelector(s);
 const ST_CLS = { Ongedeerd: "ok", Gewond: "ok", Bloodied: "mid", "Bijna dood": "low", Bewusteloos: "low", Stabiel: "mid", Neer: "out", Dood: "out" };
@@ -261,6 +262,7 @@ function boot() {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     else document.documentElement.requestFullscreen().catch(() => {});
   });
+  mountLangPick($("#pv-lang")); // WP22: tot WP33 alleen in de i18n-debugstand
   keepAwake();
   bindMe();
   addEventListener("resize", refit);

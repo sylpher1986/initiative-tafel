@@ -3,6 +3,8 @@
 import { $ } from "./util.js";
 import { kamerStat } from "./kamer.js";
 import { nudgeState, exportDue, exportStat } from "../exportnudge.js";
+import { mountLangPick, pageLang } from "./langpick.js";
+import { t } from "../i18n/boot.js";
 
 const pressed = (sel) => $(sel)?.querySelector('[aria-pressed="true"]')?.textContent.trim() || "";
 
@@ -18,7 +20,16 @@ function setStat(key, t, warn = false, dot = false) {
 export function paintSetStat() {
   if (!$("#data-panel")) return;
   const r = pressed("#react-seg");
-  setStat("look", [pressed("#theme-seg"), r && `Reaction: ${r.toLowerCase()}`].filter(Boolean).join(" · "));
+  if (langOn) { // WP22 (UX-agent): thema · taal (in haar eigen taal), Reaction alleen bij "Spelers zelf" (anders te breed op 320 px)
+    const el = document.querySelector('[data-sstat="look"]'), l = pageLang(), th = pressed("#theme-seg");
+    if (el) {
+      const s = document.createElement("span");
+      s.lang = l; s.textContent = t(`common.lang.${l}`);
+      const off = $('#react-seg [data-react="off"]')?.getAttribute("aria-pressed") === "true";
+      el.replaceChildren(...[th && `${th} · `, s, off && r && ` · Reaction: ${r.toLowerCase()}`].filter(Boolean));
+      el.classList.remove("warn", "dot");
+    }
+  } else setStat("look", [pressed("#theme-seg"), r && `Reaction: ${r.toLowerCase()}`].filter(Boolean).join(" · "));
   setStat("spells", pressed("#rules-seg"));
   const k = kamerStat();
   setStat("player", k.t, false, k.warn);
@@ -37,9 +48,11 @@ export function openSettings() {
   if (kamer) $("#kamer-box")?.scrollIntoView({ block: "nearest" });
 }
 
+let langOn = false;
 export function bindSettings() {
   const p = $("#data-panel");
   if (!p) return;
+  langOn = mountLangPick($("#lang-seg"), $("#lang-lbl")); // WP22: tot WP33 alleen in de i18n-debugstand
   p.addEventListener("click", () => queueMicrotask(paintSetStat)); // na de handlers van de knoppen zelf
   document.addEventListener("it-kamer", paintSetStat);
 }

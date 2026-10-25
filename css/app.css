@@ -870,6 +870,9 @@ body.tv .pvlog{min-height:calc(3 * 1.35em)}
 .pvc{scroll-margin-top:calc(var(--stick,0px) + .5em)}
 /* SC5: "Dit ben ik" */
 .pvtools{display:flex;gap:.4em;flex-wrap:wrap}
+/* WP22: taalkiezer op het spelersscherm; smal: eigen rij over de hele breedte (UX-agent) */
+.pvtools .pvlang{flex:0 0 auto}.pvlang button{flex:0 0 auto;padding:0 12px}
+@media (max-width:479px){.pvtools .pvlang{flex-basis:100%}.pvlang button{flex:1 1 0}}
 #pv-me{max-width:12em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;line-height:44px;padding-block:0}
 .pvpick{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:.6em .8em;display:grid;gap:.4em}
 .pvpick h2{font-size:1em;margin:0}

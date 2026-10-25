@@ -107,6 +107,12 @@ const SCEN = {
     await page.waitForSelector(".sb h2", { state: "visible" });
   },
   speler: null, // eigen startpagina, zie START
+  // WP22: taalkiezer in Weergave (alleen met --i18n=debug zichtbaar) met de lange statusregel ("Spelers zelf")
+  async lang(page) {
+    await SCEN.settings(page);
+    await page.locator('details[data-sec="look"] > summary').tap();
+    await tap(page, '#react-seg [data-react="off"]');
+  },
   // WP16: embleem ±34 px vóór het woordmerk, samen op één regel; tagline alleen op het spelersscherm in de wachtstand
   async logo(page) {
     await SCEN.prep(page);

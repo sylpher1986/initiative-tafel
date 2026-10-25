@@ -2,12 +2,13 @@
 // Die pagina's (gemaakt door tools/pages.mjs) laden alleen dit bestand en gaan meteen door naar /{taal}/initiative/(player/).
 // Taal volgens resolveLang (docs/i18n.md §2.2): voorkeur → browsertaal → terugval; query en hash blijven (ook ?k=).
 // Werkt offline: de doorverwijspagina's, dit bestand en lang.js staan in de cache van sw.js.
-import { resolveLang, prefStore } from "./lang.js";
+import { resolveLang, prefStore, offered, debugStored } from "./lang.js";
 
-/** Doeladres voor een locatie, of null als de pagina al goed is. Puur op de meegegeven objecten. */
-export function target(loc, nav = {}, store = prefStore()) {
+/** Doeladres voor een locatie, of null als de pagina al goed is. Puur op de meegegeven objecten.
+ *  live: talen voor voorkeur en browsertaal; in de debugstand alle ondersteunde (WP22), anders LIVE. */
+export function target(loc, nav = {}, store = prefStore(), live = offered(debugStored())) {
   const languages = nav.languages && nav.languages.length ? nav.languages : [nav.language];
-  const { redirect } = resolveLang({ path: loc.pathname, search: loc.search, hash: loc.hash, pref: store.get(), languages });
+  const { redirect } = resolveLang({ path: loc.pathname, search: loc.search, hash: loc.hash, pref: store.get(), languages, live });
   return redirect && redirect !== loc.pathname + (loc.search || "") + (loc.hash || "") ? redirect : null;
 }
 

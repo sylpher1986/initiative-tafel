@@ -9,7 +9,7 @@
 <meta name="description" content="Initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.">
 <meta name="theme-color" content="#3b2f26" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#151413" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="1.49.0">
+<meta name="it-version" content="1.49.1">
 <script src="/js/theme.js"></script>
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
 <script>
@@ -114,6 +114,8 @@
         <button type="button" data-theme-set="light" aria-pressed="false">Licht</button>
         <button type="button" data-theme-set="dark" aria-pressed="false">Donker</button>
       </div>
+      <p class="vlbl" id="lang-lbl" hidden></p><!-- taalkiezer: js/ui/langpick.js (WP22), tot WP33 alleen in de i18n-debugstand -->
+      <div class="seg" role="group" aria-labelledby="lang-lbl" id="lang-seg" hidden></div>
       <p class="vlbl" id="react-lbl">Reaction van spelers</p>
       <div class="seg" role="group" aria-labelledby="react-lbl" id="react-seg">
         <button type="button" data-react="on" aria-pressed="true">Knop</button>

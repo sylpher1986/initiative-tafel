@@ -82,6 +82,11 @@ test("redirect.js: oude adressen naar /nl/… met query; voorkeur en browsertaal
   // een pagina met een goed prefix verwijst niet door (geen lus)
   assert.equal(go("/nl/initiative/player/?k=A"), null);
   assert.equal(go("/en/initiative/"), null);
+  // WP22: in de i18n-debugstand telt een Engelse voorkeur (taalkiezer) wel, ook voor de spelerslink
+  const dbg = (href, s, nav = { languages: ["nl-NL"] }) => target(loc(href), nav, s, ["en", "nl"]);
+  assert.equal(dbg("/speler?k=ABC234", store("en")), "/en/initiative/player/?k=ABC234");
+  assert.equal(dbg("/", store("nl"), { languages: ["en-GB"] }), "/nl/initiative/");
+  assert.equal(dbg("/nl/initiative/", store("en")), null, "een /nl/-link blijft Nederlands");
 });
 
 test("service worker: elke gegenereerde pagina en redirect.js in de offline-cache, registratie op /", () => {
