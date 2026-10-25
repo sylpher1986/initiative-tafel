@@ -127,7 +127,8 @@ export default {
   "init.prep.wipeAll": "Everything",
   "init.prep.wipeAllQ": "Clear everything?",
   "init.prep.wipeYes": "Yes, clear encounter",
-  "init.prep.wiped": "{what} cleared. Players stay; they enter initiative at Start combat.", // what = "2 monsters and lair"
+  "init.prep.wiped": "{what} cleared. Players stay; you'll enter their initiative at Start combat.", // what = "2 monsters and lair"
+  "init.prep.lair": "the lair", // in de opsomming van init.prep.wiped
   "init.prep.end": "End combat",
   "init.prep.errInit": "Initiative must be a number.",
   "init.prep.errMax": "Max HP must be at least 1.",
@@ -142,7 +143,7 @@ export default {
   "init.dock.startWhy": "Add someone first",
   "init.dock.back": "Back to combat · round {n}",
   "init.empty.none": "There's no one left in the list.",
-  "init.empty.toPrep": "Go to prep",
+  "init.empty.toPrep": "Go to Prep",
   "init.empty.loadEnc": "Load encounter",
   "init.empty.partyReady": "No one at the table yet. Your party is ready.",
   "init.empty.nobody": "No one at the table yet.",
@@ -174,9 +175,9 @@ export default {
   "init.ddb.tailParty": "Otherwise, update via + Player with the PDF upload.", // achter de foutmelding in de Party
   "init.pc.errName": "Enter a name.",
   "init.pc.errInit": "Enter initiative or tap Roll.",
-  "init.pc.errAc": "AC between 1 and 40, or leave empty.",
-  "init.pc.errHp": "Max HP between 1 and 999, or leave empty.",
-  "init.pc.errLvl": "Level between 1 and 20, or leave empty.",
+  "init.pc.errAc": "AC between 1 and 40, or leave it empty.",
+  "init.pc.errHp": "Max HP between 1 and 999, or leave it empty.",
+  "init.pc.errLvl": "Level between 1 and 20, or leave it empty.",
   "init.pc.count": { one: "{n} player at the table", other: "{n} players at the table" },
   "init.pc.checkWhy": "Verify {what}: {why}.", // what = AC of max HP; why uit de sheet-parser
   "init.pc.slotsNone": "none",
@@ -201,12 +202,12 @@ export default {
   "init.pc.seated": "{name} added to combat with {hp}/{max} HP{st}.", // st = " (dead)" of leeg
   "init.pc.stDead": "dead",
   "init.pc.stUnc": "unconscious",
-  "init.pc.partyKeeps": "The party update stays.", // na aan tafel zetten: Ongedaan haalt het bijwerken niet weg
+  "init.pc.partyKeeps": "Undo keeps the party update.", // na aan tafel zetten: Ongedaan haalt het bijwerken niet weg
   "init.pc.added": "{name} added ({count}).",
   "init.pc.addedInit": "{name} added at initiative {init} ({count}).",
   "init.pc.reading": "Reading {file}…",
   "init.pc.noPdf": "No D&D Beyond form fields found. Is this a PDF export from D&D Beyond?",
-  "init.pc.pdfFail": "The PDF reader couldn't load or couldn't open the file. Check your connection and try again.",
+  "init.pc.pdfFail": "The PDF reader didn't load, or the file couldn't be opened. Check your connection and try again.",
   "init.mon.own": "custom", // achter een eigen monster in de lijst
   "init.mon.none": "Nothing found for {q}. Try a wider range (e.g. cr 1-6) or another type.",
   "init.mon.noneTab": "Nothing found. Add it under \"Custom\".",
@@ -221,18 +222,18 @@ export default {
   "init.mon.anonName": "Unknown creature", // gelijk houden met de naam op het spelersscherm (WP28)
   "init.mon.initEach": "Each", // initiative per monster
   "init.mon.initGroup": "Group",
-  "init.mon.initFixed": "Set", // zelf een getal invullen
-  "init.mon.hintFixedN": "All {n} on {v} · one group turn.",
-  "init.mon.hintFixedN0": "All {n} on this number · one group turn.",
+  "init.mon.initFixed": "Fixed", // zelf een getal invullen
+  "init.mon.hintFixedN": "All {n} at {v} · one group turn.",
+  "init.mon.hintFixedN0": "All {n} at this number · one group turn.",
   "init.mon.hintFixed1": "Initiative {v}.",
   "init.mon.hintFixed10": "Enter initiative.",
   "init.mon.hintGroupN": "One d20 for all {n} · one group turn.",
-  "init.mon.hintGroup1": "One d20 (a group from 2 monsters).",
+  "init.mon.hintGroup1": "One d20 (a group needs 2 or more monsters).",
   "init.mon.hintEachN": "Each monster rolls its own d20.",
   "init.mon.hintEach1": "d20 + Dex.",
   "init.mon.hintNoHd": "No hit dice: average HP.",
-  "init.mon.hintLate": "If that's before whoever's turn it is, they join next round.",
-  "init.mon.qty": "Number",
+  "init.mon.hintLate": "If that's ahead of the current turn, they join next round.",
+  "init.mon.qty": "Count",
   "init.mon.less": "Fewer",
   "init.mon.more": "More",
   "init.mon.hpAvg": "Average",
@@ -243,30 +244,30 @@ export default {
   "init.mon.pick": "Choose a monster",
   "init.mon.errPick": "Tap a monster in the list first.",
   "init.mon.errInit": "Enter the initiative.",
-  "init.qadd.title": "Join the combat", // snel toevoegen tijdens het gevecht
+  "init.qadd.title": "Join combat", // snel toevoegen tijdens het gevecht
   "init.qadd.none": "Nothing found. Create custom monsters under Prep → + Monster → Custom.",
   "init.custom.none": "No stat block recognized; it will be saved as plain text.",
   "init.custom.found": "Recognized: {list}",
-  "init.custom.rest": { one: "Not recognized: {n} line stays as text under Other.", other: "Not recognized: {n} lines stay as text under Other." },
+  "init.custom.rest": { one: "Not recognized: {n} line is kept as plain text.", other: "Not recognized: {n} lines are kept as plain text." },
   "init.custom.preview": "Preview",
   "init.custom.errHp": "HP as a number (22) or as dice (5d8 or 5d8+10).",
   "init.custom.errAc": "Enter AC, or paste a stat block with Armor Class.",
   "init.custom.errHp2": "Enter valid HP, or paste a stat block with Hit Points.",
   "init.custom.defName": "Custom monster", // naam zonder invoer; opgeslagen = inhoud
-  "init.custom.saved": "{name} saved. Choose a number and add.",
+  "init.custom.saved": "{name} saved. Choose a count and add.",
   "init.custom.imported": { one: "{n} imported monster active.", other: "{n} imported monsters active." },
   "init.custom.impClear": "Remove import",
   "init.custom.errJson": "This file isn't valid JSON. Choose the .json file with monsters.",
   "init.custom.errEmpty": "No monsters found in this file.",
-  "init.custom.impDone": "{n} monsters imported, {k} new.",
+  "init.custom.impDone": { one: "{n} monster imported, {k} new.", other: "{n} monsters imported, {k} new." },
   "init.party.empty": "No saved party yet. Players you add with \"Also save to party\" appear here, including imported sheets. HP, spell slots and resources then carry over from combat to combat until a rest.",
   "init.party.encLink": "Prepare encounters",
   "init.party.updAria": "Update {name} from D&D Beyond",
   "init.party.loading": "Loading…",
   "init.party.retry": "Retry",
   "init.party.update": "Update",
-  "init.party.updQ": "Update {b} from D&D Beyond.",
-  "init.party.updQHere": "Update {b} from D&D Beyond (at the table).",
+  "init.party.updQ": "Update {b} from D&D Beyond?",
+  "init.party.updQHere": "Update {b} from D&D Beyond (at the table)?",
   "init.party.updKeep": "{list}. Damage and used resources stay.",
   "init.party.here": "at the table",
   "init.party.del": "Remove", // in het Party-paneel: uit de vaste party (smal op 320 px)
@@ -298,7 +299,7 @@ export default {
   "init.diff.withoutCr": "No CR (not counted): {names}",
   "init.diff.small": "Small party: multiplier one step higher.",
   "init.diff.big": "Large party: multiplier one step lower.",
-  "init.diff.lair": "Lair doesn't count.",
+  "init.diff.lair": "The lair doesn't count.",
   "init.diff.deadly": "Deadly: a character could die.",
   "init.diff.deadlyOne": "Pick a lower CR for Hard.",
   "init.diff.deadlyStays": "Even with 1 fewer monster it stays Deadly.",

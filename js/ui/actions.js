@@ -502,7 +502,7 @@ const global = {
     apply(r);
     Object.assign(ui, CLEAR_UI, { mode: null });
     render();
-    const what = [r.n && t("init.diff.mons", { n: r.n }), r.lairs && "lair"].filter(Boolean); // array: opsomming in de taal ("en"/"and")
+    const what = [r.n && t("init.diff.mons", { n: r.n }), r.lairs && t("init.prep.lair")].filter(Boolean); // array: opsomming in de taal ("en"/"and")
     toastHtml(`${esc(t("init.prep.wiped", { what }))} ${undoBtn()}`);
     return false;
   },
