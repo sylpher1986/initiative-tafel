@@ -3,4 +3,5 @@
 // Na een wijziging: node tools/i18n-build.mjs (maakt locales/<taal>.js, dat de app laadt).
 // Engelse tekst: D&D 5e (2014)-termen zoals in de PHB/SRD; nagelezen door de vertaalagent (docs/i18n.md §0, V6).
 export default {
+  "page.manifest.desc": "Initiative tracker for D&D 5e (2014)", // beschrijving van de geïnstalleerde app (manifest, tools/pages.mjs)
 };

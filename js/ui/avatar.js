@@ -3,7 +3,7 @@
 import { esc } from "./util.js";
 import { metaInfo } from "../data/monsters.js";
 
-const SPRITE = "icons/creatures.svg";
+const SPRITE = "/icons/creatures.svg"; // absoluut, zie UI_SPRITE in icons.js
 /** "Large aberration, lawful evil" → "aberration"; onbekend → "monstrosity" */
 export const monType = (meta) => metaInfo(meta).type || "monstrosity";
 

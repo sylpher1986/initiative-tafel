@@ -8,8 +8,8 @@ test("appversie is x.y.z en gelijk aan de service worker", () => {
   const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
   assert.equal(sw.match(/const VERSION = "([^"]+)"/)?.[1], VERSION, "VERSION in sw.js en js/version.js lopen uit elkaar");
   assert.ok(sw.includes('"./js/version.js"'), "js/version.js ontbreekt in de cache-lijst van sw.js");
-  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  assert.equal(html.match(/<meta name="it-version" content="([^"]+)">/)?.[1], VERSION, "it-version in index.html loopt uit de pas");
+  const html = readFileSync(new URL("../pages/initiative.html", import.meta.url), "utf8");
+  assert.equal(html.match(/<meta name="it-version" content="([^"]+)">/)?.[1], VERSION, "it-version in pages/initiative.html loopt uit de pas (daarna node tools/pages.mjs)");
 });
 
 test("elk app-bestand staat in de offline-cache van sw.js", async () => {
@@ -29,7 +29,7 @@ test("elk app-bestand staat in de offline-cache van sw.js", async () => {
 test("geen 'share' in id's, classes of data-attributen: contentblokkers (Safari) verbergen die als social-knoppen", async () => {
   const { readdirSync } = await import("node:fs");
   const root = new URL("../", import.meta.url);
-  const files = ["index.html", "speler.html", "css/app.css", ...readdirSync(new URL("js/ui/", root)).map((f) => "js/ui/" + f), "js/speler.js"];
+  const files = ["pages/initiative.html", "pages/player.html", "css/app.css", ...readdirSync(new URL("js/ui/", root)).map((f) => "js/ui/" + f), "js/speler.js"];
   const bad = [];
   for (const f of files) {
     const t = readFileSync(new URL(f, root), "utf8");

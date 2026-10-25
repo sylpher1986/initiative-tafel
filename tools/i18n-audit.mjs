@@ -144,7 +144,7 @@ export function dutchIn(path, src) {
 // Welk werkpakket haalt de tekst uit welk bestand (docs/i18n.md §7). Elk bestand met Nederlandse tekst moet hier
 // staan (test). render.js en actions.js zijn te groot voor één pakket: verdeeld over WP24–WP26 per scherm.
 export const PLAN = {
-  "index.html": "WP23", "speler.html": "WP23", "manifest.webmanifest": "WP21",
+  "pages/initiative.html": "WP23", "pages/player.html": "WP23",
   "js/ui/render.js": "WP24–WP26", "js/ui/actions.js": "WP24–WP26", "js/ddb.js": "WP24", "js/exportnudge.js": "WP24",
   "js/ui/statblock.js": "WP25", "js/ui/initroll.js": "WP25", "js/ui/keys.js": "WP25", "js/ui/pcreact.js": "WP25",
   "js/ui/spellinfo.js": "WP25", "js/ui/condinfo.js": "WP25", "js/ui/spellrules.js": "WP25", "js/ui/avatar.js": "WP25",
@@ -161,14 +161,15 @@ export const PLAN = {
 /** Pakket voor een bestand: vaste lijst, anders alle regels in js/rules/ naar WP27 */
 export const planFor = (f) => PLAN[f] || (/^js\/rules\//.test(f) ? "WP27" : /^js\/i18n\//.test(f) ? "WP19" : null);
 
-/** Bestanden die meetellen: alle JS onder js/, de twee pagina's en het manifest. Niet: data, tests, tools, worker
- *  (de Worker geeft alleen codes terug), sw.js (geen tekst voor de gebruiker). */
+/** Bestanden die meetellen: alle JS onder js/ en de sjablonen van de pagina's (pages/). Niet: data, tests, tools, worker
+ *  (de Worker geeft alleen codes terug), sw.js (geen tekst voor de gebruiker), en wat tools/pages.mjs maakt
+ *  (/{taal}/…, doorverwijzers, manifests: kopie van een sjabloon of tekst uit de catalogus, WP21). */
 export function auditFiles(root = ROOT) {
   const walk = (dir) => readdirSync(root + dir).flatMap((nm) => {
     const p = dir + nm;
     return statSync(root + p).isDirectory() ? walk(p + "/") : [p];
   });
-  return [...walk("js/").filter((p) => p.endsWith(".js")), "index.html", "speler.html", "manifest.webmanifest"].sort();
+  return [...walk("js/").filter((p) => p.endsWith(".js")), "pages/initiative.html", "pages/player.html"].sort();
 }
 
 /** { bestand: aantal } voor alle bestanden met minstens één Nederlandse tekst */

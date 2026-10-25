@@ -99,7 +99,7 @@ test("scanner voor sleutels in de code: herkent sleutels, slaat bestandsnamen en
 });
 
 const walk = (dir) => readdirSync(ROOT + dir).flatMap((n) => { const p = dir + n; return statSync(ROOT + p).isDirectory() ? walk(p + "/") : [p]; });
-const codeFiles = [...walk("js/").filter((p) => p.endsWith(".js") && !p.startsWith("js/i18n/")), "index.html", "speler.html"];
+const codeFiles = [...walk("js/").filter((p) => p.endsWith(".js") && !p.startsWith("js/i18n/")), "pages/initiative.html", "pages/player.html"];
 const used = new Map();
 for (const f of codeFiles) for (const k of keysIn(readFileSync(ROOT + f, "utf8"))) used.set(k, f);
 

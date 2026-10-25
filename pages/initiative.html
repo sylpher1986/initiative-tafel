@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kev’s Inn itiative</title>
+<meta name="robots" content="noindex">
+<meta name="description" content="Initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.">
+<meta name="theme-color" content="#3b2f26" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151413" media="(prefers-color-scheme: dark)">
+<meta name="it-version" content="1.49.0">
+<script src="/js/theme.js"></script>
+<!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
+<script>
+(function () {
+  function show(t) {
+    var b = document.getElementById("errbar");
+    if (!b) { b = document.createElement("div"); b.id = "errbar"; b.setAttribute("role", "alert"); b.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;background:#c62828;color:#fff;font:14px/1.3 sans-serif;padding:8px 12px;white-space:pre-wrap;overflow-wrap:anywhere"; (document.body || document.documentElement).appendChild(b); b.onclick = function () { b.remove(); }; }
+    b.textContent += (b.textContent ? "\n" : "Fout (tik om te sluiten): ") + t;
+  }
+  window.__itErr = show;
+  addEventListener("error", function (e) { if (e.message) show(e.message + (e.filename ? " · " + e.filename.replace(location.origin, "") + ":" + e.lineno : "")); });
+  addEventListener("unhandledrejection", function (e) { show(String(e.reason && (e.reason.stack || e.reason.message) || e.reason)); });
+})();
+</script>
+<link rel="manifest" href="/{{lang}}/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Inn itiative">
+<link rel="preload" href="/fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/app.css">
+<script type="module" src="/js/main.js" onerror="window.__itErr && __itErr('/js/main.js kon niet laden')"></script>
+</head>
+<body>
+<div class="wrap">
+  <section style="display:grid;gap:12px;min-width:0">
+    <header class="top">
+      <h1><!-- embleem: zelfde tekening als EMBLEM in tools/icons.mjs (WP16) --><svg class="emb" viewBox="20 2 176 196" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M108 16 181 58v84l-73 42-73-42V58Z" stroke-width="11"/><g transform="translate(0 13)" stroke-width="10"><path d="M100 47v-8q8-10 16 0v8"/><path d="M88 55h40l-8 11H96Z"/><path d="M96 70h24l8 10v42H88V80Z"/><path d="M84 130h48"/></g><path d="M108 102c-9 10-9 19 0 26 9-7 9-16 0-26Z" fill="currentColor" stroke="none"/></svg>Kev’s Inn <span>itiative</span></h1>
+      <div class="sum" id="sum"></div>
+    </header>
+
+    <div class="modes" id="modes"><!-- js/ui/render.js paintMode: fase, gevechtskop of "Gevecht loopt" --></div>
+
+    <ol class="order" id="order"></ol>
+
+    <div class="bar" id="resetbar"></div>
+    <div id="logwrap"></div>
+
+  </section>
+
+  <aside class="sbwrap" id="sbwrap" data-open="false" aria-label="Statblock">
+    <div id="sbturn"></div>
+    <div class="sb" id="sb"><div class="sbempty empty">Voeg een monster of speler toe: het statblock of de sheet verschijnt hier.</div></div>
+  </aside>
+</div>
+<div class="dock" id="dock"></div>
+<div class="sheet-wrap" id="psheet" hidden>
+  <div class="dim" data-prep="close"></div>
+  <div class="sheet qsheet psheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="p-title">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="shead"><h3 id="p-title">Toevoegen</h3><button type="button" class="link" data-prep="close">Sluit</button></div>
+    <div class="seg2" id="p-montabs" role="group" aria-label="Soort monster"><button type="button" data-prep="mon">Uit de lijst</button><button type="button" data-prep="custom">Eigen</button><button type="button" data-prep="enc">Encounters</button></div>
+
+    <form class="form" id="f-pc" data-panel="pc" novalidate autocomplete="off">
+      <label>D&amp;D Beyond-link<span class="ddbrow"><input id="pc-ddb" type="text" inputmode="url" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="dndbeyond.com/characters/…"><button type="button" class="btn tap" id="pc-ddbgo">Ophalen</button></span></label>
+      <p class="hint">Sheet moet op Public staan: Character Settings → Character Privacy → Public.</p>
+      <div class="bar"><button type="button" class="btn tap" data-file="pc-pdf">Of PDF-export van D&amp;D Beyond…</button><input id="pc-pdf" type="file" accept="application/pdf,.pdf" hidden></div>
+      <p class="hint" id="pc-sheetinfo" aria-live="polite"></p>
+      <div id="pc-match"></div>
+      <!-- SP4: geen worp meer vooraf; initiative komt bij Start gevecht. Het veld Initiative staat er alleen tijdens een gevecht. -->
+      <div class="f2">
+        <label>Naam<input id="pc-name" placeholder="bijv. Thalia" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" aria-describedby="pc-name-e"><span class="ferr" id="pc-name-e" hidden></span></label>
+        <label id="pc-initl" hidden>Initiative<span style="display:flex;gap:6px"><input id="pc-init" type="number" inputmode="numeric" autocomplete="off" placeholder="worp + bonus" aria-describedby="pc-init-e"><button type="button" class="btn small" id="pc-roll" title="d20 + init-bonus">Rol</button></span><span class="ferr" id="pc-init-e" hidden></span></label>
+      </div>
+      <div class="f2">
+        <label>AC<span class="opt"> (optioneel)</span><span class="cw"> · controleer</span><input id="pc-ac" type="number" inputmode="numeric" autocomplete="off" aria-describedby="pc-ac-e"><span class="ferr" id="pc-ac-e" hidden></span></label>
+        <label>Max HP<span class="opt"> (optioneel)</span><span class="cw"> · controleer</span><input id="pc-hp" type="number" inputmode="numeric" autocomplete="off" aria-describedby="pc-hp-e"><span class="ferr" id="pc-hp-e" hidden></span></label>
+        <!-- AF15: stepper zonder toetsenbord (iOS heeft geen minteken op het cijferpad) -->
+        <div class="lab"><span id="pc-bl">Init-bonus</span><div class="stepper" role="group" aria-labelledby="pc-bl" id="pc-bon"><button type="button" data-bon="-1" aria-label="Init-bonus lager">−</button><output id="pc-bonv" aria-live="polite">+0</output><button type="button" data-bon="1" aria-label="Init-bonus hoger">+</button></div><span class="lhint" id="pc-bonh">Ook voor gelijke stand.</span></div>
+        <label>Ras (icoon)<select id="pc-race"><option value="">Anders / onbekend</option></select></label>
+        <label>Level<span class="opt"> (optioneel)</span><input id="pc-lvl" type="number" inputmode="numeric" autocomplete="off" placeholder="uit sheet" aria-describedby="pc-lvl-e"><span class="ferr" id="pc-lvl-e" hidden></span></label>
+      </div>
+      <p class="hint warnline" id="pc-check" hidden></p>
+      <details class="cast"><summary class="link">Spellcaster? Spell slots invullen</summary>
+        <div class="slotin" style="margin-top:8px"><label>1e<input id="pc-sl1" type="number" min="0" max="9" inputmode="numeric" autocomplete="off"></label><label>2e<input id="pc-sl2" type="number" min="0" max="9" inputmode="numeric" autocomplete="off"></label><label>3e<input id="pc-sl3" type="number" min="0" max="9" inputmode="numeric" autocomplete="off"></label><label>4e<input id="pc-sl4" type="number" min="0" max="9" inputmode="numeric" autocomplete="off"></label><label>5e<input id="pc-sl5" type="number" min="0" max="9" inputmode="numeric" autocomplete="off"></label><label>6e<input id="pc-sl6" type="number" min="0" max="9" inputmode="numeric" autocomplete="off"></label><label>7e<input id="pc-sl7" type="number" min="0" max="9" inputmode="numeric" autocomplete="off"></label><label>8e<input id="pc-sl8" type="number" min="0" max="9" inputmode="numeric" autocomplete="off"></label><label>9e<input id="pc-sl9" type="number" min="0" max="9" inputmode="numeric" autocomplete="off"></label></div>
+      </details>
+      <label class="chk"><input type="checkbox" id="pc-party" checked> Ook opslaan in vaste party</label><!-- AF9: keuze onthouden per apparaat (it-pc-party) -->
+      <div class="sfoot"><button class="btn primary qgo" type="submit" id="pc-add">Speler toevoegen</button></div>
+    </form>
+
+    <form class="form" id="f-mon" data-panel="mon" hidden>
+      <label>Zoek monster<input id="mon-q" placeholder="naam, type of CR: undead cr 2-4" autocomplete="off" enterkeyhint="search" aria-describedby="mon-qh"></label>
+      <p class="hint" id="mon-qh">Zoek op naam, type (undead, fiend…) of CR (cr 5, cr 1/2, cr 2-4, cr 10+).</p>
+      <p class="mlbl" id="mon-lbl" aria-live="polite" hidden></p>
+      <div class="mlist" id="mon-list"></div>
+      <div id="mon-prev"></div>
+      <div class="addblk" id="mon-blk"><!-- js/ui/render.js addBlockHtml (zelfde blok als snel toevoegen) --></div>
+      <label class="chk"><input type="checkbox" id="mon-hid"> Verborgen voor spelers</label>
+      <p class="hint" id="mon-hidh" hidden><!-- tekst: HID_HINT in js/ui/render.js --></p>
+      <label class="chk"><input type="checkbox" id="mon-anon"> Naam onbekend voor spelers</label>
+      <p class="hint" id="mon-anonh" hidden><!-- tekst: ANON_HINT in js/ui/render.js --></p>
+      <div class="sfoot"><button class="btn primary qgo" type="submit" id="mon-add">Goblin toevoegen</button></div>
+    </form>
+
+    <div class="form" id="enc-panel" data-panel="enc" hidden><!-- js/ui/encounters.js --></div>
+    <div class="form" id="party-panel" data-panel="party" hidden></div>
+    <div class="form" id="data-panel" data-panel="data" hidden>
+      <details class="setsec" data-sec="look"><summary><h2 class="sethead" id="theme-head">Weergave</h2><span class="sstat" data-sstat="look"></span><span class="schev" aria-hidden="true"></span></summary>
+      <div class="setbody">
+      <div class="seg" role="group" aria-labelledby="theme-head" id="theme-seg">
+        <button type="button" data-theme-set="system" aria-pressed="true">Systeem</button>
+        <button type="button" data-theme-set="light" aria-pressed="false">Licht</button>
+        <button type="button" data-theme-set="dark" aria-pressed="false">Donker</button>
+      </div>
+      <p class="vlbl" id="react-lbl">Reaction van spelers</p>
+      <div class="seg" role="group" aria-labelledby="react-lbl" id="react-seg">
+        <button type="button" data-react="on" aria-pressed="true">Knop</button>
+        <button type="button" data-react="off" aria-pressed="false">Spelers zelf</button>
+      </div>
+      <p class="hint">Spelers zelf: geen Reaction-knop op spelerskaarten. Monsters houden de knop. Verrast en Shield blijven werken.</p>
+      </div></details>
+      <details class="setsec" data-sec="spells"><summary><h2 class="sethead" id="rules-head">Spells</h2><span class="sstat" data-sstat="spells"></span><span class="schev" aria-hidden="true"></span></summary>
+      <div class="setbody">
+      <div class="seg" role="group" aria-labelledby="rules-head" id="rules-seg">
+        <button type="button" data-rules="2014" aria-pressed="true">2014</button>
+        <button type="button" data-rules="2024" aria-pressed="false">2024</button>
+      </div>
+      <!-- Tekst bijwerken zodra er meer dan spells per editie verandert -->
+      <p class="hint">Regels en uitleg van spells: de presets Barkskin, Haste en Sleep (alleen 2024), welke spells concentratie vragen, en welke tekst het spell-paneel toont. <b>Geldt alleen voor spells:</b> de rest van de app (condities, crits, concentratie-DC) blijft 2014. Spelers met een D&amp;D Beyond-sheet volgen per spell de versie op hun sheet; monsters, spelers zonder sheet en spells die niet op de sheet staan, volgen deze instelling. In het spell-paneel kun je de andere versie bekijken; dat verandert niets aan de regels. Wat al loopt, houdt de regels van het moment van casten.</p>
+      </div></details>
+      <details class="setsec" data-sec="player"><summary><h2 class="sethead">Spelersscherm</h2><span class="sstat" data-sstat="player"></span><span class="schev" aria-hidden="true"></span></summary>
+      <div class="setbody">
+      <p class="hint">Spelers zien de volgorde, wie aan de beurt is en de HP van spelers. Nooit statblocks, notities of wat je verbergt (monsters via ⋯, de lair op zijn kaart).</p>
+      <h3 class="subhead">Wat spelers zien</h3>
+      <div id="vis-box" class="visbox">
+        <p class="vlbl" id="vis-monHp">HP monsters</p>
+        <div class="seg" role="group" aria-labelledby="vis-monHp" data-vis="monHp"><button type="button" data-v="status" aria-pressed="true">Status</button><button type="button" data-v="none" aria-pressed="false">Geen</button><button type="button" data-v="exact" aria-pressed="false">Exact</button></div>
+        <p class="vlbl" id="vis-init">Initiative</p>
+        <div class="seg" role="group" aria-labelledby="vis-init" data-vis="init"><button type="button" data-v="false" aria-pressed="true">Volgorde</button><button type="button" data-v="true" aria-pressed="false">Getallen</button></div>
+        <p class="vlbl" id="vis-tags">Condities en effecten</p>
+        <div class="seg" role="group" aria-labelledby="vis-tags" data-vis="tags"><button type="button" data-v="all" aria-pressed="true">Tonen</button><button type="button" data-v="pc" aria-pressed="false">Alleen spelers</button><button type="button" data-v="none" aria-pressed="false">Verbergen</button></div>
+        <p class="vlbl" id="vis-log">Wat er net gebeurde</p>
+        <div class="seg" role="group" aria-labelledby="vis-log" data-vis="log"><button type="button" data-v="true" aria-pressed="true">Aan</button><button type="button" data-v="false" aria-pressed="false">Uit</button></div>
+      </div>
+      <p class="hint">Status = Ongedeerd, Gewond, Bloodied, Bijna dood. "Wat er net gebeurde": de laatste 2 regels (tv 3), alleen wat de lijst zelf ook toont. Geldt op dit apparaat, voor alle spelersschermen.</p>
+      <h3 class="subhead">Op andere apparaten</h3>
+      <div id="kamer-box" class="kamerbox"><p class="hint">Delen met spelers is niet gestart. Ververs de pagina.</p></div>
+      <h3 class="subhead">Op dit apparaat</h3>
+      <p class="hint">Een tweede venster van deze browser (tv via kabel, tweede scherm, tablet in split view). Werkt ook zonder internet. Op iPhone/iPad: open de site in Safari, niet de app op je beginscherm.</p>
+      <div class="bar"><button type="button" class="btn" id="spelers">Open spelersscherm</button></div>
+      </div></details>
+      <details class="setsec" data-sec="help"><summary><h2 class="sethead">Hulp</h2><span class="sstat" data-sstat="help"></span><span class="schev" aria-hidden="true"></span></summary>
+      <div class="setbody">
+      <div class="bar"><button type="button" class="btn tap" id="tour-again">Rondleiding opnieuw</button><button type="button" class="btn tap kbonly" id="keys-open" aria-keyshortcuts="?">Sneltoetsen</button></div>
+      <p class="hint">Uitleg van de knoppen, bijvoorbeeld voor een co-DM. Tijdens een gevecht krijg je het gevecht-deel, anders het voorbereiden-deel; dat van het gevecht volgt bij Start gevecht.</p>
+      </div></details>
+      <details class="setsec" data-sec="store"><summary><h2 class="sethead">Opslag</h2><span class="sstat" data-sstat="store"></span><span class="schev" aria-hidden="true"></span></summary>
+      <div class="setbody">
+      <p class="hint">Alles staat op dit apparaat. Maak af en toe een export: als backup, om naar een ander apparaat te gaan, of om je party met een co-DM te delen.</p>
+      <div class="bar"><button type="button" class="btn primary" id="exp-file">Exporteer als bestand</button><button type="button" class="btn small" id="exp-copy">Kopieer als tekst</button></div>
+      <p class="hint" id="exp-last"></p>
+      <div class="bar"><button type="button" class="btn tap" data-file="imp-backup">Export importeren…</button><input id="imp-backup" type="file" accept=".json,application/json" hidden></div>
+      <details class="cast"><summary class="link">Of plak de tekst van een export</summary>
+        <div class="form" style="margin-top:8px"><textarea id="imp-text" placeholder='{"format":"initiative-tafel", …}'></textarea>
+        <button type="button" class="btn small" id="imp-text-go">Importeren</button></div></details>
+      <div id="imp-confirm"></div>
+      <p class="hint" id="data-info"></p>
+      </div></details>
+      <p class="hint appver" id="app-version"></p>
+    </div>
+    <form class="form" id="f-custom" data-panel="custom" novalidate hidden>
+      <p class="hint">Voor monsters buiten de SRD. Ze worden in deze browser bewaard en verschijnen daarna gewoon in de monsterlijst.</p>
+      <div class="f2">
+        <label>Naam<span class="autot" hidden> · uit tekst</span><input id="cu-name" required></label>
+        <label>CR<span class="autot" hidden> · uit tekst</span><input id="cu-cr" placeholder="1/2"></label>
+      </div>
+      <div class="f2">
+        <label>AC<span class="autot" hidden> · uit tekst</span><input id="cu-ac" type="number" inputmode="numeric"></label>
+        <label>HP of dice<span class="autot" hidden> · uit tekst</span><input id="cu-hp" placeholder="22 of 5d8"></label>
+        <label>Dex-score<span class="autot" hidden> · uit tekst</span><input id="cu-dex" type="number" placeholder="10" inputmode="numeric"></label>
+      </div>
+      <label>Statblock (plak tekst)<textarea id="cu-text" placeholder="Multiattack. … &#10;Bite. Melee Weapon Attack: +4 to hit, reach 5 ft. Hit: 7 (2d4 + 2) piercing damage."></textarea></label>
+      <div id="cu-parse" aria-live="polite"><p class="hint">Plak een statblock (bijv. van D&amp;D Beyond): aanvallen, legendary actions, resistances en ability scores worden herkend en lege velden hierboven ingevuld.</p></div>
+      <button class="btn primary" type="submit">Monster opslaan</button>
+      <hr style="border:0;border-top:1px solid var(--line);margin:6px 0">
+      <div class="bar"><button type="button" class="btn tap" data-file="imp-file">Monsterbestand importeren (JSON)…</button><input id="imp-file" type="file" accept=".json,application/json" hidden></div>
+      <p class="hint">Werkt met <b>5e-SRD-Monsters.json</b> uit de 5e-database van 5e-bits op GitHub (map src/2014/en) en met een Open5e-export. Je eigen JSON-lijst in hetzelfde formaat mag ook. Meerdere bestanden na elkaar importeren mag; ze worden samengevoegd.</p>
+      <p class="hint" id="imp-status" aria-live="polite"></p>
+    </form>
+    <button type="button" class="link plair" id="addlair" data-panel="mon">+ Lair actions (init 20)</button>
+  </div>
+</div>
+<div class="sheet-wrap" id="sheet" hidden></div>
+<div class="sheet-wrap" id="qsheet" hidden></div>
+<div class="sheet-wrap" id="asheet" hidden></div>
+<div class="sheet-wrap" id="xsheet" hidden></div>
+<div class="sheet-wrap" id="isheet" hidden></div>
+<div class="sheet-wrap" id="lsheet" hidden></div>
+<div class="sheet-wrap" id="ssheet" hidden></div>
+<div class="sheet-wrap" id="esheet" hidden></div>
+<div class="sheet-wrap" id="gsheet" hidden></div>
+<div class="sheet-wrap" id="hsheet" hidden></div>
+<div class="sheet-wrap rwrap" id="rsheet" hidden></div>
+<div class="sheet-wrap rwrap" id="csheet" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<noscript><p style="padding:16px">Kev’s Inn itiative heeft JavaScript nodig.</p></noscript>
+</body>
+</html>

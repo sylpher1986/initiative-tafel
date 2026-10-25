@@ -22,7 +22,7 @@ test("logText: regels vóór het gevecht krijgen Voorbereiding, geen R0 of Runde
 
 test("bestandsknoppen (data-file) wijzen naar een verborgen file-input", async () => {
   const { readFile } = await import("node:fs/promises");
-  const src = (await readFile(new URL("../index.html", import.meta.url), "utf8")) + (await readFile(new URL("../js/ui/encounters.js", import.meta.url), "utf8"));
+  const src = (await readFile(new URL("../pages/initiative.html", import.meta.url), "utf8")) + (await readFile(new URL("../js/ui/encounters.js", import.meta.url), "utf8"));
   const ids = [...src.matchAll(/data-file="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(ids.sort(), ["enc-file", "imp-backup", "imp-file", "pc-pdf"]);
   for (const id of ids) assert.match(src, new RegExp(`<input id="${id}" type="file"[^>]* hidden>`), id);

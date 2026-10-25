@@ -1,0 +1,45 @@
+<!doctype html>
+<!-- Gegenereerd door tools/pages.mjs uit pages/player.html: wijzig het sjabloon en draai node tools/pages.mjs -->
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Spelersscherm · Kev’s Inn itiative</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#3b2f26" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151413" media="(prefers-color-scheme: dark)">
+<script src="/js/theme.js"></script>
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/app.css">
+<script type="module" src="/js/speler.js"></script>
+</head>
+<body class="pv">
+<main class="pvwrap">
+  <header class="pvtop">
+    <div class="pvbrand"><h1><!-- embleem: zelfde tekening als EMBLEM in tools/icons.mjs (WP16) --><svg class="emb" viewBox="20 2 176 196" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M108 16 181 58v84l-73 42-73-42V58Z" stroke-width="11"/><g transform="translate(0 13)" stroke-width="10"><path d="M100 47v-8q8-10 16 0v8"/><path d="M88 55h40l-8 11H96Z"/><path d="M96 70h24l8 10v42H88V80Z"/><path d="M84 130h48"/></g><path d="M108 102c-9 10-9 19 0 26 9-7 9-16 0-26Z" fill="currentColor" stroke="none"/></svg>Kev’s Inn <span>itiative</span></h1><p class="pvtag" id="pv-tag">Your home between adventures.</p></div>
+    <div class="pvtools">
+      <button type="button" class="btn small" id="pv-me" aria-controls="pv-mepick" aria-expanded="false" hidden>Wie ben jij?</button>
+      <button type="button" class="btn small" id="pv-full">Volledig scherm</button>
+    </div>
+  </header>
+  <section class="pvpick" id="pv-mepick" aria-labelledby="pv-mepick-h" hidden></section>
+  <div class="pvstick" id="pv-stick">
+    <p class="pvnet" id="pv-net" role="status" hidden></p>
+    <section class="pvnow" id="pv-now" aria-live="polite"></section>
+    <ol class="pvlog" id="pv-log" aria-label="Wat er net gebeurde" hidden></ol>
+  </div>
+  <section class="pvme" id="pv-mecard" aria-label="Jouw personage" hidden></section>
+  <ol class="pvlist" id="pv-list"></ol>
+  <p class="pvdown" id="pv-down" hidden></p>
+  <aside class="pvqr" id="pv-qr" aria-label="Meekijken op je telefoon" hidden></aside>
+  <p class="hint pvwait" id="pv-wait">Wacht op het DM-scherm…</p>
+  <form class="pvjoin" id="pv-join" hidden>
+    <label for="pv-code">Code van de DM</label>
+    <div class="row"><input id="pv-code" name="k" maxlength="9" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" aria-describedby="pv-joinmsg"><button class="btn primary" type="submit">Volg</button></div>
+    <p class="hint" id="pv-joinmsg">Of open Kev’s Inn itiative in een ander venster van deze browser.</p>
+  </form>
+</main>
+<div class="sheet-wrap rwrap" id="csheet" hidden></div>
+<noscript><p style="padding:16px">Het spelersscherm heeft JavaScript nodig.</p></noscript>
+</body>
+</html>

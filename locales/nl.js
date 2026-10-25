@@ -16,5 +16,6 @@ export default {
   "common.time.daysAgo": {
     "one": "{n} dag geleden",
     "other": "{n} dagen geleden"
-  }
+  },
+  "page.manifest.desc": "Initiative tracker voor D&D 5e (2014)"
 };

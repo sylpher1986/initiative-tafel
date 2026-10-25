@@ -539,7 +539,7 @@ const global = {
   "reset-no"() { ui.confirmReset = false; },
   "reset-yes"() { app.S = { list: [], round: 0, active: null, sample: false }; ui.confirmReset = false; ui.mode = null; },
   spelers() {
-    if (!window.open("speler", "it-spelers")) toastBad("Het venster werd geblokkeerd. Sta pop-ups toe voor deze site.");
+    if (!window.open("player/", "it-spelers")) toastBad("Het venster werd geblokkeerd. Sta pop-ups toe voor deze site."); // relatief: /{taal}/initiative/player/, zelfde taal (WP21)
     return false;
   },
   sbclose() { closeSB(); return false; },
