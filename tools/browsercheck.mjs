@@ -29,13 +29,14 @@ async function loadPw() {
   throw new Error("Playwright niet gevonden. Zet PW_MODULE op het pad van de playwright-module.");
 }
 
-// Statische server zoals Cloudflare: /speler → speler.html. /api/* bestaat hier niet (404, wordt genegeerd).
+// Statische server zoals Cloudflare: /speler → speler.html, /nl/initiative/ → nl/initiative/index.html (WP21).
+// /api/* bestaat hier niet (404, wordt genegeerd); elke andere 404 is FOUT (bijv. een relatief pad onder /{taal}/).
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2", ".webmanifest": "application/manifest+json" };
 function serve() {
   const srv = createServer(async (req, res) => {
     let p;
     try { p = decodeURIComponent(new URL(req.url, "http://x").pathname); } catch { res.writeHead(400).end(); return; }
-    if (p === "/") p = "/index.html"; else if (!extname(p)) p += ".html";
+    if (p.endsWith("/")) p += "index.html"; else if (!extname(p)) p += ".html";
     const f = normalize(join(ROOT, p));
     if (!f.startsWith(ROOT)) { res.writeHead(403).end(); return; }
     try { const b = await readFile(f); res.writeHead(200, { "content-type": TYPES[extname(f)] || "application/octet-stream" }).end(b); }
@@ -189,6 +190,7 @@ async function main() {
       const page = await ctx.newPage(), errs = [];
       page.on("pageerror", (e) => errs.push(e.message));
       page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource/.test(m.text())) errs.push(m.text()); });
+      page.on("response", (r) => { const u = new URL(r.url()); if (r.status() >= 400 && u.origin === base && !u.pathname.startsWith("/api/")) errs.push(`${r.status()} ${u.pathname}`); });
       try {
         await page.goto(base + (START[name] || "/"));
         if (SCEN[name]) { if (!START[name]) await page.waitForSelector("#dock"); await SCEN[name](page, base); }

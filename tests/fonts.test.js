@@ -18,12 +18,13 @@ test("elk @font-face-bestand bestaat en heeft font-display swap", () => {
   }
 });
 
-test("preload in index.html wijst naar een gebruikt lettertype", () => {
-  const html = readFileSync(new URL("index.html", root), "utf8");
+test("preload in de DM-pagina wijst naar een gebruikt lettertype", () => {
+  const html = readFileSync(new URL("pages/initiative.html", root), "utf8");
   const pre = [...html.matchAll(/<link rel="preload" href="([^"]+)" as="font"[^>]*>/g)];
   assert.ok(pre.length, "geen font-preload");
   for (const [tag, href] of pre) {
-    assert.ok(urls.includes(href), href + " staat niet in een @font-face");
+    assert.ok(urls.includes(href.replace(/^\//, "")), href + " staat niet in een @font-face");
+    assert.match(href, /^\//, "preload-pad moet absoluut zijn (pagina onder /{taal}/initiative/, WP21)");
     assert.match(tag, /crossorigin/, "font-preload zonder crossorigin wordt twee keer geladen");
   }
 });

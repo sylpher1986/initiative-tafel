@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 
 const read = (p) => readFileSync(new URL("../" + p, import.meta.url), "utf8");
-const files = ["index.html", "speler.html", ...readdirSync(new URL("../js/", import.meta.url), { recursive: true }).filter((f) => f.endsWith(".js")).map((f) => "js/" + f)];
+const files = ["pages/initiative.html", "pages/player.html", ...readdirSync(new URL("../js/", import.meta.url), { recursive: true }).filter((f) => f.endsWith(".js")).map((f) => "js/" + f)];
 
 test("klasse dim alleen op de paneel-achtergrond <div class=\"dim\" data-…>", () => {
   const bad = [];

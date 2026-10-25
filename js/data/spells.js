@@ -7,7 +7,7 @@ export { normSpell, keys }; // naamlogica staat in rules/spells.js (ook nodig vo
 
 /* ---------- bibliotheek (per editie) ---------- */
 export const EDS = ["2014", "2024"];
-const FILES = { 2014: "data/spells.json", 2024: "data/spells-2024.json" };
+const FILES = { 2014: "/data/spells.json", 2024: "/data/spells-2024.json" }; // absoluut: pagina onder /{taal}/initiative/
 const lib = new Map();   // ed → { src, idx: Map(sleutel → spell) }
 const busy = new Map();  // ed → lopende fetch
 

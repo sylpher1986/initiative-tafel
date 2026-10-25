@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const css = readFileSync(new URL("../css/app.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
-const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const html = readFileSync(new URL("../pages/initiative.html", import.meta.url), "utf8");
 const render = readFileSync(new URL("../js/ui/render.js", import.meta.url), "utf8");
 
 /** Binnenste regels (ook binnen @media): [selector, declaraties] */

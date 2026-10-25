@@ -1,5 +1,5 @@
 {
-  "index.html": 68,
+  "pages/initiative.html": 68,
   "js/backup.js": 2,
   "js/data/monsters.js": 2,
   "js/data/spells.js": 1,
@@ -40,6 +40,5 @@
   "js/ui/statblock.js": 23,
   "js/ui/tour.js": 3,
   "js/ui/util.js": 1,
-  "manifest.webmanifest": 1,
-  "speler.html": 10
+  "pages/player.html": 10
 }

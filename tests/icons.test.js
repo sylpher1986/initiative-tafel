@@ -28,7 +28,7 @@ test("sprite en helper in de service worker", () => {
 
 test("geen tekenglyphs meer als knop of uitklappijl", () => {
   const hits = [];
-  for (const f of [...files, "index.html", "speler.html"]) {
+  for (const f of [...files, "pages/initiative.html", "pages/player.html"]) {
     const s = f.endsWith(".js") ? code(read(f)) : read(f).replace(/<!--[\s\S]*?-->/g, "");
     for (const [i, line] of s.split("\n").entries()) if (/[▸▾▴▶↶↻⚠✕]|>⋯</.test(line)) hits.push(`${f}:${i + 1}`);
   }
@@ -44,7 +44,7 @@ test("een knop met alleen een icoon heeft een aria-label", () => {
 });
 
 test("ico, chev en dsMini", () => {
-  assert.equal(ico("x"), '<svg class="li" aria-hidden="true" focusable="false"><use href="icons/ui.svg#i-x"/></svg>');
+  assert.equal(ico("x"), '<svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-x"/></svg>');
   assert.match(chev(true), /class="li dn"/);
   assert.doesNotMatch(chev(false), /dn/);
   const d = dsMini(1, 2);

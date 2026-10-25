@@ -138,7 +138,7 @@ const fail = (code) => Object.assign(new Error(code), { code });
  */
 export async function fetchDdb(id, signal) {
   let res;
-  try { res = await fetch("api/ddb/" + encodeURIComponent(id), { signal, headers: { accept: "application/json" }, cache: "no-store" }); }
+  try { res = await fetch("/api/ddb/" + encodeURIComponent(id), { signal, headers: { accept: "application/json" }, cache: "no-store" }); }
   catch (e) { if (e.name === "AbortError") throw e; throw fail(navigator.onLine === false ? "offline" : "upstream"); }
   let body = null;
   try { body = await res.json(); } catch { body = null; }
@@ -149,7 +149,7 @@ export async function fetchDdb(id, signal) {
   let img = null;
   if (got.hasAvatar) {
     try {
-      const r = await fetch("api/ddb/" + encodeURIComponent(id) + "/avatar", { signal, cache: "no-store" });
+      const r = await fetch("/api/ddb/" + encodeURIComponent(id) + "/avatar", { signal, cache: "no-store" });
       if (r.ok) img = await shrink(await r.blob());
     } catch (e) { if (e.name === "AbortError") throw e; img = null; } // zonder portret gaat het ook
   }

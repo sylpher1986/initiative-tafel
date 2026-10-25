@@ -16,5 +16,6 @@ export default {
   "common.time.daysAgo": {
     "one": "[{n} dáý ágö ···]",
     "other": "[{n} dáýs ágö ····]"
-  }
+  },
+  "page.manifest.desc": "[Íñítíátívé tráçkér för D&D 5é (2014) ·············]"
 };

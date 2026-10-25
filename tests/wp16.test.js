@@ -9,7 +9,7 @@ const root = new URL("../", import.meta.url);
 const read = (p) => readFileSync(new URL(p, root));
 
 test("h1 van beide pagina's heeft het embleem, verborgen voor schermlezers, zelfde tekening als de iconen", () => {
-  for (const f of ["index.html", "speler.html"]) {
+  for (const f of ["pages/initiative.html", "pages/player.html"]) {
     const h1 = read(f).toString().match(/<h1>([\s\S]*?)<\/h1>/)[1];
     const svg = h1.match(/<svg class="emb" viewBox="20 2 176 196"[^>]*>([\s\S]*?)<\/svg>/);
     assert.ok(svg, f + ": geen embleem in de h1");
@@ -20,16 +20,16 @@ test("h1 van beide pagina's heeft het embleem, verborgen voor schermlezers, zelf
 });
 
 test("tagline alleen op het spelersscherm", () => {
-  assert.match(read("speler.html").toString(), /<p class="pvtag" id="pv-tag">Your home between adventures\.<\/p>/);
-  assert.doesNotMatch(read("index.html").toString(), /between adventures/);
+  assert.match(read("pages/player.html").toString(), /<p class="pvtag" id="pv-tag">Your home between adventures\.<\/p>/);
+  assert.doesNotMatch(read("pages/initiative.html").toString(), /between adventures/);
 });
 
 test("manifest- en apple-iconen bestaan met de opgegeven maat", () => {
   const png = (p) => { const b = read(p); assert.equal(b.toString("latin1", 1, 4), "PNG", p); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
   const man = JSON.parse(read("manifest.webmanifest"));
   assert.ok(man.icons.some((i) => i.purpose === "maskable"));
-  for (const i of man.icons) { const n = +i.sizes.split("x")[0]; assert.deepEqual(png(i.src), [n, n], i.src); }
+  for (const i of man.icons) { const n = +i.sizes.split("x")[0]; assert.deepEqual(png(i.src.replace(/^\//, "")), [n, n], i.src); }
   assert.deepEqual(png("icons/icon-180.png"), [180, 180]);
-  for (const f of ["index.html", "speler.html"]) assert.match(read(f).toString(), /<link rel="icon" href="icons\/icon\.svg" type="image\/svg\+xml">/, f);
-  assert.match(read("index.html").toString(), /<link rel="apple-touch-icon" href="icons\/icon-180\.png">/);
+  for (const f of ["pages/initiative.html", "pages/player.html"]) assert.match(read(f).toString(), /<link rel="icon" href="\/icons\/icon\.svg" type="image\/svg\+xml">/, f);
+  assert.match(read("pages/initiative.html").toString(), /<link rel="apple-touch-icon" href="\/icons\/icon-180\.png">/);
 });

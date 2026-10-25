@@ -5,7 +5,7 @@ import { withParsed } from "./statparse.js";
 let srd = [], custom = [], imported = [];
 let list = null, index = null;
 
-export async function loadSrd(url = "data/monsters.json") {
+export async function loadSrd(url = "/data/monsters.json") {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Monsterdata niet geladen (${res.status})`);
   srd = await res.json();
