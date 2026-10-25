@@ -3,25 +3,26 @@
 // "pf"). Niet in undo of export. De UI staat in js/ui/tour.js.
 
 /**
- * Stops per deel: `sel` = één of meer selectors (één kader om allemaal), titel max 4 woorden, tekst kort.
+ * Stops per deel: `sel` = één of meer selectors (één kader om allemaal); `t` (titel, max 4 woorden) en `x` (tekst, kort)
+ * zijn sleutels in de catalogus (WP26), vertaald bij het tonen in js/ui/tour.js.
  * Een stop zonder zichtbaar doel wordt overgeslagen (bijv. geen monsterkaart na "Begin leeg").
  */
 export const STOPS = {
   p: [
-    { sel: ["#modes .phase"], t: "Eerst voorbereiden", x: "Hier zet je alles klaar. Na Start gevecht ga je naar stap 2." },
-    { sel: ["#order li.c.mon .khead"], t: "Tik = openen", x: "Open een kaart voor Init, Max HP, Conditie en Statblock. Er is één kaart tegelijk open." },
-    { sel: ['#dock [data-prep="mon"]'], t: "Monsters toevoegen", x: "SRD-monsters zoeken op naam, type of CR. Je klaargezette encounters staan hier ook." },
-    { sel: ['#dock [data-prep="pc"]', '#dock [data-prep="party"]'], t: "Spelers en party", x: "Via een D&D Beyond-link of met de hand. Je vaste party zet je in één tik aan tafel." },
-    { sel: ['#dock [data-prep="data"]'], t: "Instellingen", x: "Thema, spelersscherm en export als backup. Ook deze rondleiding vind je hier." },
-    { sel: ["#start"], t: "Start gevecht", x: "Vraagt eerst de initiative van de spelers. Monsters: houden of opnieuw rollen." },
+    { sel: ["#modes .phase"], t: "init.tour.p1T", x: "init.tour.p1X" },
+    { sel: ["#order li.c.mon .khead"], t: "init.tour.p2T", x: "init.tour.p2X" },
+    { sel: ['#dock [data-prep="mon"]'], t: "init.tour.p3T", x: "init.tour.p3X" },
+    { sel: ['#dock [data-prep="pc"]', '#dock [data-prep="party"]'], t: "init.tour.p4T", x: "init.tour.p4X" },
+    { sel: ['#dock [data-prep="data"]'], t: "init.tour.p5T", x: "init.tour.p5X" },
+    { sel: ["#start"], t: "init.tour.p6T", x: "init.tour.p6X" },
   ],
   f: [
-    { sel: ["#dock .who"], t: "Aan de beurt", x: "Wie nu speelt en wie daarna. Zijn kaart staat open." },
-    { sel: ["#order li.c.turn .khp"], t: "Schade en heal", x: "Tik op de HP-balk voor het cijferpaneel." },
-    { sel: ["#next"], t: "Volgende beurt", x: "Telt rondes, condities en effecten vanzelf af." },
-    { sel: ["#prev", "#undo"], t: "Terug en ongedaan", x: "‹ Vorige gaat een beurt terug. De pijl-terug-knop draait je laatste actie terug, ook schade." },
-    { sel: ["#aoe"], t: "AoE", x: "Eén schadeworp op meerdere doelen, met een save per doel. Of een spell als Bless." },
-    { sel: ["#logopen"], t: "Logboek", x: "Tik op het rondeblok voor alles wat er gebeurde. Daar zet je ook een reden bij." },
+    { sel: ["#dock .who"], t: "init.tour.f1T", x: "init.tour.f1X" },
+    { sel: ["#order li.c.turn .khp"], t: "init.tour.f2T", x: "init.tour.f2X" },
+    { sel: ["#next"], t: "init.tour.f3T", x: "init.tour.f3X" },
+    { sel: ["#prev", "#undo"], t: "init.tour.f4T", x: "init.tour.f4X" },
+    { sel: ["#aoe"], t: "init.tour.f5T", x: "init.tour.f5X" },
+    { sel: ["#logopen"], t: "init.tour.f6T", x: "init.tour.f6X" },
   ],
 };
 

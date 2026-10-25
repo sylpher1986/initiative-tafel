@@ -5,7 +5,7 @@ let dbp = null;
 function open() {
   if (dbp) return dbp;
   dbp = new Promise((resolve, reject) => {
-    if (!("indexedDB" in globalThis)) return reject(new Error("geen IndexedDB"));
+    if (!("indexedDB" in globalThis)) return reject(new Error("IndexedDB unavailable"));
     const req = indexedDB.open(DB, 1);
     req.onupgradeneeded = () => req.result.createObjectStore(STORE);
     req.onsuccess = () => resolve(req.result);

@@ -9,9 +9,9 @@ import { pcReact } from "./ui/pcreact.js";
 import { localChannel, dmLink } from "./share.js";
 import { bindSharing, dropSharing } from "./ui/kamer.js";
 import { setWriteGuard } from "./storage.js";
-import { initI18n, i18nDebug } from "./i18n/boot.js";
+import { initI18n, i18nDebug, t } from "./i18n/boot.js";
 import { claimTab } from "./tablock.js";
-import { $, toastBad } from "./ui/util.js";
+import { $, esc, toastBad } from "./ui/util.js";
 import { VERSION, APP } from "./version.js";
 import { bindEnc } from "./ui/encounters.js";
 import { bindEnd } from "./ui/einde.js";
@@ -35,7 +35,7 @@ function start(boot = false) {
    (inert), zodat er geen werk verloren gaat dat toch niet bewaard wordt. "Hier verder werken" herlaadt: dan de
    nieuwste stand uit IndexedDB en dit tabblad claimt weer (het andere stopt). UX-agent koos dit scherm boven een
    strook met een alleen-lezen lijst (die veroudert en lijkt te werken). Geen melding in het nieuwe tabblad. */
-let stopTab = () => {}, gone = false;
+let stopTab = () => {}, gone = false, i18nP = null; // i18nP: vertalingen laden (tabLost kan vóór het eind van het laden komen)
 function tabLost() {
   gone = true;
   killTour();
@@ -47,12 +47,14 @@ function tabLost() {
   d.setAttribute("aria-modal", "true");
   d.setAttribute("aria-labelledby", "ts-t");
   d.setAttribute("aria-describedby", "ts-d");
-  d.innerHTML = `<div class="tabstop-card">
-    <h2 id="ts-t">Dit tabblad is gestopt</h2>
-    <p id="ts-d">${APP} staat ook in een ander tabblad of venster open. Daar wordt nu opgeslagen, hier niet meer, zodat er niets overschreven wordt.</p>
-    <button type="button" class="btn primary tap">Hier verder werken</button>
-    <p class="hint">Laadt de nieuwste stand. Het andere tabblad stopt dan.</p>
-  </div>`;
+  const fill = () => { d.innerHTML = `<div class="tabstop-card">
+    <h2 id="ts-t">${esc(t("init.tab.title"))}</h2>
+    <p id="ts-d">${esc(t("init.tab.text", { app: APP }))}</p>
+    <button type="button" class="btn primary tap">${esc(t("init.tab.here"))}</button>
+    <p class="hint">${esc(t("init.tab.hint"))}</p>
+  </div>`; };
+  fill();
+  if (i18nP) i18nP.then(() => { const f = document.activeElement === d.querySelector("button"); fill(); d.querySelector("button").addEventListener("click", () => location.reload()); if (f) d.querySelector("button").focus(); }); // tekst opnieuw zodra de catalogus er is
   d.querySelector("button").addEventListener("click", () => location.reload());
   document.body.append(d);
   d.querySelector("button").focus();
@@ -64,12 +66,15 @@ async function boot() {
   setWarn(toastBad); // opslaan mislukt = de belangrijkste fout (WP17-review)
   // pagina (index.html) en scripts moeten van dezelfde versie zijn; anders zichtbaar maken
   const pv = document.querySelector('meta[name="it-version"]')?.content;
-  $("#app-version").textContent = `${APP} ${VERSION}${pv === VERSION ? "" : ` · pagina ${pv || "ouder"}`}`;
+  // versieregel na het laden van de vertalingen (WP26); "· pagina X" bij een andere versie van index.html
+  const version = () => { $("#app-version").textContent = `${APP} ${VERSION}${pv === VERSION ? "" : ` · ${t("init.boot.page", { v: pv || t("init.boot.older") })}`}${i18nDebug() ? ` · i18n ${i18nDebug()} (?i18n=off)` : ""}`; }; // debugstand blijft bewaard: altijd zichtbaar
+  i18nP = initI18n(); // vertalingen vóór de eerste render (WP20; gooit nooit, wacht max. 3 s)
   try {
-    await Promise.all([load(), loadSrd(), initI18n()]); // vertalingen vóór de eerste render (WP20; gooit nooit, wacht max. 3 s)
-    if (i18nDebug()) $("#app-version").textContent += ` · i18n ${i18nDebug()} (?i18n=off)`; // debugstand blijft bewaard: altijd zichtbaar
+    await Promise.all([load(), loadSrd(), i18nP]);
+    version();
   } catch (e) {
-    $("#order").innerHTML = `<li class="hint" style="padding:20px">De monsterdata kon niet laden (${String(e.message).replace(/</g, "&lt;")}). Ververs de pagina.</li>`;
+    await i18nP; version();
+    $("#order").innerHTML = `<li class="hint" style="padding:20px">${esc(t("init.boot.srdFail", { reason: String(e.message) }))}</li>`;
     return;
   }
   // tijdens het laden overgenomen (bv. twee tabbladen tegelijk hersteld): niets starten, zeker geen kamer (die zou het
@@ -122,7 +127,7 @@ async function boot() {
   stopTab = () => { links.clear(); if (ch) ch.close(); dropSharing(); };
   // los van de rest: een fout bij het delen mag de app niet tegenhouden, en is zichtbaar in Instellingen
   try { bindSharing(getView, (l, on) => (on ? links.add(l) : links.delete(l))); }
-  catch (e) { const b = $("#kamer-box"); if (b) b.textContent = `Delen met spelers kon niet starten: ${e && e.message || e}`; }
+  catch (e) { const b = $("#kamer-box"); if (b) b.textContent = t("init.boot.shareFail", { reason: String(e && e.message || e) }); }
   start(true);
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {
@@ -131,4 +136,4 @@ async function boot() {
 }
 
 // onverwachte fout bij het opstarten: zichtbaar maken in plaats van stil een half werkende app
-boot().catch((e) => { toastBad(`Fout bij opstarten: ${e && e.message || e}`); if (window.__itErr) window.__itErr(`Opstarten: ${e && (e.stack || e.message) || e}`); });
+boot().catch((e) => { toastBad(t("init.boot.fail", { reason: String(e && e.message || e) })); if (window.__itErr) window.__itErr(`Boot: ${e && (e.stack || e.message) || e}`); });

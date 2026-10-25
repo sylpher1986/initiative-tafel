@@ -2,7 +2,7 @@
 // UI-toestand (concept, menu, uitleg) staat in `ui` (render.js); de encounters zelf in app.encounters (IndexedDB, niet in undo).
 import { APP } from "../version.js";
 import { ico, chev } from "./icons.js";
-import { $, esc, toast, toastHtml, closeToast, toastBad } from "./util.js";
+import { $, esc, toast, toastHtml, closeToast, toastBad, undoBtn } from "./util.js";
 import { t, i18n } from "../i18n/boot.js";
 import { app, because, addWhy, logAs, commit, saveEncounters, saveLairs, saveLibrary } from "../state.js";
 import { render, ui, monListHtml } from "./render.js";
@@ -15,8 +15,8 @@ import { addEnc, encName } from "../rules/fight.js";
 
 const fmt = (n) => i18n().num(Math.round(n)); // 1.950 (nl) / 1,950 (en)
 const multTxt = (m) => i18n().num(m); // 1,5 (nl) / 1.5 (en)
-const plural = (n, one, more) => `${n} ${n === 1 ? one : more}`; // WP26: naar de catalogus
-const dateTxt = (t) => new Date(t).toLocaleDateString("nl-NL", { day: "numeric", month: "short", ...(new Date(t).getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) });
+const dateTxt = (ms) => i18n().date(ms, { day: "numeric", month: "short", ...(new Date(ms).getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) });
+const monsN = (n) => t("init.diff.mons", { n }); // "3 monsters" / "1 monster"
 const monCount = (L) => L.filter((c) => c.kind === "monster").length;
 const hasLair = (L) => L.some((c) => c.kind === "lair");
 
@@ -111,12 +111,12 @@ export function encStrip(S, prep) {
   const name = `<b class="ennm">${esc(encName(S))}</b>`;
   if (!notes.length) return `<li class="encn"><span class="encnb">${name}</span></li>`;
   const open = !!ui.encOpen;
-  return `<li class="encn"><button type="button" class="encnb" data-enc="notes" aria-expanded="${open}">${name}<span class="entac">Tactiek ${chev(open)}</span></button>${open
+  return `<li class="encn"><button type="button" class="encnb" data-enc="notes" aria-expanded="${open}">${name}<span class="entac">${esc(t("init.enc.tactics"))} ${chev(open)}</span></button>${open
     ? `<div class="entxt">${notes.map((e) => `${E2.length > 1 ? `<p class="enh">${esc(e.name)}</p>` : ""}<p>${esc(e.notes.trim())}</p>`).join("")}</div>` : ""}</li>`;
 }
 
 /* ---------- paneel ---------- */
-const encSummary = (e) => `${e.monsters.length ? plural(E.total(e), "monster", "monsters") : "geen monsters"}${e.lair ? " + lair" : ""}`;
+const encSummary = (e) => `${e.monsters.length ? monsN(E.total(e)) : t("init.enc.noMons")}${e.lair ? " + lair" : ""}`;
 
 export function paintEnc() {
   const el = $("#enc-panel");
@@ -127,38 +127,38 @@ export function paintEnc() {
 
 function listHtml() {
   const L = app.S.list, n = monCount(L), lair = hasLair(L);
-  const what = `${n ? plural(n, "monster", "monsters") : ""}${n && lair ? " + " : ""}${lair ? "lair" : ""}`;
+  const what = `${n ? monsN(n) : ""}${n && lair ? " + " : ""}${lair ? "lair" : ""}`;
   const d = ui.encDraft;
   const save = d
-    ? `<div class="encform"><label>Naam<input id="enc-name" maxlength="80" placeholder="bijv. Goblin-hinderlaag" value="${esc(d.name)}" autocomplete="off"></label>
-        <label>Notitie <span class="opt">(optioneel)</span><textarea id="enc-notes" maxlength="2000" placeholder="bijv. hinderlaag bij de brug, 2 goblins verstopt">${esc(d.notes)}</textarea></label>
-        <p class="hint">Bewaart ${esc(what)}. Spelers gaan niet mee; HP en initiative kies je bij het inladen.</p>
-        <div class="bar"><button type="button" class="btn small" data-enc="save-no">Annuleer</button><button type="button" class="btn primary" data-enc="save-go">Opslaan</button></div></div>`
-    : `${n || lair ? `<button type="button" class="btn tap encsave" data-enc="save-open">+ Huidige lijst opslaan (${esc(what)})</button>` : ""}
-      <button type="button" class="btn tap encsave" data-enc="new">+ Nieuwe encounter</button>${n || lair ? "" : `<p class="hint">Of zet monsters in de lijst en sla die op. Spelers gaan niet mee.</p>`}`; // VB5
+    ? `<div class="encform"><label>${esc(t("init.pc.name"))}<input id="enc-name" maxlength="80" placeholder="${esc(t("init.enc.namePh"))}" value="${esc(d.name)}" autocomplete="off"></label>
+        <label>${esc(t("init.eff.note"))} <span class="opt">${esc(t("init.pc.optional"))}</span><textarea id="enc-notes" maxlength="2000" placeholder="${esc(t("init.enc.notesPh"))}">${esc(d.notes)}</textarea></label>
+        <p class="hint">${esc(t("init.enc.keeps", { what }))}</p>
+        <div class="bar"><button type="button" class="btn small" data-enc="save-no">${esc(t("common.cancel"))}</button><button type="button" class="btn primary" data-enc="save-go">${esc(t("common.save"))}</button></div></div>`
+    : `${n || lair ? `<button type="button" class="btn tap encsave" data-enc="save-open">${esc(t("init.enc.saveList", { what }))}</button>` : ""}
+      <button type="button" class="btn tap encsave" data-enc="new">${esc(t("init.enc.new"))}</button>${n || lair ? "" : `<p class="hint">${esc(t("init.enc.newHint"))}</p>`}`; // VB5
   const imp = ui.encImp ? (() => {
     const had = app.encounters.find((e) => e.id === ui.encImp.enc.id);
-    return `<div class="confirmbox"><p style="margin:0">"${esc(ui.encImp.enc.name)}" staat er al${had ? ` (gewijzigd ${esc(dateTxt(had.updatedAt))})` : ""}.</p>
-      <div class="bar"><button type="button" class="btn primary" data-enc="imp-replace">Vervangen</button><button type="button" class="btn" data-enc="imp-copy">Als kopie</button><button type="button" class="btn small" data-enc="imp-no">Annuleer</button></div></div>`;
+    return `<div class="confirmbox"><p style="margin:0">${esc(had ? t("init.enc.impHasD", { name: ui.encImp.enc.name, date: dateTxt(had.updatedAt) }) : t("init.enc.impHas", { name: ui.encImp.enc.name }))}</p>
+      <div class="bar"><button type="button" class="btn primary" data-enc="imp-replace">${esc(t("init.enc.replace"))}</button><button type="button" class="btn" data-enc="imp-copy">${esc(t("init.enc.asCopy"))}</button><button type="button" class="btn small" data-enc="imp-no">${esc(t("common.cancel"))}</button></div></div>`;
   })() : "";
   const rows = E.sorted(app.encounters).map(rowHtml).join("");
-  return `${save}${imp}<div class="enclist">${rows || `<p class="empty">Nog geen encounters. Tik op "+ Nieuwe encounter" of sla de huidige lijst op.</p>`}</div>
-    <div class="bar encimp"><button type="button" class="btn tap" data-file="enc-file">Encounterbestand importeren…</button><input id="enc-file" type="file" accept=".json,application/json" hidden></div>
-    <p class="hint">Delen maakt een bestand met de encounter en de eigen monsters erin, voor een ander apparaat of een co-DM.</p>`;
+  return `${save}${imp}<div class="enclist">${rows || `<p class="empty">${esc(t("init.enc.empty"))}</p>`}</div>
+    <div class="bar encimp"><button type="button" class="btn tap" data-file="enc-file">${esc(t("init.enc.import"))}</button><input id="enc-file" type="file" accept=".json,application/json" hidden></div>
+    <p class="hint">${esc(t("init.enc.shareHint"))}</p>`;
 }
 
 function rowHtml(e) {
   const r = diffEnc(e), id = esc(e.id), n = monCount(app.S.list);
   const ask = ui.encAsk === e.id
-    ? `<div class="confirm encask">${esc(`Al in de lijst: ${[n && plural(n, "monster", "monsters"), hasLair(app.S.list) && "lair"].filter(Boolean).join(" + ")}.`)}${app.S.round ? " Vervangen stopt het gevecht." : ""}
-        <button type="button" class="btn small primary" data-enc="load-replace" data-id="${id}">Vervangen</button><button type="button" class="btn small" data-enc="load-add" data-id="${id}">Toevoegen</button><button type="button" class="btn small" data-enc="ask-no">Annuleer</button></div>` : "";
+    ? `<div class="confirm encask">${esc(t("init.enc.already", { what: [n && monsN(n), hasLair(app.S.list) && "lair"].filter(Boolean).join(" + ") }))}${app.S.round ? ` ${esc(t("init.enc.stops"))}` : ""}
+        <button type="button" class="btn small primary" data-enc="load-replace" data-id="${id}">${esc(t("init.enc.replace"))}</button><button type="button" class="btn small" data-enc="load-add" data-id="${id}">${esc(t("init.enc.add"))}</button><button type="button" class="btn small" data-enc="ask-no">${esc(t("common.cancel"))}</button></div>` : "";
   const menu = ui.encMenu === e.id
-    ? `<div class="encmenu"><button type="button" class="btn small" data-enc="edit" data-id="${id}">Bewerken</button><button type="button" class="btn small" data-enc="dup" data-id="${id}">Dupliceren</button><button type="button" class="btn small" data-enc="share" data-id="${id}">Delen</button><button type="button" class="btn small ghost" data-enc="del" data-id="${id}">Verwijderen</button></div>` : "";
+    ? `<div class="encmenu"><button type="button" class="btn small" data-enc="edit" data-id="${id}">${esc(t("init.enc.edit"))}</button><button type="button" class="btn small" data-enc="dup" data-id="${id}">${esc(t("init.enc.dup"))}</button><button type="button" class="btn small" data-enc="share" data-id="${id}">${esc(t("init.enc.share"))}</button><button type="button" class="btn small ghost" data-enc="del" data-id="${id}">${esc(t("init.enc.del"))}</button></div>` : "";
   return `<div class="encrow">
     <div class="ehead"><div class="einfo"><b>${esc(e.name)}</b><small>${esc(encSummary(e))} · ${esc(dateTxt(e.updatedAt))}</small>${e.notes ? `<small class="enote">${esc(e.notes)}</small>` : ""}</div>
-      ${e.monsters.length ? `<button type="button" class="dchip ${chipCls(r)}" data-enc="why" data-id="${id}" aria-expanded="${ui.encWhy === e.id}" aria-label="Moeilijkheid ${esc(chipLbl(r))}, ${fmt(r.adj)} XP: uitleg">${esc(chipLbl(r))}</button>` : ""}</div>
+      ${e.monsters.length ? `<button type="button" class="dchip ${chipCls(r)}" data-enc="why" data-id="${id}" aria-expanded="${ui.encWhy === e.id}" aria-label="${esc(t("init.enc.whyAria", { rating: chipLbl(r), xp: fmt(r.adj) }))}">${esc(chipLbl(r))}</button>` : ""}</div>
     ${ui.encWhy === e.id ? diffWhy(r, !!e.lair, `data-enc="encall" data-id="${id}"`, E.encMons(e, findMon)) : ""}${ask}
-    <div class="ebtns"><button type="button" class="btn primary" data-enc="load" data-id="${id}">Inladen</button><button type="button" class="btn emore" data-enc="menu" data-id="${id}" aria-expanded="${ui.encMenu === e.id}" aria-label="Meer acties voor ${esc(e.name)}">${ico("more")}</button></div>
+    <div class="ebtns"><button type="button" class="btn primary" data-enc="load" data-id="${id}">${esc(t("init.enc.load"))}</button><button type="button" class="btn emore" data-enc="menu" data-id="${id}" aria-expanded="${ui.encMenu === e.id}" aria-label="${esc(t("init.enc.moreAria", { name: e.name }))}">${ico("more")}</button></div>
     ${menu}</div>`;
 }
 
@@ -174,19 +174,19 @@ function editHtml() {
   const r = E.difficulty(E.encMons(x, findMon), partyNow().who, !!x.all);
   const rows = x.monsters.map((m, i) => {
     const s = findMon(m.ref);
-    const tags = [m.hidden && "verborgen", m.anon && "onbekend", m.grp && "groep", !s && "niet op dit apparaat"].filter(Boolean).join(" · ");
+    const tags = [m.hidden && t("init.card.hidden"), m.anon && t("init.card.anon"), m.grp && t("init.enc.grp"), !s && t("init.enc.notHere")].filter(Boolean).join(" · ");
     return `<div class="erow"><span class="en"><b>${esc(m.ref)}</b><small>${s ? `CR ${esc(s.cr || "?")}` : ""}${tags ? `${s ? " · " : ""}${esc(tags)}` : ""}</small></span>
-      <span class="step"><button type="button" class="btn" data-enc="n" data-i="${i}" data-v="-1" aria-label="${m.n === 1 ? `${esc(m.ref)} weghalen` : `Eén ${esc(m.ref)} minder`}">−</button><input class="encnum" data-encn="${i}" type="number" inputmode="numeric" min="1" max="${E.MAX_N}" enterkeyhint="done" value="${m.n}" aria-label="${esc(`Aantal ${m.ref}`)}"><button type="button" class="btn" data-enc="n" data-i="${i}" data-v="1" aria-label="Eén ${esc(m.ref)} meer" ${E.total(x) >= E.MAX_TOTAL || m.n >= E.MAX_N ? "disabled" : ""}>+</button></span></div>`;
+      <span class="step"><button type="button" class="btn" data-enc="n" data-i="${i}" data-v="-1" aria-label="${esc(t(m.n === 1 ? "init.enc.rm" : "init.enc.less", { name: m.ref }))}">−</button><input class="encnum" data-encn="${i}" type="number" inputmode="numeric" min="1" max="${E.MAX_N}" enterkeyhint="done" value="${m.n}" aria-label="${esc(t("init.enc.count", { name: m.ref }))}"><button type="button" class="btn" data-enc="n" data-i="${i}" data-v="1" aria-label="${esc(t("init.enc.more", { name: m.ref }))}" ${E.total(x) >= E.MAX_TOTAL || m.n >= E.MAX_N ? "disabled" : ""}>+</button></span></div>`;
   }).join("");
-  return `<button type="button" class="link eback" data-enc="edit-no">‹ Encounters</button>
-    <label>Naam<input id="ee-name" maxlength="80" value="${esc(x.name)}" autocomplete="off"></label>
-    <label>Notitie <span class="opt">(optioneel)</span><textarea id="ee-notes" maxlength="2000">${esc(x.notes)}</textarea></label>
+  return `<button type="button" class="link eback" data-enc="edit-no">‹ ${esc(t("init.add.enc"))}</button>
+    <label>${esc(t("init.pc.name"))}<input id="ee-name" maxlength="80" value="${esc(x.name)}" autocomplete="off"></label>
+    <label>${esc(t("init.eff.note"))} <span class="opt">${esc(t("init.pc.optional"))}</span><textarea id="ee-notes" maxlength="2000">${esc(x.notes)}</textarea></label>
     <p class="vlbl">Monsters${x.monsters.length ? ` · <span class="dchip ${chipCls(r)}">${esc(chipLbl(r))}</span> ${fmt(r.adj)} XP` : ""}</p>
-    <div class="erows">${rows || `<p class="hint">Nog geen monsters.</p>`}</div>
+    <div class="erows">${rows || `<p class="hint">${esc(t("init.enc.noRows"))}</p>`}</div>
     ${lk ? `<label class="chk"><input type="checkbox" id="ee-lair" ${x.lair ? "checked" : ""}> Lair actions (${esc(lk.replace(/^Lair: /, ""))})</label>` : ""}
-    <label>+ Monster<input id="ee-q" placeholder="naam, type of CR" autocomplete="off" enterkeyhint="search" value="${esc(x.q)}"></label>
+    <label>+ Monster<input id="ee-q" placeholder="${esc(t("init.enc.qPh"))}" autocomplete="off" enterkeyhint="search" value="${esc(x.q)}"></label>
     <div class="mlist" id="ee-list"></div>
-    <div class="bar"><button type="button" class="btn small" data-enc="edit-no">Annuleer</button><button type="button" class="btn primary" data-enc="edit-go">Opslaan</button></div>`;
+    <div class="bar"><button type="button" class="btn small" data-enc="edit-no">${esc(t("common.cancel"))}</button><button type="button" class="btn primary" data-enc="edit-go">${esc(t("common.save"))}</button></div>`;
 }
 /** Alleen de zoekresultaten (zoekveld houdt focus) */
 function paintEditList() {
@@ -194,7 +194,7 @@ function paintEditList() {
   if (!x || !box) return;
   const f = filterMonsters(allMonsters(), x.q, null);
   box.hidden = !x.q.trim();
-  box.innerHTML = x.q.trim() ? monListHtml({ ...f, L: f.L.slice(0, 40) }, null, "data-eepick", `Niets gevonden. Eigen monsters maak je onder "Eigen".`) : "";
+  box.innerHTML = x.q.trim() ? monListHtml({ ...f, L: f.L.slice(0, 40) }, null, "data-eepick", t("init.enc.noneFound")) : "";
 }
 
 /* ---------- acties ---------- */
@@ -206,7 +206,7 @@ function loadEnc(enc, mode) {
   const S = app.S, plan = E.loadPlan(enc, (r) => !!findMon(r));
   const lairNew = plan.lair && (mode === "replace" || !hasLair(S.list));
   if (!plan.adds.length && !lairNew) {
-    toastBad(plan.missing.length ? `Niets in te laden: ${plan.missing.join(", ")} staat niet op dit apparaat.` : "Er staat al een lair; deze encounter heeft verder geen monsters.");
+    toastBad(plan.missing.length ? t("init.enc.nothing", { names: plan.missing }) : t("init.enc.lairOnly"));
     return;
   }
   let gone = 0;
@@ -222,8 +222,8 @@ function loadEnc(enc, mode) {
   if (mode === "replace" ? !!enc.all !== !!S.allMon : enc.all && !S.allMon) { if (enc.all) S.allMon = true; else delete S.allMon; } // lage CR toch meetellen volgt de encounter
   addEnc(S, enc, mode === "replace"); // naam boven de lijst, notitie (tactiek) in Gevecht (VB2); zelfde undo-stap
   const added = S.list.slice(before), nMon = added.filter((c) => c.kind === "monster").length;
-  const what = `${plural(nMon, "monster", "monsters")}${lairNew ? " + lair" : ""}`;
-  logAs(`Encounter "${enc.name}" ingeladen: ${what}${gone ? ` (vervangt ${gone})` : ""}`);
+  const what = `${monsN(nMon)}${lairNew ? " + lair" : ""}`;
+  logAs(`Encounter "${enc.name}" ingeladen: ${nMon === 1 ? "1 monster" : `${nMon} monsters`}${lairNew ? " + lair" : ""}${gone ? ` (vervangt ${gone})` : ""}`); // logregel: WP27
   because(`encounter "${enc.name}"`);
   S.sample = false;
   const last = added.filter((c) => c.kind === "monster").at(-1) || added.at(-1);
@@ -231,19 +231,19 @@ function loadEnc(enc, mode) {
   if (last) wantSB(last.id); // tablet/desktop: zijkolom toont het ingeladen monster
   render();
   if (last) scrollToCard(last.id, true);
-  const miss = plan.missing.length ? `<br>${esc(`Niet op dit apparaat: ${plan.missing.join(", ")}. De rest is ingeladen.`)}` : "";
-  toastHtml(`${esc(`"${enc.name}" ingeladen · ${what}${gone ? ` · ${plural(gone, "deelnemer", "deelnemers")} vervangen` : ""}`)}${miss} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+  const miss = plan.missing.length ? `<br>${esc(t("init.enc.missing", { names: plan.missing }))}` : "";
+  toastHtml(`${esc(t("init.enc.loaded", { name: enc.name, what }) + (gone ? ` · ${t("init.enc.replaced", { n: gone })}` : ""))}${miss} ${undoBtn()}`);
 }
 
 function saveNew() {
   const d = ui.encDraft, name = (d.name || "").trim();
-  if (!name) { toastBad("Geef de encounter een naam."); $("#enc-name")?.focus(); return; }
+  if (!name) { toastBad(t("init.enc.errName")); $("#enc-name")?.focus(); return; }
   const e = E.fromList(app.S.list, { id: E.newId(), name, notes: d.notes, now: Date.now(), all: !!app.S.allMon });
-  if (!e) { toastBad("Er staan geen monsters of lair in de lijst."); return; }
+  if (!e) { toastBad(t("init.enc.errEmpty")); return; }
   app.encounters = [...app.encounters, e]; saveEncounters();
   ui.encDraft = null; repaint();
   const lost = monCount(app.S.list) - E.total(e); // boven de grenzen (100 monsters, 40 regels) valt de rest weg
-  toast(`"${e.name}" opgeslagen · ${encSummary(e)}${lost > 0 ? `. Let op: ${lost} monsters niet bewaard (max ${E.MAX_TOTAL})` : ""}`);
+  toast(t("init.enc.saved", { name: e.name, what: encSummary(e) }) + (lost > 0 ? ` ${t("init.enc.lost", { n: lost, max: E.MAX_TOTAL })}` : ""));
 }
 
 /** VB5: lege encounter maken in hetzelfde subscherm; pas bij Opslaan in de bibliotheek */
@@ -260,12 +260,12 @@ function startEdit(e) {
 }
 function saveEdit() {
   const x = ui.encEdit, old = findEnc(x.id);
-  if (!x.name.trim() && !x.isNew) { toastBad("Geef de encounter een naam."); $("#ee-name")?.focus(); return; }
-  const e = E.cleanEncounter({ id: x.id, name: x.name.trim() || "Nieuwe encounter", notes: x.notes, monsters: x.monsters, lair: x.lair, all: x.all, updatedAt: Date.now() });
-  if (!e) { toastBad("Een encounter heeft minstens één monster of een lair."); return; }
+  if (!x.name.trim() && !x.isNew) { toastBad(t("init.enc.errName")); $("#ee-name")?.focus(); return; }
+  const e = E.cleanEncounter({ id: x.id, name: x.name.trim() || t("init.enc.newName"), notes: x.notes, monsters: x.monsters, lair: x.lair, all: x.all, updatedAt: Date.now() }); // standaardnaam in de actieve taal; daarna inhoud (§3.4)
+  if (!e) { toastBad(t("init.enc.errMin")); return; }
   app.encounters = old ? app.encounters.map((y) => (y.id === x.id ? e : y)) : [...app.encounters, e];
   saveEncounters(); ui.encEdit = null; repaint();
-  toast(`"${e.name}" ${old ? "bijgewerkt" : "opgeslagen"} · ${encSummary(e)}`);
+  toast(t(old ? "init.enc.updated" : "init.enc.saved", { name: e.name, what: encSummary(e) }));
 }
 
 let lastDel = null;
@@ -274,10 +274,10 @@ function delEnc(e) {
   app.encounters = app.encounters.filter((y) => y.id !== e.id); saveEncounters();
   ui.encMenu = null; ui.encWhy = null; repaint();
   // eigen knop (niet toast-undo): ↶ in de beurtbalk zet een encounter niet terug
-  toastHtml(`${esc(`"${e.name}" verwijderd.`)} <button class="tundo" id="toast-encundo">Ongedaan</button>`);
+  toastHtml(`${esc(t("init.enc.deleted", { name: e.name }))} <button class="tundo" id="toast-encundo">${esc(t("common.undo"))}</button>`);
 }
 
-const fileName = (name) => `encounter-${String(name).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "naamloos"}.json`;
+const fileName = (name) => `encounter-${String(name).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || t("init.enc.untitled")}.json`;
 async function shareEnc(e) {
   const json = JSON.stringify(E.buildEncFile(e, { own: [...app.custom, ...app.imported], lairs: app.lairs }));
   const name = fileName(e.name);
@@ -289,7 +289,7 @@ async function shareEnc(e) {
   a.href = URL.createObjectURL(new Blob([json], { type: "application/json" })); a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  toast("Bestand gedownload.");
+  toast(t("init.enc.downloaded"));
 }
 
 /** Statblocks en lair actions uit een bestand: alleen wat hier nog niet bestaat (nooit iets overschrijven) */
@@ -303,26 +303,26 @@ function addLibrary(p) {
 }
 function importDone(p, mode) {
   const nMon = addLibrary(p);
-  app.encounters = E.mergeEnc(app.encounters, p.enc, mode, Date.now()); saveEncounters();
+  app.encounters = E.mergeEnc(app.encounters, p.enc, mode, Date.now(), t("init.enc.copyWord")); saveEncounters();
   ui.encImp = null; repaint();
   const miss = E.loadPlan(p.enc, (r) => !!findMon(r)).missing;
-  toast(`"${p.enc.name}" geïmporteerd${nMon ? ` · ${plural(nMon, "eigen monster", "eigen monsters")} erbij` : ""}${miss.length ? `. Ontbreekt nog: ${miss.join(", ")}` : ""}.`);
+  toast([t("init.enc.imported", { name: p.enc.name }), nMon ? t("init.enc.impOwn", { n: nMon }) : ""].filter(Boolean).join(" · ") + (miss.length ? `. ${t("init.enc.impMiss", { names: miss })}` : "") + ".");
 }
 async function importFile(file) {
   let p;
   try { p = E.parseEncFile(JSON.parse(await file.text())); }
-  catch (err) { toastBad(err instanceof SyntaxError ? `Geen encounter-bestand van ${APP}.` : err.message); return; }
+  catch (err) { toastBad(err instanceof SyntaxError ? t("init.enc.notFile", { app: APP }) : err.message); return; }
   if (findEnc(p.enc.id)) { ui.encImp = p; ui.encEdit = null; repaint(); return; } // nooit stil overschrijven
   importDone(p, "new");
 }
 
 /** VB5: aantal getypt (regels in E.clampCount) */
-function setCount(x, i, t) {
+function setCount(x, i, inp) {
   const m = x.monsters[i]; if (!m) return;
-  const r = E.clampCount(x, i, t.value);
-  if (r.n == null) { t.value = m.n; return; }
+  const r = E.clampCount(x, i, inp.value);
+  if (r.n == null) { inp.value = m.n; return; }
   if (r.msg) toastBad(r.msg);
-  m.n = r.n; t.value = r.n;
+  m.n = r.n; inp.value = r.n;
   if (r.n < 2) delete m.grp;
 }
 
@@ -348,9 +348,9 @@ const ACT = {
   edit(id) { const e = findEnc(id); if (e) startEdit(e); },
   dup(id) {
     const e = findEnc(id); if (!e) return;
-    const c = E.duplicate(e, app.encounters, Date.now());
+    const c = E.duplicate(e, app.encounters, Date.now(), t("init.enc.copyWord"));
     app.encounters = [...app.encounters, c]; saveEncounters(); ui.encMenu = null; repaint();
-    toast(`Kopie: "${c.name}"`);
+    toast(t("init.enc.copy", { name: c.name }));
   },
   share(id) { const e = findEnc(id); if (e) shareEnc(e); },
   del(id) { const e = findEnc(id); if (e) delEnc(e); },
@@ -384,30 +384,30 @@ export function bindEnc() {
     const p = e.target.closest("[data-eepick]");
     if (p && ui.encEdit) {
       const x = ui.encEdit, ref = p.dataset.eepick;
-      if (E.total(x) >= E.MAX_TOTAL) { toastBad(`Maximaal ${E.MAX_TOTAL} monsters per encounter.`); return; }
+      if (E.total(x) >= E.MAX_TOTAL) { toastBad(t("init.enc.max", { n: E.MAX_TOTAL })); return; }
       const m = x.monsters.find((y) => y.ref === ref && !y.hidden && !y.anon);
       if (m && m.n < E.MAX_N) m.n++;
       else if (x.monsters.length < E.MAX_ROWS) x.monsters.push({ ref, n: 1 });
       x.q = ""; repaint(); $("#ee-q")?.focus();
-      toast(`${ref} erbij.`);
+      toast(t("init.enc.added", { name: ref }));
       return;
     }
     const b = e.target.closest("[data-enc]");
     if (b && ACT[b.dataset.enc]) ACT[b.dataset.enc](b.dataset.id, b);
   });
   el.addEventListener("input", (e) => {
-    const t = e.target, d = ui.encDraft, x = ui.encEdit;
-    if (t.id === "enc-name" && d) d.name = t.value;
-    else if (t.id === "enc-notes" && d) d.notes = t.value;
-    else if (t.id === "ee-name" && x) x.name = t.value;
-    else if (t.id === "ee-notes" && x) x.notes = t.value;
-    else if (t.id === "ee-q" && x) { x.q = t.value; paintEditList(); }
+    const el2 = e.target, d = ui.encDraft, x = ui.encEdit;
+    if (el2.id === "enc-name" && d) d.name = el2.value;
+    else if (el2.id === "enc-notes" && d) d.notes = el2.value;
+    else if (el2.id === "ee-name" && x) x.name = el2.value;
+    else if (el2.id === "ee-notes" && x) x.notes = el2.value;
+    else if (el2.id === "ee-q" && x) { x.q = el2.value; paintEditList(); }
   });
   el.addEventListener("change", async (e) => {
-    const t = e.target;
-    if (t.id === "ee-lair" && ui.encEdit) { const x = ui.encEdit, k = lairKeyOf(x); x.lair = t.checked && k ? { key: k, ...(x.lairHidden ? { hidden: true } : {}) } : null; if (!t.checked && k) x.lairKey = k; }
-    if ("encn" in t.dataset && ui.encEdit) setCount(ui.encEdit, +t.dataset.encn, t); // VB5: render volgt na focusout (main.js)
-    if (t.id === "enc-file" && t.files[0]) { const f = t.files[0]; t.value = ""; await importFile(f); }
+    const el2 = e.target;
+    if (el2.id === "ee-lair" && ui.encEdit) { const x = ui.encEdit, k = lairKeyOf(x); x.lair = el2.checked && k ? { key: k, ...(x.lairHidden ? { hidden: true } : {}) } : null; if (!el2.checked && k) x.lairKey = k; }
+    if ("encn" in el2.dataset && ui.encEdit) setCount(ui.encEdit, +el2.dataset.encn, el2); // VB5: render volgt na focusout (main.js)
+    if (el2.id === "enc-file" && el2.files[0]) { const f = el2.files[0]; el2.value = ""; await importFile(f); }
   });
   el.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
@@ -431,7 +431,7 @@ export function bindEnc() {
     if (b.dataset.enc === "notes") { ui.encOpen = !ui.encOpen; render(); return; }
     if (b.id === "toast-encundo" && lastDel) {
       if (!findEnc(lastDel.id)) { app.encounters = [...app.encounters, lastDel]; saveEncounters(); }
-      lastDel = null; closeToast(); repaint(); toast("Encounter teruggezet.");
+      lastDel = null; closeToast(); repaint(); toast(t("init.enc.restored"));
     }
   });
 }

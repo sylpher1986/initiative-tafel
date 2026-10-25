@@ -1973,7 +1973,7 @@ export function bindLog() {
       const b = e.target.closest("button, [data-log]"); if (!b) return;
       if (b.dataset.log === "close") { closeLogSheet(); return; }
       if (b.dataset.logedit) { ui.editLog = b.dataset.logedit; paintLog(); return; }
-      if (b.id === "logcopy") copyText(logText(app.S.log), "Logboek gekopieerd.", b.closest(".logbox, .gsheet"));
+      if (b.id === "logcopy") copyText(logText(app.S.log), t("init.log.copied"), b.closest(".logbox, .gsheet"));
     });
     wrap.addEventListener("keydown", (e) => {
       if (!e.target.dataset.lognote) return;
@@ -1989,13 +1989,13 @@ function openLogSheet() { ui.logSheet = true; ui.editLog = null; paintLog(); $("
 function closeLogSheet() { ui.logSheet = false; ui.editLog = null; paintLog(); $("#logopen")?.focus({ preventScroll: true }); }
 
 /** true als het klembord het heeft; anders staat de tekst geselecteerd in `box` */
-async function copyText(t, okMsg, box) {
-  try { await navigator.clipboard.writeText(t); toast(okMsg); return true; }
+async function copyText(txt, okMsg, box) {
+  try { await navigator.clipboard.writeText(txt); toast(okMsg); return true; }
   catch {
     const ta = document.createElement("textarea");
-    ta.value = t; ta.readOnly = true; ta.style.cssText = "width:100%;min-height:200px;margin-top:8px";
+    ta.value = txt; ta.readOnly = true; ta.style.cssText = "width:100%;min-height:200px;margin-top:8px";
     box.appendChild(ta); ta.select();
-    toastBad("Kopiëren lukte niet automatisch; de tekst staat geselecteerd.");
+    toastBad(t("init.msg.copySel"));
     return false;
   }
 }
@@ -2013,14 +2013,14 @@ async function exportFile() {
   const json = exportJson(), name = exportName(new Date());
   try {
     const f = new File([json], name, { type: "application/json" });
-    if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: `${APP} export` }); return done(); }
+    if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: t("init.exp.shareTitle", { app: APP }) }); return done(); }
   } catch (err) { if (err && err.name === "AbortError") return false; } // geannuleerd; andere fout: downloaden
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([json], { type: "application/json" })); a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   return done();
-  function done() { markExported(); paintExpLast(); toast("Export gemaakt."); return true; }
+  function done() { markExported(); paintExpLast(); toast(t("init.exp.done")); return true; }
 }
 export function bindBackup(afterImport) {
   const seg = $("#theme-seg");
@@ -2050,23 +2050,23 @@ export function bindBackup(afterImport) {
     if (g) { showVis(setVis(g.dataset.vis, val(b.dataset.v))); render(); }
   });
   $("#exp-file").addEventListener("click", () => exportFile());
-  $("#exp-copy").addEventListener("click", async () => { if (await copyText(exportJson(), "Export gekopieerd als tekst.", $("#data-panel"))) { markExported(); paintExpLast(); } });
+  $("#exp-copy").addEventListener("click", async () => { if (await copyText(exportJson(), t("init.exp.copied"), $("#data-panel"))) { markExported(); paintExpLast(); } });
 
   let pending = null;
   const ask = (data) => {
     pending = data;
     const nMon = data.custom.length + data.imported.length, nLair = Object.keys(data.lairs).length;
-    $("#imp-confirm").innerHTML = `<div class="confirmbox"><p style="margin:0">Deze export bevat <b>${data.party.length}</b> partyleden, <b>${data.S.list.length}</b> deelnemers aan tafel, <b>${nMon}</b> eigen/geïmporteerde monsters, <b>${nLair}</b> lairs en <b>${data.encounters.length}</b> klaargezette encounters.
-      Importeren <b>vervangt</b> alles wat nu in de app staat.</p>
-      <div class="bar"><button type="button" class="btn primary" id="imp-yes">Vervang en importeer</button><button type="button" class="btn small" id="imp-no">Annuleer</button></div></div>`;
+    const what = [t("init.imp.party", { n: data.party.length }), t("init.imp.table", { n: data.S.list.length }), t("init.imp.mons", { n: nMon }), t("init.imp.lairs", { n: nLair }), t("init.imp.encs", { n: data.encounters.length })];
+    $("#imp-confirm").innerHTML = `<div class="confirmbox"><p style="margin:0">${esc(t("init.imp.has", { what }))} ${tb("init.imp.replaces", {}, t("init.imp.replacesB"))}</p>
+      <div class="bar"><button type="button" class="btn primary" id="imp-yes">${esc(t("init.imp.go"))}</button><button type="button" class="btn small" id="imp-no">${esc(t("common.cancel"))}</button></div></div>`;
     $("#imp-confirm").scrollIntoView({ block: "nearest" }); // ook vanaf de welkomstkaart in beeld (AF10)
   };
   const read = (text) => {
     try { ask(parseImport(JSON.parse(text))); }
-    catch (err) { toastBad(err instanceof SyntaxError ? "Dit is geen geldige export (geen JSON)." : err.message); }
+    catch (err) { toastBad(err instanceof SyntaxError ? t("init.imp.noJson") : err.message); }
   };
   $("#imp-backup").addEventListener("change", async (e) => { const f = e.target.files[0]; if (f) read(await f.text()); e.target.value = ""; });
-  $("#imp-text-go").addEventListener("click", () => { const t = $("#imp-text").value.trim(); if (t) read(t); });
+  $("#imp-text-go").addEventListener("click", () => { const txt = $("#imp-text").value.trim(); if (txt) read(txt); });
   $("#imp-confirm").addEventListener("click", (e) => {
     if (e.target.id === "imp-no") { pending = null; $("#imp-confirm").innerHTML = ""; }
     if (e.target.id === "imp-yes" && pending) {
@@ -2075,7 +2075,7 @@ export function bindBackup(afterImport) {
       markExported(); paintExpLast(); // de data komt uit een export: die bestaat dus al ergens
       pending = null; $("#imp-confirm").innerHTML = ""; $("#imp-text").value = "";
       afterImport();
-      toast("Import klaar.");
+      toast(t("init.imp.done"));
     }
   });
 }

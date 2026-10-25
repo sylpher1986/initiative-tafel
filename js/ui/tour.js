@@ -3,6 +3,7 @@
 // UX-agent koos twee delen boven één doorlopende tour (stops naar een beurtbalk die er nog niet is) en losse hints
 // (die duiken op tijdens het spel). Logica en stops puur in js/tour.js; hier alleen DOM.
 import { STOPS, seen, withSeen, silenceFor, placeTip, unionRect } from "../tour.js";
+import { t as T } from "../i18n/boot.js"; // als T: in dit bestand is `t` de toestand van de tour
 
 const KEY = "it-tour";
 let armed = null;  // deel dat wacht op het juiste moment (alleen in het geheugen)
@@ -55,8 +56,8 @@ function begin(part) {
     <div class="tbox" role="dialog" aria-modal="true" aria-labelledby="tour-t" aria-describedby="tour-x">
       <p class="thead"><b id="tour-t"></b><span class="tprog" id="tour-p"></span></p>
       <p id="tour-x" aria-live="polite"></p>
-      <div class="tbtns"><button type="button" class="link" data-tour="skip">Overslaan</button>
-        <button type="button" class="btn" data-tour="back">Terug</button><button type="button" class="btn primary" data-tour="next">Volgende</button></div>
+      <div class="tbtns"><button type="button" class="link" data-tour="skip"></button>
+        <button type="button" class="btn" data-tour="back"></button><button type="button" class="btn primary" data-tour="next"></button></div>
     </div>`;
   root.addEventListener("click", (e) => {
     e.stopPropagation(); // niets doorgeven aan de app eronder (tik op de dim doet bewust niets)
@@ -90,11 +91,13 @@ function show(fresh) {
   const stop = t.stops[t.i], els = targets(stop);
   if (!els.length) { go(t.i + 1, 1); return; }
   const n = t.stops.length, last = t.i === n - 1;
-  t.box.querySelector("#tour-t").textContent = stop.t;
+  t.box.querySelector("#tour-t").textContent = T(stop.t);
   t.box.querySelector("#tour-p").textContent = `${t.i + 1}/${n}`;
-  t.box.querySelector("#tour-x").textContent = stop.x;
+  t.box.querySelector("#tour-x").textContent = T(stop.x);
+  t.box.querySelector('[data-tour="skip"]').textContent = T("init.tour.skip");
+  t.box.querySelector('[data-tour="back"]').textContent = T("init.tour.back");
   t.box.querySelector('[data-tour="back"]').hidden = t.i === 0;
-  t.box.querySelector('[data-tour="next"]').textContent = last ? "Klaar" : "Volgende";
+  t.box.querySelector('[data-tour="next"]').textContent = T(last ? "init.tour.done" : "init.tour.next");
   if (fresh) {
     // vaste balken (beurtbalk, kop) staan al in beeld; de rest naar het midden scrollen
     // AF10: direct, niet smooth: anders schuift het vak mee en is Volgende pas na de animatie te raken

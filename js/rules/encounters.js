@@ -211,12 +211,13 @@ export function cleanEncounters(a, now = Date.now()) {
 /** Nieuwste eerst */
 export const sorted = (list) => [...list].sort((a, b) => b.updatedAt - a.updatedAt || a.name.localeCompare(b.name));
 
-/** Kopie met nieuwe id en naam "X (kopie)", "X (kopie 2)" … */
-export function duplicate(enc, list, now) {
-  const base = enc.name.replace(/ \(kopie(?: \d+)?\)$/, "");
+/** Kopie met nieuwe id en naam "X (kopie)", "X (kopie 2)" …; word = het woord in de actieve taal (WP26, daarna inhoud) */
+export function duplicate(enc, list, now, word = "kopie") {
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const base = enc.name.replace(new RegExp(` \\((?:kopie|copy|${esc(word)})(?: \\d+)?\\)$`), "");
   const names = new Set(list.map((e) => e.name));
-  let name = `${base} (kopie)`, i = 2;
-  while (names.has(name)) name = `${base} (kopie ${i++})`;
+  let name = `${base} (${word})`, i = 2;
+  while (names.has(name)) name = `${base} (${word} ${i++})`;
   return { ...structuredClone(enc), id: newId(), name: name.slice(0, 80), updatedAt: now };
 }
 
@@ -265,9 +266,9 @@ export function parseEncFile(json, now = Date.now()) {
  * Import in de lijst: mode "new" (id onbekend), "replace" (zelfde id, overschrijven) of "copy" (nieuwe id).
  * Geeft de nieuwe lijst; de oude blijft ongewijzigd.
  */
-export function mergeEnc(list, enc, mode, now) {
+export function mergeEnc(list, enc, mode, now, word) {
   if (mode === "copy") {
-    const d = duplicate(enc, list, now);
+    const d = duplicate(enc, list, now, word);
     if (!list.some((e) => e.name === enc.name)) d.name = enc.name; // naam is vrij: geen "(kopie)" nodig
     return [...list, d];
   }

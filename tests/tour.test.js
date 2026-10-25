@@ -41,10 +41,13 @@ test("tour: één kader om twee knoppen", () => {
   assert.deepEqual(r, { top: 6, left: 6, bottom: 56, right: 124, width: 118, height: 50 });
 });
 
-test("tour: stops hebben selectors, een korte titel en tekst", () => {
+test("tour: stops hebben selectors, een korte titel en tekst (WP26: sleutels; per taal gecontroleerd)", async () => {
+  const cats = { en: (await import("../locales/en.js")).default, nl: (await import("../locales/nl.js")).default };
   for (const part of ["p", "f"]) for (const s of STOPS[part]) {
     assert.ok(s.sel.length >= 1);
-    assert.ok(s.t.split(" ").length <= 4, s.t);
-    assert.ok(s.x.length <= 120, s.x);
+    for (const [l, c] of Object.entries(cats)) {
+      assert.ok(c[s.t] && c[s.t].split(" ").length <= 4, `${l} ${s.t}: ${c[s.t]}`);
+      assert.ok(c[s.x] && c[s.x].length <= 120, `${l} ${s.x}: ${c[s.x]}`);
+    }
   }
 });

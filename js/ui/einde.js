@@ -1,13 +1,28 @@
 // GV2: samenvatting bij Gevecht afronden (paneel #esheet) en de strook "Laatste gevecht" in Voorbereiden.
 // Regels puur in js/rules/fight.js; de samenvatting staat in app.S.endSum (undo: Ongedaan na afronden laat het gevecht doorlopen).
-import { $, esc, toast, toastHtml, toastBad } from "./util.js";
+import { $, esc, toast, toastHtml, toastBad, undoBtn } from "./util.js";
+import { t, i18n } from "../i18n/boot.js";
 import { ico, chev } from "./icons.js";
 import { app, logAs, relog, because, stepNo } from "../state.js";
 import { render, ui } from "./render.js";
 import { findMon } from "../data/monsters.js";
 import { endSummary, endCalc, endText, toggleFlip, byText, leftConds, wipeConds } from "../rules/fight.js";
 
-const fmt = (n) => Math.round(n).toLocaleString("nl-NL");
+const fmt = (n) => i18n().num(Math.round(n));
+const downTxt = (k) => k.down.map((x) => (x.up ? t("init.end.upAgain", { name: x.name }) : x.name)).join(", ");
+const roundsTxt = (es) => t("init.end.rounds", { n: es.r });
+
+/** WP26: samenvatting voor het klembord in de taal van de app (het logboek houdt endText tot WP27) */
+export function copyText(es) {
+  const k = endCalc(es);
+  const head = `${es.enc ? `${es.enc}: ` : `${t("init.end.title")}: `}${roundsTxt(es)}${es.min ? ` (± ${es.min} min)` : ""}`;
+  const parts = [head, k.by.length ? `${t("init.end.beaten")} ${byText(k.by)}` : t("init.end.noneBeaten"),
+    `${fmt(k.xp)} XP, ${k.share.length ? t("init.end.perPc", { xp: fmt(k.per), names: k.share.map((p) => p.name) }) : t("init.end.noShare")}`];
+  if (k.noXp.length) parts.push(t("init.end.noXp", { names: k.noXp }));
+  if (k.down.length) parts.push(`${t("init.end.down")} ${downTxt(k)}`);
+  if (k.dead.length) parts.push(`${t("init.end.died")} ${k.dead.join(", ")}`);
+  return parts.join(". ") + ".";
+}
 
 /** Vóór stopCombat: samenvatting vastleggen en de logregel klaarzetten (zelfde undo-stap als het stoppen) */
 export function finishFight() {
@@ -21,7 +36,7 @@ export function finishFight() {
 /** Strook in Voorbereiden na het afronden; weg bij Start gevecht of monsters wissen */
 export function endBanner(S, calm) {
   if (!calm || !S.endSum) return "";
-  return `<li class="sbanner endb"><span>Laatste gevecht · ${fmt(endCalc(S.endSum).xp)} XP</span><button type="button" class="btn small" data-end="open">Samenvatting</button></li>`;
+  return `<li class="sbanner endb"><span>${esc(t("init.end.last", { xp: fmt(endCalc(S.endSum).xp) }))}</span><button type="button" class="btn small" data-end="open">${esc(t("init.end.sum"))}</button></li>`;
 }
 
 /** GV7: condities van spelers (standaard aan: Prone/Grappled/Restrained en condities met een duur) */
@@ -37,23 +52,23 @@ export function paintEnd() {
   const k = endCalc(es), fl = new Set(es.flip || []);
   const alive = es.mons.filter((m) => !m.out), counted = (m) => fl.has(m.id);
   const old = el.querySelector(".esheet"), top = old ? old.scrollTop : 0;
-  const line = (lbl, v) => (v ? `<p class="eln"><span>${lbl}</span> ${v}</p>` : "");
+  const line = (lbl, v) => (v ? `<p class="eln"><span>${esc(t(lbl))}</span> ${v}</p>` : "");
   el.innerHTML = `<div class="dim" data-end="close"></div>
     <div class="sheet qsheet esheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="e-title">
       <div class="grab" aria-hidden="true"></div>
-      <div class="shead"><h3 id="e-title">Gevecht afgerond</h3><button type="button" class="link" data-end="close">Sluit</button></div>
-      <p class="esub">${es.enc ? `${esc(es.enc)} · ` : ""}${es.r} ${es.r === 1 ? "ronde" : "rondes"}${es.min ? ` · ± ${es.min} min` : ""}</p>
-      <div class="etiles"><div><b>${fmt(k.xp)}</b><span>XP totaal</span></div><div><b>${k.per == null ? "–" : fmt(k.per)}</b><span>${k.share.length ? `per speler (${k.share.length})` : "niemand deelt"}</span></div></div>
-      ${line("Verslagen:", k.by.length ? esc(byText(k.by)) : "niets")}
-      ${k.noXp.length ? `<p class="hint">Zonder CR of statblock niet geteld: ${esc(k.noXp.join(", "))}</p>` : ""}
-      ${alive.length ? `<details class="eflee" ${ui.endFlee ? "open" : ""}><summary>Gevlucht of overgegeven? Tel mee ${chev(ui.endFlee)}</summary>
+      <div class="shead"><h3 id="e-title">${esc(t("init.end.title"))}</h3><button type="button" class="link" data-end="close">${esc(t("common.close"))}</button></div>
+      <p class="esub">${es.enc ? `${esc(es.enc)} · ` : ""}${esc(roundsTxt(es))}${es.min ? ` · ± ${es.min} min` : ""}</p>
+      <div class="etiles"><div><b>${fmt(k.xp)}</b><span>${esc(t("init.end.xpTotal"))}</span></div><div><b>${k.per == null ? "–" : fmt(k.per)}</b><span>${esc(k.share.length ? t("init.end.perN", { n: k.share.length }) : t("init.end.noShare"))}</span></div></div>
+      ${line("init.end.beaten", k.by.length ? esc(byText(k.by)) : esc(t("init.end.nothing")))}
+      ${k.noXp.length ? `<p class="hint">${esc(t("init.end.noXp", { names: k.noXp }))}</p>` : ""}
+      ${alive.length ? `<details class="eflee" ${ui.endFlee ? "open" : ""}><summary>${esc(t("init.end.flee"))} ${chev(ui.endFlee)}</summary>
         <div class="echips">${alive.map((m) => chip(m.id, counted(m), m.label || m.name)).join("")}</div></details>` : ""}
-      ${es.pcs.length ? `<p class="elbl">Delen</p><div class="echips">${es.pcs.map((p) => chip(p.id, k.share.includes(p), `${p.name}${p.dead ? " (dood)" : ""}`)).join("")}</div>` : ""}
-      ${line("Neer geweest:", esc(k.down.map((x) => `${x.name}${x.up ? " (stond weer op)" : ""}`).join(", ")))}
-      ${k.dead.length ? line("Gestorven:", esc(k.dead.join(", "))) : ""}
+      ${es.pcs.length ? `<p class="elbl">${esc(t("init.end.share"))}</p><div class="echips">${es.pcs.map((p) => chip(p.id, k.share.includes(p), p.dead ? t("init.end.deadName", { name: p.name }) : p.name)).join("")}</div>` : ""}
+      ${line("init.end.down", esc(downTxt(k)))}
+      ${k.dead.length ? line("init.end.died", esc(k.dead.join(", "))) : ""}
       ${condBlock()}
-      <div class="ifoot"><button type="button" class="btn" data-end="copy">Kopieer samenvatting</button>${app.S.list.some((c) => c.kind !== "pc") ? `<button type="button" class="btn primary" data-end="clear">Monsters wissen</button>` : ""}</div>
-      <p class="hint">De samenvatting staat ook in het logboek.</p>
+      <div class="ifoot"><button type="button" class="btn" data-end="copy">${esc(t("init.end.copy"))}</button>${app.S.list.some((c) => c.kind !== "pc") ? `<button type="button" class="btn primary" data-end="clear">${esc(t("init.end.clear"))}</button>` : ""}</div>
+      <p class="hint">${esc(t("init.end.inLog"))}</p>
     </div>`;
   el.hidden = false;
   el.querySelector(".esheet").scrollTop = top;
@@ -62,14 +77,14 @@ export function paintEnd() {
 function condBlock() {
   const L = condList(); if (!L.length) return "";
   const n = L.filter(picked).length;
-  return `<p class="elbl">Condities van spelers</p><div class="echips">${L.map((x) => cchip(x, picked(x))).join("")}</div>
-      <div class="bar"><button type="button" class="btn tap" data-end="wipe"${n ? "" : " disabled"}>Wis gekozen (${n})</button></div>`;
+  return `<p class="elbl">${esc(t("init.end.conds"))}</p><div class="echips">${L.map((x) => cchip(x, picked(x))).join("")}</div>
+      <div class="bar"><button type="button" class="btn tap" data-end="wipe"${n ? "" : " disabled"}>${esc(t("init.end.wipe", { n }))}</button></div>`;
 }
 
 async function copy() {
-  const t = endText(app.S.endSum);
-  try { await navigator.clipboard.writeText(t); toast("Samenvatting gekopieerd."); }
-  catch { toastBad("Kopiëren lukt niet in deze browser. De samenvatting staat ook in het logboek."); }
+  const txt = copyText(app.S.endSum);
+  try { await navigator.clipboard.writeText(txt); toast(t("init.end.copied")); }
+  catch { toastBad(t("init.end.copyFail")); }
 }
 
 /** Sluit, Escape, achtergrond: focus terug naar de strook "Laatste gevecht", anders Start gevecht */
@@ -99,7 +114,7 @@ export function bindEnd(resetMons) {
       because("na het gevecht gewist");
       const done = wipeConds(app.S.list, keys);
       render(); ui.condDone = stepNo(); paintEnd();
-      toastHtml(`${esc(`Gewist: ${done.join(", ")}.`)} <button class="tundo" id="toast-undo">Ongedaan</button>`);
+      toastHtml(`${esc(t("init.end.wiped", { what: done }))} ${undoBtn()}`);
       $("#esheet .esheet")?.focus({ preventScroll: true });
       return;
     }

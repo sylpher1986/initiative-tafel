@@ -135,10 +135,20 @@ export function htmlStrings(src) {
  *  ("scherm" + "en") verdwijnt bij de migratie toch ({ one, other }). Een pad ("/speler.html") is geen tekst. */
 export const isDutch = (s) => !/^\s*[a-z]{2}(-[A-Z]{2})?\s*$/.test(s) && !/^\/[\w./-]*$/.test(s) && (s.toLowerCase().match(/[a-zà-ÿ]+/g) || []).some((w) => NL_WORDS.has(w));
 
+/** Code, geen tekst (WP26): import-pad, selector, attribuut of kebab-case zonder spaties ("./kamer.js", "#kamer-box", "kamer-lost", "[data-qr=sluit]") */
+export const isCode = (s) => /^\.\.?\/[\w./-]*$/.test(s) || (/^(?:[#.][\w-]|\[[\w-]+[=\]])/.test(s) && /^[\w\-#.[\]="' :>()*,]*$/.test(s) && !/[A-Za-z]{2,} +[A-Za-z]{2,}/.test(s.replace(/\[[^\]]*\]/g, ""))) || (!/\s/.test(s) && (s.includes("=") || /^[a-z0-9]+(-[a-z0-9]+)+$/.test(s)));
+/** JS-string met HTML erin (WP26): alleen tekstknopen en zichtbare attributen tellen, zoals in een HTML-bestand;
+ *  een klasse of data-attribuut ("data-kamer", class="en") is geen tekst. Tekst vóór de eerste en na de laatste tag telt mee. */
+const pieces = (x) => {
+  if (!/<[a-z][^>]*>/i.test(x.text)) return [x];
+  const nl = htmlStrings(`>${x.text}<`).map((p) => p.text).filter((t) => !isCode(t) && isDutch(t));
+  return nl.length ? [{ text: nl.join(" | "), line: x.line }] : []; // één string = één telling, zoals voorheen
+};
+
 /** Nederlandse teksten in één bestand: [{ text, line }] */
 export function dutchIn(path, src) {
-  const all = /\.html?$/.test(path) ? htmlStrings(src) : jsStrings(src);
-  return all.filter((x) => isDutch(x.text));
+  const all = /\.html?$/.test(path) ? htmlStrings(src) : jsStrings(src).flatMap(pieces);
+  return all.filter((x) => !isCode(x.text) && isDutch(x.text));
 }
 
 // Welk werkpakket haalt de tekst uit welk bestand (docs/i18n.md §7). Elk bestand met Nederlandse tekst moet hier

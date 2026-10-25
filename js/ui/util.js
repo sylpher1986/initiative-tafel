@@ -25,7 +25,7 @@ export function toastHtml(html, bad = false) {
     m.className = bad ? "tmsg bad" : "tmsg";
     // WP17 (HS6): weigering of fout met icoon; de rest zonder (geen ruis aan tafel). Geen role="alert": #toast is al een
     // live-regio en geneste regio's worden op iOS/NVDA soms dubbel voorgelezen (dev-review); "Let op:" alleen voor schermlezers.
-    m.innerHTML = (bad ? ico("alert", "tico") + '<span class="vh">Let op: </span>' : "") + html;
+    m.innerHTML = (bad ? ico("alert", "tico") + `<span class="vh">${esc(t("init.msg.attn"))} </span>` : "") + html;
     box.appendChild(m);
   }
   tEl = m;

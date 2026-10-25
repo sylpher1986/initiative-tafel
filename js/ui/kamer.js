@@ -6,6 +6,7 @@ import { roomChannel, dmLink, createRoom, normCode, fmtCode } from "../share.js"
 import { $, esc, toast, toastHtml, closeToast, toastBad } from "./util.js";
 import { canWrite } from "../storage.js";
 import { qrSvg } from "../qr.js";
+import { t } from "../i18n/boot.js";
 
 const KEY = "it-room";
 const LOST_MS = 10000; // pas na 10 s kwijt: rode stip op ⚙ en één melding
@@ -13,7 +14,7 @@ const ROOM_MS = 12 * 3600e3; // = IDLE_MS in worker/room.js: een gestopte kamer 
 
 let getView = null, addLink = null;
 let room = null, ch = null, link = null, off = null;
-let st = "uit", n = 0, err = "", lostT = 0, warned = false;
+let st = "off", n = 0, err = "", lostT = 0, warned = false; // st = verbindingscode (geen tekst); err = catalogussleutel of ""
 // pauze: de kamer stopte het delen na 30 min zonder gewijzigde stand. missed = melding "Spelers zien dit niet" al getoond (één per pauze)
 let paused = false, resuming = false, missed = false;
 // SC7: again = Opnieuw delen na Stop loopt (verlopen kamer → stil een nieuwe); ask = bevestigvak "Nieuwe code…" open
@@ -41,7 +42,7 @@ function lost(on) {
   if (!on) { document.documentElement.classList.remove("kamer-lost"); warned = false; changed(); return; }
   lostT = setTimeout(() => {
     document.documentElement.classList.add("kamer-lost"); changed();
-    if (!warned) { warned = true; toastBad("Spelersscherm: verbinding kwijt, opnieuw verbinden…"); }
+    if (!warned) { warned = true; toastBad(t("init.room.lostToast")); }
   }, LOST_MS);
 }
 
@@ -72,18 +73,18 @@ function connect() {
   off = ch.on((m) => {
     if (m.t === "n") { n = Math.max(0, m.n | 0); paint(); }
     else if (m.t === "pauze") { if (!paused) { setPaused(true); paint(); } }
-    else if (m.t === "hervat") { const was = paused || again; again = false; setPaused(false); paint(); if (was) toast("Spelers zien het gevecht weer."); }
+    else if (m.t === "hervat") { const was = paused || again; again = false; setPaused(false); paint(); if (was) toast(t("init.room.back")); }
     else if (m.t === "gemist") {
       // eenmalig per pauze; samen met een melding met Ongedaan (zelfde render, < 300 ms) wordt het één melding met beide knoppen
-      if (!missed && !resuming) { missed = true; toastHtml(`Spelers zien dit niet: delen is gepauzeerd. <button class="tundo" id="toast-kamer">Opnieuw delen</button>`); }
+      if (!missed && !resuming) { missed = true; toastHtml(`${esc(t("init.room.missed"))} <button class="tundo" id="toast-kamer">${esc(t("init.room.again"))}</button>`); }
     }
     else if (m.t === "net") {
       st = m.s;
       lost(m.s === "kwijt");
       if (m.s === "weg") {
-        disconnect(); room = null; saveRoom(null); st = "uit"; closeQr();
+        disconnect(); room = null; saveRoom(null); st = "off"; closeQr();
         if (again) { again = false; return void start(true); } // Opnieuw delen na Stop, maar de kamer verliep: stil een nieuwe
-        err = "Kamer verlopen. Deel opnieuw voor een nieuwe code.";
+        err = "init.room.expired";
       }
       paint();
     }
@@ -93,21 +94,20 @@ function connect() {
 }
 
 async function start(old) {
-  if (st === "maken") return;
-  st = "maken"; err = ""; ask = false; again = false; paint();
+  if (st === "making") return;
+  st = "making"; err = ""; ask = false; again = false; paint();
   try {
     room = await createRoom();
     saveRoom(room);
     connect();
-    if (old) toast(`Oude code verlopen. Nieuwe code: ${fmtCode(room.code)}. Tv en telefoons opnieuw koppelen.`);
+    if (old) toast(t("init.room.oldExpired", { code: fmtCode(room.code) }));
   } catch (e) {
-    st = "uit"; err = errText(e);
+    st = "off"; err = errText(e);
   }
   paint();
 }
-const errText = (e) => e.message === "offline" ? "Geen internet. Het spelersscherm op dit apparaat werkt wel (hieronder)."
-  : e.message === "rate" ? "Te veel nieuwe kamers achter elkaar. Probeer het over een minuut opnieuw."
-  : "Delen lukt nu niet. Probeer het later opnieuw.";
+/** Foutcode van createRoom → catalogussleutel (vertaald bij het tekenen) */
+const errText = (e) => (e.message === "offline" ? "init.room.offline" : e.message === "rate" ? "init.room.rate" : "init.room.fail");
 
 /** Kanaal loskoppelen zonder het te sluiten (stop/wis sluit het zelf); opnieuw delen krijgt een eigen kanaal */
 function detach() {
@@ -122,16 +122,16 @@ function detach() {
 async function stop(fromBtn = false) {
   const c = detach();
   room = { code: room.code, token: room.token, stopped: true, at: Date.now() };
-  saveRoom(room); st = "uit"; err = ""; ask = false; again = false;
+  saveRoom(room); st = "off"; err = ""; ask = false; again = false;
   paint();
   // AF10: geen "Zeker?" (Stop = pauze, omkeerbaar met dezelfde code), wel de weg terug in de melding
-  if (fromBtn) toastHtml(`Delen gestopt. Code ${esc(fmtCode(room.code))} blijft. <button class="tundo" id="toast-weer">Opnieuw delen</button>`);
+  if (fromBtn) toastHtml(`${esc(t("init.room.stopped", { code: fmtCode(room.code) }))} <button class="tundo" id="toast-weer">${esc(t("init.room.again"))}</button>`);
   if (!c) return;
   stopping = c;
   const ok = await c.stop();
   if (stopping !== c) return; // intussen Opnieuw delen of Nieuwe code: dit "stop" telt niet meer
   stopping = null;
-  if (!ok) toastBad("Geen verbinding met de kamer: spelers houden de laatste stand.");
+  if (!ok) toastBad(t("init.room.stopFail"));
 }
 /** Een "stop" dat nog wacht op verbinding afbreken: anders pakt dat kanaal de kamer terug (4001) en pauzeert hem opnieuw */
 function dropStopping() { const c = stopping; stopping = null; if (c) c.close(); }
@@ -168,32 +168,32 @@ async function newCode() {
 }
 
 async function copy() {
-  try { await navigator.clipboard.writeText(shareUrl()); toast("Link gekopieerd"); }
-  catch { toastBad("Kopiëren lukt niet. Houd de link ingedrukt om hem te kopiëren."); }
+  try { await navigator.clipboard.writeText(shareUrl()); toast(t("init.room.copied")); }
+  catch { toastBad(t("init.room.copyFail")); }
 }
 
 /** AF5: korte status voor de kop van de sectie Spelersscherm; warn = zelfde rode stip als op ⚙ */
 export function kamerStat() {
   const h = document.documentElement.classList, warn = h.contains("kamer-lost") || h.contains("kamer-pauze");
-  if (!room || expired(room)) return { t: "Niet gedeeld", warn };
+  if (!room || expired(room)) return { t: t("init.room.stNone"), warn };
   const c = fmtCode(room.code);
-  if (room.stopped) return { t: `Gestopt · ${c}`, warn }; // bewuste actie: geen stip
-  if (paused && st !== "elders") return { t: `Gepauzeerd · ${c}`, warn: true };
-  if (st === "kwijt" || h.contains("kamer-lost")) return { t: "Verbinding kwijt", warn: true };
-  if (st === "elders") return { t: "In ander tabblad", warn };
-  if (st === "open") return { t: `Gedeeld · ${c} · ${n} scherm${n === 1 ? "" : "en"}`, warn };
-  return { t: "Verbinden…", warn };
+  if (room.stopped) return { t: t("init.room.stStopped", { code: c }), warn }; // bewuste actie: geen stip
+  if (paused && st !== "elders") return { t: t("init.room.stPaused", { code: c }), warn: true };
+  if (st === "kwijt" || h.contains("kamer-lost")) return { t: t("init.room.stLost"), warn: true };
+  if (st === "elders") return { t: t("init.room.stElse"), warn };
+  if (st === "open") return { t: t("init.room.stOpen", { code: c, n }), warn };
+  return { t: t("init.room.connecting"), warn };
 }
 const changed = () => document.dispatchEvent(new Event("it-kamer"));
 
-const codeHtml = (still) => `<p class="kamer-code${still ? " stil" : ""}" aria-label="Code ${esc(room.code.split("").join(" "))}">${esc(fmtCode(room.code))}</p>
+const codeHtml = (still) => `<p class="kamer-code${still ? " stil" : ""}" aria-label="${esc(t("init.room.codeAria", { code: room.code.split("").join(" ") }))}">${esc(fmtCode(room.code))}</p>
     <p class="kamer-url">${esc(shareUrl())}</p>`;
-const qrBtn = `<button type="button" class="btn tap" data-kamer="qr" aria-haspopup="dialog">QR-code</button>`;
+const qrBtn = () => `<button type="button" class="btn tap" data-kamer="qr" aria-haspopup="dialog">${esc(t("init.room.qr"))}</button>`;
 /** "Nieuwe code…" alleen als het delen stilstaat (SC7): zeldzaam, en één mistik koppelt alle schermen los */
 const newHtml = () => ask
-  ? `<div class="confirmbox" role="group" aria-label="Nieuwe code"><p class="hint">Tv en telefoons op ${esc(fmtCode(room.code))} moeten opnieuw koppelen.</p>
-      <div class="bar"><button type="button" class="btn primary tap" data-kamer="nieuw-ja" ${making ? "disabled" : ""}>${making ? "Nieuwe code maken…" : "Nieuwe code maken"}</button><button type="button" class="btn tap" data-kamer="nieuw-nee">Annuleer</button></div></div>`
-  : `<div><button type="button" class="link" data-kamer="nieuw" aria-expanded="false">Nieuwe code…</button></div>`;
+  ? `<div class="confirmbox" role="group" aria-label="${esc(t("init.room.newAria"))}"><p class="hint">${esc(t("init.room.newWarn", { code: fmtCode(room.code) }))}</p>
+      <div class="bar"><button type="button" class="btn primary tap" data-kamer="new-yes" ${making ? "disabled" : ""}>${esc(t(making ? "init.room.newBusy" : "init.room.newGo"))}</button><button type="button" class="btn tap" data-kamer="new-no">${esc(t("common.cancel"))}</button></div></div>`
+  : `<div><button type="button" class="link" data-kamer="new" aria-expanded="false">${esc(t("init.room.new"))}</button></div>`;
 
 function paint() {
   changed();
@@ -201,32 +201,31 @@ function paint() {
   if (!box) return;
   if (!room || expired(room)) {
     const exp = !!room; // gestopt en verlopen: de knop belooft geen zelfde code
-    box.innerHTML = `<p class="hint">Spelers volgen op hun telefoon of de tv via een code. Vraagt internet.</p>
-      ${err ? `<p class="hint kamererr" role="alert">${esc(err)}</p>` : ""}
-      <div class="bar"><button type="button" class="btn primary tap" data-kamer="start" ${st === "maken" ? "disabled" : ""}>${st === "maken" ? "Kamer maken…" : exp ? "Delen met spelers (nieuwe code)" : err.startsWith("Kamer verlopen") ? "Opnieuw delen" : "Delen met spelers"}</button></div>`;
+    box.innerHTML = `<p class="hint">${esc(t("init.room.hint"))}</p>
+      ${err ? `<p class="hint kamererr" role="alert">${esc(t(err))}</p>` : ""}
+      <div class="bar"><button type="button" class="btn primary tap" data-kamer="start" ${st === "making" ? "disabled" : ""}>${esc(t(st === "making" ? "init.room.making" : exp ? "init.room.shareNew" : err === "init.room.expired" ? "init.room.again" : "init.room.share"))}</button></div>`;
     return;
   }
   if (room.stopped || (paused && st !== "elders")) {
-    const why = room.stopped ? "Delen gestopt. Spelers blijven gekoppeld en zien „De DM deelt op dit moment niet.”" : "Delen gestopt na 30 minuten zonder wijzigingen.";
+    const why = t(room.stopped ? "init.room.whyStopped" : "init.room.whyPaused");
     const busy = resuming || again;
     // pauze na 30 min: Stop blijft (haalt de rode stip weg); gestopt: alleen opnieuw of een nieuwe code
     box.innerHTML = `${codeHtml(true)}
     <p class="kamer-st" aria-live="polite">${esc(why)}</p>
-    ${err ? `<p class="hint kamererr" role="alert">${esc(err)}</p>` : ""}
-    <div class="bar"><button type="button" class="btn primary tap" data-kamer="${room.stopped ? "weer" : "hervat"}" ${busy ? "disabled" : ""}>${busy ? "Opnieuw delen…" : "Opnieuw delen"}</button>${qrBtn}${room.stopped ? "" : `<button type="button" class="btn tap" data-kamer="stop">Stop met delen</button>`}</div>
+    ${err ? `<p class="hint kamererr" role="alert">${esc(t(err))}</p>` : ""}
+    <div class="bar"><button type="button" class="btn primary tap" data-kamer="${room.stopped ? "weer" : "hervat"}" ${busy ? "disabled" : ""}>${esc(t(busy ? "init.room.againBusy" : "init.room.again"))}</button>${qrBtn()}${room.stopped ? "" : `<button type="button" class="btn tap" data-kamer="stop">${esc(t("init.room.stop"))}</button>`}</div>
     ${newHtml()}`;
     return;
   }
   // Opnieuw delen loopt: een verlopen kamer opent eerst en sluit dan met 4004; pas na de bevestiging "Gedeeld" tonen
-  const status = again ? "Verbinden…" : st === "open" ? (n ? `${n} scherm${n === 1 ? "" : "en"} verbonden` : "Nog niemand verbonden")
-    : st === "elders" ? "Het delen loopt nu in een ander tabblad of venster."
-    : st === "kwijt" ? "Verbinding kwijt, opnieuw verbinden…" : "Verbinden…";
+  const status = t(again ? "init.room.connecting" : st === "open" ? (n ? "init.room.screens" : "init.room.nobody")
+    : st === "elders" ? "init.room.else" : st === "kwijt" ? "init.room.lost" : "init.room.connecting", { n });
   const canShare = typeof navigator.share === "function";
   box.innerHTML = `${codeHtml(false)}
     <p class="kamer-st ${st === "open" && !again ? "on" : ""}" aria-live="polite">${esc(status)}</p>
-    <div class="bar">${st === "elders" ? `<button type="button" class="btn primary tap" data-kamer="resume">Hier verder delen</button>` : ""}
-      ${qrBtn}${canShare ? `<button type="button" class="btn tap" data-kamer="deel">Deel</button>` : ""}<button type="button" class="btn tap" data-kamer="copy">Kopieer link</button>
-      <button type="button" class="btn tap" data-kamer="stop">Stop met delen</button></div>`;
+    <div class="bar">${st === "elders" ? `<button type="button" class="btn primary tap" data-kamer="resume">${esc(t("init.room.resume"))}</button>` : ""}
+      ${qrBtn()}${canShare ? `<button type="button" class="btn tap" data-kamer="deel">${esc(t("init.room.deel"))}</button>` : ""}<button type="button" class="btn tap" data-kamer="copy">${esc(t("init.room.copy"))}</button>
+      <button type="button" class="btn tap" data-kamer="stop">${esc(t("init.room.stop"))}</button></div>`;
 }
 
 /* ---------- SC1: QR-code schermvullend ("Laat scannen"), altijd zwart op wit ---------- */
@@ -249,12 +248,12 @@ function openQr(from) {
   const el = document.createElement("div");
   el.id = "qrfull"; el.className = "qrfull";
   el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "qrfull-h");
-  el.innerHTML = `<div class="qrin"><h2 id="qrfull-h">Scan om mee te kijken</h2>
-    ${qrSvg(shareUrl(), `QR-code naar het spelersscherm, kamer ${room.code.split("").join(" ")}`)}
+  el.innerHTML = `<div class="qrin"><h2 id="qrfull-h">${esc(t("init.room.scan"))}</h2>
+    ${qrSvg(shareUrl(), t("init.room.qrAria", { code: room.code.split("").join(" ") }))}
     <p class="qrcode" aria-hidden="true">${esc(code)}</p>
     <p class="qrurl">${esc(shareUrl())}</p>
-    ${still ? `<p class="qrnote">Delen staat stil: spelers zien het gevecht na Opnieuw delen.</p>` : ""}
-    <button type="button" class="btn qrclose" data-qr="sluit">Sluit</button></div>`;
+    ${still ? `<p class="qrnote">${esc(t("init.room.still"))}</p>` : ""}
+    <button type="button" class="btn qrclose" data-qr="sluit">${esc(t("common.close"))}</button></div>`;
   el.addEventListener("click", (e) => { if (e.target.closest("[data-qr=sluit]")) closeQr(); });
   el.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeQr(); } else e.stopPropagation(); });
   for (const x of document.body.children) if (!x.inert) { x.inert = true; x.dataset.qrInert = "1"; } // rest van de pagina dicht (Tab, N/spatie)
@@ -282,7 +281,7 @@ export function dropSharing() { disconnect(); }
  */
 export function bindSharing(view, links) {
   getView = view; addLink = links;
-  if (!$("#kamer-box") && window.__itErr) window.__itErr("Delen: #kamer-box ontbreekt in de pagina (oude index.html?)");
+  if (!$("#kamer-box") && window.__itErr) window.__itErr("Sharing: the share box is missing from the page (old index.html?)"); // diagnose voor de ontwikkelaar, niet vertaald
   $("#kamer-box")?.addEventListener("click", (e) => {
     const b = e.target.closest("[data-kamer]");
     if (!b) return;
@@ -291,13 +290,13 @@ export function bindSharing(view, links) {
     else if (k === "stop") stop(true);
     else if (k === "weer") shareAgain();
     else if (k === "qr") openQr(b);
-    else if (k === "nieuw") { ask = true; paint(); $('#kamer-box [data-kamer="nieuw-nee"]')?.focus(); } // focus niet op de knop die alles loskoppelt
-    else if (k === "nieuw-nee") { ask = false; paint(); $('#kamer-box [data-kamer="nieuw"]')?.focus(); }
-    else if (k === "nieuw-ja") newCode();
+    else if (k === "new") { ask = true; paint(); $('#kamer-box [data-kamer="new-no"]')?.focus(); } // focus niet op de knop die alles loskoppelt
+    else if (k === "new-no") { ask = false; paint(); $('#kamer-box [data-kamer="new"]')?.focus(); }
+    else if (k === "new-yes") newCode();
     else if (k === "copy") copy();
     else if (k === "resume") ch && ch.resume();
     else if (k === "hervat") resume();
-    else if (k === "deel") navigator.share({ title: `${APP} · spelersscherm`, text: `Volg het gevecht: code ${fmtCode(room.code)}`, url: shareUrl() }).catch(() => {});
+    else if (k === "deel") navigator.share({ title: t("init.room.shareTitle", { app: APP }), text: t("init.room.shareText", { code: fmtCode(room.code) }), url: shareUrl() }).catch(() => {});
   });
   $("#toast")?.addEventListener("click", (e) => {
     if (e.target.closest("#toast-kamer")) resume();
