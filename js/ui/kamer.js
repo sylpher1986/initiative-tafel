@@ -186,7 +186,7 @@ export function kamerStat() {
 }
 const changed = () => document.dispatchEvent(new Event("it-kamer"));
 
-const codeHtml = (dim) => `<p class="kamer-code${dim ? " dim" : ""}" aria-label="Code ${esc(room.code.split("").join(" "))}">${esc(fmtCode(room.code))}</p>
+const codeHtml = (still) => `<p class="kamer-code${still ? " stil" : ""}" aria-label="Code ${esc(room.code.split("").join(" "))}">${esc(fmtCode(room.code))}</p>
     <p class="kamer-url">${esc(shareUrl())}</p>`;
 const qrBtn = `<button type="button" class="btn tap" data-kamer="qr" aria-haspopup="dialog">QR-code</button>`;
 /** "Nieuwe code…" alleen als het delen stilstaat (SC7): zeldzaam, en één mistik koppelt alle schermen los */

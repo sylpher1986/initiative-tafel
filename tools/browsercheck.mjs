@@ -61,6 +61,25 @@ const SCEN = {
     for (let i = 0; i < n; i++) await page.locator('[data-ia="roll"]').nth(i).tap(); // elke tik tekent het paneel opnieuw
     if (n) await tap(page, '[data-ia="go"]');
     await page.waitForSelector("#next");
+    // 1.48.3: het rondeblok (Gevecht · Logboek, Ronde, Party/Vijanden) past binnen zijn eigen rand
+    await page.evaluate(() => document.fonts.ready);
+    const ft = await page.evaluate(() => { const f = document.querySelector("#logopen"); if (!f) return 0; // slechtste geval: Ronde 10, 12/12
+      const rn = f.querySelector(".rn"), su = f.querySelector(".fsum"), was = [rn.textContent, su.innerHTML];
+      rn.textContent = "Ronde 10"; su.innerHTML = "<span>Party <b>12/12</b></span> · <span>Vijanden <b>12/12</b></span>";
+      const d = f.scrollWidth - f.clientWidth; [rn.textContent, su.innerHTML] = was; return d; });
+    if (ft > 0) throw new Error(`rondeblok loopt ${ft}px over zijn rand`);
+  },
+  // 1.48.3: gestopt delen; de grijze code mag geen paneel-dim worden die tikken op Instellingen blokkeert
+  async delen(page) {
+    await page.evaluate(() => localStorage.setItem("it-room", JSON.stringify({ code: "E5HMTJ", token: "t".repeat(32), stopped: true, at: Date.now() })));
+    await page.reload(); await page.waitForSelector("#dock");
+    await SCEN.settings(page);
+    await page.locator('details[data-sec="player"] > summary').tap();
+    await page.waitForSelector("#kamer-box .kamer-code");
+    const bad = await page.evaluate(() => [...document.querySelectorAll('#psheet [data-vis] button, #kamer-box button')].filter((b) => {
+      b.scrollIntoView({ block: "center" }); const r = b.getBoundingClientRect(), e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return !(e && b.contains(e)); }).map((b) => b.textContent.trim()));
+    if (bad.length) throw new Error("niet tikbaar: " + bad.join(", "));
   },
   // WP14: beurt (gouden vlak) en een andere geopende kaart (ring) naast elkaar
   async kleur(page) { await SCEN.fight(page); await page.locator("#order .c.k:not(.turn) .khead").first().tap(); await page.waitForSelector("#order .c.k.open:not(.turn)"); },

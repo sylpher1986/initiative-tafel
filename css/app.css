@@ -498,7 +498,7 @@ body[data-mode="fight"] #resetbar{display:none}
 .fhead .fb.ic{padding:0}
 .fhead .fi{display:inline-flex}
 .fhead .fb:focus-visible{outline-color:var(--fight-fg)}
-@media (max-width:379px){.fhead .fl{display:none}.fhead .fb{padding:0}}
+@media (max-width:479px){.fhead .fl{display:none}.fhead .fb{padding:0}}
 .runbar{margin:0;border:1px solid var(--warn);background:var(--warn-soft);color:var(--fg);border-radius:12px;padding:10px 14px;font-size:.95rem;font-weight:700}
 .dock .why{margin:6px 0 0;text-align:center;font-size:.85rem;color:var(--muted)}
 
@@ -964,7 +964,7 @@ body.pv.tv.qr .pvqr:not([hidden]){display:grid;justify-items:center;gap:.3em;pos
 .kamer-url{margin:0;font-size:.82rem;color:var(--muted);overflow-wrap:anywhere}
 .kamer-st{margin:0;font-size:.92rem;color:var(--muted)}
 .kamer-st.on{color:var(--good)}
-.kamer-code.dim{color:var(--muted)}
+.kamer-code.stil{color:var(--muted)} /* 1.48.3: niet .dim, dat is de achtergrond van een paneel (.sheet-wrap .dim) */
 /* SC1: QR schermvullend; in beide thema's wit vlak en zwarte tekst (scanners lezen geen negatief, maximaal contrast) */
 .qrfull{position:fixed;inset:0;z-index:70;background:#fff;color:#111;overflow:auto;display:grid;place-items:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .qrin{display:grid;justify-items:center;gap:10px;text-align:center;width:100%;max-width:640px}
