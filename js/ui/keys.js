@@ -1,7 +1,8 @@
 // Sneltoetsen (GV10, UX-keuze): N of spatie = Volgende, Shift+N = Vorige, "?" = overzicht.
 // Alleen in Gevecht (niet Voorbereiden tijdens een gevecht), zonder open paneel, buiten invoervelden.
 // De toets volgt altijd de knop in de beurtbalk (zelfde code, uit = niets). N start nooit een gevecht.
-import { $ } from "./util.js";
+import { $, esc } from "./util.js";
+import { t } from "../i18n/boot.js";
 import { mode } from "./render.js";
 
 const panelOpen = () => !!document.querySelector(".sheet-wrap:not([hidden]), .tabstop, #qrfull");
@@ -32,14 +33,15 @@ export function keysKey(e, typing) {
 export const keysOpen = () => !$("#hsheet").hidden;
 
 const kb = (...k) => k.map((x) => `<kbd>${x}</kbd>`).join(" ");
+const or = (a, b) => `${a} ${esc(t("init.keys.or"))} ${b}`;
 const ROWS = () => [
-  [`${kb("N")} of ${kb("spatie")}`, "Volgende beurt"],
-  [kb("Shift", "N"), "Vorige beurt"],
-  [kb(MOD, "Z"), "Ongedaan maken"],
-  [MAC ? kb("⌘", "Shift", "Z") : `${kb("Ctrl", "Y")} of ${kb("Ctrl", "Shift", "Z")}`, "Opnieuw (na Ongedaan)"],
-  [kb("Esc"), "Paneel sluiten"],
-  [`${kb("0")}–${kb("9")} en ${kb("Enter")}`, "Getal in het schade- en initiativepaneel"],
-  [kb("?"), "Dit overzicht"],
+  [or(kb("N"), kb(esc(t("init.keys.space")))), "init.fight.nextTurnL"],
+  [kb("Shift", "N"), "init.fight.prevAria"],
+  [kb(MOD, "Z"), "init.keys.undo"],
+  [MAC ? kb("⌘", "Shift", "Z") : or(kb("Ctrl", "Y"), kb("Ctrl", "Shift", "Z")), "init.keys.redo"],
+  [kb("Esc"), "init.keys.esc"],
+  [`${kb("0")}–${kb("9")} ${esc(t("init.keys.and"))} ${kb("Enter")}`, "init.keys.num"],
+  [kb("?"), "init.keys.help"],
 ];
 
 export function openKeys() {
@@ -48,10 +50,10 @@ export function openKeys() {
   w.innerHTML = `<div class="dim" data-keys="close"></div>
     <div class="sheet qsheet hsheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="h-title">
       <div class="grab" aria-hidden="true"></div>
-      <div class="shead"><h3 id="h-title">Sneltoetsen</h3><button type="button" class="link" data-keys="close">Sluit</button></div>
-      <dl class="keys">${ROWS().map(([k, t]) => `<dt>${k}</dt><dd>${t}</dd>`).join("")}</dl>
-      <p class="hint">Volgende en Vorige werken in Gevecht, als er geen paneel open is en niet in een invoerveld.</p>
-      <div class="ifoot one"><button type="button" class="btn" data-keys="close">Sluit</button></div>
+      <div class="shead"><h3 id="h-title">${esc(t("init.keys.title"))}</h3><button type="button" class="link" data-keys="close">${esc(t("common.close"))}</button></div>
+      <dl class="keys">${ROWS().map(([k, l]) => `<dt>${k}</dt><dd>${esc(t(l))}</dd>`).join("")}</dl>
+      <p class="hint">${esc(t("init.keys.hint"))}</p>
+      <div class="ifoot one"><button type="button" class="btn" data-keys="close">${esc(t("common.close"))}</button></div>
     </div>`;
   w.hidden = false;
   w.querySelector(".hsheet").focus({ preventScroll: true });

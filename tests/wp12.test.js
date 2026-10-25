@@ -96,7 +96,7 @@ import { readFileSync } from "node:fs";
 test("AF12: slots en death saves zonder aria-pressed, toestand in het label; aria-current op wie aan de beurt is", () => {
   const r = readFileSync(new URL("../js/ui/render.js", import.meta.url), "utf8");
   assert.ok(!/class="pip[^`]*aria-pressed/.test(r) && !/class="dsp[^`]*aria-pressed/.test(r));
-  assert.match(r, /van \$\{n0\(o\.max\)\}, \$\{i >= o\.left \? "gebruikt" : "beschikbaar"\}/);
+  assert.match(r, /t\(i >= o\.left \? "init\.card\.pipUsed" : "init\.card\.pipFree"/); // WP25: tekst uit de catalogus
   assert.match(r, /aria-current="true"/);
   const css = readFileSync(new URL("../css/app.css", import.meta.url), "utf8");
   assert.match(css, /\.pip\[data-used="true"\]::before/); assert.match(css, /\.c\.k\.mon \.av,\.pvc\.monster \.av\{border-radius:6px\}/);

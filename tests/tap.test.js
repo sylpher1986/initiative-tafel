@@ -61,7 +61,7 @@ test("AF15: negatieve getallen zonder lettertoetsenbord en zonder contact-autofi
   // effectwaarde: teken in de keuze, het veld zelf alleen cijfers (iOS-cijferpad)
   const ef = render.match(/<input data-f="ef-v"[^>]*>/);
   assert.ok(ef && /inputmode="numeric"/.test(ef[0]) && /min="0"/.test(ef[0]), "ef-v met cijferpad en min 0");
-  assert.match(render, /\["ac-", "AC −"\]/); assert.match(render, /\["max-", "Max HP −"\]/);
+  assert.match(render, /\["ac-", "init\.eff\.acMinus"\]/); assert.match(render, /\["max-", "init\.eff\.maxMinus"\]/); // WP25: sleutels in de catalogus
   // + Speler: nergens contact-autofill (iOS biedt die aan op naamvelden)
   const form = html.slice(html.indexOf('<form class="form" id="f-pc"'), html.indexOf("</form>", html.indexOf('id="f-pc"')));
   assert.match(form, /<form[^>]*novalidate[^>]*autocomplete="off"/);

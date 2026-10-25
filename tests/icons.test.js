@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { ico, chev, dsMini } from "../js/ui/icons.js";
+import { initI18n } from "../js/i18n/boot.js";
 
 const read = (p) => readFileSync(new URL("../" + p, import.meta.url), "utf8");
 const sprite = read("icons/ui.svg");
@@ -43,7 +44,8 @@ test("een knop met alleen een icoon heeft een aria-label", () => {
   assert.deepEqual(bad, []);
 });
 
-test("ico, chev en dsMini", () => {
+test("ico, chev en dsMini", async () => {
+  await initI18n({ doc: { documentElement: { lang: "nl" } }, search: "", storage: null }); // WP25: tekst uit de NL-catalogus
   assert.equal(ico("x"), '<svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-x"/></svg>');
   assert.match(chev(true), /class="li dn"/);
   assert.doesNotMatch(chev(false), /dn/);

@@ -48,7 +48,7 @@ import { keysKey, keysOpen, closeKeys, openKeys, MAC } from "./keys.js";
 /** RE17: nieuwe concentration saves uit schade, als staart voor de melding (bediening alleen in de beurtbalk) */
 const concNote = (f) => {
   const C = ((f && f.saves) || []).filter((s) => s.kind === "conc");
-  return !C.length ? "" : C.length === 1 ? ` · concentratie-save CON ${C[0].dc} in de beurtbalk` : ` · ${C.length} concentratie-saves in de beurtbalk`;
+  return !C.length ? "" : ` · ${C.length === 1 ? t("init.msg.concSave", { dc: C[0].dc }) : t("init.msg.concSaves", { n: C.length })}`;
 };
 /**
  * RE13: Undead Fortitude na schade, in dezelfde stap (de app rolt: statblock-save + Bless/Bane). info: { radiant, crit, why }.
@@ -78,7 +78,7 @@ function openCondFor(btn) {
   if (!c) return;
   const e = c.cd && c.cd[k], by = e && e.by && S.list.find((x) => x.id === e.by);
   const rows = k === "Concentrating" ? [["Spell", c.concSpell || ""]]
-    : e ? [["Duur", durWords(e, S.list)], ["Herhaalsave", saveWords(e)], ["Van", e.spell ? `${e.spell}${by ? ` · ${by.name}${by.cond.includes("Concentrating") ? " (concentratie)" : ""}` : ""}` : ""]] : [];
+    : e ? [[t("init.eff.dur"), durWords(e, S.list)], [t("init.cinfo.rep"), saveWords(e)], [t("init.cinfo.from"), e.spell ? `${e.spell}${by ? ` · ${by.name}${by.cond.includes("Concentrating") ? ` ${t("init.cinfo.conc")}` : ""}` : ""}` : ""]] : [];
   openCond(btn, { lvl: exhLevel(c), rows });
 }
 
@@ -169,7 +169,7 @@ function applyEff(c, p, byId, join = null) {
   if (!old) return { undoToast: [...out.msgs, ...(sl.txt ? [`${p.n}: ${sc.name} · ${sl.txt}.`] : [])].join(" ") };
   ui.effJoin = { id: c.id, p, by, cast: old.cast, step: stepNo() + 1 }; // alleen geldig zolang dit de laatste stap is (commit volgt in render)
   const caster = S.list.find((x) => x.id === by);
-  return { undoToast: `${p.n}: nieuwe cast van ${caster.name}${sl.txt ? ` (${sl.txt})` : ""}. Vervalt bij ${old.names.join(", ")}.`, extra: `<button class="tundo" id="toast-join">Hoort erbij</button> ` };
+  return { undoToast: t(sl.txt ? "init.msg.recastSl" : "init.msg.recast", { spell: p.n, name: caster.name, sl: sl.txt, names: old.names }), extra: `<button class="tundo" id="toast-join">${esc(t("init.msg.join"))}</button> ` };
 }
 
 /* ---------- acties per deelnemer: (c, knop, rij-element) ---------- */
@@ -182,7 +182,7 @@ const row = {
   /** AF9: één tik, met Ongedaan in de melding (undo is betrouwbaar, ook na herladen); "Uit party" houdt zijn bevestiging */
   del(c) {
     apply(removeCombatant(app.S, c.id)); ui.panel = null;
-    return { undoToast: `${c.kind === "lair" ? "Lair" : c.name} verwijderd.` };
+    return { undoToast: t("init.msg.removed", { name: c.kind === "lair" ? "Lair" : c.name }) };
   },
   open(c, b, li) {
     const isOpen = openId() === c.id;
@@ -202,11 +202,11 @@ const row = {
     const ed = ui.edit;
     if (!ed || ed.id !== c.id) return false;
     const name = String(ed.name).trim().slice(0, 120);
-    if (!name) { toastBad("Naam mag niet leeg zijn."); return false; }
+    if (!name) { toastBad(t("init.msg.noName")); return false; }
     const has = (k) => !ed.keys || ed.keys.includes(k);
     // SP5: eigen passives (leeg = uit de sheet); ongeldig = niets opslaan, melding
     const pas = has("pas") && c.kind === "pc" ? Object.fromEntries(PAS.map(([k]) => [k, String(ed[k] ?? "").trim()])) : null;
-    if (pas && PAS.some(([k]) => pas[k] !== "" && pasVal(pas[k]) == null)) { toastBad("Passive is 1 t/m 40, of leeg laten."); return false; }
+    if (pas && PAS.some(([k]) => pas[k] !== "" && pasVal(pas[k]) == null)) { toastBad(t("init.msg.pasRange")); return false; }
     c.name = name;
     if (pas) { const v = cleanPas(pas); if (v) c.pas = v; else delete c.pas; }
     const ac = parseInt(ed.ac);
@@ -239,11 +239,11 @@ const row = {
     const f = ui.effForm, k = f.k || "ac+";
     const { st, op, v } = effSpec(k, f.v);
     const spec = { n: String(f.n || "").trim() || "Effect", st, op, v, txt: f.txt || "" };
-    if (st === "ac" && spec.op === "+" && !c.ac) { toastBad("Vul eerst AC in (⋯)."); return false; }
-    if (st && !spec.v) { toastBad("Vul een waarde in."); return false; }
+    if (st === "ac" && spec.op === "+" && !c.ac) { toastBad(t("init.msg.acFirst")); return false; }
+    if (st && !spec.v) { toastBad(t("init.msg.effVal")); return false; }
     // RE11/RE16: deze namen horen bij Conditie → Exhaustion en de preset Rage (niveau, Frenzy, resource)
-    if (/^(exhaustion|rage)$/i.test(spec.n)) { toastBad(/^e/i.test(spec.n) ? "Exhaustion zet je via Conditie → Exhaustion." : "Gebruik de preset Rage."); return false; }
-    if (!st && !spec.txt && !f.n) { toastBad("Geef het effect een naam of notitie."); return false; }
+    if (/^(exhaustion|rage)$/i.test(spec.n)) { toastBad(t(/^e/i.test(spec.n) ? "init.msg.effExh" : "init.msg.effRage")); return false; }
+    if (!st && !spec.txt && !f.n) { toastBad(t("init.msg.effName")); return false; }
     const by = f.by && app.S.list.some((x) => x.id === f.by) ? f.by : null;
     ui.effForm = {}; ui.effCustom = false;
     return applyEff(c, { ...spec, dur: f.dur || "inf", conc: !!by }, by);
@@ -274,16 +274,16 @@ const row = {
   "dr-open"(c) { ui.drOpen = ui.drOpen === c.id ? null : c.id; ui.drKind = "r"; },
   "dr-kind"(c, b) { if (DR_LBL[b.dataset.v]) ui.drKind = b.dataset.v; },
   "dr-t"(c, b) {
-    const t = b.dataset.t, k = ui.drKind;
-    if (!DTYPES.includes(t) || !DR_LBL[k]) return false;
-    const was = drKind(c.dr, t), dr = drToggle(c.dr, k, t);
+    const ty = b.dataset.t, k = ui.drKind;
+    if (!DTYPES.includes(ty) || !DR_LBL[k]) return false;
+    const was = drKind(c.dr, ty), dr = drToggle(c.dr, k, ty);
     if (dr) c.dr = dr; else delete c.dr;
-    because(was === k ? `${DR_LBL[k]} ${t} weg` : `${DR_LBL[k]} ${t}${was ? ` (was ${DR_LBL[was]})` : ""}`, c.id);
+    because(was === k ? `${DR_LBL[k]} ${ty} weg` : `${DR_LBL[k]} ${ty}${was ? ` (was ${DR_LBL[was]})` : ""}`, c.id);
   },
   anon(c) { if (c.anon) delete c.anon; else c.anon = nextAnon(app.S.list); },
   sur(c) { const r = toggleSurprise(c, app.S); if (!r) return false; apply(r); },
   dropconc(c) { apply(R.dropConc(c, "beëindigd")); },
-  topty(c) { const ex = app.party.find((m) => m.name.toLowerCase() === c.name.toLowerCase()); c.pid = ex ? ex.pid : uid(); toast(`${c.name} staat nu in de vaste party.`); },
+  topty(c) { const ex = app.party.find((m) => m.name.toLowerCase() === c.name.toLowerCase()); c.pid = ex ? ex.pid : uid(); toast(t("init.msg.toParty", { name: c.name })); },
   "ds-roll": (c) => dsDone(c, d(20), true),
   /* RE15: eigen worp via het cijferpad; pas bij een volledige worp één undo-stap met melding + Ongedaan */
   "ds-own"(c) { ui.dsPad = ui.dsPad && ui.dsPad.id === c.id ? null : { id: c.id, v: "" }; renderFocus(c, ui.dsPad ? '[data-a="ds-k"]:not([disabled])' : '[data-a="ds-own"]'); return false; },
@@ -303,9 +303,9 @@ const row = {
     (c.res || []).forEach((x) => (x.left = x.max));
   },
   "lair-add"(c, b, li) {
-    const n = li.querySelector('[data-f="la-n"]').value.trim(), t = li.querySelector('[data-f="la-t"]').value.trim();
-    if (!n || !t) { toastBad("Vul een naam en een effect in."); return false; }
-    app.lairs[c.key] = [...(app.lairs[c.key] || []), { n, t }]; saveLairs();
+    const n = li.querySelector('[data-f="la-n"]').value.trim(), tx = li.querySelector('[data-f="la-t"]').value.trim();
+    if (!n || !tx) { toastBad(t("init.msg.lairFill")); return false; }
+    app.lairs[c.key] = [...(app.lairs[c.key] || []), { n, t: tx }]; saveLairs();
   },
   "lair-del"(c, b) { app.lairs[c.key].splice(+b.dataset.i, 1); saveLairs(); },
   "lair-use"(c, b) { c.last = app.lairs[c.key][+b.dataset.i].n; },
@@ -323,7 +323,7 @@ function renderFocus(c, ...sels) {
 function dsDone(c, r, byApp) {
   ui.dsPad = null;
   const f = R.dsResult(c, r, byApp);
-  if (!f.why.length) { toastBad("Geen death save nodig."); renderFocus(c, '[data-a="ds-own"]', ".khead"); return false; }
+  if (!f.why.length) { toastBad(t("init.msg.dsNone")); renderFocus(c, '[data-a="ds-own"]', ".khead"); return false; }
   addWhy(f.why);
   renderFocus(c, byApp ? '[data-a="ds-roll"]' : '[data-a="ds-own"]', ".khead");
   toastHtml(`${esc(dsToast(c, r))} ${undoBtn()}`);
@@ -331,11 +331,11 @@ function dsDone(c, r, byApp) {
 }
 /** RE15: "Aria: 14, success (2/3)" / "nat 20, staat op met 1 HP" / "nat 1, twee failures (2/3)" */
 function dsToast(c, r) {
-  if (r === 20) return `${c.name}: nat 20, staat op met 1 HP.`;
-  const d = c.ds || {};
-  if (d.dead) return `${c.name}: ${r === 1 ? "nat 1" : r}, derde failure · gestorven.`;
-  if (d.stable) return `${c.name}: ${r}, derde success · stabiel.`;
-  return r === 1 ? `${c.name}: nat 1, twee failures (${d.f}/3).` : r >= 10 ? `${c.name}: ${r}, success (${d.s}/3).` : `${c.name}: ${r}, failure (${d.f}/3).`;
+  const name = c.name, d = c.ds || {};
+  if (r === 20) return t("init.msg.ds20", { name });
+  if (d.dead) return t("init.msg.dsDead", { name, r: r === 1 ? "nat 1" : r });
+  if (d.stable) return t("init.msg.dsStable", { name, r });
+  return r === 1 ? t("init.msg.ds1", { name, n: d.f }) : r >= 10 ? t("init.msg.dsOk", { name, r, n: d.s }) : t("init.msg.dsFail", { name, r, n: d.f });
 }
 
 /* ---------- schade-paneel (data-sk) ---------- */
@@ -355,7 +355,7 @@ function sheetKey(k, v) {
     because("Parry");
     apply(useParry(c, n));
     ui.sheet = null;
-    return { back: s, undoToast: `${c.name}: Parry, aanval mist · reaction gebruikt` };
+    return { back: s, undoToast: t("init.msg.parry", { name: c.name }) };
   }
   if (k === "apply") {
     const c = app.S.list.find((x) => x.id === s.id), n = parseInt(s.val) || 0;
@@ -417,9 +417,9 @@ function rowData(c, b) {
 function stepToast(verb, entries) {
   closeToast(); // dubbeltik op ↶: niet samenvoegen met de vorige melding (anders twee keer id toast-redo)
   const { text, more } = stepText(entries, app.S, verb);
-  const last = verb === "Ongedaan" && !canUndo() ? " Dit was de laatste stap." : "";
-  const btn = (id, l) => `<button class="tundo" id="${id}">${l}</button>`;
-  toastHtml(`${esc(text)}${more ? ` <span class="tmore">+${more} meer</span>` : ""}${esc(last)} ${verb === "Opnieuw" ? btn("toast-undo", "Ongedaan") : ""}${canRedo() ? btn("toast-redo", "Opnieuw") : ""}`);
+  const last = verb === "Ongedaan" && !canUndo() ? ` ${t("init.msg.lastStep")}` : "";
+  const btn = (id, l) => `<button class="tundo" id="${id}">${esc(t(l))}</button>`;
+  toastHtml(`${esc(text)}${more ? ` <span class="tmore">${esc(t("init.atk.more", { n: more }))}</span>` : ""}${esc(last)} ${verb === "Opnieuw" ? btn("toast-undo", "common.undo") : ""}${canRedo() ? btn("toast-redo", "common.redo") : ""}`);
 }
 
 /* ---------- algemene acties (op id) ---------- */
@@ -478,7 +478,7 @@ const global = {
     because("oude monsters gewist");
     const n = dropOld(app.S);
     render();
-    toastHtml(`${esc(`${n} oude monster${n === 1 ? "" : "s"} gewist.`)} ${undoBtn()}`);
+    toastHtml(`${esc(t("init.msg.oldWiped", { n }))} ${undoBtn()}`);
     $("#start:not([disabled])")?.focus();
     return false;
   },
@@ -491,7 +491,7 @@ const global = {
     finishFight();
     apply(stopCombat(app.S)); ui.mode = null; rekeyEdit();
     render();
-    toastHtml(`${esc(`Gevecht afgerond na ronde ${r}.`)} ${undoBtn()}`);
+    toastHtml(`${esc(t("init.msg.ended", { n: r }))} ${undoBtn()}`);
     $("#esheet .esheet")?.focus();
     return false;
   },
@@ -541,7 +541,7 @@ const global = {
   "reset-no"() { ui.confirmReset = false; },
   "reset-yes"() { app.S = { list: [], round: 0, active: null, sample: false }; ui.confirmReset = false; ui.mode = null; },
   spelers() {
-    if (!window.open("player/", "it-spelers")) toastBad("Het venster werd geblokkeerd. Sta pop-ups toe voor deze site."); // relatief: /{taal}/initiative/player/, zelfde taal (WP21)
+    if (!window.open("player/", "it-spelers")) toastBad(t("init.msg.popup")); // relatief: /{taal}/initiative/player/, zelfde taal (WP21)
     return false;
   },
   sbclose() { closeSB(); return false; },
@@ -1311,10 +1311,10 @@ function svDone(c, sid, ok, note, shown, quiet = false, adv = false) {
   if (f.saves) f.saves.forEach((x) => addSave(app.S, x)); // rider-schade: concentration save
   if (!quiet) render(); // "Rol alle monsters" rendert één keer: één undo-stap
   const m = c.kind === "monster" && c.ref ? findMon(c.ref) : null;
-  const res = s.kind === "conc" ? (ok ? "blijft concentreren" : "concentratie weg")
+  const res = s.kind === "conc" ? t(ok ? "init.msg.svConcOk" : "init.msg.svConcFail")
     : s.kind === "rider" ? riderOutcome(s.rd, ok, was - c.hp) + concNote(f)
-    : ok ? `${s.n} weg` : `${s.n} blijft`;
-  const line = esc(`${c.name}: ${shown || `${s.ab}-save ${ok ? "geslaagd" : "gefaald"}`} · ${res}`);
+    : t(ok ? "init.msg.svGone" : "init.msg.svStays", { name: s.n });
+  const line = esc(`${c.name}: ${shown || t(ok ? "init.msg.svOk" : "init.msg.svFail", { ab: s.ab })} · ${res}`);
   if (quiet) return line;
   ui.svRetry = !ok && c.kind === "monster" ? { sid, id: c.id, step: stepNo() } : null;
   const extra = !ui.svRetry ? ""
@@ -1335,7 +1335,7 @@ function svRetry(fn) {
 /** RE7: monsters zonder bekende savebonus worden niet gerold; melden wie de DM zelf rolt */
 function selfToast(list, ab) {
   const n = [...new Set(list.filter((c) => selfRoll(c, ab)).map((c) => c.name))];
-  if (n.length) toast(`Zelf rollen: ${n.join(", ")} (geen ${ab}-save bekend).`);
+  if (n.length) toast(t("init.msg.selfRoll", { names: n, ab }));
 }
 
 function svRollAll() {
@@ -1370,7 +1370,7 @@ function laUse(id, i) {
   // paneel is opnieuw opgebouwd: focus terug op dezelfde knop (of het paneel als die nu uit staat)
   const nb = document.querySelector(`#lsheet [data-lause="${CSS.escape(id)}"][data-i="${i}"]`);
   (nb && !nb.disabled ? nb : $("#lsheet .lsheet"))?.focus();
-  toastHtml(`${esc(`${c.name}: ${o.n} (−${o.cost} LA) · ${c.la.left} over`)} ${undoBtn()}`);
+  toastHtml(`${esc(t("init.msg.laUsed", { name: c.name, opt: o.n, n: o.cost, left: c.la.left }))} ${undoBtn()}`);
 }
 
 /* ---------- AoE: één schadeworp op meerdere doelen (knop AoE in de beurtbalk) ---------- */
@@ -1434,9 +1434,9 @@ function spellClick(a, k, b) {
   });
   else if (k === "sroll") {
     const dc = parseInt(a.sdc);
-    if (!(dc > 0)) { toastBad("Vul eerst de DC in."); $("#s-dc")?.focus(); return true; }
+    if (!(dc > 0)) { toastBad(t("init.msg.dcFirst")); $("#s-dc")?.focus(); return true; }
     const mons = spellTargets(app.S.list).map((c) => ({ c, p: spellPick(a, sp, caster, c) })).filter((x) => x.c.kind === "monster" && x.p.sel && !x.p.immune);
-    if (!mons.length) { toastBad("Kies eerst de monsters die een save doen."); return true; }
+    if (!mons.length) { toastBad(t("init.msg.monsFirst")); return true; }
     selfToast(mons.map((x) => x.c), sp.ab);
     // altijd een spell: Magic Resistance geeft advantage; Bless/Bane en cover tellen mee
     mons.filter(({ c }) => !selfRoll(c, sp.ab)).forEach(({ c, p }) => { const sa = saveAdv(c, sp.ab, hasMagicRes(p.m)), x = rollSave(saveBonus(p.m, sp.ab), sa.v, Math.random, saveMods(c, sp.ab), sa.why); a.s[c.id] = { ...(a.s[c.id] || {}), roll: x, ok: x.tot >= dc, lr: false }; });
@@ -1450,7 +1450,7 @@ function spellGo() {
   const a = ui.aoe, S = app.S, sp = curSpell(a), caster = S.list.find((x) => x.id === a.by && x.kind !== "lair");
   if (!sp || !caster) return;
   const dc = parseInt(a.sdc);
-  if (sp.rep && !(dc > 0)) { toastBad("Vul de DC in: die is nodig voor de herhaalsave."); $("#s-dc")?.focus(); return; }
+  if (sp.rep && !(dc > 0)) { toastBad(t("init.msg.dcRep")); $("#s-dc")?.focus(); return; }
   const picks = sortOrder(spellTargets(S.list)).map((c) => ({ c, p: spellPick(a, sp, caster, c) })).filter((x) => x.p.sel)
     .map(({ c, p }) => ({ c, m: p.m, ok: !!sp.ab && p.ok, lr: !!sp.ab && p.lr, note: p.roll ? `${sp.ab} save ${rollText(p.roll, dc)}` : "" }));
   if (!picks.length) return;
@@ -1460,7 +1460,7 @@ function spellGo() {
   addWhy([...r.why, ...sl.why]);
   ui.aoe = null;
   render();
-  const parts = [r.hit.length ? `${r.hit.join(", ")}${sp.conds ? ` ${sp.conds.join(" + ")}` : ""}` : sp.ab ? "niemand geraakt" : "", r.ok.length ? `${r.ok.length} geslaagd` : "", r.immune.length ? `${r.immune.length} immuun` : ""].filter(Boolean);
+  const parts = [r.hit.length ? `${r.hit.join(", ")}${sp.conds ? ` ${sp.conds.join(" + ")}` : ""}` : sp.ab ? t("init.msg.spNone") : "", r.ok.length ? t("init.msg.spOk", { n: r.ok.length }) : "", r.immune.length ? t("init.msg.spImm", { n: r.immune.length }) : ""].filter(Boolean);
   toastHtml(`${esc(`${sp.n} (${caster.name}): ${parts.join(" · ")}${sp.conc ? " · conc" : ""}${sl.txt ? ` · ${sl.txt}` : ""}`)} ${undoBtn()}`);
   $("#aoe")?.focus();
 }
@@ -1529,7 +1529,7 @@ export function bindAoe() {
     if (k === "dspx") { chooseDmg(a, null); rebuildAoe("#a-q"); return; }
     if (k === "slot") { const sp = dmgSp(a), cur = dmgSlot(a, aoeCaster(a), sp); a.slot = b.dataset.v; if (sp && cur !== a.slot) rollNow(a, dmgDice(a, aoeCaster(a), sp)); rebuildAoe(`[data-ao="slot"][data-v="${b.dataset.v}"]`); return; }
     if (k === "droll" || (k === "reroll" && !a.src)) {
-      if (!normDice(a.dice)) { toastBad("Dobbelstenen als 8d6 of 2d6+3."); $("#a-dice")?.focus(); return; }
+      if (!normDice(a.dice)) { toastBad(t("init.msg.diceFmt")); $("#a-dice")?.focus(); return; }
       rollNow(a, a.dice); $("#a-dmg").value = a.dmg; paintAoe(); return;
     }
     if (k === "save") aoeSet(a, id, { save: b.dataset.v, lr: false });
@@ -1539,9 +1539,9 @@ export function bindAoe() {
     if (k === "all") aoeTargets(a.src).forEach((c) => aoeSet(a, c.id, { sel: !!b.dataset.v && c.kind === b.dataset.v }));
     if (k === "roll") {
       const dc = parseInt(a.dc);
-      if (!(dc > 0)) { toastBad("Vul eerst de DC in."); $("#a-dc").focus(); return; }
+      if (!(dc > 0)) { toastBad(t("init.msg.dcFirst")); $("#a-dc").focus(); return; }
       const mons = aoeTargets(a.src).filter((c) => c.kind === "monster" && aoePick(a, c).sel);
-      if (!mons.length) { toastBad("Kies eerst de monsters die een save doen."); return; }
+      if (!mons.length) { toastBad(t("init.msg.monsFirst")); return; }
       selfToast(mons, a.ab);
       mons.filter((c) => !selfRoll(c, a.ab)).forEach((c) => {
         const m = findMon(c.ref), sa = saveAdv(c, a.ab, hasMagicRes(m)), x = rollSave(saveBonus(m, a.ab), sa.v, Math.random, saveMods(c, a.ab), sa.why);
@@ -1568,7 +1568,7 @@ function openActAoe(cid, name) {
   if (!c) return;
   const a = { src: c.id, srcName: c.name, act: name, t: {} };
   const x = srcAoe(a);
-  if (!x) { toastBad("Deze actie kon niet gelezen worden. Gebruik de knop AoE in de beurtbalk."); return; }
+  if (!x) { toastBad(t("init.msg.actRead")); return; }
   const ri = rcIndex(c.rc, name);
   ui.aoe = null; paintAoe(); // paneel opnieuw opbouwen met de titel van deze actie
   ui.sheet = null; ui.qadd = null; ui.la = null; ui.atk = null;
@@ -1608,7 +1608,8 @@ function aoeGo() {
   const down = picks.filter((x) => x.up && x.c.hp <= 0).length;
   ui.aoe = null;
   render();
-  toastHtml(`${esc(`${a.act || (sp ? sp.n : `AoE ${label}`)}: ${L.length} doel${L.length === 1 ? "" : "en"}, ${r.hits.reduce((s, h) => s + h.dealt, 0)} schade${down ? `, ${down} neer` : ""}${rcUsed ? " · recharge op" : ""}${sl.txt ? ` · ${sl.txt}` : ""}${conc}${concNote(r)}${ufs.length ? ` · ${ufs.join(" · ")}` : ""}`)} ${undoBtn()}`);
+  const sum = t(down ? "init.msg.aoeDown" : "init.msg.aoe", { what: a.act || (sp ? sp.n : `AoE ${label}`), n: L.length, dmg: r.hits.reduce((s, h) => s + h.dealt, 0), k: down });
+  toastHtml(`${esc(`${sum}${rcUsed ? ` · ${t("init.msg.rcUsed")}` : ""}${sl.txt ? ` · ${sl.txt}` : ""}${conc}${concNote(r)}${ufs.length ? ` · ${ufs.join(" · ")}` : ""}`)} ${undoBtn()}`);
   const ab = $("#aoe"); if (ab) ab.focus();
 }
 
@@ -1674,7 +1675,7 @@ function atkLa(x, by) {
   if (!x.la || !x.la.on || !laCan(x, by)) return "";
   const r = useLA(by, { n: x.la.n, cost: x.la.cost }, app.S);
   addWhy(r.why);
-  return r.why.length ? ` · ${by.name} −${x.la.cost} LA, ${by.la.left} over` : "";
+  return r.why.length ? ` · ${t("init.msg.laLeft", { name: by.name, n: x.la.cost, left: by.la.left })}` : "";
 }
 
 /** Doel gekozen: to hit en damage in één keer rollen (een ander doel kiezen houdt dezelfde worp) */
@@ -1713,7 +1714,7 @@ function atkGo() {
   const hasNext = x.sq && x.sq.left.length && atkNext(x, c.id); // GV11: door naar de volgende aanval, zelfde doel
   if (!hasNext) ui.atk = null;
   render();
-  toastHtml(`${esc(`${c.name}: −${res.dealt} HP${res.crit ? " (kritiek)" : ""} → ${n0(c.hp)}/${n0(c.max)}${before > 0 && c.hp <= 0 ? (c.kind === "pc" ? ", bewusteloos" : ", neer") : ""}${uf ? ` · ${uf}` : ""}${rt}${la}${concNote(f)}`)} ${undoBtn()}`);
+  toastHtml(`${esc(`${c.name}: −${res.dealt} HP${res.crit ? ` ${t("init.msg.crit")}` : ""} → ${n0(c.hp)}/${n0(c.max)}${before > 0 && c.hp <= 0 ? `, ${t(c.kind === "pc" ? "init.dmg.unc" : "init.card.down")}` : ""}${uf ? ` · ${uf}` : ""}${rt}${la}${concNote(f)}`)} ${undoBtn()}`);
   if (hasNext) focusAtk(); else atkBack(x, false);
 }
 
@@ -1726,12 +1727,12 @@ function atkRiderGo(x, c, ri) {
   const full = { ...rd, n: x.n, by: x.by, roll: x.rroll, mode: rd.dmg ? targetMode(c, m, rd.dmg.type).mode : 1 };
   if (!ri.choice) {
     addSave(app.S, { id: c.id, kind: "rider", n: x.n, ab: rd.ab, dc: rd.dc, rd: full });
-    return ` · ${rd.ab}-save DC ${rd.dc} in de beurtbalk`;
+    return ` · ${t("init.msg.riderBar", { ab: rd.ab, dc: rd.dc })}`;
   }
   const hp = c.hp, f = applyRider(c, full, ri.choice === "ok", app.S.active);
   addWhy(f.why);
   if (f.saves) f.saves.forEach((s) => addSave(app.S, s));
-  return ` · ${rd.ab} ${rd.dc} ${ri.choice === "ok" ? "geslaagd" : "gefaald"}: ${riderOutcome(rd, ri.choice === "ok", hp - c.hp)}${concNote(f)}`;
+  return ` · ${rd.ab} ${rd.dc} ${t(ri.choice === "ok" ? "init.msg.ok" : "init.msg.fail")}: ${riderOutcome(rd, ri.choice === "ok", hp - c.hp)}${concNote(f)}`;
 }
 
 /** Mis met de LA-schakelaar aan: legendary action is toch gebruikt */
@@ -1741,7 +1742,7 @@ function atkMiss() {
   const la = atkLa(x, by);
   ui.atk = null;
   render();
-  if (la) toastHtml(`${esc(`${x.label}: mis${la}`)} ${undoBtn()}`);
+  if (la) toastHtml(`${esc(`${x.label}: ${t("init.msg.miss")}${la}`)} ${undoBtn()}`);
   atkBack(x, false);
 }
 
@@ -1761,7 +1762,7 @@ export function bindAtk() {
     }
     if (k === "parry") { // RE13: Parry van het doelmonster (monster tegen monster): reaction weg, +N AC voor deze aanval
       const c = app.S.list.find((t) => t.id === x.tid), n = c && c.ref ? parryOf(findMon(c.ref)) : 0;
-      if (c && n && canParry(c, app.S.round)) { because("Parry"); apply(useParry(c, n)); x.acp = { id: c.id, n }; render(); toastHtml(`${esc(`${c.name}: Parry +${n} AC · reaction gebruikt`)} ${undoBtn()}`); focusAtk(); return; }
+      if (c && n && canParry(c, app.S.round)) { because("Parry"); apply(useParry(c, n)); x.acp = { id: c.id, n }; render(); toastHtml(`${esc(t("init.msg.parryAc", { name: c.name, n }))} ${undoBtn()}`); focusAtk(); return; }
     }
     if (k === "la") x.la.on = !x.la.on;
     if (k === "free") { // oude gedrag: alleen de worp als melding
@@ -1808,7 +1809,7 @@ function initGo() {
     const L = initPcs(app.S.list), first = L.find((c) => parseInit(x.v[c.id]) === null);
     if (first) { x.act = first.id; x.fresh = true; }
     paintInit();
-    toastBad(`Nog geen initiative voor: ${r.missing.join(", ")}.`);
+    toastBad(t("init.msg.noInit", { names: r.missing }));
     return;
   }
   apply(r);

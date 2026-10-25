@@ -2,6 +2,7 @@
 // Gedeeld door de DM-app en het spelersscherm (speler.html); alleen UI, niets in de encounter, undo of opslag.
 // Zelfde patroon als de spell-uitleg (#rsheet): Sluit bovenaan, achtergrond en Escape sluiten, focus terug naar de chip.
 import { esc } from "./util.js";
+import { t } from "../i18n/boot.js";
 import { condInfo } from "../rules/conditions.js";
 
 let cur = null;   // { key, cid } van de geopende chip
@@ -23,7 +24,7 @@ export function openCond(btn, info = {}) {
   el.innerHTML = `<div class="dim" data-csh="close"></div>
     <div class="sheet qsheet rsheet csheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="c-title">
       <div class="grab" aria-hidden="true"></div>
-      <div class="shead rhead"><h3 id="c-title">${esc(ci.name)}</h3><button type="button" class="link" data-csh="close">Sluit</button></div>
+      <div class="shead rhead"><h3 id="c-title">${esc(ci.name)}</h3><button type="button" class="link" data-csh="close">${esc(t("common.close"))}</button></div>
       <div class="rtext">${ci.lines.map((l) => `<p>${esc(l)}</p>`).join("")}</div>
       ${rows.length ? `<dl class="cgrid">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>` : ""}
     </div>`;

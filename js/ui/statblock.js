@@ -11,34 +11,35 @@ import { newDs } from "../rules/combat.js";
 import { drText } from "../rules/aoe.js";
 import { spellParts } from "../data/spells.js";
 import { passives, pasText } from "../rules/passives.js";
+import { t, i18n } from "../i18n/boot.js";
 
 /**
  * Tekst → HTML met klikbare "(2d6 + 3)", "+4 to hit" en losse "1d4".
  * atk = { cid, n, hit }: de to-hit-knop opent het doelpaneel van die aanval (statblock van een deelnemer);
  * een tweede to hit met een andere bonus (Druid: "+4 to hit with shillelagh") blijft een losse worp.
  */
-export function diceify(t, atk) {
+export function diceify(txt, atk) {
   const hit = atk ? `data-atk="${esc(atk.n)}" data-cid="${esc(atk.cid)}"` : "", own = (b) => atk && +b === atk.hit;
-  return esc(t)
+  return esc(txt)
     .replace(/\((\d+d\d+(?:\s*[+−-]\s*\d+)?)\)/g, (m, e) => `(<button class="dice" data-roll="${e}">${e}</button>)`)
     .replace(/([+-]\d+) to hit/g, (m, b) => `<button class="dice" ${own(b) ? hit : `data-roll="1d20${b}" data-hit="1"`}>${b} to hit</button>`)
     .replace(/\b(\d+d\d+)\b(?![^<]*<\/button>)(?![^<]*")/g, (m, e) => `<button class="dice" data-roll="${e}">${e}</button>`);
 }
 
 /** Spellcasting-tekst: spell-lijsten ("1st level (4 slots): …", "At will: …") met tikbare namen, de rest via diceify */
-export const linkSpells = (t, atk) => String(t).split("\n").map((line) =>
+export const linkSpells = (txt, atk) => String(txt).split("\n").map((line) =>
   spellParts(line).map((p) => (p.sp ? spellLink(p.sp, p.t) : diceify(p.t, atk))).join("")).join("\n");
 
 export function doRoll(expr, label, isHit) {
   const r = rollExpr(expr);
   if (!r) return;
   let extra = "";
-  if (isHit && r.rolls[0] === 20) extra = ` <span class="crit">kritiek!</span>`;
-  if (isHit && r.rolls[0] === 1) extra = ` <span class="fumble">misser</span>`;
+  if (isHit && r.rolls[0] === 20) extra = ` <span class="crit">${esc(t("init.sb.crit"))}</span>`;
+  if (isHit && r.rolls[0] === 1) extra = ` <span class="fumble">${esc(t("init.sb.fumble"))}</span>`;
   toastHtml(`${label ? esc(label) + ": " : ""}${esc(expr)} → [${r.rolls.join(", ")}]${r.mod ? ` ${sgn(r.mod)}` : ""} = <b>${r.total}</b>${extra}`);
 }
 
-const headBtns = () => `<div class="sbbtns"><button class="btn small sbpin" id="sbpin" aria-pressed="${sb.pin}" title="Kolom vastzetten: een beurtwissel verandert hem dan niet">${sb.pin ? "Vast" : "Vastzetten"}</button><button class="btn small sbbig" id="sbbig" aria-pressed="false">Groot</button><button class="btn small closebtn" id="sbclose">Sluit</button></div>`;
+const headBtns = () => `<div class="sbbtns"><button class="btn small sbpin" id="sbpin" aria-pressed="${sb.pin}" title="${esc(t("init.sb.pinTip"))}">${esc(t(sb.pin ? "init.sb.pinned" : "init.sb.pin"))}</button><button class="btn small sbbig" id="sbbig" aria-pressed="false">${esc(t("init.sb.big"))}</button><button class="btn small closebtn" id="sbclose">${esc(t("common.close"))}</button></div>`;
 
 const abilRow = (ab) => `<div class="abil">${["STR", "DEX", "CON", "INT", "WIS", "CHA"].map((k, i) =>
   `<button data-roll="1d20${sgn(mod(n0(ab[i])))}" data-label="${k} check"><b>${k}</b>${n0(ab[i])} (${sgn(mod(n0(ab[i])))})</button>`).join("")}</div>`;
@@ -102,13 +103,13 @@ export function toggleBigSB() {
 }
 function bigBtn() {
   const big = $("#sbwrap").dataset.big === "true", b = $("#sbbig");
-  if (b) { b.textContent = big ? "Half" : "Groot"; b.setAttribute("aria-pressed", big); }
+  if (b) { b.textContent = t(big ? "init.sb.half" : "init.sb.big"); b.setAttribute("aria-pressed", big); }
 }
 /** Desktop: vastzetten aan/uit; los = meteen weer de beurt volgen */
 export function togglePinSB() {
   sb.pin = !sb.pin;
   const b = $("#sbpin");
-  if (b) { b.textContent = sb.pin ? "Vast" : "Vastzetten"; b.setAttribute("aria-pressed", sb.pin); }
+  if (b) { b.textContent = t(sb.pin ? "init.sb.pinned" : "init.sb.pin"); b.setAttribute("aria-pressed", sb.pin); }
   if (!sb.pin) sb.last = undefined; // los = meteen de beurt volgen; vast = balkje direct tonen
   if (sb.args) syncSB(...sb.args);
 }
@@ -125,8 +126,8 @@ export function previewSB(m) {
   if (phone() || sb.pin || sb.prev === m.n) return;
   if (!sb.prev) sb.back = sb.cid;
   sb.prev = m.n; sb.cid = null; sb.ref = null; sb.pc = false; sb.live = "";
-  $("#sb").innerHTML = `<div class="sbhead"><div><h2>${esc(m.n)}</h2><div class="meta">${esc(m.meta || (m.custom ? "Eigen monster" : ""))}</div></div></div>
-    <p class="sbprev">Voorbeeld · nog niet toegevoegd</p><hr>${sbBody(m)}`;
+  $("#sb").innerHTML = `<div class="sbhead"><div><h2>${esc(m.n)}</h2><div class="meta">${esc(m.meta || (m.custom ? t("init.sb.custom") : ""))}</div></div></div>
+    <p class="sbprev">${esc(t("init.sb.preview"))}</p><hr>${sbBody(m)}`;
   $("#sb").scrollTop = 0;
   paintTurn(null);
 }
@@ -216,15 +217,15 @@ function paintNext(S) {
   if (key === sb.nk) return;
   sb.nk = key; sb.nid = m ? r.c.id : null;
   const sub = r && r.n === 1 && r.c.name !== m.n ? ` · ${esc(r.c.name)}` : "";
-  el.innerHTML = m ? `<hr><p class="sbprev">${r.now ? "Nu aan de beurt" : "Daarna"}</p>
-    <div class="sbhead"><div><h2>${esc(m.n)}${r.n > 1 ? ` ×${r.n}` : ""}</h2><div class="meta">${esc(m.meta || (m.custom ? "Eigen monster" : ""))}${sub}</div></div></div>
+  el.innerHTML = m ? `<hr><p class="sbprev">${esc(t(r.now ? "init.sb.now" : "init.sb.next"))}</p>
+    <div class="sbhead"><div><h2>${esc(m.n)}${r.n > 1 ? ` ×${r.n}` : ""}</h2><div class="meta">${esc(m.meta || (m.custom ? t("init.sb.custom") : ""))}${sub}</div></div></div>
     <hr><div class="sbnb">${sbBody(m, r.c.id)}</div>` : "";
 }
 
 function emptySB() {
   if (sb.cid === null && sb.ref === null && !sb.pc && $("#sb .sbempty")) return;
   sb.cid = null; sb.ref = null; sb.pc = false; sb.live = ""; sb.prev = null;
-  $("#sb").innerHTML = `<div class="sbempty empty">Voeg een monster of speler toe: het statblock of de sheet verschijnt hier.</div>`;
+  $("#sb").innerHTML = `<div class="sbempty empty">${esc(t("init.sb.empty"))}</div>`;
 }
 /** Naam van het getoonde monster bijwerken (na bewerken of Goblin 1 → 2) */
 function nameSB(c) {
@@ -232,7 +233,7 @@ function nameSB(c) {
   if (cn && cn.textContent !== t) cn.textContent = t;
 }
 function paintTurn(c) {
-  const html = c ? `<button class="sbturn" id="sbfollow">Beurt: <b>${esc(c.name)}</b> <span aria-hidden="true">→</span></button>` : "";
+  const html = c ? `<button class="sbturn" id="sbfollow">${esc(t("init.sb.turn"))} <b>${esc(c.name)}</b> <span aria-hidden="true">→</span></button>` : "";
   if (html === sb.turn) return;
   sb.turn = html;
   $("#sbturn").innerHTML = html;
@@ -251,14 +252,14 @@ export function sbBody(m, cid = null) {
     ${m.spd ? `<p><span class="k">Speed</span> ${esc(m.spd)}</p>` : ""}
     ${m.ab ? `<hr>${abilRow(m.ab)}` : ""}
     <hr>${(m.x || []).map(([k, v]) => `<p><span class="k">${esc(k)}</span> ${diceify(v)}</p>`).join("")}
-    ${m.cr ? `<p><span class="k">Challenge</span> ${esc(m.cr)}${m.xp ? ` (${n0(m.xp).toLocaleString("nl-NL")} XP)` : ""}</p>` : ""}
+    ${m.cr ? `<p><span class="k">Challenge</span> ${esc(m.cr)}${m.xp ? ` (${esc(i18n().num(n0(m.xp)))} XP)` : ""}</p>` : ""}
     ${m.t && m.t.length ? `<hr>${ent(m.t)}` : ""}
     ${m.a && m.a.length ? `<h3>Actions</h3>${ent(m.a, true)}` : ""}
     ${m.ba && m.ba.length ? `<h3>Bonus Actions</h3>${ent(m.ba, true)}` : ""}
     ${m.re && m.re.length ? `<h3>Reactions</h3>${ent(m.re, true)}` : ""}
     ${m.l && m.l.length ? `<h3>Legendary Actions</h3>${m.ld ? `<p>${diceify(m.ld)}</p>` : ""}${ent(m.l, true)}` : ""}
     ${m.text ? `<hr><div class="pre">${diceify(m.text)}</div>` : ""}
-    ${m.custom ? "" : `<p class="credit">Bron: System Reference Document 5.1 (2014), Wizards of the Coast, CC-BY-4.0, via Open5e.</p>`}`;
+    ${m.custom ? "" : `<p class="credit">${esc(t("init.sb.credit"))}</p>`}`;
 }
 
 export function showSB(c, follow = false) {
@@ -273,7 +274,7 @@ export function showSB(c, follow = false) {
     return open();
   }
   sb.ref = m.n;
-  $("#sb").innerHTML = `<div class="sbhead"><div><h2>${esc(m.n)}</h2><div class="meta">${esc(m.meta || (m.custom ? "Eigen monster" : ""))}<span id="sbcname">${cname && cname !== m.n ? ` · ${esc(cname)}` : ""}</span></div></div>
+  $("#sb").innerHTML = `<div class="sbhead"><div><h2>${esc(m.n)}</h2><div class="meta">${esc(m.meta || (m.custom ? t("init.sb.custom") : ""))}<span id="sbcname">${cname && cname !== m.n ? ` · ${esc(cname)}` : ""}</span></div></div>
     ${headBtns()}</div><hr><div class="sbnb">${sbBody(m, c.id)}</div>`;
   $("#sb").scrollTop = 0;
   open();
@@ -283,7 +284,7 @@ export function showSB(c, follow = false) {
 function liveHtml(c, chips) {
   const ac = effAc(c), br = acBreakdown(c), pt = pasText(passives(c));
   const d = c.ds || newDs();
-  const ds = c.max && c.hp <= 0 ? (d.dead ? `<span class="bd r">Dood</span>` : d.stable ? `<span class="bd g">Stabiel</span>`
+  const ds = c.max && c.hp <= 0 ? (d.dead ? `<span class="bd r">${esc(t("init.card.dead"))}</span>` : d.stable ? `<span class="bd g">${esc(t("init.card.stable"))}</span>`
     : `<span class="bd r">${dsMini(n0(d.s), n0(d.f))}</span>`) : "";
   const k = c.casting, cnt = (l, o) => `<span class="cnt"><b>${esc(l)}</b> ${n0(o.left)}/${n0(o.max)}</span>`;
   const slots = k ? [...(k.pact ? [cnt(`Pact ${ORD[k.pact.lvl] || ""}`, k.pact)] : []), ...k.slots.map((x) => cnt(ORD[x.lvl] || "", x)), ...k.daily.flatMap((g) => g.items.map((it) => cnt(it.n, it)))] : [];
@@ -320,7 +321,7 @@ export function showSheet(c, chips = sb.args && sb.args[2]) {
   const hitBtn = (b, l) => (/^[+-]\d+$/.test(b) ? `<button class="dice" data-roll="1d20${b}" data-hit="1" data-label="${esc(l)}">${b}</button>` : esc(b || ""));
   const roll = (v) => (/^[+-]\d+$/.test(v) ? v : "+0");
   const meta = [h && h.cls, c.race || (h && h.race)].filter(Boolean).join(" · ");
-  $("#sb").innerHTML = `<div class="sbhead"><div><h2 id="sbpname">${esc(c.name)}</h2><div class="meta">${esc(meta || "Speler")}</div></div>
+  $("#sb").innerHTML = `<div class="sbhead"><div><h2 id="sbpname">${esc(c.name)}</h2><div class="meta">${esc(meta || t("init.sb.pc"))}</div></div>
     ${headBtns()}</div><hr>
     <div id="sblive">${sb.live}</div>
     ${h ? `<hr>
@@ -333,16 +334,16 @@ export function showSheet(c, chips = sb.args && sb.args[2]) {
     ${h.attacks && h.attacks.length ? `<h3>Attacks</h3>${h.attacks.map((a) => `<p class="entry"><b><i>${esc(a.n)}.</i></b> ${hitBtn(a.hit, a.n)} to hit, ${dice(a.dmg)}${a.notes ? ` <span class="hint">${esc(a.notes)}</span>` : ""}</p>`).join("")}` : ""}
     ${h.levels && h.levels.length ? `<h3>Spellcasting</h3><p>${h.spellAbility ? `${esc(h.spellAbility)} · ` : ""}${h.spellDC ? `save DC ${esc(h.spellDC)}` : ""}${h.spellAtk ? ` · spell attack ${hitBtn(h.spellAtk, "Spell attack")}` : ""}</p>
       ${h.levels.map((l) => `<p class="entry"><b><i>${l.lvl ? ORD[l.lvl] + " level" + (l.max ? ` (${n0(l.max)} slots)` : "") : "Cantrips"}.</i></b> ${(l.spells || []).map((sp) => `${sp.n ? spellLink(sp.n, sp.n, c.id) : ""}${sp.hit && sp.hit !== "--" ? ` <span class="hint">(${esc(sp.hit)})</span>` : ""}${/concentration/i.test(sp.dur) ? ` <span class="hint">conc.</span>` : ""}`).join(", ")}</p>`).join("")}` : ""}
-    ${h.features ? `<h3>Features &amp; Actions</h3><details><summary class="link">Toon alles</summary><p class="entry">${dice(h.features)}</p></details>` : ""}
-    <p class="credit">Geïmporteerd uit D&amp;D Beyond character sheet.</p>`
-    : `<p class="hint sbnosheet">Geen sheet · voeg toe via D&amp;D Beyond-link of -PDF</p>${phone() ? "" : `<div id="sbnext"></div>`}`}`;
+    ${h.features ? `<h3>Features &amp; Actions</h3><details><summary class="link">${esc(t("init.sb.showAll"))}</summary><p class="entry">${dice(h.features)}</p></details>` : ""}
+    <p class="credit">${esc(t("init.sb.ddb"))}</p>`
+    : `<p class="hint sbnosheet">${esc(t("init.sb.noSheet"))}</p>${phone() ? "" : `<div id="sbnext"></div>`}`}`;
   $("#sb").scrollTop = 0;
   if (!h && sb.args) paintNext(sb.args[0]);
   open();
 }
 
 /* ---------- preview vóór toevoegen (Monster-paneel en snel toevoegen) ---------- */
-const DEF = [["Damage Immunities", "Immuun"], ["Damage Resistances", "Resist"], ["Damage Vulnerabilities", "Kwetsb."]];
+const DEF = [["Damage Immunities", "init.card.defImm"], ["Damage Resistances", "init.card.defRes"], ["Damage Vulnerabilities", "init.sb.defVuln"]]; // sleutels
 const PREV_MAX = 3;
 /** Eén aanvalsregel als tekst: "Scimitar +4 · 1d6+2 slashing", "Fire Breath DC 15 DEX · 8d6 fire" */
 const atkText = (a) => [a.n, a.hit !== null ? sgn(a.hit) : a.dc ? `DC ${a.dc.n} ${a.dc.ab}` : "",
@@ -355,22 +356,22 @@ const atkText = (a) => [a.n, a.hit !== null ? sgn(a.hit) : a.dc ? `DC ${a.dc.n} 
 export function monCard(m, full = false, toggle = true) {
   if (!m) return "";
   const A = monsterActions(m), lg = legInfo(m);
-  const def = DEF.map(([k, l]) => { const x = (m.x || []).find(([n]) => n === k); return x ? `${l}: ${x[1]}` : ""; }).filter(Boolean);
+  const def = DEF.map(([k, l]) => { const x = (m.x || []).find(([n]) => n === k); return x ? `${t(l)}: ${x[1]}` : ""; }).filter(Boolean);
   const main = A ? A.main : [], more = main.length - PREV_MAX;
   const traits = (m.t || []).map(([k]) => k).filter((k) => !/^spellcasting/i.test(k));
   const tags = [lg.la ? `Legendary (${lg.la.max})` : "", castInfo(m) || (m.t || []).some(([k]) => /spellcasting/i.test(k)) ? "Spellcasting" : ""].filter(Boolean);
-  const stats = [`AC ${parseInt(m.ac) || "?"}`, `HP ${n0(m.hp) || "?"}${m.hd ? ` (${m.hd})` : ""}`, m.spd, m.cr ? `CR ${m.cr}${m.xp ? ` (${n0(m.xp).toLocaleString("nl-NL")} XP)` : ""}` : ""].filter(Boolean);
+  const stats = [`AC ${parseInt(m.ac) || "?"}`, `HP ${n0(m.hp) || "?"}${m.hd ? ` (${m.hd})` : ""}`, m.spd, m.cr ? `CR ${m.cr}${m.xp ? ` (${i18n().num(n0(m.xp))} XP)` : ""}` : ""].filter(Boolean);
   return `<div class="mprev" aria-live="polite">
-    <div class="mphead"><b>${esc(m.n)}</b><span>${esc(m.meta || (m.custom ? "Eigen monster" : ""))}</span></div>
+    <div class="mphead"><b>${esc(m.n)}</b><span>${esc(m.meta || (m.custom ? t("init.sb.custom") : ""))}</span></div>
     <p class="mpstat">${esc(stats.join(" · "))}</p>
     ${def.length ? `<p class="mpdef">${esc(def.join(" · "))}</p>` : ""}
     ${A && A.multi ? `<p class="mpmulti">${esc(A.multi.text)}</p>` : ""}
     ${main.slice(0, PREV_MAX).map((a) => `<p class="mpatk">${esc(atkText(a))}</p>`).join("")}
-    ${more > 0 ? `<p class="mpmore">+${more} meer</p>` : ""}
+    ${more > 0 ? `<p class="mpmore">${esc(t("init.atk.more", { n: more }))}</p>` : ""}
     ${!A && m.text ? `<p class="mptext">${esc(m.text)}</p>` : ""}
     ${traits.length ? `<p class="mptraits">${esc(traits.join(" · "))}</p>` : ""}
-    ${tags.length ? `<p class="mptags">${tags.map((t) => `<span class="tag m">${esc(t)}</span>`).join("")}</p>` : ""}
-    ${toggle ? `<button type="button" class="link mpfull" data-mpfull aria-expanded="${full}">${full ? "Minder" : "Volledig statblock"} ${chev(full)}</button>` : ""}
+    ${tags.length ? `<p class="mptags">${tags.map((x) => `<span class="tag m">${esc(x)}</span>`).join("")}</p>` : ""}
+    ${toggle ? `<button type="button" class="link mpfull" data-mpfull aria-expanded="${full}">${esc(t(full ? "init.sb.less" : "init.sb.full"))} ${chev(full)}</button>` : ""}
     ${toggle && full ? `<div class="sbx">${sbBody(m)}</div>` : ""}
   </div>`;
 }
