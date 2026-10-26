@@ -116,12 +116,12 @@ const homeUrl = (lang) => `${SITE}/${lang}/`;
  *  hreflang, zodat zoekmachines nog geen half vrijgegeven taal tonen. */
 export function seoHead(lang, cat, live = LIVE) {
   const attr = (k) => { const v = cat[k]; if (typeof v !== "string") throw new Error(`${HOME_PAGE}: geen tekst voor ${k}`); return escHtml(v); };
+  if (!OG_LOCALE[lang]) throw new Error(`${HOME_PAGE}: geen og:locale voor ${lang} (OG_LOCALE)`);
   const others = live.filter((l) => l !== lang);
   const lines = live.includes(lang)
-    ? [...live.map((l) => `<link rel="alternate" hreflang="${l}" href="${homeUrl(l)}">`), `<link rel="alternate" hreflang="x-default" href="${homeUrl(fallbackIn(live))}">`]
-    : [`<meta name="robots" content="noindex">`];
+    ? [`<link rel="canonical" href="${homeUrl(lang)}">`, ...live.map((l) => `<link rel="alternate" hreflang="${l}" href="${homeUrl(l)}">`), `<link rel="alternate" hreflang="x-default" href="${homeUrl(fallbackIn(live))}">`]
+    : [`<meta name="robots" content="noindex">`]; // geen canonical naast noindex (tegenstrijdig signaal)
   return [
-    `<link rel="canonical" href="${homeUrl(lang)}">`,
     ...lines,
     `<meta property="og:type" content="website">`,
     `<meta property="og:site_name" content="Kev’s Inn">`,
@@ -185,7 +185,7 @@ export async function build(root = ROOT) {
   for (const lang of SUPPORTED) {
     const cat = (await import(pathToFileURL(`${root}locales/${lang}.js`).href)).default;
     for (const [rest, src] of Object.entries(APP_PAGES)) out[`${lang}/${rest}index.html`] = appPage(readFileSync(root + src, "utf8"), src, lang, cat);
-    out[`${lang}/index.html`] = appPage(readFileSync(root + HOME_PAGE, "utf8").replace("{{seo}}", seoHead(lang, cat)), HOME_PAGE, lang, cat);
+    out[`${lang}/index.html`] = appPage(readFileSync(root + HOME_PAGE, "utf8").replace("{{seo}}", () => seoHead(lang, cat)), HOME_PAGE, lang, cat);
     out[`${lang}/404.html`] = notFoundPage(lang, cat);
     if (lang === fb) out["404.html"] = notFoundPage(lang, cat);
     out[`${lang}/manifest.webmanifest`] = manifest(lang, cat);

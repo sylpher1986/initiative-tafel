@@ -175,7 +175,7 @@ test("homepage per taal: lang, eigen title en description, canonical naar zichze
     assert.match(h, new RegExp(`<html lang="${lang}">`));
     const title = /<title>([^<]+)<\/title>/.exec(h)[1], desc = /<meta name="description" content="([^"]+)">/.exec(h)[1];
     titles.add(title); descs.add(desc);
-    assert.deepEqual(links(h, /<link rel="canonical" href="([^"]+)">/g), [url], lang + ": één canonical, naar zichzelf");
+    assert.deepEqual(links(h, /<link rel="canonical" href="([^"]+)">/g), LIVE.includes(lang) ? [url] : [], lang + ": live = één canonical naar zichzelf; niet live = alleen noindex");
     assert.ok(h.includes(`<meta property="og:url" content="${url}">`), lang);
     assert.ok(h.includes(`<meta property="og:title" content="${title}">`) && h.includes(`<meta property="og:description" content="${desc}">`), lang + ": og = title/description");
     assert.ok(h.includes(`<meta property="og:locale" content="${lang === "en" ? "en_US" : "nl_NL"}">`), lang);
@@ -257,4 +257,18 @@ test("app linkt in Hulp naar de homepage in de eigen taal, in hetzelfde tabblad"
     assert.equal(m[1], `/${lang}/`);
     assert.doesNotMatch(m[2], /target=/, "beginscherm-app: geen losse browser");
   }
+});
+
+test("homepage: kleurtokens gelijk aan css/app.css (licht en donker), og:locale voor elke taal", () => {
+  const norm = (v) => v.trim().toLowerCase().replace(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/, "#$1$1$2$2$3$3");
+  const vars = (block) => Object.fromEntries([...block.matchAll(/(--[\w-]+):\s*(#[0-9a-fA-F]+)/g)].map((m) => [m[1], norm(m[2])])); // alleen kleuren
+  const css = read("css/app.css"), home = read(HOME_PAGE);
+  const appLight = vars(/:root\{([^}]*)\}/.exec(css)[1]), appDark = vars(/:root\[data-theme="dark"\]\{([^}]*)\}/.exec(css)[1]);
+  const homeLight = vars(/:root\{([^}]*)\}/.exec(home)[1]), homeDark = vars(/:root\[data-theme="dark"\]\{([^}]*)\}/.exec(home)[1]);
+  for (const [k, v] of Object.entries(homeLight)) if (k in appLight) assert.equal(v, appLight[k], "licht " + k);
+  for (const [k, v] of Object.entries(homeDark)) assert.equal(v, appDark[k], "donker " + k);
+  // donker via systeem gelijk aan donker via data-theme
+  assert.deepEqual(vars(/:root:not\(\[data-theme="light"\]\)\{([^}]*)\}/.exec(home)[1]), homeDark);
+  for (const lang of SUPPORTED) assert.doesNotThrow(() => seoHead(lang, { "page.home.title": "T", "page.home.desc": "D", "page.home.ogAlt": "A" }), lang);
+  assert.throws(() => seoHead("de", { "page.home.title": "T", "page.home.desc": "D", "page.home.ogAlt": "A" }, ["de"]), /og:locale/);
 });

@@ -55,10 +55,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     await p.close();
   }
   if (!only.length || only.includes("og")) {
-  const og = await b.newPage({ viewport: { width: 1200, height: 630 } });
-  await og.setContent(ogHtml());
-  await og.evaluate(() => document.fonts.ready);
-  await og.screenshot({ path: ROOT + "icons/og.png" });
+    const og = await b.newPage({ viewport: { width: 1200, height: 630 } });
+    await og.setContent(ogHtml());
+    await og.evaluate(() => document.fonts.ready);
+    await og.screenshot({ path: ROOT + "icons/og.png" });
   }
   await b.close();
   console.log("icons/*.png geschreven");
