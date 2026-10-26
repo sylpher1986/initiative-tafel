@@ -163,3 +163,39 @@ test("review: tags met een prototype-naam zijn geen code; kwaadaardige naam in d
   assert.match(headHtml(G), /&lt;img src=x onerror=alert\(1\)&gt; ×2/);
   assert.equal(cleanView({ v: 1, list: [{ id: "x", kind: "pc", name: "X", tags: ["Prone"], tdx: [{ d: { k: "rules.dw.rounds", p: { n: null } } }] }] }).list[0].tdx, undefined, "n moet een getal zijn");
 });
+
+test("WP32-review: v1 mét codes (DM 1.51–1.52.0, oude velden ernaast) → nieuw spelersscherm in het Engels", async () => {
+  await lang("en");
+  const V = cleanView({ v: 1, c: 1, round: 2, active: "a", next: "b", group: ["a", "d"], gname: "Onbekend wezen ×2",
+    list: [
+      { id: "a", kind: "monster", name: "Onbekend wezen 1", anon: 1, icon: "m-unknown", hp: { st: "Gewond", hs: "hurt" }, tags: ["Verrast", "Prone"], tk: ["sur", null], td: [null, { d: "nog 1 ronde" }], tdx: [null, { d: { k: "rules.dw.rounds", p: { n: 1 } } }] },
+      { id: "b", kind: "pc", name: "Aria", icon: "r-pc", hp: { hp: 0, max: 20, temp: 0, st: "Stabiel", hs: "stable" }, tags: ["Reaction op"], tk: ["react"] },
+      { id: "d", kind: "monster", name: "Onbekend wezen 2", anon: 2, icon: "m-unknown", hp: { st: "Ongedeerd", hs: "ok" }, tags: [] },
+    ] });
+  const [a, b] = V.list;
+  assert.match(headHtml(V), /<b>Unknown creature ×2<\/b>/, "groepsnaam uit de rijen, niet de oude gname");
+  assert.equal(hsText(a.hp.hs), "Hurt"); assert.equal(hsText(b.hp.hs), "Stable");
+  assert.equal(tagText(a, 0), "Surprised"); assert.equal(tagText(b, 0), "Reaction used"); assert.equal(tagText(a, 1), "Prone");
+  assert.equal(a.td, undefined, "oude tekstduur wordt niet meer gelezen");
+  const { tr } = await import("../js/i18n/boot.js");
+  assert.equal(tr(a.tdx[1].d), "1 round left");
+  const W = cleanView({ ...V, list: V.list.map((c) => (c.id === "a" ? { ...c, hp: { hs: "bloodied" } } : c)) });
+  assert.deepEqual(logLines(V, W), ["Unknown creature 1: Hurt → Bloodied"]);
+});
+
+test("WP32-review: eigen effect met de naam van een code verdwijnt niet achter Verrast", () => {
+  const L = [Mo({ id: "m", name: "Goblin", init: 5, sur: true, eff: [{ id: "e", n: "sur" }] })];
+  const V = toPlayerView({ list: L, round: 1, active: "m" });
+  assert.deepEqual(V.list[0].tags, ["sur", "sur"]); assert.deepEqual(V.list[0].tk, ["sur", null]);
+});
+
+test("WP32-review: herkend-regel en niet herkende trait van een eigen monster in de taal van de pagina", async () => {
+  const { parseStatText, foundText, withParsed, REST } = await import("../js/data/statparse.js");
+  const txt = "Bog Ork\nArmor Class 14\nHit Points 22 (4d8 + 4)\nDamage Immunities poison\nLosse regel zonder punt\nBite. Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) piercing damage.";
+  const { tr } = await import("../js/i18n/boot.js");
+  await lang("en");
+  assert.equal(tr(foundText(parseStatText(txt))), "AC 14 · 22 HP (4d8+4) · 1 action · immune to poison");
+  await lang("nl");
+  assert.equal(tr(foundText(parseStatText(txt))), "AC 14 · 22 HP (4d8+4) · 1 actie · immuun poison");
+  assert.equal(withParsed({ n: "Bog Ork", text: txt }).t.at(-1)[0], REST, "marker, geen tekst: vertaald bij het tekenen");
+});

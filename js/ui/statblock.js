@@ -10,8 +10,11 @@ import { effAc, acBreakdown } from "../rules/effects.js";
 import { newDs } from "../rules/combat.js";
 import { drText } from "../rules/aoe.js";
 import { spellParts } from "../data/spells.js";
+import { REST } from "../data/statparse.js";
 import { passives, pasText } from "../rules/passives.js";
 import { t, i18n } from "../i18n/boot.js";
+/** Trait-naam voor weergave: niet herkende tekst van een eigen monster (REST) in de taal van de pagina */
+const trName = (k) => (k === REST ? t("init.sb.other") : k);
 
 /**
  * Tekst → HTML met klikbare "(2d6 + 3)", "+4 to hit" en losse "1d4".
@@ -246,7 +249,7 @@ const atkRef = (cid, k, v) => { const a = parseAction(k, v); return { cid, n: a.
  * zonder cid (preview vóór toevoegen) zijn alle worpen losse worpen. Traits en vrije tekst rollen altijd los.
  */
 export function sbBody(m, cid = null) {
-  const ent = (arr, atk) => arr.map(([k, v]) => `<p class="entry"><b><i>${esc(k)}.</i></b> ${(/spellcasting/i.test(k) ? linkSpells : diceify)(v, atk && cid && atkRef(cid, k, v))}</p>`).join("");
+  const ent = (arr, atk) => arr.map(([k, v]) => `<p class="entry"><b><i>${esc(trName(k))}.</i></b> ${(/spellcasting/i.test(k) ? linkSpells : diceify)(v, atk && cid && atkRef(cid, k, v))}</p>`).join("");
   return `<p><span class="k">Armor Class</span> ${esc(m.ac)}</p>
     <p><span class="k">Hit Points</span> ${n0(m.hp)}${m.hd ? ` (<button class="dice" data-roll="${esc(m.hd)}">${esc(m.hd.replace(/([+-])/, " $1 "))}</button>)` : ""}</p>
     ${m.spd ? `<p><span class="k">Speed</span> ${esc(m.spd)}</p>` : ""}
@@ -358,7 +361,7 @@ export function monCard(m, full = false, toggle = true) {
   const A = monsterActions(m), lg = legInfo(m);
   const def = DEF.map(([k, l]) => { const x = (m.x || []).find(([n]) => n === k); return x ? `${t(l)}: ${x[1]}` : ""; }).filter(Boolean);
   const main = A ? A.main : [], more = main.length - PREV_MAX;
-  const traits = (m.t || []).map(([k]) => k).filter((k) => !/^spellcasting/i.test(k));
+  const traits = (m.t || []).map(([k]) => trName(k)).filter((k) => !/^spellcasting/i.test(k));
   const tags = [lg.la ? `Legendary (${lg.la.max})` : "", castInfo(m) || (m.t || []).some(([k]) => /spellcasting/i.test(k)) ? "Spellcasting" : ""].filter(Boolean);
   const stats = [`AC ${parseInt(m.ac) || "?"}`, `HP ${n0(m.hp) || "?"}${m.hd ? ` (${m.hd})` : ""}`, m.spd, m.cr ? `CR ${m.cr}${m.xp ? ` (${i18n().num(n0(m.xp))} XP)` : ""}` : ""].filter(Boolean);
   return `<div class="mprev" aria-live="polite">

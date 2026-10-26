@@ -4,7 +4,9 @@
 // (onbetrouwbaar); alles blijft platte tekst, de UI escapet.
 // Herkent het klassieke formaat (SRD, D&D Beyond, 5etools) en de 2024-schrijfwijze van aanvallen en saves.
 import { M, J } from "../i18n/msg.js";
-import { t } from "../i18n/boot.js";
+
+/** Naam van de trait met niet herkende tekst: een marker, de UI toont hem als "Other"/"Overig" (trName in statblock.js) */
+export const REST = "\u0000rest";
 
 const SECT = [
   [/^(?:bonus actions?)$/i, "ba"],
@@ -169,14 +171,15 @@ const cache = new WeakMap();
 /**
  * Eigen monster met plaktekst → monster met structuur (findMon gebruikt dit). Velden uit het formulier (AC, HP, CR,
  * Dex) gaan voor; een monster dat al structuur heeft (import, eigen formaat) blijft zoals het is.
- * De plaktekst blijft de bron (bewaard en geëxporteerd); niet herkende regels worden de trait "Overig", text leeg.
+ * De plaktekst blijft de bron (bewaard en geëxporteerd); niet herkende regels worden de trait REST (getoond als
+ * "Overig"/"Other" in de taal van de pagina, ook als de catalogus pas na het opbouwen binnenkwam), text leeg.
  */
 export function withParsed(m) {
   if (!m || !m.text || (Array.isArray(m.a) && m.a.length) || (Array.isArray(m.t) && m.t.length)) return m;
   if (cache.has(m)) return cache.get(m);
   const p = parseStatText(m.text);
   const r = !hasStructure(p) ? m : {
-    ...m, t: p.rest ? [...p.t, [t("init.sb.other"), p.rest]] : p.t, a: p.a, ba: p.ba, re: p.re, l: p.l, ld: p.ld, // niet herkend: trait "Overig"/"Other" (taal van de pagina, niet bewaard)
+    ...m, t: p.rest ? [...p.t, [REST, p.rest]] : p.t, a: p.a, ba: p.ba, re: p.re, l: p.l, ld: p.ld, // niet herkend: trait REST (naam bij het tekenen)
     x: [...(Array.isArray(m.x) ? m.x : []), ...p.x],
     // getypte Dex gaat voor (initiative leest ab[1]); 10 is de oude standaardwaarde van het formulier, die telt niet
     ...(p.ab && !m.ab ? { ab: m.dexScore && m.dexScore !== 10 ? [p.ab[0], +m.dexScore, ...p.ab.slice(2)] : p.ab } : {}),

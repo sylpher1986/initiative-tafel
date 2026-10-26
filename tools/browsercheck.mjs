@@ -369,7 +369,7 @@ function measure() {
     }
   }
   const txt = document.body.innerText; // zichtbare tekst (ook geopende panelen); attributen als aria-label tellen niet mee
-  return { hscroll: Math.max(de.scrollWidth, document.body.scrollWidth) - vw, small, unt: (txt.match(/⟦[^⟧]*⟧/g) || []).slice(0, 3), lines: [...new Set(txt.split("\n").map((l) => l.trim()).filter(Boolean))] };
+  return { hscroll: Math.max(de.scrollWidth, document.body.scrollWidth) - vw, small, unt: (txt.match(/⟦[^⟧]*⟧/g) || []).slice(0, 3), lang: document.documentElement.lang, lines: [...new Set(txt.split("\n").map((l) => l.trim()).filter(Boolean))] };
 }
 
 async function main() {
@@ -411,7 +411,7 @@ async function main() {
       const m = await page.evaluate(measure).catch((e) => ({ hscroll: NaN, small: [], err: e.message }));
       if (m.unt && m.unt.length) errs.push("niet vertaald: " + m.unt.join(" "));
       // WP32: in en geen Nederlandse tekst op het scherm (behalve wat het scenario zelf intypt; de oude export is inhoud)
-      if (lang === "en" && name !== "i18n-legacy" && m.lines) {
+      if (m.lang === "en" && mode !== "xx" && name !== "i18n-legacy" && m.lines) { // taal van de pagina (i18n-switch eindigt op /en/)
         const nl = m.lines.filter((l) => isDutch(noPaths(OWN.reduce((x, o) => x.split(o).join(" "), l))));
         if (nl.length) errs.push("Nederlandse tekst: " + nl.slice(0, 3).map((l) => JSON.stringify(l.slice(0, 60))).join(" | "));
       }

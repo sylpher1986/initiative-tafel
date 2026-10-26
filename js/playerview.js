@@ -10,7 +10,8 @@ import { isMsg } from "./i18n/msg.js";
 
 // Meertaligheid (WP28): de snapshot bevat codes (hs, anon, tk, tdx), elk spelersscherm vertaalt zelf in zijn eigen taal.
 // Sinds WP32 (v 2) zonder de oude Nederlandse velden (hp.st, naam "Onbekend wezen", tags-woorden, td, gname): geen UI-tekst
-// over de lijn. Een spelersscherm van vóór 1.51.0 weigert v 2 (het herlaadt via de service worker naar de nieuwe versie).
+// over de lijn. Een spelersscherm van vóór 1.51.0 weigert v 2 zonder melding en blijft op zijn laatste stand staan tot
+// het herladen wordt (de service worker herlaadt open tabbladen niet zelf).
 // cleanView leest v 1 (DM 1.51–1.52.0, met codes) en v 2; uit een v 1 zonder codes (vóór 1.51.0) wordt niets afgeleid.
 
 /**
@@ -104,7 +105,7 @@ function tagsFor(c, S, pcr, name) {
     const e = c.cd && c.cd[x], d = e ? durDesc(e, S.list, name) : null, sv = saveDesc(e);
     add(x === "Concentrating" && c.kind === "pc" && c.concSpell ? `Concentrating · ${c.concSpell}` : x, null, d || sv ? { ...(d ? { d } : {}), ...(sv ? { s: sv } : {}) } : null);
   }
-  for (const e of c.eff || []) { const n = effName(e); if (!tags.includes(n)) add(n); }
+  for (const e of c.eff || []) { const n = effName(e); if (!tags.some((x, i) => x === n && !tk[i])) add(n); } // codes (sur/react) zijn geen namen
   if (reactUsed(c, S, pcr)) add("react", "react");
   return { t: tags, tk: tk.some(Boolean) ? tk : null, tdx: tdx.some(Boolean) ? tdx : null };
 }

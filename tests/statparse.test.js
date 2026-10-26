@@ -2,7 +2,7 @@ import { nl } from "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseStatText, withParsed, foundText, classic } from "../js/data/statparse.js";
+import { parseStatText, withParsed, foundText, classic, REST } from "../js/data/statparse.js";
 import { monsterActions } from "../js/rules/attacks.js";
 
 const SRD = JSON.parse(readFileSync(new URL("../data/monsters.json", import.meta.url)));
@@ -97,7 +97,7 @@ test("RE14: withParsed laat formulier-velden en bestaande structuur staan, tekst
   const r = withParsed(m);
   assert.equal(r.ac, "15");
   assert.equal(r.a.length, 1);
-  assert.deepEqual(r.t, [["Overig", "Vrije notitie zonder punt"]]);
+  assert.deepEqual(r.t, [[REST, "Vrije notitie zonder punt"]], "marker; de naam komt bij het tekenen uit de catalogus");
   assert.equal(r.text, "");
   assert.equal(withParsed(m), r, "cache per object");
   const plain = { n: "X", text: "alleen wat losse woorden" };
