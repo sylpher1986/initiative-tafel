@@ -2,7 +2,7 @@
 import { d, sgn } from "./dice.js";
 import { fx, say } from "./combat.js";
 import { M, J } from "../i18n/msg.js";
-import { t } from "../i18n/boot.js";
+import { t, tr } from "../i18n/boot.js";
 import { tickEffects, endFightEffects, rageOf } from "./effects.js";
 import { tickSaves, turnSaves, untickSaves } from "./saves.js";
 
@@ -160,7 +160,7 @@ export const skipsTurn = (c, round) => isOut(c) || (round === 1 && !!c.sur) || (
 /** Nog verrast: geen reaction, geen legendary actions */
 export const isSurprised = (c, S) => c.sur === true && S.round === 1 && !isOut(c);
 /** GV12: label overal gelijk (dichte kaart, knop, live-blok, spelersscherm) */
-export const REACT_TAG = "Reaction op"; // spelersscherm: tot WP28 als vaste tekst (de snapshot vergelijkt erop)
+export const REACT_TAG = "Reaction op"; // oud veld tags in de snapshot (WP28: overgang, code "react" in tk); weg in WP32
 /** Hetzelfde label in de actieve taal (DM-app, WP27) */
 export const reactTag = () => t("rules.reactTag");
 /** GV12: reaction gebruikt en nog niet terug (begin eigen beurt). Verrast heeft een eigen badge; pcr = false (GV4 "Spelers
@@ -278,19 +278,24 @@ export function durLabel(e, list, short = false) {
 }
 
 /**
- * Resterende duur in woorden voor de conditie-uitleg (RE10): "nog 3 rondes", "t/m einde van zijn beurt".
- * name(id) = naam die getoond mag worden (spelersscherm: leeg bij een verborgen of anonieme deelnemer). Leeg = geen duur.
+ * Resterende duur voor de conditie-uitleg (RE10) als descriptor (WP28): "nog 3 rondes", "t/m einde van zijn beurt".
+ * name(id) = naam die getoond mag worden (spelersscherm: leeg bij een verborgen of anonieme deelnemer). null = geen duur.
+ * De snapshot naar spelers bevat de descriptor (tdx), zodat elk spelersscherm hem in de eigen taal toont.
  */
-export function durWords(e, list, name = (id) => (list.find((x) => x.id === id) || {}).name || "") {
-  if (!e) return "";
-  if (e.kind === "rounds") return t("rules.dw.rounds", { n: e.count });
-  if (e.kind === "tend") return t(e.count > 1 ? "rules.dw.tend2" : "rules.dw.tend");
-  if (e.kind === "tstart") return t("rules.dw.tstart");
-  if (e.kind === "sstart") { const n = name(e.who); return n ? t("rules.dw.sstart", { name: n }) : t("rules.dw.sstartX"); }
-  return "";
+export function durDesc(e, list, name = (id) => (list.find((x) => x.id === id) || {}).name || "") {
+  if (!e) return null;
+  if (e.kind === "rounds") return M("rules.dw.rounds", { n: e.count });
+  if (e.kind === "tend") return M(e.count > 1 ? "rules.dw.tend2" : "rules.dw.tend");
+  if (e.kind === "tstart") return M("rules.dw.tstart");
+  if (e.kind === "sstart") { const n = name(e.who); return n ? M("rules.dw.sstart", { name: n }) : M("rules.dw.sstartX"); }
+  return null;
 }
-/** Herhaalsave in woorden: "STR DC 13 aan het einde van zijn beurt" (actieve taal) */
-export const saveWords = (e) => (e && e.save ? t("rules.saveWords", { ab: e.save.ab, dc: String(e.save.dc) }) : "");
+/** Zelfde als tekst in de actieve taal; leeg = geen duur */
+export const durWords = (e, list, name) => { const x = durDesc(e, list, name); return x ? tr(x) : ""; };
+/** Herhaalsave als descriptor: "STR DC 13 aan het einde van zijn beurt"; null = geen */
+export const saveDesc = (e) => (e && e.save ? M("rules.saveWords", { ab: String(e.save.ab), dc: String(e.save.dc) }) : null);
+/** Zelfde als tekst in de actieve taal */
+export const saveWords = (e) => { const x = saveDesc(e); return x ? tr(x) : ""; };
 
 /** Een beurtgrens ("start" of "end" van deelnemer id): duur aftellen (herhaal-saves: saves.js, open bij het begin van de beurt) */
 export function turnBoundary(list, at, id) {

@@ -133,5 +133,5 @@ test("SC5 + SC2b: verborgen beurt na 'jij' houdt de kop vast, zonder vlag die he
   const V = toPlayerView(S(list, { active: "h" }), undefined, VIS, { id: "a", round: 1 });
   assert.equal(V.active, "a");
   assert.equal(meState(V, "a"), "turn");
-  assert.deepEqual(Object.keys(V).sort(), ["active", "list", "next", "round", "tg", "v"], "geen extra veld dat een verborgen beurt verraadt (tg = vaste instelling)");
+  assert.deepEqual(Object.keys(V).sort(), ["active", "c", "list", "next", "round", "tg", "v"], "geen extra veld dat een verborgen beurt verraadt (tg = vaste instelling, c = altijd 1)");
 });

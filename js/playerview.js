@@ -1,10 +1,17 @@
 // Spelersscherm: wat spelers mogen zien. Puur (geen DOM), getest.
 // Alleen deze snapshot verlaat het DM-scherm, nooit de volledige toestand. Zo kan dezelfde snapshot
 // later ook via een server naar andere apparaten zonder dat er DM-info meegaat.
-import { sortOrder, isOut, groupOf, nextUp, isSurprised, skipsTurn, reactUsed, REACT_TAG, durWords, saveWords } from "./rules/turns.js";
+import { sortOrder, isOut, groupOf, nextUp, isSurprised, skipsTurn, reactUsed, REACT_TAG, durDesc, saveDesc } from "./rules/turns.js";
 import { effName } from "./rules/effects.js";
 import { iconId, cleanImg } from "./ui/avatar.js";
 import { esc } from "./ui/util.js";
+import { t, tr } from "./i18n/boot.js";
+import { isMsg } from "./i18n/msg.js";
+
+// Meertaligheid (WP28): de snapshot bevat codes (hs, anon, tk, tdx), elk spelersscherm vertaalt zelf in zijn eigen taal.
+// Tijdens de overgang staan de oude Nederlandse velden (hp.st, name bij anon, tags, td) er nog naast, zodat een
+// spelersscherm van vóór 1.51.0 (v1-lezer, alleen Nederlands) hetzelfde blijft tonen. Daarom blijft v op 1 (een oude
+// cleanView weigert al het andere); cleanView accepteert ook v 2 voor wanneer de oude velden weg zijn (WP32).
 
 /**
  * Wat spelers zien (standaard). Instelbaar per apparaat (Instellingen → Spelersscherm, js/ui/playervis.js).
@@ -27,7 +34,7 @@ export function cleanVis(v) {
 }
 
 /* ---------- naam onbekend voor spelers (per monster, c.anon = vast nummer) ---------- */
-export const ANON = "Onbekend wezen";
+export const ANON = "Onbekend wezen"; // oud veld name in de snapshot (v1-lezers, Nederlands); weergave via anonText
 /** Laagste vrije nummer onder de monsters met een onbekende naam; vast in de data, zodat onthullen niets laat verspringen */
 export function nextAnon(list) {
   const used = new Set((list || []).filter((c) => c.kind === "monster" && c.anon).map((c) => c.anon));
@@ -38,8 +45,12 @@ export function nextAnon(list) {
 /** Spelersnaam: "Onbekend wezen" als spelers er maar één zien, anders "Onbekend wezen 2". Verborgen monsters tellen
  *  niet mee: anders verraadt "Onbekend wezen 1" dat er nog een tweede klaarstaat. */
 export const anonSeen = (list) => (list || []).filter((x) => x.kind === "monster" && x.anon && !x.hidden).length;
-const anonLabel = (c, many) => (many ? `${ANON} ${c.anon}` : ANON);
-export const anonName = (c, list) => anonLabel(c, anonSeen(list) > 1);
+/** Nummer voor spelers: 0 = zonder nummer (spelers zien er maar één) */
+const anonNo = (c, many) => (many ? c.anon : 0);
+const anonLegacy = (n) => (n ? `${ANON} ${n}` : ANON);
+/** "Onbekend wezen" / "Unknown creature 2" in de actieve taal */
+export const anonText = (n) => (n ? t("player.anonN", { n }) : t("player.anon"));
+export const anonName = (c, list) => anonText(anonNo(c, anonSeen(list) > 1));
 /** Dubbele nummers (handgemaakte import) → laagste vrije nummer, zodat spelers nooit twee keer "Onbekend wezen 2" zien */
 export function dedupeAnon(list) {
   const used = new Set();
@@ -51,42 +62,61 @@ export function dedupeAnon(list) {
   return list;
 }
 
-/** HP als status voor spelers, zonder getallen */
-export function hpStatus(c) {
+/** HP-status voor spelers als code (WP28), zonder getallen; "" = geen (max HP onbekend) */
+export const HS = ["ok", "hurt", "bloodied", "near", "down", "unconscious", "stable", "dead"];
+export function hsCode(c) {
   if (!c.max) return "";
   if (c.hp <= 0) {
-    if (c.kind !== "pc") return "Neer";
+    if (c.kind !== "pc") return "down";
     const d = c.ds || {};
-    return d.dead ? "Dood" : d.stable ? "Stabiel" : "Bewusteloos";
+    return d.dead ? "dead" : d.stable ? "stable" : "unconscious";
   }
   const p = c.hp / c.max;
-  return p >= 1 ? "Ongedeerd" : p > 0.5 ? "Gewond" : p > 0.25 ? "Bloodied" : "Bijna dood";
+  return p >= 1 ? "ok" : p > 0.5 ? "hurt" : p > 0.25 ? "bloodied" : "near";
 }
+/** Oude Nederlandse woorden (veld st, v1), zelfde volgorde als HS */
+export const STATUS = ["Ongedeerd", "Gewond", "Bloodied", "Bijna dood", "Neer", "Bewusteloos", "Stabiel", "Dood"];
+/** HP als Nederlands woord (oud veld st in de snapshot) */
+const stOf = (hs) => STATUS[HS.indexOf(hs)] || "";
+export const hpStatus = (c) => stOf(hsCode(c));
+/** Status in de actieve taal */
+export const hsText = (code) => (HS.includes(code) ? t(`dnd.hs.${code}`) : "");
 
 function hpFor(c, how) {
   if (!c.max || how === "none") return null;
-  if (how === "exact") return { hp: Math.max(0, c.hp), max: c.max, temp: c.temp || 0, st: hpStatus(c) };
-  return { st: hpStatus(c) };
+  const hs = hsCode(c), st = stOf(hs);
+  if (how === "exact") return { hp: Math.max(0, c.hp), max: c.max, temp: c.temp || 0, st, hs };
+  return { st, hs };
 }
 
 export { REACT_TAG };
 
+/** Tags met een eigen tekst (geen D&D-term): code → oud Nederlands woord (veld tags, v1) */
+export const TAG_OLD = { sur: "Verrast", react: REACT_TAG };
+const TAG_KEY = { sur: "init.card.sur", react: "rules.reactTag" }; // zelfde labels als in de DM-app (GV12)
+/** Tag in de actieve taal: code uit tk, anders de tag zelf (D&D-term, spellnaam of eigen effect) */
+export const tagText = (c, i) => (c.tk && TAG_KEY[c.tk[i]] ? t(TAG_KEY[c.tk[i]]) : c.tags[i]);
+
 /**
- * Tags (namen) plus td: per tag de duur en herhaalsave voor de uitleg op het spelersscherm (RE10), parallel aan tags;
- * null waar niets te zeggen is. name(id) = naam die spelers mogen zien (verborgen/anoniem: leeg), nooit de bron (spell/caster).
+ * Tags (namen) plus per tag: tk = code voor tags met eigen tekst (WP28), tdx = duur en herhaalsave als descriptor voor de
+ * uitleg op het spelersscherm (RE10), td = dezelfde tekst in de taal van de DM (oud veld). Alle drie parallel aan tags,
+ * null waar niets is, en alleen als er iets in staat. name(id) = naam die spelers mogen zien (verborgen/anoniem: leeg),
+ * nooit de bron (spell/caster).
  */
 function tagsFor(c, S, pcr, name) {
-  const t = isSurprised(c, S) ? ["Verrast"] : [], td = t.map(() => null);
+  const tags = [], tk = [], tdx = [];
+  const add = (x, k = null, d = null) => { tags.push(x); tk.push(k); tdx.push(d); };
+  if (isSurprised(c, S)) add(TAG_OLD.sur, "sur");
   // SC8: speler op 0 HP heeft al de status Bewusteloos/Stabiel/Dood; "Unconscious" ernaast is dubbel
   const down = c.kind === "pc" && c.max && c.hp <= 0;
   for (const x of (c.cond || []).filter((k) => !(down && k === "Unconscious"))) {
-    t.push(x === "Concentrating" && c.kind === "pc" && c.concSpell ? `Concentrating · ${c.concSpell}` : x);
-    const e = c.cd && c.cd[x], d = e ? durWords(e, S.list, name) : "", sv = saveWords(e);
-    td.push(d || sv ? { ...(d ? { d } : {}), ...(sv ? { s: sv } : {}) } : null);
+    const e = c.cd && c.cd[x], d = e ? durDesc(e, S.list, name) : null, sv = saveDesc(e);
+    add(x === "Concentrating" && c.kind === "pc" && c.concSpell ? `Concentrating · ${c.concSpell}` : x, null, d || sv ? { ...(d ? { d } : {}), ...(sv ? { s: sv } : {}) } : null);
   }
-  for (const e of c.eff || []) { const n = effName(e); if (!t.includes(n)) { t.push(n); td.push(null); } }
-  if (reactUsed(c, S, pcr)) { t.push(REACT_TAG); td.push(null); }
-  return { t, td: td.some(Boolean) ? td : null };
+  for (const e of c.eff || []) { const n = effName(e); if (!tags.includes(n)) add(n); }
+  if (reactUsed(c, S, pcr)) add(REACT_TAG, "react");
+  const td = tdx.map((x) => (x ? { ...(x.d ? { d: tr(x.d) } : {}), ...(x.s ? { s: tr(x.s) } : {}) } : null));
+  return { t: tags, tk: tk.some(Boolean) ? tk : null, tdx: tdx.some(Boolean) ? tdx : null, td: tdx.some(Boolean) ? td : null };
 }
 
 /** SC5: slots, daily spells en resources van een speler (geen geheim; alleen de eigen kaart toont ze). null = niets */
@@ -152,18 +182,24 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS, prev = null, opts 
     if (c.kind === "lair") return { id: c.id, kind: "lair", name: "Lair", init: vis.init ? c.init : null };
     const pc = c.kind === "pc", anon = !pc && c.anon > 0; // naam en icoon (type) verraden het monster
     const r = {
-      id: c.id, kind: pc ? "pc" : "monster", name: anon ? anonLabel(c, anonMany) : c.name, init: vis.init ? c.init : null,
+      id: c.id, kind: pc ? "pc" : "monster", name: anon ? anonLegacy(anonNo(c, anonMany)) : c.name, init: vis.init ? c.init : null,
       icon: anon ? "m-unknown" : iconId(c, pc ? "" : metaOf(c)), img: pc ? cleanImg(c.img) : null,
       out: isOut(c), hp: hpFor(c, pc ? "exact" : vis.monHp), tags: [],
     };
-    if (vis.tags === "all" || (pc && vis.tags === "pc")) { const T = tagsFor(c, S, pcr, nameOf); r.tags = T.t; if (T.td) r.td = T.td; }
+    if (anon) r.anon = anonNo(c, anonMany); // WP28: het spelersscherm maakt de naam zelf in zijn taal (0 = zonder nummer)
+    if (vis.tags === "all" || (pc && vis.tags === "pc")) {
+      const T = tagsFor(c, S, pcr, nameOf);
+      r.tags = T.t;
+      if (T.tk) r.tk = T.tk;
+      if (T.tdx) { r.tdx = T.tdx; r.td = T.td; }
+    }
     const sl = pc ? slotsFor(c) : null;
     if (sl) r.sl = sl;
     const d = c.ds || {}; // zonder ds-object nog geen worpen (zoals de DM-kaart met newDs())
     if (pc && c.max && c.hp <= 0 && !d.dead && !d.stable) r.ds = { s: d.s || 0, f: d.f || 0 };
     return r;
   });
-  const out = { v: 1, round: vt.round, active, next, list };
+  const out = { v: 1, c: 1, round: vt.round, active, next, list }; // c: codes aanwezig (WP28), dan leidt cleanView niets af uit woorden
   if (vis.log === false) out.nolog = 1;
   out.tg = vis.tags; // SC9: instelling gewisseld → geen regelstorm (zegt niets wat spelers niet al zien)
   if (!fight && S.endSum) out.end = Math.max(0, S.endSum.r | 0);
@@ -197,7 +233,15 @@ export function buzzFor(prev, now) {
 }
 
 /** SC8: death saves in woorden ("✓0 ✗0" zegt spelers niets) */
-export const dsText = (d) => (!d.s && !d.f ? "Death saves: nog geen worp" : `Death saves: ${d.s} gelukt · ${d.f} mislukt`);
+export const dsText = (d) => (!d.s && !d.f ? t("player.ds.none") : t("player.ds.some", { s: d.s, f: d.f }));
+
+/** Naam voor spelers in de actieve taal (WP28): onbekend wezen en lair uit de catalogus, anders de naam uit de stand */
+export const pvName = (c) => (c.kind === "lair" ? t("player.lair") : c.anon != null ? anonText(c.anon) : c.name);
+/** Groepsnaam in de actieve taal: uit de rijen (namen kunnen vertaald zijn), anders de ontvangen gname (oud) */
+function shownGroup(V) {
+  const rows = (V.group || []).map((id) => V.list.find((c) => c.id === id)).filter(Boolean);
+  return rows.length > 1 ? groupName(rows.map((c) => ({ name: pvName(c) }))) : V.gname || null;
+}
 
 /**
  * Kop: wie aan de beurt is. Zonder zichtbare beurt in ronde 1 (verborgen monster begint): "Gevecht begint" (SC2b).
@@ -205,24 +249,43 @@ export const dsText = (d) => (!d.s && !d.f ? "Death saves: nog geen worp" : `Dea
  */
 export function headHtml(V, meId = null) {
   const act = V.list.find((c) => c.id === V.active), nxt = V.list.find((c) => c.id === V.next);
-  const ms = meState(V, meId);
-  const daarna = ms === "next" ? `<div class="r me"><span class="l">Daarna</span>jij</div>`
-    : nxt ? `<div class="r"><span class="l">Daarna</span>${esc(nxt.name)}</div>` : "";
-  if (ms === "turn") return `<div><span class="l">Ronde ${V.round}</span><b>Jij bent aan de beurt</b></div>${daarna}`;
-  if (V.round) return V.gname || act
-    ? `<div><span class="l">Ronde ${V.round} · aan de beurt</span><b>${esc(V.gname || act.name)}</b></div>${daarna}`
-    : `<div><span class="l">${V.round === 1 ? "Ronde 1" : "Gevecht"}</span><b>${V.round === 1 ? "Gevecht begint" : `Ronde ${V.round}`}</b></div>${daarna}`;
-  if (V.end != null) return `<div><span class="l">Gevecht voorbij</span><b>${V.end ? `Na ${V.end} ronde${V.end === 1 ? "" : "s"}` : "Klaar"}</b></div>`;
-  return `<div><span class="l">Nog geen gevecht</span><b>Wacht op de DM</b></div>`;
+  const ms = meState(V, meId), L = (s) => `<span class="l">${esc(s)}</span>`;
+  const daarna = ms === "next" ? `<div class="r me">${L(t("player.head.next"))}${esc(t("player.head.nextMe"))}</div>`
+    : nxt ? `<div class="r">${L(t("player.head.next"))}${esc(pvName(nxt))}</div>` : "";
+  const rnd = t("player.head.round", { n: V.round });
+  if (ms === "turn") return `<div>${L(rnd)}<b>${esc(t("player.head.myTurn"))}</b></div>${daarna}`;
+  const gn = V.round ? shownGroup(V) : null;
+  if (V.round) return gn || act
+    ? `<div>${L(t("player.head.roundTurn", { n: V.round }))}<b>${esc(gn || pvName(act))}</b></div>${daarna}`
+    : `<div>${L(V.round === 1 ? rnd : t("player.head.combat"))}<b>${esc(V.round === 1 ? t("player.head.begins") : rnd)}</b></div>${daarna}`;
+  if (V.end != null) return `<div>${L(t("player.head.over"))}<b>${esc(V.end ? t("player.head.after", { n: V.end }) : t("player.head.done"))}</b></div>`;
+  return `<div>${L(t("player.head.none"))}<b>${esc(t("player.head.wait"))}</b></div>`;
 }
 
 /* ---------- ontvangen: snapshot opschonen (nu uit een ander venster, later uit het netwerk) ---------- */
 const str = (v, n) => (typeof v === "string" ? v.slice(0, n) : "");
 const int = (v) => (Number.isFinite(+v) ? Math.round(+v) : 0);
 const ICON_RE = /^[rm]-[a-z]{2,20}$/;
-/** Alle statussen uit hpStatus; iets anders komt niet door */
-export const STATUS = ["Ongedeerd", "Gewond", "Bloodied", "Bijna dood", "Neer", "Bewusteloos", "Stabiel", "Dood"];
+/** Alleen bekende statussen komen door; hs (code) wint, anders het oude woord via de vaste tabel (v1) */
 const st = (v) => (STATUS.includes(v) ? v : "");
+const hsOf = (h) => (HS.includes(h.hs) ? h.hs : HS[STATUS.indexOf(h.st)] || "");
+/** v1 zonder anon-veld: "Onbekend wezen 2" → 2, "Onbekend wezen" → 0, anders null */
+const ANON_RE = new RegExp(`^${ANON}(?: ([1-9]\\d?))?$`);
+const anonOf = (c, kind, old) => (kind !== "monster" ? null : c.anon != null ? Math.max(0, Math.min(99, int(c.anon)))
+  : (old && typeof c.name === "string" && ANON_RE.test(c.name) ? +(ANON_RE.exec(c.name)[1] || 0) : null));
+/** Descriptoren in tdx: alleen deze sleutels, met deze waarden (een spelersscherm vertaalt verder niets van de DM) */
+const TDX = { "rules.dw.rounds": ["n"], "rules.dw.tend": [], "rules.dw.tend2": [], "rules.dw.tstart": [], "rules.dw.sstart": ["name"], "rules.dw.sstartX": [], "rules.saveWords": ["ab", "dc"] };
+function cleanTdx(x) {
+  if (!isMsg(x) || !Object.prototype.hasOwnProperty.call(TDX, x.k)) return null;
+  const want = TDX[x.k], p = x.p && typeof x.p === "object" ? x.p : {}, out = {};
+  for (const k of want) {
+    const v = p[k];
+    if (k === "n") { if (typeof v !== "number" || !Number.isFinite(v)) return null; out.n = Math.max(0, Math.min(9999, int(v))); }
+    else { if (typeof v !== "string" && typeof v !== "number") return null; out[k] = str(String(v), 80); }
+  }
+  return want.length ? { k: x.k, p: out } : { k: x.k };
+}
+const TAG_CODES = Object.keys(TAG_OLD), TAG_WORD = new Map(TAG_CODES.map((k) => [TAG_OLD[k], k])); // Map: "constructor" is geen code
 
 const cnt = (v) => Math.max(0, Math.min(99, int(v)));
 const items = (a, f) => (Array.isArray(a) ? a.slice(0, 12).filter((x) => x && typeof x === "object").map(f) : []);
@@ -236,23 +299,37 @@ function cleanSl(o) {
 
 /** Onbetrouwbare snapshot → schone snapshot, of null als het geen snapshot is */
 export function cleanView(d) {
-  if (!d || typeof d !== "object" || d.v !== 1 || !Array.isArray(d.list)) return null;
+  if (!d || typeof d !== "object" || (d.v !== 1 && d.v !== 2) || !Array.isArray(d.list)) return null;
+  const old = d.v === 1 && d.c !== 1; // snapshot van vóór 1.51.0: codes afleiden uit de NL-woorden (niet bij een nieuwe DM: eigen effect "Verrast")
   const list = d.list.slice(0, 60).filter((c) => c && typeof c === "object").map((c) => {
     const kind = ["pc", "monster", "lair"].includes(c.kind) ? c.kind : "monster";
-    const r = { id: str(c.id, 40), kind, name: str(c.name, 120) || "?", init: c.init == null ? null : int(c.init) };
+    const anon = anonOf(c, kind, old);
+    const r = { id: str(c.id, 40), kind, name: str(c.name, 120) || (anon != null ? "" : "?"), init: c.init == null ? null : int(c.init) };
     if (kind === "lair") return r;
+    if (anon != null) r.anon = anon;
     const h = c.hp && typeof c.hp === "object" ? c.hp : null;
     Object.assign(r, {
       icon: ICON_RE.test(c.icon) ? c.icon : kind === "pc" ? "r-pc" : "m-monstrosity",
       img: kind === "pc" ? cleanImg(c.img) : null, out: !!c.out,
-      hp: h ? (h.max != null ? { hp: int(h.hp), max: Math.max(0, int(h.max)), temp: Math.max(0, int(h.temp)), st: st(h.st) } : { st: st(h.st) }) : null,
+      hp: h ? (h.max != null ? { hp: int(h.hp), max: Math.max(0, int(h.max)), temp: Math.max(0, int(h.temp)), st: st(h.st), hs: hsOf(h) } : { st: st(h.st), hs: hsOf(h) }) : null,
       tags: Array.isArray(c.tags) ? c.tags.slice(0, 20).map((t) => str(t, 80)).filter(Boolean) : [],
     });
-    // RE10: duur/save per tag (optioneel; een oudere DM-app stuurt het niet). Alleen als het parallel aan tags past.
-    if (Array.isArray(c.td) && Array.isArray(c.tags) && c.td.length === c.tags.length && r.tags.length === c.tags.length) {
+    // RE10/WP28: per tag duur/save (td tekst, tdx descriptor) en code (tk); optioneel. Alleen als het parallel aan tags past.
+    const par = (a) => Array.isArray(a) && Array.isArray(c.tags) && a.length === c.tags.length && r.tags.length === c.tags.length;
+    if (par(c.td)) {
       const td = c.td.slice(0, 20).map((x) => (x && typeof x === "object" && (x.d || x.s) ? { ...(x.d ? { d: str(x.d, 80) } : {}), ...(x.s ? { s: str(x.s, 80) } : {}) } : null));
       if (td.some(Boolean)) r.td = td;
     }
+    if (par(c.tdx)) {
+      const tdx = c.tdx.slice(0, 20).map((x) => {
+        if (!x || typeof x !== "object") return null;
+        const d = cleanTdx(x.d), s = cleanTdx(x.s);
+        return d || s ? { ...(d ? { d } : {}), ...(s ? { s } : {}) } : null;
+      });
+      if (tdx.some(Boolean)) r.tdx = tdx;
+    }
+    const tk = par(c.tk) ? c.tk.slice(0, 20).map((x) => (TAG_CODES.includes(x) ? x : null)) : old && !Array.isArray(c.tk) ? r.tags.map((x) => TAG_WORD.get(x) || null) : [];
+    if (tk.some(Boolean)) r.tk = tk;
     if (c.ds && typeof c.ds === "object") r.ds = { s: Math.max(0, Math.min(3, int(c.ds.s))), f: Math.max(0, Math.min(3, int(c.ds.f))) };
     if (kind === "pc" && c.sl && typeof c.sl === "object") {
       const sl = cleanSl(c.sl);
@@ -262,7 +339,7 @@ export function cleanView(d) {
   });
   const ids = new Set(list.map((c) => c.id));
   const pick = (v) => (typeof v === "string" && ids.has(v) ? v : null);
-  const out = { v: 1, round: Math.max(0, int(d.round)), active: pick(d.active), next: pick(d.next), list };
+  const out = { v: d.v, ...(d.c === 1 ? { c: 1 } : {}), round: Math.max(0, int(d.round)), active: pick(d.active), next: pick(d.next), list };
   if (d.nolog) out.nolog = 1;
   if (VIS_OPTS.tags.includes(d.tg)) out.tg = d.tg;
   if (!out.round && d.end != null) out.end = Math.max(0, Math.min(9999, int(d.end)));
@@ -274,27 +351,30 @@ export function cleanView(d) {
 /* ---------- SC9: "wat er net gebeurde" (spelerskant) ---------- */
 // Alleen afgeleid uit twee opeenvolgende, al opgeschoonde snapshots: wat spelers niet zien, kan er niet in staan.
 // Geen regels voor verschijnen/verdwijnen (verborgen monsters), naamwissels (onthulling) of beurtwissels (staan in de kop).
-const DOWN_ST = ["Bewusteloos", "Stabiel", "Dood"];
-const QUIET = new Set([REACT_TAG, "Verrast"]);
+// Tekst in de taal van dit spelersscherm; vergelijken gebeurt op codes (hs, tk), zodat het niet uitmaakt welke taal de DM heeft.
+const DOWN_HS = ["unconscious", "stable", "dead"];
 
 /** Regels voor de overgang a → b (beide uit cleanView). Leeg buiten een gevecht of zonder vorige stand. */
 export function logLines(a, b) {
   if (!a || !b || !b.round || !a.round || b.nolog) return [];
   const old = new Map(a.list.map((c) => [c.id, c])), out = [];
+  // tags zonder stille codes (Verrast, Reaction op: zichtbaar in de lijst, geen regel waard); tekst → weergave
+  const loud = (c) => { const m = new Map(); c.tags.forEach((x, i) => { if (!(c.tk && c.tk[i]) && !m.has(x)) m.set(x, tagText(c, i)); }); return m; };
   for (const c of b.list) {
     const o = old.get(c.id);
     if (!o || c.kind === "lair") continue;
     const parts = [];
+    let tight = false; // "Aria −7 HP" en "Goblin 1 neer" zonder dubbele punt
     const h0 = o.hp, h1 = c.hp, exact = h0 && h1 && h0.max != null && h1.max != null;
-    if (exact && h1.hp !== h0.hp) parts.push(`${h1.hp < h0.hp ? "−" : "+"}${Math.abs(h1.hp - h0.hp)} HP`);
-    if (c.kind === "monster" && c.out && !o.out) parts.push("neer");
-    else if (h0 && h1 && h1.st !== h0.st && h1.st && (!exact || DOWN_ST.includes(h1.st) || DOWN_ST.includes(h0.st))) parts.push(exact ? h1.st.toLowerCase() : `${h0.st || "?"} → ${h1.st}`);
-    const same = a.tg === b.tg, t0 = new Set(same ? o.tags.filter((t) => !QUIET.has(t)) : []), t1 = new Set(same ? c.tags.filter((t) => !QUIET.has(t)) : []);
-    const add = [...t1].filter((t) => !t0.has(t)), gone = [...t0].filter((t) => !t1.has(t));
+    if (exact && h1.hp !== h0.hp) { parts.push(`${h1.hp < h0.hp ? "−" : "+"}${Math.abs(h1.hp - h0.hp)} HP`); tight = true; }
+    if (c.kind === "monster" && c.out && !o.out) { parts.push(t("player.log.down")); if (parts.length === 1) tight = true; }
+    else if (h0 && h1 && h1.hs !== h0.hs && h1.hs && (!exact || DOWN_HS.includes(h1.hs) || DOWN_HS.includes(h0.hs))) parts.push(exact ? hsText(h1.hs).toLowerCase() : `${hsText(h0.hs) || "?"} → ${hsText(h1.hs)}`);
+    const same = a.tg === b.tg, t0 = same ? loud(o) : new Map(), t1 = same ? loud(c) : new Map();
+    const add = [...t1].filter(([x]) => !t0.has(x)).map(([, v]) => v), gone = [...t0].filter(([x]) => !t1.has(x)).map(([, v]) => v);
     if (add.length) parts.push(add.join(", "));
-    if (gone.length) parts.push(`${gone.join(", ")} weg`);
+    if (gone.length) parts.push(t("player.log.gone", { what: gone.join(", ") }));
     if (!parts.length) continue;
-    out.push(`${c.name}${parts[0].startsWith("−") || parts[0].startsWith("+") || parts[0] === "neer" ? " " : ": "}${parts.join(" · ")}`);
+    out.push(`${pvName(c)}${tight ? " " : ": "}${parts.join(" · ")}`);
   }
   return out;
 }

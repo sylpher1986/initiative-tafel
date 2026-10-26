@@ -118,7 +118,7 @@ test("speler: na (her)verbinden 'dm' (speler zegt hallo); portretten worden weer
   // onzin en pong
   socks[0].recv("pong"); socks[0].recv("{kapot"); socks[0].recv({ x: 1 });
   assert.equal(got.at(-1).t, "stand");
-  assert.equal(cleanView({ v: 2, list: [] }), null);
+  assert.equal(cleanView({ v: 3, list: [] }), null);
 });
 
 test("dode verbinding of sluiten: geen dubbele sockets, close stopt herverbinden", async () => {

@@ -1,8 +1,7 @@
 // Spelersscherm: toont alleen de snapshot die het DM-scherm stuurt (js/playerview.js), nooit eigen data.
-import { APP } from "./version.js";
-import { initI18n } from "./i18n/boot.js";
+import { initI18n, t, tr, i18n } from "./i18n/boot.js";
 import { ico } from "./ui/icons.js";
-import { cleanView, headHtml, findMe, meState, buzzFor, dsText, logLines, pushLog } from "./playerview.js";
+import { cleanView, headHtml, findMe, meState, buzzFor, dsText, logLines, pushLog, pvName, hsText, tagText } from "./playerview.js";
 import { ORD } from "./rules/spells.js";
 import { localChannel, roomChannel, normCode, fmtCode } from "./share.js";
 import { esc } from "./ui/util.js";
@@ -14,7 +13,8 @@ import { openCond, closeCond, condOpen, condSheetClick } from "./ui/condinfo.js"
 import { mountLangPick } from "./ui/langpick.js";
 
 const $ = (s) => document.querySelector(s);
-const ST_CLS = { Ongedeerd: "ok", Gewond: "ok", Bloodied: "mid", "Bijna dood": "low", Bewusteloos: "low", Stabiel: "mid", Neer: "out", Dood: "out" };
+/** Kleur van de status, op code (WP28; cleanView zet ook een oude snapshot om naar hs) */
+const ST_CLS = { ok: "ok", hurt: "ok", bloodied: "mid", near: "low", unconscious: "low", stable: "mid", down: "out", dead: "out" };
 
 function av(c) {
   if (c.kind === "lair") return `<span class="av" aria-hidden="true"></span>`;
@@ -25,7 +25,7 @@ function av(c) {
 function hp(c) {
   const h = c.hp;
   if (!h) return "";
-  const st = h.st ? `<span class="pvst ${ST_CLS[h.st] || ""}">${esc(h.st)}</span>` : "";
+  const st = h.hs ? `<span class="pvst ${ST_CLS[h.hs]}">${esc(hsText(h.hs))}</span>` : "";
   if (h.max == null) return st;
   const pct = h.max ? Math.max(0, Math.min(1, h.hp / h.max)) : 0;
   const cls = pct <= 0.25 ? "low" : pct <= 0.5 ? "mid" : "";
@@ -34,18 +34,21 @@ function hp(c) {
 }
 
 const dsB = (c) => (c.ds ? `<span class="bd r">${dsText(c.ds)}</span>` : "");
-/** RE10: welke uitleg bij een tag hoort ("Exhaustion 3" → niveau 3, "Concentrating · Bless" → Concentrating); null = geen */
-function tagKey(t) {
-  const x = /^Exhaustion (\d)$/.exec(t);
+/** RE10: welke uitleg bij een tag hoort ("Exhaustion 3" → niveau 3, "Concentrating · Bless" → Concentrating); null = geen.
+ *  Verrast (code sur) heeft zijn uitleg onder de oude naam in CINFO. */
+function tagKey(tag, code) {
+  if (code === "sur") return { key: "Verrast", lvl: 0 };
+  if (code) return null;
+  const x = /^Exhaustion (\d)$/.exec(tag);
   if (x) return { key: "Exhaustion", lvl: +x[1] };
-  const k = String(t).split(" · ")[0];
+  const k = String(tag).split(" · ")[0];
   return CINFO[k] ? { key: k, lvl: 0 } : null;
 }
 /** Tags; met uitleg tikbaar (telefoon), op de tv alleen tekst (niet tikbaar, kort) */
-const tagsB = (c) => (c.tags || []).map((t, i) => {
-  const k = !TV_MQ.matches && tagKey(t);
-  return k ? `<button type="button" class="bd cc cinf" data-cinfo="${esc(k.key)}" data-cid="${esc(c.id)}" data-ti="${i}"${k.lvl ? ` data-lvl="${k.lvl}"` : ""} aria-label="${esc(t)}: uitleg">${esc(t)}</button>`
-    : `<span class="bd cc">${esc(t)}</span>`;
+const tagsB = (c) => (c.tags || []).map((tag, i) => {
+  const k = !TV_MQ.matches && tagKey(tag, c.tk && c.tk[i]), x = tagText(c, i);
+  return k ? `<button type="button" class="bd cc cinf" data-cinfo="${esc(k.key)}" data-cid="${esc(c.id)}" data-ti="${i}"${k.lvl ? ` data-lvl="${k.lvl}"` : ""} aria-label="${esc(t("player.tagInfo", { tag: x }))}">${esc(x)}</button>`
+    : `<span class="bd cc">${esc(x)}</span>`;
 }).join("");
 
 function row(c, V, meId) {
@@ -53,7 +56,7 @@ function row(c, V, meId) {
   const ds = dsB(c), tags = tagsB(c);
   return `<li class="pvc ${c.kind} ${turn ? "turn" : ""} ${c.out ? "out" : ""}${me ? " me" : ""}">
     <span class="pvi">${c.init != null ? c.init : ""}${turn ? `<span class="tri">${ico("turn")}</span>` : ""}</span>
-    <span class="pvn">${av(c)}<span class="nm">${esc(c.name)}</span>${me ? `<span class="pvnext">jij</span>` : nxt ? `<span class="pvnext">volgende</span>` : ""}</span>
+    <span class="pvn">${av(c)}<span class="nm">${esc(pvName(c))}</span>${me ? `<span class="pvnext">${esc(t("player.row.me"))}</span>` : nxt ? `<span class="pvnext">${esc(t("player.row.next"))}</span>` : ""}</span>
     <span class="pvhp">${hp(c)}</span>
     ${tags || ds ? `<div class="badges">${ds}${tags}</div>` : ""}
   </li>`;
@@ -75,21 +78,21 @@ const canBuzz = () => typeof navigator.vibrate === "function";
 
 /** Eigen kaart: HP, death saves, tags, slots/daily/resources. Alleen-lezen. */
 function meCard(c) {
-  if (!c) return `<p class="pvmiss">${esc(me.name || "Je personage")} staat nu niet in de lijst. <button type="button" class="link" data-mepick="1">Kies opnieuw</button></p>`;
+  if (!c) return `<p class="pvmiss">${esc(t("player.meMissing", { name: me.name || t("player.meNoName") }))} <button type="button" class="link" data-mepick="1">${esc(t("player.meRepick"))}</button></p>`;
   const sl = c.sl || { s: [], d: [], r: [] }, b = (t, x) => `<span class="bd b">${esc(t)} ${x.left}/${x.max}</span>`;
   const slots = [...sl.s.map((x) => b(ORD[x.l] || `${x.l}th`, x)), ...sl.d.map((x) => b(x.n, x)), ...sl.r.map((x) => b(x.n, x))].join("");
   const ds = dsB(c), tags = tagsB(c);
   return `<div class="pvmehead">${av(c)}<b class="nm">${esc(c.name)}</b></div>
     <div class="pvhp">${hp(c)}</div>
     ${ds || tags ? `<div class="badges">${ds}${tags}</div>` : ""}
-    ${slots ? `<div class="badges pvsl"><span class="l">Slots</span>${slots}</div>` : ""}`;
+    ${slots ? `<div class="badges pvsl"><span class="l">${esc(t("player.slots"))}</span>${slots}</div>` : ""}`;
 }
 
 function paintMe(V, row0) {
   const btn = $("#pv-me"), card = $("#pv-mecard");
   const pcs = V ? V.list.filter((c) => c.kind === "pc") : [];
   btn.hidden = !pcs.length && !me;
-  btn.textContent = me ? `Jij: ${me.name || "?"}` : "Wie ben jij?";
+  btn.textContent = me ? t("player.meBtn", { name: me.name || "?" }) : t("player.who");
   btn.setAttribute("aria-expanded", String(pickOpen));
   card.hidden = !me || !V;
   card.innerHTML = me && V ? meCard(row0) : "";
@@ -108,13 +111,13 @@ function paintPick(pcs) {
   const buzzOn = bz ? bz.checked : !me || me.buzz;
   pickSig = sig;
   // alfabetisch, niet in initiative-volgorde: een wijziging tijdens het tikken verschuift de knoppen niet
-  const list = [...pcs].sort((a, b) => a.name.localeCompare(b.name, "nl"));
-  el.innerHTML = `<h2 id="pv-mepick-h">Welk personage ben jij?</h2>
+  const list = [...pcs].sort((a, b) => a.name.localeCompare(b.name, i18n().lang));
+  el.innerHTML = `<h2 id="pv-mepick-h">${esc(t("player.pick.title"))}</h2>
     ${list.length ? list.map((c) => `<button type="button" class="btn tap pvpickb" data-me="${esc(c.id)}" aria-pressed="${!!me && me.id === c.id}">${av(c)}<span class="nm">${esc(c.name)}</span></button>`).join("")
-      : `<p class="hint">Er staan nog geen spelers in de lijst.</p>`}
-    <button type="button" class="btn tap" data-me="">Niemand, ik kijk alleen mee</button>
-    ${canBuzz() ? `<label class="chk"><input type="checkbox" id="pv-buzz" ${buzzOn ? "checked" : ""}> Trillen als ik bijna aan de beurt ben</label>` : ""}
-    <button type="button" class="link" data-mepick="0">Sluit</button>`;
+      : `<p class="hint">${esc(t("player.pick.empty"))}</p>`}
+    <button type="button" class="btn tap" data-me="">${esc(t("player.pick.nobody"))}</button>
+    ${canBuzz() ? `<label class="chk"><input type="checkbox" id="pv-buzz" ${buzzOn ? "checked" : ""}> ${esc(t("player.pick.buzz"))}</label>` : ""}
+    <button type="button" class="link" data-mepick="0">${esc(t("common.close"))}</button>`;
   if (f !== undefined) { const b = el.querySelector(`[data-me="${CSS.escape(f)}"]`); if (b) b.focus(); }
 }
 
@@ -160,8 +163,11 @@ function bindMe() {
     if (condSheetClick(e)) return;
     const b = e.target.closest("button[data-cinfo]");
     if (!b) return;
-    const c = lastV && lastV.list.find((x) => x.id === b.dataset.cid), td = c && c.td && c.td[+b.dataset.ti];
-    openCond(b, { lvl: +b.dataset.lvl || 0, rows: [["Duur", td && td.d], ["Herhaalsave", td && td.s]] });
+    // WP28: descriptor (tdx) in de taal van dit scherm; een oudere DM-app stuurt alleen tekst (td)
+    const c = lastV && lastV.list.find((x) => x.id === b.dataset.cid), i = +b.dataset.ti;
+    const dx = c && c.tdx && c.tdx[i], td = c && c.td && c.td[i];
+    const val = (f) => (dx && dx[f] ? tr(dx[f]) : td && td[f]);
+    openCond(b, { lvl: +b.dataset.lvl || 0, rows: [[t("player.cinfo.dur"), val("d")], [t("player.cinfo.rep"), val("s")]] });
   });
 }
 
@@ -193,7 +199,7 @@ function paint(V) {
   const L = $("#pv-list");
   L.innerHTML = rows.map((c) => row(c, V, meId)).join("");
   $("#pv-down").hidden = !down.length;
-  $("#pv-down").innerHTML = down.length ? `<span class="l">Neer</span> ${down.map((c) => esc(c.name)).join(", ")}` : "";
+  $("#pv-down").innerHTML = down.length ? `<span class="l">${esc(t("player.down"))}</span> ${down.map((c) => esc(pvName(c))).join(", ")}` : "";
   tvQr(); fitTv();
   const el = document.querySelector(".pvc.turn");
   if (el) {
@@ -245,7 +251,7 @@ function tvQr() {
   if (!on || qrFor === code) return;
   qrFor = code;
   const url = `${location.origin}/speler?k=${code}`;
-  el.innerHTML = `${qrSvg(url, `QR-code om mee te kijken, kamer ${code.split("").join(" ")}`)}<p>Meekijken op je telefoon · <b>${esc(fmtCode(code))}</b></p>`;
+  el.innerHTML = `${qrSvg(url, t("player.qrLabel", { code: code.split("").join(" ") }))}<p>${esc(t("player.qr"))} · <b>${esc(fmtCode(code))}</b></p>`;
 }
 
 /* ---------- scherm aan houden en volledig scherm (tv/tablet) ---------- */
@@ -286,7 +292,7 @@ function boot() {
   $("#pv-code").addEventListener("input", () => tryJoin(false));
   const k = normCode(new URLSearchParams(location.search).get("k"));
   if (k) join(k);
-  else showJoin(ch ? "" : "Deze browser kan geen tweede venster koppelen; vul de code van de DM in.");
+  else showJoin(ch ? "" : t("player.noChannel"));
 }
 
 /* ---------- kamer (andere apparaten) ---------- */
@@ -298,16 +304,15 @@ let room = null, code = "";
  * Bij een pauze geen balken: daar geldt de pauzetekst. */
 const LOST_MS = 120000, DM_MS = 45000;
 let lastAt = 0, lastJson = "", paused = false, netLost = false, lostT = 0, dmT = 0, dmGone = false;
-const hhmm = (t) => new Date(t).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
-const since = () => (lastAt ? ` · stand van ${hhmm(lastAt)}` : "");
+const since = () => (lastAt ? ` · ${t("player.net.since", { time: i18n().time(lastAt) })}` : "");
 
 function bar() {
   const el = $("#pv-net");
   const kind = paused ? "" : netLost ? "lost" : dmGone && lastAt ? "dm" : ""; // pauze: alleen de pauzetekst
   el.hidden = !kind;
   el.className = "pvnet" + (kind ? " " + kind : "");
-  el.innerHTML = kind === "lost" ? `<b>Geen verbinding${since()}</b><span>Opnieuw verbinden…</span>`
-    : kind === "dm" ? `<b>De DM is even weg${since()}</b><span>Het gevecht gaat hier verder zodra de DM terug is.</span>` : "";
+  el.innerHTML = kind === "lost" ? `<b>${esc(t("player.net.lost") + since())}</b><span>${esc(t("player.net.retry"))}</span>`
+    : kind === "dm" ? `<b>${esc(t("player.net.dmAway") + since())}</b><span>${esc(t("player.net.dmAwayHint"))}</span>` : "";
   document.body.classList.toggle("stale", kind === "lost" && !!lastAt);
   stickOff();
   fitTv();
@@ -322,7 +327,7 @@ function netLostNow() {
     if (!netLost || paused || !lastAt) return;
     clear();
     $("#pv-wait").hidden = false;
-    $("#pv-wait").textContent = "Geen verbinding. Zodra die terug is, verschijnt het gevecht hier vanzelf.";
+    $("#pv-wait").textContent = t("player.net.lostLong");
     tvQr(); fitTv();
   }, LOST_MS);
 }
@@ -334,16 +339,16 @@ function handler(c) {
   return (m) => {
     if (m.t === "dm") c.send({ t: "hallo" }); // DM-scherm (opnieuw) gestart, of kamer (opnieuw) verbonden
     else if (m.t === "stand") { const V = cleanView(m.d); if (V) { $("#pv-join").hidden = true; paint(V); } }
-    else if (c === room && m.t === "einde") leave("De DM deelt niet meer met deze code. Vraag de nieuwe code.");
+    else if (c === room && m.t === "einde") leave(t("player.room.ended"));
     else if (c === room && m.t === "stop") pause();
     else if (c === room && m.t === "dmnet") m.on ? dmBack() : dmAway();
     else if (c === room && m.t === "net") {
       if (m.s === "kwijt") netLostNow();
       else if (m.s === "open") { // de kamer stuurt bij verbinden de DM-status (dmnet)
         netOk();
-        if (!lastAt && !paused && !$("#pv-wait").hidden) $("#pv-wait").textContent = "Verbonden, wacht op de DM…";
+        if (!lastAt && !paused && !$("#pv-wait").hidden) $("#pv-wait").textContent = t("player.net.connected");
       }
-      if (m.s === "weg") leave(`Kamer ${fmtCode(code)} bestaat niet (meer). Vraag de DM om een nieuwe code.`);
+      if (m.s === "weg") leave(t("player.room.gone", { code: fmtCode(code) }));
     }
   };
 }
@@ -355,7 +360,7 @@ function join(k) {
   room.on(handler(room));
   $("#pv-join").hidden = true;
   $("#pv-wait").hidden = false;
-  $("#pv-wait").textContent = `Verbinden met kamer ${fmtCode(k)}…`;
+  $("#pv-wait").textContent = t("player.net.connecting", { code: fmtCode(k) });
   try { history.replaceState(null, "", `?k=${k}`); } catch { /* geen probleem */ }
   tvQr(); fitTv();
 }
@@ -380,7 +385,7 @@ function pause() {
   clear(); paused = true;
   $("#pv-join").hidden = true;
   $("#pv-wait").hidden = false;
-  $("#pv-wait").innerHTML = `<b class="pvpause">De DM deelt op dit moment niet.</b><br>Zodra de DM weer deelt, verschijnt het gevecht hier vanzelf. · Kamer ${esc(fmtCode(code))}`;
+  $("#pv-wait").innerHTML = `<b class="pvpause">${esc(t("player.pause"))}</b><br>${esc(`${t("player.pauseHint")} · ${t("player.room", { code: fmtCode(code) })}`)}`;
   tvQr(); fitTv();
 }
 
@@ -398,7 +403,7 @@ function showJoin(msg) {
   $("#pv-wait").textContent = msg || "";
   $("#pv-join").hidden = false;
   $("#pv-joinmsg").classList.remove("err");
-  $("#pv-joinmsg").textContent = `Of open ${APP} in een ander venster van deze browser.`;
+  $("#pv-joinmsg").textContent = t("player.joinHint");
 }
 
 /** submit: ook een foutmelding; tijdens het typen: alleen verbinden zodra er 6 geldige tekens staan */
@@ -407,7 +412,7 @@ function tryJoin(submit) {
   if (k) { $("#pv-code").blur(); join(k); return; }
   if (!submit) return;
   $("#pv-joinmsg").classList.add("err");
-  $("#pv-joinmsg").textContent = "Een code heeft 6 tekens, bijvoorbeeld K7M 3QX.";
+  $("#pv-joinmsg").textContent = t("player.codeBad");
 }
 
 initI18n().then(boot).catch((e) => console.error(e)); // vertalingen vóór de eerste weergave (WP20; gooit nooit, wacht max. 3 s)
