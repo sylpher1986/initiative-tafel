@@ -71,22 +71,22 @@ test("stepEntries: regels die in de nieuwere log staan en niet in de oudere", ()
 
 test("stepText: eerste regel + aantal, beurtwissel = waar je nu staat, geen regels = algemeen", () => {
   const S = { round: 2, active: "a", list: [{ id: "a", name: "Aram" }] };
-  assert.deepEqual(stepText([{ msg: "Goblin 2: 30 → 0 HP (−30)" }], S, "Ongedaan"), { text: "Ongedaan: Goblin 2: 30 → 0 HP (−30)", more: 0 });
-  assert.deepEqual(stepText([{ msg: "Goblin 1: −13" }, { msg: "Goblin 2: −13" }, { msg: "Aram: −6" }], S, "Opnieuw"), { text: "Opnieuw: Goblin 1: −13", more: 2 });
+  assert.deepEqual(stepText([{ msg: "Goblin 2: 30 → 0 HP (−30)" }], S, "undo"), { text: "Ongedaan: Goblin 2: 30 → 0 HP (−30)", more: 0 });
+  assert.deepEqual(stepText([{ msg: "Goblin 1: −13" }, { msg: "Goblin 2: −13" }, { msg: "Aram: −6" }], S, "redo"), { text: "Opnieuw: Goblin 1: −13", more: 2 });
   const turn = [{ type: "turn", msg: "Beurt van Noor" }, { msg: "Lotte: Prone voorbij" }];
-  assert.equal(stepText(turn, S, "Ongedaan").text, "Terug naar beurt van Aram (ronde 2)");
-  assert.equal(stepText(turn, S, "Opnieuw").text, "Opnieuw: beurt van Aram (ronde 2)");
-  assert.equal(stepText([], S, "Ongedaan").text, "Ongedaan gemaakt.");
-  assert.equal(stepText(undefined, S, "Opnieuw").text, "Opnieuw gedaan.");
-  const start = [{ type: "round", msg: "Ronde 1 begint" }, { type: "turn", msg: "Beurt van Aram" }];
-  assert.equal(stepText(start, { round: 0, active: null, list: [] }, "Ongedaan").text, "Ongedaan: Start gevecht");
-  const end = [{ msg: "Gevecht afgerond: 450 XP" }, { type: "round", msg: "Gevecht gestopt" }];
-  assert.equal(stepText(end, S, "Ongedaan").text, "Gevecht loopt weer · beurt van Aram (ronde 2)");
-  assert.equal(stepText(end, { round: 0, list: [] }, "Opnieuw").text, "Opnieuw: Gevecht gestopt");
-  assert.equal(stepText(start, { round: 1, active: "a", list: [{ id: "a", name: "Aram" }] }, "Opnieuw").text, "Opnieuw: Start gevecht");
+  assert.equal(stepText(turn, S, "undo").text, "Terug naar beurt van Aram (ronde 2)");
+  assert.equal(stepText(turn, S, "redo").text, "Opnieuw: beurt van Aram (ronde 2)");
+  assert.equal(stepText([], S, "undo").text, "Ongedaan gemaakt.");
+  assert.equal(stepText(undefined, S, "redo").text, "Opnieuw gedaan.");
+  const start = [{ type: "round", msg: "Ronde 1 begint", m: { k: "log.round", p: { n: 1 } } }, { type: "turn", msg: "Beurt van Aram" }];
+  assert.equal(stepText(start, { round: 0, active: null, list: [] }, "undo").text, "Ongedaan: Start gevecht");
+  const end = [{ msg: "Gevecht afgerond: 450 XP" }, { type: "round", msg: "Gevecht gestopt", m: { k: "log.stopped" } }];
+  assert.equal(stepText(end, S, "undo").text, "Gevecht loopt weer · beurt van Aram (ronde 2)");
+  assert.equal(stepText(end, { round: 0, list: [] }, "redo").text, "Opnieuw: Gevecht gestopt");
+  assert.equal(stepText(start, { round: 1, active: "a", list: [{ id: "a", name: "Aram" }] }, "redo").text, "Opnieuw: Start gevecht");
   const rm = [{ type: "turn", msg: "Beurt van Noor" }, { msg: "Goblin 3 verwijderd" }, { msg: "Lotte: Prone voorbij" }];
-  assert.equal(stepText(rm, S, "Ongedaan").text, "Terug naar beurt van Aram (ronde 2) · Goblin 3 verwijderd");
+  assert.equal(stepText(rm, S, "undo").text, "Terug naar beurt van Aram (ronde 2) · Goblin 3 verwijderd");
   assert.deepEqual(stepEntries([{ id: "1", msg: "Afgerond: 450 XP, 4 delen" }], [{ id: "1", msg: "Afgerond: 450 XP, 3 delen" }]).length, 1); // relog
-  const long = stepText([{ msg: "x".repeat(200) }], S, "Ongedaan").text;
+  const long = stepText([{ msg: "x".repeat(200) }], S, "undo").text;
   assert.ok(long.length <= 80 && long.endsWith("…"));
 });

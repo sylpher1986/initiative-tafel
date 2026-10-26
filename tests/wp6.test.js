@@ -2,7 +2,7 @@
 import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toPlayerView, cleanView, findMe, meState, buzzFor, dsText, headHtml, REACT_TAG, VIS } from "../js/playerview.js";
+import { toPlayerView, cleanView, findMe, meState, buzzFor, dsText, headHtml, VIS } from "../js/playerview.js";
 import { reactUsed } from "../js/rules/turns.js";
 
 const pc = (o) => ({ kind: "pc", cond: [], dex: 0, ac: 15, hp: 20, max: 20, ...o });
@@ -23,14 +23,14 @@ test("GV12 reactUsed: gebruikt, niet verrast, niet neer, spelers volgens de inst
 test("GV12 spelersscherm: 'Reaction op' als tag, volgt Condities en GV4", () => {
   const list = [pc({ id: "a", name: "A", init: 15, reaction: true }), mon({ id: "b", name: "Goblin 1", init: 10, reaction: true })];
   let V = toPlayerView(S(list));
-  assert.deepEqual(V.list.map((c) => c.tags), [[REACT_TAG], [REACT_TAG]]);
+  assert.deepEqual(V.list.map((c) => c.tags), [["react"], ["react"]]);
   V = toPlayerView(S(list), undefined, VIS, null, { pcReact: false });
-  assert.deepEqual(V.list.map((c) => c.tags), [[], [REACT_TAG]]);
+  assert.deepEqual(V.list.map((c) => c.tags), [[], ["react"]]);
   V = toPlayerView(S(list), undefined, { ...VIS, tags: "pc" });
-  assert.deepEqual(V.list.map((c) => c.tags), [[REACT_TAG], []]);
+  assert.deepEqual(V.list.map((c) => c.tags), [["react"], []]);
   V = toPlayerView(S(list), undefined, { ...VIS, tags: "none" });
   assert.deepEqual(V.list.map((c) => c.tags), [[], []]);
-  assert.deepEqual(cleanView(JSON.parse(JSON.stringify(toPlayerView(S(list))))).list[0].tags, [REACT_TAG]);
+  assert.deepEqual(cleanView(JSON.parse(JSON.stringify(toPlayerView(S(list))))).list[0].tags, ["react"]);
 });
 
 test("SC8: speler op 0 HP zonder dubbele 'Unconscious', monster en levende speler houden hun condities", () => {
@@ -40,7 +40,7 @@ test("SC8: speler op 0 HP zonder dubbele 'Unconscious', monster en levende spele
     mon({ id: "c", name: "Goblin", cond: ["Unconscious"] }),
   ]));
   assert.deepEqual(V.list.map((c) => c.tags), [["Prone"], ["Unconscious"], ["Unconscious"]]);
-  assert.equal(V.list[0].hp.st, "Bewusteloos");
+  assert.equal(V.list[0].hp.hs, "unconscious");
 });
 
 test("SC8: death saves in woorden", () => {
@@ -133,5 +133,5 @@ test("SC5 + SC2b: verborgen beurt na 'jij' houdt de kop vast, zonder vlag die he
   const V = toPlayerView(S(list, { active: "h" }), undefined, VIS, { id: "a", round: 1 });
   assert.equal(V.active, "a");
   assert.equal(meState(V, "a"), "turn");
-  assert.deepEqual(Object.keys(V).sort(), ["active", "c", "list", "next", "round", "tg", "v"], "geen extra veld dat een verborgen beurt verraadt (tg = vaste instelling, c = altijd 1)");
+  assert.deepEqual(Object.keys(V).sort(), ["active", "list", "next", "round", "tg", "v"], "geen extra veld dat een verborgen beurt verraadt (tg = vaste instelling)");
 });

@@ -81,11 +81,11 @@ test("DM: bij (her)verbinden 'hallo' zodat dmLink opnieuw pusht; portretten éé
   assert.equal(got.filter((x) => x.s === "open").length, 2);
 });
 
-test("DM: kamer weg (4004) of geen toegang (4003) → 'weg', niet opnieuw verbinden; ander tabblad (4001) → 'elders' tot resume", async () => {
+test("DM: kamer weg (4004) of geen toegang (4003) → 'gone', niet opnieuw verbinden; ander tabblad (4001) → 'elders' tot resume", async () => {
   for (const code of [4003, 4004]) {
     const { got, T } = await chan("tok");
     socks[0].open(); socks[0].drop(code);
-    assert.equal(got.at(-1).s, "weg");
+    assert.equal(got.at(-1).s, "gone");
     assert.equal(T.q.filter((x) => x.f).length, 0);
   }
   const { ch, got, T } = await chan("tok");

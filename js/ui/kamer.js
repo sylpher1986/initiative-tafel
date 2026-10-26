@@ -81,7 +81,7 @@ function connect() {
     else if (m.t === "net") {
       st = m.s;
       lost(m.s === "kwijt");
-      if (m.s === "weg") {
+      if (m.s === "gone") {
         disconnect(); room = null; saveRoom(null); st = "off"; closeQr();
         if (again) { again = false; return void start(true); } // Opnieuw delen na Stop, maar de kamer verliep: stil een nieuwe
         err = "init.room.expired";

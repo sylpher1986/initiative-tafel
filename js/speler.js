@@ -163,10 +163,10 @@ function bindMe() {
     if (condSheetClick(e)) return;
     const b = e.target.closest("button[data-cinfo]");
     if (!b) return;
-    // WP28: descriptor (tdx) in de taal van dit scherm; een oudere DM-app stuurt alleen tekst (td)
+    // WP28: descriptor (tdx) in de taal van dit scherm
     const c = lastV && lastV.list.find((x) => x.id === b.dataset.cid), i = +b.dataset.ti;
-    const dx = c && c.tdx && c.tdx[i], td = c && c.td && c.td[i];
-    const val = (f) => (dx && dx[f] ? tr(dx[f]) : td && td[f]);
+    const dx = c && c.tdx && c.tdx[i];
+    const val = (f) => (dx && dx[f] ? tr(dx[f]) : "");
     openCond(b, { lvl: +b.dataset.lvl || 0, rows: [[t("player.cinfo.dur"), val("d")], [t("player.cinfo.rep"), val("s")]] });
   });
 }
@@ -348,7 +348,7 @@ function handler(c) {
         netOk();
         if (!lastAt && !paused && !$("#pv-wait").hidden) $("#pv-wait").textContent = t("player.net.connected");
       }
-      if (m.s === "weg") leave(t("player.room.gone", { code: fmtCode(code) }));
+      if (m.s === "gone") leave(t("player.room.gone", { code: fmtCode(code) }));
     }
   };
 }

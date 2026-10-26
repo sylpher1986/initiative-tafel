@@ -104,7 +104,8 @@ test("surprise: spelersscherm toont 'Verrast' en 'volgende' slaat verraste deeln
   const S = { round: 1, active: "a", list: [pc("a", 20), mon("g1", 15, { sur: true }), pc("b", 10)] };
   const V = toPlayerView(S);
   assert.equal(V.next, "b");
-  assert.deepEqual(V.list.find((c) => c.id === "g1").tags, ["Verrast"]);
+  assert.deepEqual(V.list.find((c) => c.id === "g1").tags, ["sur"]);
+  assert.deepEqual(V.list.find((c) => c.id === "g1").tk, ["sur"], "code; het spelersscherm toont het woord in zijn taal");
 });
 
 test("surprise: verrast monster dat vóór zijn beurt neergaat en daarna geheald wordt, blijft overgeslagen (sur = 2)", () => {

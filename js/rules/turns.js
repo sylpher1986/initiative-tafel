@@ -159,9 +159,7 @@ export const isOut = (c) => (c.kind === "monster" && c.hp <= 0) || !!(c.ds && c.
 export const skipsTurn = (c, round) => isOut(c) || (round === 1 && !!c.sur) || (!!round && c.skipR === round); // skipR: RE9, al geweest deze ronde
 /** Nog verrast: geen reaction, geen legendary actions */
 export const isSurprised = (c, S) => c.sur === true && S.round === 1 && !isOut(c);
-/** GV12: label overal gelijk (dichte kaart, knop, live-blok, spelersscherm) */
-export const REACT_TAG = "Reaction op"; // oud veld tags in de snapshot (WP28: overgang, code "react" in tk); weg in WP32
-/** Hetzelfde label in de actieve taal (DM-app, WP27) */
+/** GV12: label overal gelijk (dichte kaart, knop, live-blok, spelersscherm), in de actieve taal */
 export const reactTag = () => t("rules.reactTag");
 /** GV12: reaction gebruikt en nog niet terug (begin eigen beurt). Verrast heeft een eigen badge; pcr = false (GV4 "Spelers
  *  zelf"): niet bij spelers. Eén voorwaarde voor kaart, live-blok en spelersscherm. */

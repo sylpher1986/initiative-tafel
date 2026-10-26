@@ -79,7 +79,7 @@ const PROBE = 5000;
 /**
  * Kanaal via de kamer. token = DM (schrijft), zonder token = speler (alleen lezen).
  * Zelfde send/on/close als localChannel. Daarnaast komen via on():
- *   { t: "net", s }  s = "verbinden" | "open" | "kwijt" | "weg" (kamer bestaat niet/verlopen/geen toegang) | "elders" (DM in ander tabblad)
+ *   { t: "net", s }  s = "verbinden" | "open" | "kwijt" | "gone" (kamer bestaat niet/verlopen/geen toegang) | "elders" (DM in ander tabblad)
  *   { t: "n", n }    (DM) aantal verbonden spelersschermen
  *   { t: "pauze" }   (DM) kamer pauzeerde het delen (30 min zonder wijziging); tot hervat() gaat er geen stand meer heen
  *   { t: "hervat" }  (DM) kamer bevestigt hervat(); daarna volgt "hallo" (dmLink pusht)
@@ -147,7 +147,7 @@ export function roomChannel(code, token, opts = {}) {
       sent.forEach((_, k) => sent.set(k, ""));
       if (done) return;
       const c = e && e.code;
-      if (c === 4003 || c === 4004) { done = true; return net("weg"); }
+      if (c === 4003 || c === 4004) { done = true; return net("gone"); }
       if (c === 4001) return net("elders");
       later();
     };

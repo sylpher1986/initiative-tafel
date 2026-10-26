@@ -1229,7 +1229,7 @@ function paintSpell(el, a) {
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3 id="a-title">${esc(t("init.sp.title"))}</h3><button type="button" class="link" data-ao="close">${esc(t("common.cancel"))}</button></div>
       ${aoeTabs(a)}
-      <div class="effgrid spgrid">${SPELLS.map((x, i) => (spellFor(x, presetEd(caster, x.n)) ? `<button type="button" class="btn tap" data-ao="sp" data-v="${i}" aria-pressed="${a.sp === i}"><span>${esc(x.n)}${edTag(caster, x.n, x) ? ` <span class="tag">${esc(edTag(caster, x.n, x))}</span>` : ""}</span><small>${esc(x.sub)}</small></button>` : "")).join("")}<button type="button" class="btn tap" data-ao="todmg">${esc(t("init.aoe.dmgSpell"))}<small>Fireball, Sacred Flame …</small></button><button type="button" class="btn tap" data-ao="sp" data-v="own" aria-pressed="${a.sp === "own"}">${esc(t("init.sp.own"))}<small>${esc(t("init.sp.ownSub"))}</small></button></div>
+      <div class="effgrid spgrid">${SPELLS.map((x, i) => (spellFor(x, presetEd(caster, x.n)) ? `<button type="button" class="btn tap" data-ao="sp" data-v="${i}" aria-pressed="${a.sp === i}"><span>${esc(x.n)}${edTag(caster, x.n, x) ? ` <span class="tag">${esc(edTag(caster, x.n, x))}</span>` : ""}</span><small>${esc(x.sk ? t(x.sk) : x.sub)}</small></button>` : "")).join("")}<button type="button" class="btn tap" data-ao="todmg">${esc(t("init.aoe.dmgSpell"))}<small>Fireball, Sacred Flame …</small></button><button type="button" class="btn tap" data-ao="sp" data-v="own" aria-pressed="${a.sp === "own"}">${esc(t("init.sp.own"))}<small>${esc(t("init.sp.ownSub"))}</small></button></div>
       <label class="scast">Caster<select id="s-by"><option value="">${esc(t("init.sp.pickCaster"))}</option>${cs.map((x) => `<option value="${esc(x.id)}" ${x.id === a.by ? "selected" : ""}>${esc(x.id === S.active ? t("init.aoe.curTurn", { name: x.name }) : x.name)}</option>`).join("")}</select></label>
       <div id="s-slot"></div>
       ${own}
@@ -1255,7 +1255,7 @@ function paintSpell(el, a) {
   const rows = L.map((c) => ({ c, p: spellPick(a, sp, caster, c) })), sel = rows.filter((x) => x.p.sel);
   // uitleg: wat een gefaalde save doet, duur, concentratie, herhaalsave, en of de caster een andere concentratie verliest
   const what = sp.eff ? effText(presetsFor(presetEd(caster, sp.n)).find((p) => p.n === sp.eff)) || "" : sp.conds.join(" + ");
-  const bits = [what, sp.dur === "inf" && sp.conc ? t("init.sp.whileConc") : durName(sp.eff ? "r10" : sp.dur), sp.conc ? "conc" : "", sp.rep ? t("init.sp.rep", { ab: sp.ab }) : "", sp.note || ""].filter(Boolean);
+  const bits = [what, sp.dur === "inf" && sp.conc ? t("init.sp.whileConc") : durName(sp.eff ? "r10" : sp.dur), sp.conc ? "conc" : "", sp.rep ? t("init.sp.rep", { ab: sp.ab }) : "", sp.nk ? t(sp.nk) : ""].filter(Boolean);
   const lose = caster && sp.conc && caster.cond.includes("Concentrating") && caster.concSpell && caster.concSpell !== sp.n ? caster.concSpell : "";
   $("#s-info").innerHTML = `${esc(bits.join(" · "))}${lose ? `<br><b class="bad">${esc(t("init.aoe.lose", { name: caster.name, spell: lose }))}</b>` : ""}${a.redc ? `<br>${esc(t("init.sp.redc", { dc: a.redc }))}` : ""}`;
   $("#a-list").innerHTML = rows.map((x) => spellRow(a, sp, caster, x.c, x.p)).join("") || `<p class="hint">${esc(t("init.sp.nobody"))}</p>`;

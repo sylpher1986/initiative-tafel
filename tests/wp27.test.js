@@ -79,9 +79,8 @@ test("import: oude regels (zonder m) blijven, rare m valt weg maar msg blijft", 
   assert.deepEqual(S.log[2].m, log[2].m);
 });
 
-test("stepText: code en oude woorden", () => {
+test("stepText: code undo/redo", () => {
   const E = [{ msg: "Ayla: 20 → 13 HP" }];
-  assert.deepEqual(stepText(E, null, "undo"), stepText(E, null, "Ongedaan"));
   assert.equal(stepText(E, null, "undo").text, "Ongedaan: Ayla: 20 → 13 HP");
   assert.match(stepText(E, null, "redo").text, /^Opnieuw: Ayla/);
 });

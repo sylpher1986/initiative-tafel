@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { initI18n } from "../js/i18n/boot.js";
-import { toPlayerView, cleanView, headHtml, logLines, dsText, pvName, hsText, tagText, anonName, HS, STATUS } from "../js/playerview.js";
+import { toPlayerView, cleanView, headHtml, logLines, dsText, pvName, hsText, tagText, anonName, HS } from "../js/playerview.js";
 
 const lang = (l) => initI18n({ doc: { documentElement: { lang: l } }, search: "", storage: null });
 const P = (o) => ({ kind: "pc", cond: [], dex: 0, ac: 15, hp: 20, max: 20, ...o });
@@ -27,16 +27,20 @@ const fight = () => {
   return { list: L, round: 1, active: "g1" };
 };
 
-test("snapshot: codes naast de oude Nederlandse velden, ook als de DM Engels heeft; v blijft 1 (oude lezers)", async () => {
-  await lang("en");
+test("snapshot v 2 (WP32): alleen codes, geen UI-tekst over de lijn, in welke taal de DM ook staat", async () => {
+  for (const l of ["nl", "en"]) {
+    await lang(l);
+    const j = JSON.stringify(toPlayerView(fight()));
+    assert.ok(!/Onbekend|Unknown|Verrast|Surprised|Reaction op|Reaction used|Bijna dood|Near death|"st"|"td"|"gname"|"c":/.test(j), l + ": " + j.slice(0, 300));
+  }
   const V = wire(toPlayerView(fight()));
-  assert.equal(V.v, 1, "een speler.js van vóór 1.51.0 weigert alles behalve v 1");
+  assert.equal(V.v, 2);
   const [p, g1, g2] = V.list;
-  assert.deepEqual(p.hp, { hp: 4, max: 20, temp: 0, st: "Bijna dood", hs: "near" });
-  assert.equal(g1.name, "Onbekend wezen 1", "oud veld blijft Nederlands (v1-lezers zijn Nederlandstalig)");
+  assert.deepEqual(p.hp, { hp: 4, max: 20, temp: 0, hs: "near" });
+  assert.equal(g1.name, "", "naam van een onbekend wezen maakt het spelersscherm zelf");
   assert.equal(g1.anon, 1);
-  assert.deepEqual(g1.tags, ["Verrast"]); assert.deepEqual(g1.tk, ["sur"]);
-  assert.deepEqual(g2.tags, ["Reaction op"]); assert.deepEqual(g2.tk, ["react"]);
+  assert.deepEqual(g1.tags, ["sur"]); assert.deepEqual(g1.tk, ["sur"]);
+  assert.deepEqual(g2.tags, ["react"]); assert.deepEqual(g2.tk, ["react"]);
   assert.deepEqual(p.tdx, [{ d: { k: "rules.dw.rounds", p: { n: 3 } }, s: { k: "rules.saveWords", p: { ab: "STR", dc: "13" } } }]);
   assert.equal(p.tk, undefined, "geen codes = geen veld");
   assert.equal(V.list.length, 3, "verborgen monster bestaat niet voor spelers");
@@ -56,7 +60,7 @@ test("DM Nederlands, speler Engels: kop, namen, status, tags, duur en death save
   const { tr } = await import("../js/i18n/boot.js");
   assert.equal(tr(p.tdx[0].d), "3 rounds left");
   assert.equal(tr(p.tdx[0].s), "STR DC 13 at the end of each of its turns");
-  assert.equal(p.td[0].d, "nog 3 rondes", "oud veld: taal van de DM");
+  assert.equal(p.td, undefined, "oud veld weg (WP32)");
 });
 
 test("zelfde snapshot, speler Nederlands: alles zoals vóór WP28", async () => {
@@ -70,7 +74,7 @@ test("anon: zelfde nummering als het oude naamveld; één zichtbaar = zonder num
   const S = fight();
   await lang("nl");
   const V = toPlayerView(S);
-  for (const r of V.list.filter((c) => c.anon != null)) assert.equal(r.name, r.anon ? `Onbekend wezen ${r.anon}` : "Onbekend wezen");
+  for (const r of cleanView(wire(V)).list.filter((c) => c.anon != null)) assert.equal(pvName(r), r.anon ? `Onbekend wezen ${r.anon}` : "Onbekend wezen");
   S.list[1].anon = 0; // g1 onthuld: één onbekende over (de verborgen telt niet)
   delete S.list[1].anon;
   const W = toPlayerView(S);
@@ -96,11 +100,11 @@ test("tdx: naam van een verborgen of anonieme bron wordt 'een andere beurt'", as
 test("groep van onbekende wezens: groepsnaam in de taal van de speler", async () => {
   const L = [1, 2, 3].map((n) => Mo({ id: `g${n}`, name: `Goblin ${n}`, init: 12, anon: n, grp: "x" }));
   const { raw, V } = await across({ list: L, round: 1, active: "g1" });
-  assert.equal(raw.gname, "Onbekend wezen ×3", "oud veld");
+  assert.equal(raw.gname, undefined, "oud veld weg (WP32)");
   assert.match(headHtml(V), /<b>Unknown creature ×3<\/b>/);
 });
 
-test("v1 van een oudere DM-app (zonder codes): woorden → codes via de vaste tabel", async () => {
+test("v1 van een DM-app van vóór 1.51.0 (zonder codes): wordt gelezen, maar er wordt niets uit woorden afgeleid (WP32)", async () => {
   await lang("en");
   const V = cleanView({
     v: 1, round: 2, active: "a", next: "b",
@@ -111,12 +115,11 @@ test("v1 van een oudere DM-app (zonder codes): woorden → codes via de vaste ta
     ],
   });
   const [a, b, c] = V.list;
-  assert.equal(a.anon, 2); assert.equal(c.anon, 0); assert.equal(b.anon, undefined);
-  assert.deepEqual([a.hp.hs, b.hp.hs, c.hp.hs], ["hurt", "stable", "down"]);
-  assert.deepEqual(a.tk, ["sur", null]); assert.deepEqual(b.tk, ["react"]);
-  assert.match(headHtml(V), /Unknown creature 2<\/b>.*Up next<\/span>Aria/);
-  assert.equal(a.td[1].d, "nog 1 ronde", "oude duurtekst blijft (geen tdx)");
-  assert.deepEqual(HS.map((h, i) => [h, STATUS[i]]).length, 8);
+  assert.equal(a.anon, undefined); assert.equal(c.anon, undefined);
+  assert.deepEqual([a.hp.hs, b.hp.hs, c.hp.hs], ["", "", ""]);
+  assert.equal(a.tk, undefined); assert.equal(b.tk, undefined); assert.equal(a.td, undefined);
+  assert.match(headHtml(V), /Onbekend wezen 2<\/b>.*Up next<\/span>Aria/, "naam zoals ontvangen");
+  assert.equal(HS.length, 8);
 });
 
 test("cleanView: tdx alleen bekende sleutels met de verwachte waarden; tk alleen bekende codes", async () => {
@@ -142,10 +145,10 @@ test("logLines op codes: speler Engels, DM Nederlands", async () => {
   assert.deepEqual(logLines(b, (await across(S2)).V), ["Aria: Prone ended"]);
 });
 
-test("review: nieuwe DM (c: 1) leidt niets af uit woorden; eigen effect 'Verrast' en monster 'Onbekend wezen 2' blijven zichzelf", async () => {
+test("review: snapshot leidt niets af uit woorden; eigen effect 'Verrast' en monster 'Onbekend wezen 2' blijven zichzelf", async () => {
   const L = [P({ id: "p", name: "Aria", init: 5, eff: [{ id: "e", n: "Verrast" }] }), Mo({ id: "m", name: "Onbekend wezen 2", init: 3 })];
   const { raw, V } = await across({ list: L, round: 1, active: "p" });
-  assert.equal(raw.c, 1);
+  assert.equal(raw.v, 2);
   assert.equal(V.list[0].tk, undefined); assert.equal(tagText(V.list[0], 0), "Verrast");
   assert.equal(V.list[1].anon, undefined); assert.equal(pvName(V.list[1]), "Onbekend wezen 2");
   assert.equal(logLines(V, cleanView({ ...raw, list: [{ ...raw.list[0], tags: [] }, raw.list[1]] }))[0], "Aria: Verrast ended", "telt in het log");
@@ -154,7 +157,7 @@ test("review: nieuwe DM (c: 1) leidt niets af uit woorden; eigen effect 'Verrast
 test("review: tags met een prototype-naam zijn geen code; kwaadaardige naam in de groepsnaam wordt geëscaped", async () => {
   await lang("en");
   const V = cleanView({ v: 1, list: [{ id: "x", kind: "pc", name: "X", tags: ["constructor", "toString", "Verrast"] }] });
-  assert.deepEqual(V.list[0].tk, [null, null, "sur"]);
+  assert.equal(V.list[0].tk, undefined, "geen afleiding uit woorden meer (WP32)");
   const G = cleanView({ v: 1, c: 1, round: 2, active: "a", group: ["a", "b"], list: [{ id: "a", kind: "monster", name: "<img src=x onerror=alert(1)> 1" }, { id: "b", kind: "monster", name: "<img src=x onerror=alert(1)> 2" }] });
   assert.ok(!headHtml(G).includes("<img"));
   assert.match(headHtml(G), /&lt;img src=x onerror=alert\(1\)&gt; ×2/);

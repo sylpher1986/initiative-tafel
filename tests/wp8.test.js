@@ -177,15 +177,17 @@ test("RE10: snapshot geeft duur en herhaalsave per tag, zonder verborgen namen; 
   const V = toPlayerView(S);
   const L = V.list.find((x) => x.id === "p");
   assert.deepEqual(L.tags, ["Restrained", "Prone", "Charmed", "Exhaustion 2"]);
-  assert.deepEqual(L.td, [{ d: "nog 3 rondes", s: "STR DC 13 aan het einde van zijn beurt" }, { d: "t/m begin van een andere beurt" }, { d: "t/m begin van een andere beurt" }, null]);
-  assert.deepEqual(V.list.find((x) => x.id === "g").td, [{ d: "t/m begin van de beurt van Lotte" }]);
+  const td = (r) => r.tdx.map((x) => (x ? { ...(x.d ? { d: nl(x.d) } : {}), ...(x.s ? { s: nl(x.s) } : {}) } : null)); // WP32: alleen descriptoren
+  assert.deepEqual(td(L), [{ d: "nog 3 rondes", s: "STR DC 13 aan het einde van zijn beurt" }, { d: "t/m begin van een andere beurt" }, { d: "t/m begin van een andere beurt" }, null]);
+  assert.deepEqual(td(V.list.find((x) => x.id === "g")), [{ d: "t/m begin van de beurt van Lotte" }]);
+  assert.equal(L.td, undefined);
   assert.ok(!JSON.stringify(V).includes("Shadow Mage") && !JSON.stringify(V).includes("Bugbear"), "geen verborgen/anonieme naam");
   const C = cleanView(JSON.parse(JSON.stringify(V)));
-  assert.deepEqual(C.list.find((x) => x.id === "p").td, L.td);
-  const bad = cleanView({ v: 1, list: [{ id: "x", kind: "pc", name: "X", tags: ["Prone"], td: [{ d: "a" }, { d: "b" }] }] });
-  assert.equal(bad.list[0].td, undefined, "niet parallel: weg");
+  assert.deepEqual(C.list.find((x) => x.id === "p").tdx, L.tdx);
+  const bad = cleanView({ v: 2, list: [{ id: "x", kind: "pc", name: "X", tags: ["Prone"], tdx: [{ d: { k: "rules.dw.tend" } }, { d: { k: "rules.dw.tend" } }] }] });
+  assert.equal(bad.list[0].tdx, undefined, "niet parallel: weg");
   const none = toPlayerView(S, () => "", { monHp: "status", init: false, tags: "none" });
-  assert.equal(none.list.find((x) => x.id === "p").td, undefined, "Verbergen: niets mee");
+  assert.equal(none.list.find((x) => x.id === "p").tdx, undefined, "Verbergen: niets mee");
 });
 
 test("RE11 (review): halvering loopt mee met Aid, bewerken en onbekende max HP", () => {

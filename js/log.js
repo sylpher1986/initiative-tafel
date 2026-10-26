@@ -110,22 +110,22 @@ const cut = (s) => (s.length > CUT ? s.slice(0, CUT - 1).trimEnd() + "…" : s);
 
 /**
  * Melding na Ongedaan of Opnieuw (GV8, puur). entries = logregels van de stap (stepEntries), S = stand ná de actie,
- * verb = "undo" | "redo" (oud: "Ongedaan" | "Opnieuw"). Beurtwissel: waar je nu staat ("Terug naar beurt van Aram (ronde 2)"), want "beurt
+ * verb = "undo" | "redo". Beurtwissel: waar je nu staat ("Terug naar beurt van Aram (ronde 2)"), want "beurt
  * van Noor ongedaan" laat de DM terugrekenen. Anders de eerste regel van de stap met "+N meer" (AoE: het eerste doel).
  * Geeft { text, more } (more = aantal regels dat niet getoond wordt).
  */
 export function stepText(entries, S, verb) {
   const L = (entries || []).filter((e) => e && (typeof e.msg === "string" || e.m));
-  const back = verb === "undo" || verb === "Ongedaan"; // WP27: code; de oude woorden blijven werken
+  const back = verb === "undo";
   const pre = (what) => t(back ? "log.undoW" : "log.redoW", { what });
   const lines = L.filter((e) => !e.type);
   const k = (e) => (e.m && e.m.k) || "";
   if (L.some((e) => e.type === "turn" || e.type === "round")) {
     const act = S && S.round ? (S.list || []).find((c) => c.id === S.active) : null;
     const at = act ? t("log.atTurn", { name: act.name, n: String(S.round) }) : "";
-    // codes uit de descriptor; oude regels (zonder m) op hun Nederlandse tekst
-    const stopped = (e) => e.type === "round" && (k(e) ? k(e) === "log.stopped" : e.msg === "Gevecht gestopt");
-    const first = (e) => e.type === "round" && (k(e) ? k(e) === "log.round" && String(e.m.p && e.m.p.n) === "1" : /^Ronde 1 /.test(e.msg));
+    // codes uit de descriptor (de regels van een stap zijn altijd van deze versie: de undo-geschiedenis hoort bij één VERSION)
+    const stopped = (e) => e.type === "round" && k(e) === "log.stopped";
+    const first = (e) => e.type === "round" && k(e) === "log.round" && String(e.m.p && e.m.p.n) === "1";
     if (L.some(stopped)) return { text: back ? (at ? t("log.fightAgain", { at }) : pre(t("log.stopped"))) : pre(t("log.stopped")), more: 0 }; // Gevecht afronden
     if (L.some(first) && (back ? !S || !S.round : true)) return { text: pre(t("log.start")), more: 0 };
     // condities die aflopen noemt de melding niet (UX); een verwijderde deelnemer (aan de beurt, GV6) wel

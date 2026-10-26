@@ -1,7 +1,7 @@
 import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toPlayerView, cleanView, hpStatus, VIS, cleanVis, nextAnon, anonName, groupName, dedupeAnon, headHtml } from "../js/playerview.js";
+import { toPlayerView, cleanView, hsCode, pvName, VIS, cleanVis, nextAnon, anonName, groupName, dedupeAnon, headHtml } from "../js/playerview.js";
 import { cleanCombatant, parseImport } from "../js/backup.js";
 import { diffLog } from "../js/log.js";
 
@@ -9,16 +9,16 @@ const pc = (o) => ({ kind: "pc", cond: [], dex: 0, ac: 15, hp: 20, max: 20, ...o
 const mon = (o) => ({ kind: "monster", cond: [], dex: 0, ac: 13, hp: 10, max: 10, ref: "Goblin", ...o });
 const S = (list, extra = {}) => ({ list, round: 1, active: list[0]?.id ?? null, ...extra });
 
-test("hpStatus: banden en 0 HP", () => {
-  assert.equal(hpStatus(mon({ hp: 10 })), "Ongedeerd");
-  assert.equal(hpStatus(mon({ hp: 6 })), "Gewond");
-  assert.equal(hpStatus(mon({ hp: 5 })), "Bloodied");
-  assert.equal(hpStatus(mon({ hp: 2 })), "Bijna dood");
-  assert.equal(hpStatus(mon({ hp: 0 })), "Neer");
-  assert.equal(hpStatus(pc({ hp: 0, ds: { s: 1, f: 0 } })), "Bewusteloos");
-  assert.equal(hpStatus(pc({ hp: 0, ds: { stable: true } })), "Stabiel");
-  assert.equal(hpStatus(pc({ hp: 0, ds: { dead: true } })), "Dood");
-  assert.equal(hpStatus(mon({ max: 0 })), "");
+test("hsCode: banden en 0 HP", () => {
+  assert.equal(hsCode(mon({ hp: 10 })), "ok");
+  assert.equal(hsCode(mon({ hp: 6 })), "hurt");
+  assert.equal(hsCode(mon({ hp: 5 })), "bloodied");
+  assert.equal(hsCode(mon({ hp: 2 })), "near");
+  assert.equal(hsCode(mon({ hp: 0 })), "down");
+  assert.equal(hsCode(pc({ hp: 0, ds: { s: 1, f: 0 } })), "unconscious");
+  assert.equal(hsCode(pc({ hp: 0, ds: { stable: true } })), "stable");
+  assert.equal(hsCode(pc({ hp: 0, ds: { dead: true } })), "dead");
+  assert.equal(toPlayerView(S([mon({ id: "m", name: "M", max: 0 })])).list[0].hp, null);
 });
 
 test("geen DM-info in de snapshot: monster-HP alleen als status, geen AC, statblock of notities", () => {
@@ -27,8 +27,8 @@ test("geen DM-info in de snapshot: monster-HP alleen als status, geen AC, statbl
     mon({ id: "b", name: "Goblin 1", init: 12, hp: 2, eff: [{ id: "e", n: "Shield", st: "ac", op: "+", v: 5, txt: "geheim" }] }),
   ]), () => "Small humanoid (goblinoid), neutral evil");
   const [a, b] = V.list;
-  assert.deepEqual(a.hp, { hp: 12, max: 20, temp: 3, st: "Gewond", hs: "hurt" });
-  assert.deepEqual(b.hp, { st: "Bijna dood", hs: "near" });
+  assert.deepEqual(a.hp, { hp: 12, max: 20, temp: 3, hs: "hurt" });
+  assert.deepEqual(b.hp, { hs: "near" });
   assert.equal(b.icon, "m-humanoid");
   assert.deepEqual(b.tags, ["Shield"]);
   const j = JSON.stringify(V);
@@ -60,7 +60,7 @@ test("instellingen: exacte monster-HP, getallen, geen tags; lair alleen weg als 
   const V = toPlayerView(S(list), () => "", { ...VIS, monHp: "exact", init: true, tags: "none" });
   assert.equal(V.list.length, 2);
   assert.equal(V.list[0].init, 20, "lair (20) eerst");
-  assert.deepEqual(V.list[1].hp, { hp: 2, max: 10, temp: 0, st: "Bijna dood", hs: "near" });
+  assert.deepEqual(V.list[1].hp, { hp: 2, max: 10, temp: 0, hs: "near" });
   assert.equal(V.list[1].init, 12);
   assert.deepEqual(V.list[1].tags, []);
   const W = toPlayerView(S(list));
@@ -74,7 +74,7 @@ test("instellingen: exacte monster-HP, getallen, geen tags; lair alleen weg als 
 test("instellingen: monster-HP geen, condities alleen bij spelers; spelers-HP altijd exact", () => {
   const list = [pc({ id: "a", name: "A", init: 15, hp: 5, cond: ["Prone"] }), mon({ id: "m", name: "M", init: 12, hp: 0, cond: ["Prone"] })];
   const V = toPlayerView(S(list), () => "", { ...VIS, monHp: "none", tags: "pc" });
-  assert.deepEqual(V.list[0].hp, { hp: 5, max: 20, temp: 0, st: "Bijna dood", hs: "near" });
+  assert.deepEqual(V.list[0].hp, { hp: 5, max: 20, temp: 0, hs: "near" });
   assert.deepEqual(V.list[0].tags, ["Prone"]);
   assert.equal(V.list[1].hp, null);
   assert.equal(V.list[1].out, true, "Neer blijft: spelers zagen hem vallen");
@@ -88,7 +88,7 @@ test("groep met een verborgen lid: alleen zichtbare leden aan de beurt, volgende
   const L = [b(1), b(2, { hidden: true }), b(3), pc({ id: "p", name: "P", init: 5 })];
   const V = toPlayerView(S(L, { active: "b1" }));
   assert.deepEqual(V.group, ["b1", "b3"]);
-  assert.equal(V.gname, "Bugbear ×2");
+  assert.equal(V.gname, undefined, "WP32: groepsnaam maakt het spelersscherm zelf");
   assert.equal(V.next, "p");
   assert.ok(!V.list.some((c) => c.id === "b2"));
   const W = toPlayerView(S(L, { active: "b2" }));
@@ -100,7 +100,7 @@ test("groep met een verborgen lid: alleen zichtbare leden aan de beurt, volgende
 test("tags \"pc\": Verrast alleen bij spelers", () => {
   const L = [pc({ id: "a", name: "A", init: 15, sur: true }), mon({ id: "m", name: "M", init: 12, sur: true }), pc({ id: "z", name: "Z", init: 1 })];
   const V = toPlayerView(S(L, { active: "z" }), () => "", { ...VIS, tags: "pc" });
-  assert.deepEqual(V.list.find((c) => c.id === "a").tags, ["Verrast"]);
+  assert.deepEqual(V.list.find((c) => c.id === "a").tags, ["sur"]);
   assert.deepEqual(V.list.find((c) => c.id === "m").tags, []);
 });
 
@@ -128,16 +128,16 @@ test("cleanView: rommel en scripts eruit, onbekende ids weg", () => {
   assert.equal(cleanView({ v: 3, list: [] }), null); // v 2 = zonder oude velden (WP28/WP32)
   const V = cleanView({
     v: 1, round: "3", active: "x", next: "zz",
-    list: [{ id: "x", kind: "pc", name: "<b>A</b>", icon: '"><script>', img: "javascript:alert(1)", hp: { hp: "5", max: 9, temp: null, st: "Gewond" }, tags: ["Prone", 7, null], ds: { s: 9, f: -1 } }, "rommel", { kind: "lair", name: "Lair" }],
+    list: [{ id: "x", kind: "pc", name: "<b>A</b>", icon: '"><script>', img: "javascript:alert(1)", hp: { hp: "5", max: 9, temp: null, hs: "hurt" }, tags: ["Prone", 7, null], ds: { s: 9, f: -1 } }, "rommel", { kind: "lair", name: "Lair" }],
   });
   const [a, l] = V.list;
   assert.equal(V.round, 3); assert.equal(V.active, "x"); assert.equal(V.next, null);
   assert.equal(a.icon, "r-pc"); assert.equal(a.img, null);
-  assert.deepEqual(a.hp, { hp: 5, max: 9, temp: 0, st: "Gewond", hs: "hurt" }, "v1: woord → code");
+  assert.deepEqual(a.hp, { hp: 5, max: 9, temp: 0, hs: "hurt" });
   assert.deepEqual(a.tags, ["Prone"]);
   assert.deepEqual(a.ds, { s: 3, f: 0 });
   assert.equal(l.kind, "lair");
-  assert.deepEqual(cleanView({ v: 1, list: [{ id: "q", hp: { st: "constructor", hs: "constructor" } }] }).list[0].hp, { st: "", hs: "" }, "alleen bekende statussen");
+  assert.deepEqual(cleanView({ v: 1, list: [{ id: "q", hp: { st: "constructor", hs: "constructor" } }] }).list[0].hp, { hs: "" }, "alleen bekende statussen");
   // een echte snapshot komt er ongeschonden doorheen
   const real = toPlayerView(S([pc({ id: "a", name: "A", init: 5 }), mon({ id: "m", name: "M", init: 3 })]));
   assert.deepEqual(cleanView(JSON.parse(JSON.stringify(real))), real);
@@ -157,23 +157,24 @@ test("verborgen: blijft bij import (alleen monsters) en komt in het logboek", ()
 test("naam onbekend: geen echte naam of type-icoon in de snapshot, vast nummer", () => {
   const b = mon({ id: "b", name: "Beholder", init: 15, anon: 1 });
   const V = toPlayerView(S([b, pc({ id: "a", name: "A", init: 10 })]), () => "Large aberration, lawful evil");
-  assert.equal(V.list[0].name, "Onbekend wezen");
+  assert.equal(V.list[0].name, "", "WP32: geen naam over de lijn");
+  assert.equal(pvName(cleanView(V).list[0]), "Onbekend wezen");
   assert.equal(V.list[0].icon, "m-unknown");
   assert.ok(!JSON.stringify(V).includes("Beholder") && !JSON.stringify(V).includes("aberration"));
   assert.equal(cleanView(V).list[0].icon, "m-unknown", "icoon komt door cleanView");
   // meerdere: genummerd, ook als groep; onthullen laat de andere nummers staan
   const L = [mon({ id: "g1", name: "Goblin 1", init: 12, anon: 1, grp: "x" }), mon({ id: "g2", name: "Goblin 2", init: 12, anon: 2, grp: "x" }), mon({ id: "g3", name: "Goblin 3", init: 12, anon: 3, grp: "x" })];
   const W = toPlayerView(S(L));
-  assert.deepEqual(W.list.map((c) => c.name), ["Onbekend wezen 1", "Onbekend wezen 2", "Onbekend wezen 3"]);
-  assert.equal(W.gname, "Onbekend wezen ×3");
-  assert.equal(groupName(W.list), "Onbekend wezen ×3");
+  const names = (V) => cleanView(V).list.map(pvName);
+  assert.deepEqual(names(W), ["Onbekend wezen 1", "Onbekend wezen 2", "Onbekend wezen 3"]);
+  assert.equal(groupName(cleanView(W).list.map((c) => ({ name: pvName(c) }))), "Onbekend wezen ×3");
   delete L[0].anon;
-  assert.deepEqual(toPlayerView(S(L)).list.map((c) => c.name), ["Goblin 1", "Onbekend wezen 2", "Onbekend wezen 3"]);
+  assert.deepEqual(names(toPlayerView(S(L))), ["Goblin 1", "Onbekend wezen 2", "Onbekend wezen 3"]);
   assert.equal(nextAnon(L), 1, "laagste vrije nummer");
   assert.equal(nextAnon([]), 1);
   assert.equal(anonName({ anon: 2 }, [{ kind: "monster", anon: 2 }]), "Onbekend wezen", "één over: zonder nummer");
   L[0].anon = 1; L[2].hidden = true; delete L[1].anon;
-  assert.equal(toPlayerView(S(L)).list[0].name, "Onbekend wezen", "verborgen onbekende telt niet mee (verraadt niets)");
+  assert.equal(names(toPlayerView(S(L)))[0], "Onbekend wezen", "verborgen onbekende telt niet mee (verraadt niets)");
 });
 
 test("naam onbekend: alleen monsters, export houdt een geldig nummer", () => {

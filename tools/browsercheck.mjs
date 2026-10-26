@@ -5,9 +5,13 @@
 //   node tools/browsercheck.mjs                 alle scenario's
 //   node tools/browsercheck.mjs prep fight      alleen deze scenario's
 //   node tools/browsercheck.mjs --shots=fight   ook screenshots van "fight" in shots/ (komma's voor meer)
-//   node tools/browsercheck.mjs --i18n=xx       alles in de testtaal (lange tekst, accenten; WP20) of --i18n=debug
+//   node tools/browsercheck.mjs --lang=nl,en,xx  taal als extra as (WP32; standaard nl): /{taal}/… per scenario; xx = de
+//                                                testtaal op de Engelse pagina's (lange tekst, accenten; WP20)
+//   node tools/browsercheck.mjs --i18n=debug     debugstand (ontbrekende vertaling als ⟦…⟧); --i18n=xx = --lang=xx (oud)
 //
-// Altijd FOUT: een ⟦ op het scherm (ontbrekende vertaling in de debugstand, js/i18n/boot.js).
+// Altijd FOUT: een ⟦ op het scherm (ontbrekende vertaling in de debugstand, js/i18n/boot.js). In en ook FOUT: een regel
+// Nederlandse tekst op het scherm (heuristiek van tools/i18n-audit.mjs; namen die het scenario zelf intypt tellen niet).
+// Scenario's in ONCE (eigen taalopzet: DM nl + speler en, taalwissel, offline, oude export) draaien één keer per taal-run.
 //
 // Playwright staat niet in package.json (geen dependencies). Het script zoekt het via PW_MODULE, gewone resolutie
 // of /opt/npm-tools; browsers in PLAYWRIGHT_BROWSERS_PATH (standaard /opt/pw-browsers).
@@ -17,6 +21,7 @@ import { readFile, mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { extname, join, normalize } from "node:path";
+import { isDutch } from "./i18n-audit.mjs";
 
 process.env.PLAYWRIGHT_BROWSERS_PATH ||= "/opt/pw-browsers";
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -32,8 +37,10 @@ async function loadPw() {
 // Statische server zoals Cloudflare: /speler → speler.html, /nl/initiative/ → nl/initiative/index.html (WP21).
 // /api/* bestaat hier niet (404, wordt genegeerd); elke andere 404 is FOUT (bijv. een relatief pad onder /{taal}/).
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2", ".webmanifest": "application/manifest+json" };
+let OFFLINE = false; // i18n-offline: server weigert alles (Chromiums setOffline blokkeert navigaties al vóór de service worker)
 function serve() {
   const srv = createServer(async (req, res) => {
+    if (OFFLINE) { req.socket.destroy(); return; }
     let p;
     try { p = decodeURIComponent(new URL(req.url, "http://x").pathname); } catch { res.writeHead(400).end(); return; }
     if (p.endsWith("/")) p += "index.html"; else if (!extname(p)) p += ".html";
@@ -46,8 +53,34 @@ function serve() {
 }
 
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
-const START = { speler: "/speler", tagline: "/speler", stale: "/speler", mixed: "/en/initiative/player/", home: "/nl/", homeen: "/en/", notfound: "/nl/404.html" };
+const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/en/initiative/player/", home: "/nl/", homeen: "/en/", notfound: "/nl/404.html",
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/en/initiative/" };
+// Eigen taalopzet: niet per taal herhalen (WP32)
+const ONCE = new Set(["i18n-mixed", "i18n-switch", "i18n-offline", "i18n-legacy", "homeen"]);
+// Startpagina in een taal: taalloze adressen en /nl/… worden /{taal}/…; vaste talen (ONCE) blijven zoals ze zijn
+function startFor(name, lang) {
+  const p = START[name] || "/";
+  if (ONCE.has(name)) return p;
+  if (p === "/") return `/${lang}/initiative/`;
+  if (p === "/speler") return `/${lang}/initiative/player/`;
+  return p.replace(/^\/nl\//, `/${lang}/`);
+}
+// Wat scenario's zelf intypen (gebruikersinhoud: wordt nooit vertaald)
+const OWN = ["Hinderlaag bij de oude brug", "Aurelianus Vandermeer", "Zonder Level"];
 const tap = (page, sel) => page.locator(sel).first().tap();
+
+// WP32: export zoals 1.48.0 die maakte (versie 2, logboek alleen als Nederlandse tekst, geen descriptoren m/w, snapshot-tijdperk v1)
+const LEGACY = { format: "initiative-tafel", version: 2, exported: "2026-10-20T19:00:00.000Z", app: "1.48.0",
+  state: { round: 1, active: "a", list: [
+    { id: "a", name: "Aria", kind: "pc", init: 17, dex: 3, ac: 15, hp: 24, max: 24, cond: [] },
+    { id: "g", name: "Goblin 1", kind: "monster", ref: "goblin", init: 12, dex: 2, ac: 15, hp: 0, max: 7, cond: [] },
+    { id: "h", name: "Goblin 2", kind: "monster", ref: "goblin", init: 10, dex: 2, ac: 15, hp: 7, max: 7, cond: ["Prone"], cd: { Prone: { kind: "inf" } } } ],
+    log: [
+      { id: "l1", r: 0, turn: "", type: "", msg: "Goblin 1 doet mee (initiative 12)", why: "", note: "" },
+      { id: "l2", r: 1, turn: "", type: "round", msg: "Ronde 1 begint", why: "", note: "" },
+      { id: "l3", r: 1, turn: "Aria", type: "turn", msg: "Beurt van Aria", why: "", note: "" },
+      { id: "l4", r: 1, turn: "Aria", type: "", msg: "Goblin 1: 7 schade (Longsword)", why: "d20 [14] +5 = 19 raak", note: "flankeerde" } ] },
+  party: [{ pid: "pa", name: "Aria", ac: 15, hp: 24, max: 24, dex: 3, lvl: 3 }], lairs: {}, custom: [], imported: [], encounters: [] };
 
 // Scenario's. Elk begint op een verse pagina (rondleiding uit, lege opslag).
 const SCEN = {
@@ -195,8 +228,9 @@ const SCEN = {
     const low = Object.entries(r).filter(([, v]) => v < 4.5);
     if (low.length) throw new Error("stale + jij onleesbaar: " + low.map(([k, v]) => `${k} ${v.toFixed(2)}`).join(", "));
   },
-  // WP28: DM op Nederlands (tweede tabblad, zelfde browser), spelersscherm op Engels: alles Engels, ook onbekend wezen en status
-  async mixed(page, base) {
+  // WP28/WP32: DM op Nederlands (tweede tabblad, zelfde browser), spelersscherm op Engels (telefoon én tv): alles Engels,
+  // ook onbekend wezen en status; de snapshot (v 2) bevat geen UI-tekst
+  async "i18n-mixed"(page, base) {
     const dm = await page.context().newPage();
     await dm.goto(base + "/nl/initiative/");
     await dm.waitForSelector("#dock");
@@ -211,11 +245,99 @@ const SCEN = {
     const xx = await page.evaluate(() => localStorage.getItem("kevs-i18n-debug") === "xx");
     await page.waitForFunction((x) => [...document.querySelectorAll("#pv-list .pvc .av")].some((a) => a.innerHTML.includes("unknown")) && (x || /Unknown creature/.test(document.querySelector("#pv-list").innerText)), xx, { timeout: 5000 });
     const txt = await page.locator("main").innerText();
+    // tv: zelfde stand op een groot scherm in het Engels (tv-stand, geen Nederlandse tekst)
+    const tv = await page.context().newPage();
+    await tv.setViewportSize({ width: 1280, height: 720 });
+    await tv.goto(base + "/en/initiative/player/");
+    await tv.waitForFunction((x) => document.body.classList.contains("tv") && (x || /Unknown creature/.test(document.querySelector("#pv-list").innerText)), xx, { timeout: 5000 });
+    const tvTxt = await tv.locator("main").innerText();
+    await tv.close();
     await dm.close();
     if (xx) return;
+    const nlTv = tvTxt.split("\n").filter((l) => isDutch(l));
+    if (nlTv.length) throw new Error("Nederlandse tekst op de Engelse tv: " + nlTv.slice(0, 3).join(" | "));
     if (!/Round \d/i.test(txt)) throw new Error("kop niet Engels: " + txt.slice(0, 120));
     if (!/Unknown creature/.test(txt)) throw new Error("geen 'Unknown creature': " + txt.slice(0, 200));
     if (/Ronde|aan de beurt|Daarna|Onbekend|Ongedeerd|Gewond|Bijna dood/i.test(txt)) throw new Error("Nederlandse tekst op het Engelse spelersscherm: " + txt.slice(0, 200));
+  },
+  // WP32: taal wisselen tijdens een gevecht (debugstand: kiezer zichtbaar): stand, undo en kamer blijven
+  async "i18n-switch"(page) {
+    await page.evaluate(() => { localStorage.setItem("kevs-i18n-debug", "debug");
+      localStorage.setItem("it-room", JSON.stringify({ code: "E5HMTJ", token: "t".repeat(32), stopped: true, at: Date.now() })); });
+    await page.reload(); await page.waitForSelector("#dock");
+    await SCEN.fight(page);
+    const state = () => page.evaluate(async () => { const { app } = await import("/js/state.js"); return { round: app.S.round, active: app.S.active, n: app.S.list.length, log: app.S.log.length }; });
+    const s0 = await state();
+    await tap(page, "#next");
+    const s1 = await state();
+    if (s1.active === s0.active && s1.round === s0.round) throw new Error("Volgende deed niets");
+    await tap(page, '#modes [data-setmode="prep"]'); await tap(page, '#dock [data-prep="data"]'); await page.waitForSelector("#psheet .sheet", { state: "visible" });
+    await page.locator('details[data-sec="look"] > summary').tap();
+    await Promise.all([page.waitForURL(/\/en\/initiative\//), tap(page, '#lang-seg [data-lang="en"]')]);
+    await page.waitForSelector("#dock");
+    const lang = await page.evaluate(() => document.documentElement.lang);
+    const s2 = await state();
+    if (lang !== "en") throw new Error("pagina niet Engels: " + lang);
+    if (s2.round !== s1.round || s2.active !== s1.active || s2.n !== s1.n) throw new Error("stand na wisselen anders: " + JSON.stringify([s1, s2]));
+    if (await page.locator("#undo").isDisabled()) throw new Error("undo-geschiedenis weg na wisselen");
+    await tap(page, "#undo");
+    await page.waitForSelector("#toast .tmsg");
+    const s3 = await state(), toast = await page.locator("#toast").innerText();
+    if (s3.active !== s0.active || s3.round !== s0.round) throw new Error("undo na wisselen zette de beurt niet terug: " + JSON.stringify([s0, s3]));
+    if (isDutch(toast)) throw new Error("undo-melding Nederlands: " + toast);
+    const room = await page.evaluate(() => JSON.parse(localStorage.getItem("it-room") || "null"));
+    if (!room || room.code !== "E5HMTJ") throw new Error("kamer weg na wisselen");
+    await tap(page, '#modes [data-setmode="prep"]'); await tap(page, '#dock [data-prep="data"]'); await page.waitForSelector("#psheet .sheet", { state: "visible" });
+    await page.locator('details[data-sec="player"] > summary').tap();
+    const kb = await page.locator("#kamer-box").innerText();
+    if (!/E5H\s?MTJ/.test(kb)) throw new Error("kamercode niet in het kamer-blok: " + kb.slice(0, 120));
+  },
+  // WP32: één bezoek (nl) met de service worker, daarna offline: beide talen, spelersscherm, homepage en doorverwijzer laden
+  async "i18n-offline"(page, base) {
+    const ctx = await page.context().browser().newContext({ serviceWorkers: "allow" });
+    const p = await ctx.newPage();
+    try {
+      await p.goto(base + "/nl/initiative/"); await p.waitForSelector("#dock");
+      // main.js registreert alleen op https; hier dezelfde registratie (zelfde bestand en scope) op de http-testserver
+      // wachten tot hij actief is en de pagina bestuurt (activate + clients.claim); waitForFunction wacht niet op een async predikaat
+      const ready = await p.evaluate(async () => {
+        await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+        await navigator.serviceWorker.ready;
+        for (let i = 0; i < 100 && !navigator.serviceWorker.controller; i++) await new Promise((r) => setTimeout(r, 100));
+        return !!navigator.serviceWorker.controller;
+      });
+      if (!ready) throw new Error("service worker bestuurt de pagina niet");
+      OFFLINE = true;
+      for (const [u, sel, lang] of [["/en/initiative/", "#dock", "en"], ["/nl/initiative/", "#dock", "nl"], ["/en/initiative/player/", "#pv-wait", "en"], ["/speler", "#pv-wait", "nl"], ["/", "#dock", "nl"], ["/en/", "main", "en"]]) {
+        await p.goto(base + u);
+        await p.waitForSelector(sel, { state: "attached", timeout: 8000 }).catch(async () => { throw new Error(`offline ${u}: ${sel} ontbreekt (${p.url()}): ${(await p.evaluate(() => document.body?.innerText || "")).slice(0, 80)}`); });
+        const l = await p.evaluate(() => document.documentElement.lang);
+        if (l !== lang) throw new Error(`offline ${u}: lang ${l}, verwacht ${lang}`);
+        const unt = await p.evaluate(() => /⟦/.test(document.body.innerText));
+        if (unt) throw new Error(`offline ${u}: ontbrekende vertaling`);
+      }
+    } finally { OFFLINE = false; await ctx.close(); }
+  },
+  // WP32: export van 1.48.0 (Nederlands logboek zonder descriptoren) importeren in de Engelse app: oude regels blijven
+  // zoals ze waren, nieuwe regels in het Engels, undo werkt, geen fouten
+  async "i18n-legacy"(page) {
+    await page.locator("#imp-backup").setInputFiles({ name: "kevs-inn-itiative-1.48.0.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(LEGACY)) });
+    await page.waitForSelector("#imp-yes", { state: "attached" });
+    await page.$eval("#imp-yes", (b) => b.click());
+    await page.waitForFunction(() => /Goblin 2/.test(document.querySelector("#order")?.innerText || "")); // Goblin 1 (0 HP) staat ingeklapt in Down (1)
+    if (!(await page.locator("#logopen").count())) await tap(page, '#modes [data-setmode="fight"]');
+    await tap(page, "#logopen"); await page.waitForSelector("#gsheet .gsheet");
+    const old = await page.locator("#gsheet").innerText();
+    if (!/Goblin 1: 7 schade \(Longsword\)/.test(old)) throw new Error("oude logregel niet zoals opgeslagen: " + old.slice(0, 200));
+    if (/⟦/.test(old)) throw new Error("oude logregel als ⟦sleutel⟧");
+    await page.$eval('#gsheet .dim[data-log="close"], #gsheet button[data-log="close"]', (b) => b.click());
+    await page.waitForSelector("#gsheet .gsheet", { state: "detached" });
+    const n0 = await page.evaluate(async () => (await import("/js/state.js")).app.S.log.length);
+    await tap(page, "#next");
+    const last = await page.evaluate(async (n) => { const { app } = await import("/js/state.js"), { logMsg } = await import("/js/log.js"); return app.S.log.slice(n).map(logMsg); }, n0);
+    if (!last.length) throw new Error("Volgende schreef geen logregel");
+    if (last.some((m) => isDutch(m))) throw new Error("nieuwe logregel Nederlands: " + last.join(" | "));
+    await tap(page, "#undo"); await page.waitForSelector("#toast .tmsg");
   },
   async tagline(page) { if (!(await page.locator("#pv-tag").isVisible())) throw new Error("tagline niet zichtbaar in de wachtstand"); },
 };
@@ -236,15 +358,19 @@ function measure() {
       small.push(`${el.tagName.toLowerCase()}${id.startsWith("#") || id.startsWith(".") ? id : ""} ${Math.round(r.width)}×${Math.round(r.height)} "${(el.textContent || el.getAttribute("aria-label") || "").trim().slice(0, 24)}"`);
     }
   }
-  return { hscroll: Math.max(de.scrollWidth, document.body.scrollWidth) - vw, small, unt: (document.body.innerText.match(/⟦[^⟧]*⟧/g) || []).slice(0, 3) };
+  const txt = document.body.innerText; // zichtbare tekst (ook geopende panelen); attributen als aria-label tellen niet mee
+  return { hscroll: Math.max(de.scrollWidth, document.body.scrollWidth) - vw, small, unt: (txt.match(/⟦[^⟧]*⟧/g) || []).slice(0, 3), lines: [...new Set(txt.split("\n").map((l) => l.trim()).filter(Boolean))] };
 }
 
 async function main() {
   const args = process.argv.slice(2);
   const shots = new Set((args.find((a) => a.startsWith("--shots=")) || "").slice(8).split(",").filter(Boolean));
   const only = args.filter((a) => !a.startsWith("--"));
-  const i18n = (args.find((a) => a.startsWith("--i18n=")) || "").slice(7);
+  let i18n = (args.find((a) => a.startsWith("--i18n=")) || "").slice(7);
   if (i18n && !["xx", "debug"].includes(i18n)) throw new Error("--i18n=xx of --i18n=debug");
+  let langs = (args.find((a) => a.startsWith("--lang=")) || "--lang=nl").slice(7).split(",").filter(Boolean);
+  if (i18n === "xx") { langs = ["xx"]; i18n = ""; } // oud: --i18n=xx
+  if (langs.some((l) => !["nl", "en", "xx"].includes(l))) throw new Error("--lang=nl,en,xx");
   const names = only.length ? only : Object.keys(SCEN);
   const bad = names.filter((n) => !(n in SCEN));
   if (bad.length) throw new Error("Onbekend scenario: " + bad.join(", "));
@@ -255,16 +381,18 @@ async function main() {
   if (shots.size) await mkdir(join(ROOT, "shots"), { recursive: true });
   let fails = 0;
   try {
-    for (const name of names) for (const w of WIDTHS) for (const scheme of SCHEMES) {
+    for (const lang of langs) for (const name of names) for (const w of WIDTHS) for (const scheme of SCHEMES) {
+      if (ONCE.has(name) && lang !== langs[0]) continue;
+      const mode = lang === "xx" ? "xx" : i18n, pl = lang === "xx" ? "en" : lang;
       const ctx = await browser.newContext({ viewport: { width: w, height: 740 }, hasTouch: true, isMobile: true, colorScheme: scheme, deviceScaleFactor: 2, serviceWorkers: "block" });
-      await ctx.addInitScript((m) => { try { localStorage.setItem("it-tour", "pf"); if (m) localStorage.setItem("kevs-i18n-debug", m); } catch { /* geen opslag */ } }, i18n);
+      await ctx.addInitScript((m) => { try { localStorage.setItem("it-tour", "pf"); if (m) localStorage.setItem("kevs-i18n-debug", m); } catch { /* geen opslag */ } }, mode);
       const page = await ctx.newPage(), errs = [];
       page.on("pageerror", (e) => errs.push(e.message));
       page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource/.test(m.text())) errs.push(m.text()); });
       page.on("response", (r) => { const u = new URL(r.url()); if (r.status() >= 400 && u.origin === base && !u.pathname.startsWith("/api/")) errs.push(`${r.status()} ${u.pathname}`); });
       try {
-        await page.goto(base + (START[name] || "/"));
-        if (SCEN[name]) { if (!START[name]) await page.waitForSelector("#dock"); await SCEN[name](page, base); }
+        await page.goto(base + startFor(name, pl));
+        if (SCEN[name]) { if (!START[name] || /\/initiative\/$/.test(START[name])) await page.waitForSelector("#dock"); await SCEN[name](page, base); }
         else await page.waitForLoadState("networkidle");
         if (process.env.BC_PROBE) await page.evaluate(() => document.body.insertAdjacentHTML("afterbegin", '<button id="probe" style="width:30px;height:30px">x</button>'));
         await page.evaluate(() => document.fonts.ready); // Inter is breder dan de terugvalletter: meten met de echte letter
@@ -272,11 +400,16 @@ async function main() {
       } catch (e) { errs.push("scenario: " + e.message.split("\n")[0]); }
       const m = await page.evaluate(measure).catch((e) => ({ hscroll: NaN, small: [], err: e.message }));
       if (m.unt && m.unt.length) errs.push("niet vertaald: " + m.unt.join(" "));
+      // WP32: in en geen Nederlandse tekst op het scherm (behalve wat het scenario zelf intypt; de oude export is inhoud)
+      if (lang === "en" && name !== "i18n-legacy" && m.lines) {
+        const nl = m.lines.map((l) => OWN.reduce((x, o) => x.split(o).join(" "), l)).filter((l) => isDutch(l));
+        if (nl.length) errs.push("Nederlandse tekst: " + nl.slice(0, 3).map((l) => JSON.stringify(l.slice(0, 60))).join(" | "));
+      }
       const ok = m.hscroll <= 0 && !errs.length;
       if (!ok) fails++;
-      console.log(`${ok ? "ok  " : "FOUT"} ${name.padEnd(9)} ${w} ${scheme.padEnd(5)} hscroll ${m.hscroll > 0 ? m.hscroll + "px" : 0} · tikdoelen<44 ${m.small.length}${errs.length ? " · JS: " + errs.join(" | ") : ""}`);
+      console.log(`${ok ? "ok  " : "FOUT"} ${lang} ${name.padEnd(12)} ${w} ${scheme.padEnd(5)} hscroll ${m.hscroll > 0 ? m.hscroll + "px" : 0} · tikdoelen<44 ${m.small.length}${errs.length ? " · JS: " + errs.join(" | ") : ""}`);
       if (m.small.length && w === 320 && scheme === "light") for (const s of m.small.slice(0, 12)) console.log("       " + s);
-      if (shots.has(name) && w === 320) await page.screenshot({ path: join(ROOT, "shots", `${name}-${w}-${scheme}.png`), fullPage: false });
+      if (shots.has(name) && w === 320) await page.screenshot({ path: join(ROOT, "shots", `${name}-${lang}-${w}-${scheme}.png`), fullPage: false });
       await ctx.close();
     }
   } finally { await browser.close(); srv.close(); }

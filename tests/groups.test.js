@@ -2,7 +2,7 @@ import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { groupOf, sortOrder, step, startCombat } from "../js/rules/turns.js";
-import { toPlayerView, cleanView, groupName } from "../js/playerview.js";
+import { toPlayerView, cleanView, groupName, headHtml } from "../js/playerview.js";
 import { cleanCombatant } from "../js/backup.js";
 
 const mon = (o) => ({ kind: "monster", cond: [], dex: 0, ac: 13, hp: 10, max: 10, ref: "Bugbear", init: 12, ...o });
@@ -58,7 +58,8 @@ test("spelersscherm: hele groep aan de beurt, volgende voorbij de groep, verborg
   const S = { list: [pc({ id: "p", name: "Ayla", init: 5 }), ...B], round: 1, active: "b1" };
   const V = toPlayerView(S);
   assert.deepEqual(V.group, ["b1", "b2"]);
-  assert.equal(V.gname, "Bugbear ×2");
+  assert.equal(V.gname, undefined, "WP32: groepsnaam maakt het spelersscherm zelf");
+  assert.match(headHtml(cleanView(V)), /<b>Bugbear ×2<\/b>/);
   assert.equal(V.next, "p");
   assert.deepEqual(cleanView(V).group, ["b1", "b2"]);
   // geen groep: geen velden
@@ -71,7 +72,7 @@ test("cleanView: groep alleen met bekende id's en inclusief wie aan de beurt is"
   const V = toPlayerView({ list: bugs(2), round: 1, active: "b1" });
   assert.equal(cleanView({ ...V, group: ["b1", "zz"] }).group, undefined);
   assert.equal(cleanView({ ...V, group: "b1" }).group, undefined);
-  assert.equal(cleanView({ ...V, active: "b2", group: ["b1", "b2"] }).gname, "Bugbear ×2");
+  assert.deepEqual(cleanView({ ...V, active: "b2", group: ["b1", "b2"] }).group, ["b1", "b2"]);
 });
 
 test("groupName: verschillende namen achter elkaar", () => {
