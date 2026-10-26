@@ -163,7 +163,7 @@ Afgerond in WP13–WP17 (1.44.1–1.48.0); keuzes in CLAUDE.md, overzicht in pro
 - [x] **HS9** Merkpalet als tokens, licht/donker/tv/homepage, contrast opnieuw gemeten (WP34)
 - [x] **HS10** DM Sans + Newsreader in plaats van Inter + Playfair Display, zelf meegeleverd (WP34; DM Sans heeft geen tabular-nums)
 - [x] **HS11** Knoppen, formulieren, dialogen, menu's, dock in de nieuwe stijl (WP35; kaart-HP `.hpn` 5ch; `.lg-meta` en het AC-schildje hadden al een vaste breedte; `.round`/`.hpnum` bestaan niet meer)
-- [ ] **HS12** Speler rond portret, monster schildvorm; identiteit los van HP-kleuren
+- [ ] **HS12** Speler rond portret, monster schildvorm; identiteit los van HP-kleuren (meenemen: HP-getal op de DM-kaart `.hpn` van 5ch naar 7ch, zodat de HP-balken ook bij 100–999 HP even lang zijn; gemeten na WP35 op 320 px: 999/999 geeft 153 px balk tegen 162 px bij 7/999, kost elke balk ± 9 px; temp HP daarbij nog meten)
 - [ ] **HS13** Open monsterkaart rustiger op mobiel
 - [ ] **HS14** Homepage volgens de screens, alleen bestaande tools, hero-illustratie
 - [ ] **HS15** QA, persona-test, release 2.0.0
