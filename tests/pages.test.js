@@ -249,6 +249,7 @@ test("404-pagina's: zetten een ongeldig prefix recht via redirect.js, linken naa
   const go = (href) => target(loc(href), { languages: ["nl-NL"] }, store(null));
   assert.equal(go("/xx/initiative/"), "/en/initiative/", "ongeldig prefix → Engels (besluit 26-10)");
   assert.equal(go("/de/"), "/en/");
+  assert.equal(go("/foo/bar"), "/nl/foo/bar", "zonder taalprefix: voorkeur/browser/terugval binnen LIVE, niet Engels");
   assert.equal(go("/nl/bestaat-niet"), null, "geldig prefix: blijft op de 404");
 });
 

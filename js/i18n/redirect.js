@@ -1,6 +1,7 @@
 // Doorverwijzer voor taalloze adressen (meertaligheid, WP21/TA5): /, /index.html, /initiative/, /speler(.html), /player.
 // Die pagina's (gemaakt door tools/pages.mjs) laden alleen dit bestand en gaan meteen door naar /{taal}/initiative/(player/).
 // Taal volgens resolveLang (docs/i18n.md §2.2): voorkeur → browsertaal → terugval; query en hash blijven (ook ?k=).
+// Ook vanuit de 404-pagina's (WP30): een ongeldig prefix (/xx/…) gaat altijd naar Engels.
 // Werkt offline: de doorverwijspagina's, dit bestand en lang.js staan in de cache van sw.js.
 import { resolveLang, prefStore, offered, debugStored } from "./lang.js";
 
