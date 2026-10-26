@@ -17,7 +17,7 @@ Live: https://initiative-tafel.ft4mgzj72j.workers.dev (Cloudflare Workers, publi
 
 ## Meertaligheid (geldt voor elke tool)
 Regels in het kort; het hoe, de stappen voor een nieuwe tool of taal en de reviewchecklist staan in `docs/i18n.md` §9 (WP31). Historie per pakket: "Gemaakte keuzes" hieronder.
-- **Route** `/{lang}/{tool}/` (+ `/{lang}/{tool}/<subpagina>/`), padsegmenten Engels in elke taal. Taal komt uit `<html lang>` van de gegenereerde pagina; bepalen alleen via `resolveLang` (`js/i18n/lang.js`), geen eigen detectie per tool. Paden in JS altijd absoluut.
+- **Route** `/{lang}/{tool}/` (+ `/{lang}/{tool}/<subpagina>/`), padsegmenten Engels in elke taal. Taal komt uit `<html lang>` van de gegenereerde pagina; bepalen alleen via `resolveLang` (`js/i18n/lang.js`), geen eigen detectie per tool. Paden in JS altijd absoluut (enige uitzondering: `"player/"`).
 - **Pagina's** alleen als sjabloon in `pages/` met `{{lang}}`, `{{t:…}}`/`{{tjs:…}}`, gegenereerd door `node tools/pages.mjs` (regel in `APP_PAGES`). Nooit letterlijke tekst in een sjabloon.
 - **Tekst** alleen via `t(sleutel, params)` uit `js/i18n/boot.js`, aangeroepen bij het tekenen (nooit op moduleniveau), `esc(t(…))` in HTML. Geen HTML in een catalogus; vet midden in een zin via `tb`.
 - **Catalogi** per tool een namespace: `locales/src/{en,nl}/<tool>.js` met eigen voorvoegsel (regel in `NS`, `tools/i18n-build.mjs`); gedeelde tekst in `common.*`, D&D-uitleg in `dnd.*`, paginatekst in `page.*`. Eerst Engels, dan Nederlands; één sleutel = één betekenis; daarna `node tools/i18n-build.mjs`.
@@ -25,7 +25,7 @@ Regels in het kort; het hoe, de stappen voor een nieuwe tool of taal en de revie
 - **Id's, geen labels** in opslag, export, snapshot en logica: D&D-termen als Engelse id, label via `term(kind, id)`; logica nooit op een vertaalde tekst.
 - **Gebruikersinhoud wordt nooit vertaald** (namen, notities, eigen monsters, encounters, sheetdata); een opgeslagen standaardtekst wordt in de actieve taal geschreven en is daarna inhoud.
 - **Snapshot en API zonder UI-tekst**: codes over de lijn, de ontvanger vertaalt in zijn eigen taal. Een Worker-/AI-aanroep die tekst teruggeeft krijgt `lang` mee; die tekst is daarna inhoud.
-- **Bewaking**: `npm test` (pariteit, placeholders, actualiteit, ratel op Nederlandse tekst), browsercheck met `--i18n=xx` (een `⟦` op het scherm is FOUT). Een nieuw bestand heeft 0 Nederlandse tekst; de ratel scant `js/` vanzelf, een nieuw sjabloon moet je in `auditFiles` (`tools/i18n-audit.mjs`) toevoegen.
+- **Bewaking**: `npm test` (pariteit, placeholders, actualiteit, ratel op Nederlandse tekst), browsercheck met `--i18n=xx` (een `⟦` op het scherm is FOUT). Een nieuw bestand heeft 0 Nederlandse tekst; de ratel scant `js/` vanzelf, een nieuw sjabloon moet je in `auditFiles` (`tools/i18n-audit.mjs`) en `codeFiles` (`tests/i18n.test.js`) toevoegen.
 
 ## Twee vaste reviewers (verplicht)
 Bij elk nieuw idee of elke wijziging kijken twee rollen mee. Waar mogelijk als **aparte agent** die het werk niet zelf maakte, zodat het werk zichzelf niet beoordeelt.
