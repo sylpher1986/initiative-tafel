@@ -28,14 +28,14 @@ test("1. ook als Engels nog niet live is werkt een /en/-link (gedeelde URL)", ()
 
 test("1. schrijfwijze van het prefix wordt rechtgezet, taal blijft", () => {
   assert.deepEqual(r({ path: "/EN/initiative/", search: "?k=ABC234" }), { lang: "en", source: "path", redirect: "/en/initiative/?k=ABC234" });
-  assert.deepEqual(r({ path: "/nl-BE/" }), { lang: "nl", source: "path", redirect: "/nl/initiative/" });
+  assert.deepEqual(r({ path: "/nl-BE/" }), { lang: "nl", source: "path", redirect: "/nl/" });
   assert.deepEqual(r({ path: "/nl_BE/x" }), { lang: "nl", source: "path", redirect: "/nl/x" });
 });
 
 test("2. ongeldig of niet-ondersteund prefix → Engels, rest van het pad en de query blijven", () => {
   assert.deepEqual(r({ path: "/de/initiative/", pref: "nl", search: "?k=ABC234" }), { lang: "en", source: "default", redirect: "/en/initiative/?k=ABC234" });
-  assert.deepEqual(r({ path: "/xx/" }), { lang: "en", source: "default", redirect: "/en/initiative/" });
-  assert.equal(resolveLang({ path: "/xx/" }).redirect, "/nl/initiative/", "tot WP33: de terugval binnen LIVE");
+  assert.deepEqual(r({ path: "/xx/" }), { lang: "en", source: "default", redirect: "/en/" });
+  assert.equal(resolveLang({ path: "/xx/" }).redirect, "/nl/", "tot WP33: de terugval binnen LIVE");
 });
 
 test("3. zonder prefix: voorkeur, dan browsertaal, dan Engels", () => {
@@ -129,10 +129,12 @@ test("prefStore: localStorage-achtig, zonder of met kapotte opslag nooit een fou
   assert.equal(none.get(), null, "Node heeft geen localStorage");
 });
 
-test("zonder homepage (tot WP30) gaat een kaal taalprefix naar de app", () => {
-  assert.equal(HOME, false);
-  assert.deepEqual(r({ path: "/en/" }), { lang: "en", source: "path", redirect: "/en/initiative/" });
-  assert.deepEqual(r({ path: "/nl", search: "?k=ABC234" }), { lang: "nl", source: "path", redirect: "/nl/initiative/?k=ABC234" });
+test("homepage (WP30): een kaal taalprefix blijft of wordt de homepage, taalloos / blijft de app (V4)", () => {
+  assert.equal(HOME, true);
+  assert.deepEqual(r({ path: "/en/" }), { lang: "en", source: "path", redirect: null });
+  assert.deepEqual(r({ path: "/nl", search: "?k=ABC234" }), { lang: "nl", source: "path", redirect: null }, "slash: Cloudflare (html_handling)");
+  assert.deepEqual(r({ path: "/EN" }), { lang: "en", source: "path", redirect: "/en/" });
+  assert.equal(r({ path: "/", languages: ["en-US"] }).redirect, "/en/initiative/");
 });
 
 const PATHS = ["/", "", "//", "/EN", "/en", "/nl-be/x", "/nl_BE/", "/js/x", "/xx", "/xx/initiative/", "/de/initiative/player/",

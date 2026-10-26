@@ -8,7 +8,9 @@
   "assets": {
     "directory": ".",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*"],
+    // Onbekend adres: dichtstbijzijnde 404.html (WP30, tools/pages.mjs), die een ongeldig taalprefix (/xx/…) rechtzet
+    "not_found_handling": "404-page"
   },
   "durable_objects": {
     "bindings": [{ "name": "ROOMS", "class_name": "Room" }]

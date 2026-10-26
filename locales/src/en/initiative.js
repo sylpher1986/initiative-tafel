@@ -80,6 +80,7 @@ export default {
   "init.set.tourAgain": "Replay tour",
   "init.set.keys": "Keyboard shortcuts",
   "init.set.helpHint": "Explains the buttons, e.g. for a co-DM. During combat this shows the combat part, otherwise the prep part; the combat part follows when you tap Start combat.",
+  "init.set.aboutHome": "About Kev’s Inn", // tekstlink in Hulp naar de homepage /{taal}/ (WP30)
   "init.set.store": "Storage",
   "init.set.storeHint": "Everything is stored on this device. Export now and then: as a backup, to move to another device, or to share your party with a co-DM.",
   "init.set.expFile": "Export as file",

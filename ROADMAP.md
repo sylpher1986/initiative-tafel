@@ -89,7 +89,7 @@ Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (g
 | ~~**WP27**~~ | Regelmeldingen en logboek als descriptoren (sleutel + waarden) (klaar) | TA11 | WP20, WP26 | 1.50.0 |
 | ~~**WP28**~~ | Spelersscherm in de eigen taal: snapshot met codes, overgang v1/v2 (klaar) | TA12 | WP21, WP27 | 1.51.0 |
 | ~~**WP29**~~ | D&D-termen: id's vs labels, conditie-uitleg EN, zoekwoorden per taal, getal/datum-formattering (klaar) | TA13 | WP27 | 1.51.1 |
-| **WP30** | Publieke homepage `/en/`, `/nl/`: meta, Open Graph, hreflang, canonical, robots, sitemap | TA14 | WP21, WP29 | 1.52.0 |
+| ~~**WP30**~~ | Publieke homepage `/en/`, `/nl/`: meta, Open Graph, hreflang, canonical, robots, sitemap, 404 (klaar; operationeel: workers.dev en Search Console door Michiel) | TA14 | WP21, WP29 | 1.52.0 |
 | **WP31** | Conventies voor alle tools (CLAUDE.md, `docs/i18n.md`) | TA15 | WP27, WP28 | geen |
 | **WP32** | Verificatie: offline, import/export, spelersscherm gemengde talen, gevecht, persona-test EN | TA16 | WP22–WP30 | 1.52.1 |
 | **WP33** | Engels live: standaard en terugval, kiezer zichtbaar, homepage indexeerbaar | TA1 | WP32 | 2.0.0 |

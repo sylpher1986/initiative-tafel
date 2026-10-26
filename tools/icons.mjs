@@ -3,10 +3,14 @@
 // "any"/apple-touch: embleem 62 % van de hoogte; maskable: 56 %, zodat de zeshoek binnen de veilige cirkel (80 %) valt.
 // Favicon (icons/icon.svg) is een eigen, gevulde variant (leesbaar op 16 px) en wordt niet door dit script gemaakt.
 //
-//   node tools/icons.mjs        schrijft icons/icon-180.png, -192, -512 en -maskable-512.png
+//   node tools/icons.mjs        schrijft icons/icon-180.png, -192, -512, -maskable-512.png en og.png
+//   node tools/icons.mjs og     alleen og.png
+// og.png (WP30): deelafbeelding 1200×630 voor Open Graph (homepage, tools/pages.mjs OG_IMAGE). Walnoot, embleem links,
+// rechts "Kev’s Inn" (Playfair) en een taalneutrale regel; alles binnen 60 px marge en midden-vierkant (WhatsApp knipt).
 //
 // Playwright zoals in tools/browsercheck.mjs (PW_MODULE of /opt/npm-tools).
 import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -28,14 +32,33 @@ async function loadPw() {
   throw new Error("Playwright niet gevonden. Zet PW_MODULE op het pad van de playwright-module.");
 }
 
+/** Deelafbeelding voor Open Graph: één voor alle talen, dus alleen merk, "Initiative tracker · D&D 5e" en het domein */
+export function ogHtml(root = ROOT) {
+  // als data-URL: een pagina uit setContent (about:blank) mag geen file://-fonts laden
+  const font = (fam, file, w) => `@font-face{font-family:"${fam}";font-weight:${w};src:url(data:font/woff2;base64,${readFileSync(root + "fonts/" + file).toString("base64")}) format("woff2")}`;
+  return `<style>${font("Playfair Display", "playfair-display-latin-wght.woff2", "400 900")}${font("Inter", "inter-latin-wght.woff2", "100 900")}
+html,body{margin:0}body{width:1200px;height:630px;background:#3b2f26;display:flex;align-items:center;justify-content:center;gap:64px;font-family:Inter,sans-serif}
+svg{width:280px;height:312px;flex:none;color:#d4a44b}h1{margin:0;font:700 104px/1.05 "Playfair Display",Georgia,serif;color:#fff}
+p{margin:18px 0 0;font-weight:700;font-size:46px;color:#e0b565}small{display:block;margin-top:22px;font-size:34px;color:#d9cfc2}</style>
+<svg viewBox="20 2 176 196" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${EMBLEM}</svg>
+<div><h1>Kev’s Inn</h1><p>Initiative tracker · D&amp;D 5e</p><small>kevs-inn.com</small></div>`;
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.env.PLAYWRIGHT_BROWSERS_PATH ||= "/opt/pw-browsers";
   const pw = await loadPw(), b = await pw.chromium.launch();
-  for (const [name, px, share] of [["icon-180", 180, 0.62], ["icon-192", 192, 0.62], ["icon-512", 512, 0.62], ["icon-maskable-512", 512, 0.56]]) {
+  const only = process.argv.slice(2); // bijv. "og": alleen dat bestand (pixels van de andere iconen verschillen per Chromium-versie)
+  for (const [name, px, share] of [["icon-180", 180, 0.62], ["icon-192", 192, 0.62], ["icon-512", 512, 0.62], ["icon-maskable-512", 512, 0.56]].filter(([n]) => !only.length || only.includes(n))) {
     const p = await b.newPage({ viewport: { width: px, height: px } });
     await p.setContent(`<style>html,body{margin:0}svg{display:block;width:${px}px;height:${px}px}</style>${iconSvg(share)}`);
     await p.screenshot({ path: ROOT + `icons/${name}.png` });
     await p.close();
+  }
+  if (!only.length || only.includes("og")) {
+  const og = await b.newPage({ viewport: { width: 1200, height: 630 } });
+  await og.setContent(ogHtml());
+  await og.evaluate(() => document.fonts.ready);
+  await og.screenshot({ path: ROOT + "icons/og.png" });
   }
   await b.close();
   console.log("icons/*.png geschreven");

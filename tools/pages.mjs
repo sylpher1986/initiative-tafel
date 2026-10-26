@@ -12,6 +12,11 @@
 //   /manifest.webmanifest                          zelfde als de terugvaltaal: oude installaties vragen dit adres op
 //   /index.html, /speler.html, /player.html, /initiative/index.html, /initiative/player/index.html
 //                                                  doorverwijzers (js/i18n/redirect.js), ook offline
+//   /{taal}/index.html                             publieke homepage uit pages/home.html (WP30); {{seo}} = canonical,
+//                                                  hreflang en Open Graph op SITE; alleen talen in LIVE indexeerbaar
+//   /404.html, /{taal}/404.html                    niet-gevonden-pagina (Cloudflare not_found_handling: dichtstbijzijnde
+//                                                  404.html); zet een ongeldig prefix (/xx/…) via redirect.js recht
+//   /robots.txt, /sitemap.xml                      sitemap = alleen de indexeerbare homepages met hun alternates
 // Cloudflare serveert /nl/initiative/ uit nl/initiative/index.html en /speler uit speler.html (html_handling).
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
@@ -22,6 +27,15 @@ const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 /** App-pagina's: pad na het taalprefix → sjabloon */
 export const APP_PAGES = { "initiative/": "pages/initiative.html", "initiative/player/": "pages/player.html" };
+/** Publieke homepage per taal (WP30): /{taal}/ */
+export const HOME_PAGE = "pages/home.html";
+/** Canonieke host (V1): canonical, hreflang, sitemap en Open Graph wijzen hierheen, ook vanaf *.workers.dev */
+export const SITE = "https://kevs-inn.com";
+/** Deelafbeelding (1200×630) voor Open Graph */
+export const OG_IMAGE = { src: "/icons/og.png", width: 1200, height: 630 };
+const OG_LOCALE = { en: "en_US", nl: "nl_NL" }; // en_US: Amerikaanse spelling zoals de PHB
+/** Niet in de offline-cache van sw.js: Cloudflare-bestanden die nooit als navigatie geopend worden */
+export const NOT_CACHED = ["robots.txt", "sitemap.xml", "404.html", ...SUPPORTED.map((l) => `${l}/404.html`)];
 /** Taalloze adressen (bestand → adres dat Cloudflare ervoor serveert); doel volgt uit pageFor in lang.js */
 export const REDIRECTS = { "index.html": "/", "speler.html": "/speler", "player.html": "/player", "initiative/index.html": "/initiative/", "initiative/player/index.html": "/initiative/player/" };
 
@@ -95,6 +109,75 @@ export function redirectPage(addr, fb) {
 `;
 }
 
+const homeUrl = (lang) => `${SITE}/${lang}/`;
+
+/** Kopregels voor SEO van een homepage. Indexeerbaar = taal in live: canonical naar zichzelf, hreflang voor elke live
+ *  taal plus x-default (de terugvaltaal binnen live: nu nl, na WP33 en, V4). Niet live (/en/ tot WP33): noindex, geen
+ *  hreflang, zodat zoekmachines nog geen half vrijgegeven taal tonen. */
+export function seoHead(lang, cat, live = LIVE) {
+  const attr = (k) => { const v = cat[k]; if (typeof v !== "string") throw new Error(`${HOME_PAGE}: geen tekst voor ${k}`); return escHtml(v); };
+  const others = live.filter((l) => l !== lang);
+  const lines = live.includes(lang)
+    ? [...live.map((l) => `<link rel="alternate" hreflang="${l}" href="${homeUrl(l)}">`), `<link rel="alternate" hreflang="x-default" href="${homeUrl(fallbackIn(live))}">`]
+    : [`<meta name="robots" content="noindex">`];
+  return [
+    `<link rel="canonical" href="${homeUrl(lang)}">`,
+    ...lines,
+    `<meta property="og:type" content="website">`,
+    `<meta property="og:site_name" content="Kev’s Inn">`,
+    `<meta property="og:url" content="${homeUrl(lang)}">`,
+    `<meta property="og:title" content="${attr("page.home.title")}">`,
+    `<meta property="og:description" content="${attr("page.home.desc")}">`,
+    `<meta property="og:locale" content="${OG_LOCALE[lang]}">`,
+    ...(live.includes(lang) ? others : []).map((l) => `<meta property="og:locale:alternate" content="${OG_LOCALE[l]}">`),
+    `<meta property="og:image" content="${SITE}${OG_IMAGE.src}">`,
+    `<meta property="og:image:width" content="${OG_IMAGE.width}">`,
+    `<meta property="og:image:height" content="${OG_IMAGE.height}">`,
+    `<meta property="og:image:alt" content="${attr("page.home.ogAlt")}">`,
+    `<meta name="twitter:card" content="summary_large_image">`,
+  ].join("\n");
+}
+
+/** robots.txt: alles mag gecrawld worden; de app-pagina's houden zichzelf buiten de index met noindex, dat moet de
+ *  crawler kunnen lezen (dus geen Disallow op /{taal}/initiative/) */
+export const robots = () => `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`;
+
+/** sitemap.xml: alleen indexeerbare homepages, elk met alle live alternates en x-default. Geen lastmod (geen ruis per build). */
+export function sitemap(live = LIVE) {
+  const alt = [...live.map((l) => [l, homeUrl(l)]), ["x-default", homeUrl(fallbackIn(live))]]
+    .map(([h, u]) => `    <xhtml:link rel="alternate" hreflang="${h}" href="${u}"/>`).join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+${live.map((l) => `  <url>\n    <loc>${homeUrl(l)}</loc>\n${alt}\n  </url>`).join("\n")}
+</urlset>
+`;
+}
+
+/** Niet-gevonden-pagina. Draait eerst redirect.js (ongeldig of verkeerd geschreven prefix → juiste taal), toont anders
+ *  een korte melding met links naar homepage en app. Altijd noindex. */
+export function notFoundPage(lang, cat) {
+  return appPage(`<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{t:page.nf.title}} · Kev’s Inn</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#3b2f26" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151413" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<style>html{background:#f7f6f2;color:#1f1f1f;font:16px/1.5 system-ui,sans-serif}@media (prefers-color-scheme:dark){html{background:#151413;color:#ede8e0}a{color:#e0b565}}body{margin:0 auto;max-width:36rem;padding:24px 16px}a{color:#7a5714;display:inline-block;padding:10px 0;margin-right:16px}h1{font:600 1.5rem/1.25 Georgia,serif;margin:0 0 8px}</style>
+<script type="module">import { go } from "/js/i18n/redirect.js"; go();</script>
+</head>
+<body>
+<h1>{{t:page.nf.title}}</h1>
+<p>{{t:page.nf.text}}</p>
+<p><a href="/{{lang}}/">{{t:page.nf.home}}</a><a href="/{{lang}}/initiative/">{{t:page.home.open}}</a></p>
+</body>
+</html>
+`, lang === fallbackIn(LIVE) ? "404.html" : `${lang}/404.html`, lang, cat);
+}
+
 /** Alle bestanden: { relatief pad: inhoud } */
 export async function build(root = ROOT) {
   const out = {};
@@ -102,10 +185,15 @@ export async function build(root = ROOT) {
   for (const lang of SUPPORTED) {
     const cat = (await import(pathToFileURL(`${root}locales/${lang}.js`).href)).default;
     for (const [rest, src] of Object.entries(APP_PAGES)) out[`${lang}/${rest}index.html`] = appPage(readFileSync(root + src, "utf8"), src, lang, cat);
+    out[`${lang}/index.html`] = appPage(readFileSync(root + HOME_PAGE, "utf8").replace("{{seo}}", seoHead(lang, cat)), HOME_PAGE, lang, cat);
+    out[`${lang}/404.html`] = notFoundPage(lang, cat);
+    if (lang === fb) out["404.html"] = notFoundPage(lang, cat);
     out[`${lang}/manifest.webmanifest`] = manifest(lang, cat);
     if (lang === fb) out["manifest.webmanifest"] = manifest(lang, cat);
   }
   for (const [file, addr] of Object.entries(REDIRECTS)) out[file] = redirectPage(addr, fb);
+  out["robots.txt"] = robots();
+  out["sitemap.xml"] = sitemap();
   return out;
 }
 

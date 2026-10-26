@@ -22,7 +22,8 @@ test("elk app-bestand staat in de offline-cache van sw.js", async () => {
     return statSync(new URL(p, root)).isDirectory() ? walk(p + "/") : [p];
   });
   // locales/src/ = bron van de catalogi (tools/i18n-build.mjs), niet gepubliceerd en niet geladen
-  const files = ["css/", "data/", "fonts/", "icons/", "js/", "locales/"].flatMap(walk).filter((p) => !p.endsWith(".txt") && !p.startsWith("locales/src/"));
+  // icons/og.png = deelafbeelding voor Open Graph (WP30), alleen voor crawlers: niet offline nodig
+  const files = ["css/", "data/", "fonts/", "icons/", "js/", "locales/"].flatMap(walk).filter((p) => !p.endsWith(".txt") && !p.startsWith("locales/src/") && p !== "icons/og.png");
   const missing = files.filter((p) => !sw.includes(`"./${p}"`));
   assert.deepEqual(missing, [], "ontbreekt in ASSETS van sw.js");
 });

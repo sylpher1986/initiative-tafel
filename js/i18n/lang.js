@@ -35,8 +35,9 @@ export function debugStored(storage) {
 // Een nieuwe map of pagina van twee letters (/qr/, /tv/) moet in RESERVED, anders telt hij als ongeldig taalprefix.
 const CODE = /^[a-z]{2}([-_][a-z]{2})?$/i;
 const RESERVED = new Set(["js"]);
-/** Is er een homepage op /{lang}/? Pas vanaf WP30; tot dan gaat een kaal prefix (/xx/, /EN/) naar de app. */
-export const HOME = false;
+/** Is er een homepage op /{lang}/? Sinds WP30 (1.52.0) wel: een kaal prefix (/en/, /EN, /xx/) gaat naar de homepage.
+ *  Taalloos "/" blijft de app (V4, pathFor). */
+export const HOME = true;
 
 /** Taalcode naar ondersteunde taal: "nl-BE" → "nl", "EN" → "en", onbekend of leeg → null */
 export function normLang(tag, list = SUPPORTED) {
@@ -105,7 +106,7 @@ export function resolveLang({ path = "/", search = "", hash = "", pref = null, l
   const { prefix, lang, rest } = parsePath(path);
   const fb = fallbackIn(live);
   if (prefix && lang) { // 1. ondersteund prefix wint, ook als de voorkeur anders is; alleen de schrijfwijze rechtzetten
-    const to = langPath(lang, rest); // zonder homepage (HOME) gaat /en/ naar /en/initiative/
+    const to = langPath(lang, rest); // /en/ = homepage (HOME); zonder homepage zou dat /en/initiative/ zijn
     return { lang, source: "path", redirect: prefix === lang && to === `/${lang}${slash(rest)}` ? null : to + tail };
   }
   if (prefix) return { lang: fb, source: "default", redirect: langPath(fb, rest) + tail }; // 2. ongeldig prefix

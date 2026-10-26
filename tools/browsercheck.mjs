@@ -46,7 +46,7 @@ function serve() {
 }
 
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
-const START = { speler: "/speler", tagline: "/speler", stale: "/speler", mixed: "/en/initiative/player/" };
+const START = { speler: "/speler", tagline: "/speler", stale: "/speler", mixed: "/en/initiative/player/", home: "/nl/", homeen: "/en/", notfound: "/nl/404.html" };
 const tap = (page, sel) => page.locator(sel).first().tap();
 
 // Scenario's. Elk begint op een verse pagina (rondleiding uit, lege opslag).
@@ -107,6 +107,7 @@ const SCEN = {
     await page.waitForSelector(".sb h2", { state: "visible" });
   },
   speler: null, // eigen startpagina, zie START
+  home: null, homeen: null, notfound: null, // WP30: publieke homepage per taal en de niet-gevonden-pagina (START)
   // WP23: formulieren met de statische tekst (met --i18n=debug de Engelse pagina)
   async pcform(page) { await SCEN.prep(page); await tap(page, '#dock [data-prep="pc"]'); await page.waitForSelector("#f-pc", { state: "visible" }); },
   // WP24: Party met een lid (Bijwerken/Uit party), moeilijkheid met uitleg en levelveld, snel toevoegen met het toevoegblok

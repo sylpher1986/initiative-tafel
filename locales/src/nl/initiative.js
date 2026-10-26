@@ -79,6 +79,7 @@ export default {
   "init.set.tourAgain": "Rondleiding opnieuw",
   "init.set.keys": "Sneltoetsen",
   "init.set.helpHint": "Uitleg van de knoppen, bijvoorbeeld voor een co-DM. Tijdens een gevecht krijg je het gevecht-deel, anders het voorbereiden-deel; dat van het gevecht volgt bij Start gevecht.",
+  "init.set.aboutHome": "Over Kev’s Inn", // tekstlink in Hulp naar de homepage /{taal}/ (WP30)
   "init.set.store": "Opslag",
   "init.set.storeHint": "Alles staat op dit apparaat. Maak af en toe een export: als backup, om naar een ander apparaat te gaan, of om je party met een co-DM te delen.",
   "init.set.expFile": "Exporteer als bestand",

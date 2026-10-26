@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{t:page.home.title}}</title>
+<meta name="description" content="{{t:page.home.desc}}">
+{{seo}}
+<meta name="theme-color" content="#3b2f26" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151413" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="preload" href="/fonts/playfair-display-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+<script src="/js/theme.js"></script>
+<!-- Publieke homepage (WP30). Eigen kleine CSS, geen app.css: snel op 3G, geen JavaScript nodig voor de inhoud.
+     Kleuren = tokens van css/app.css (licht, donker via systeem of de Weergave-keuze in de app: data-theme). -->
+<style>
+@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:swap;src:url("/fonts/inter-latin-wght.woff2") format("woff2")}
+@font-face{font-family:"Playfair Display";font-style:normal;font-weight:400 900;font-display:swap;src:url("/fonts/playfair-display-latin-wght.woff2") format("woff2")}
+:root{--bg:#f7f6f2;--fg:#1f1f1f;--muted:#5b5b5b;--line:#d6d5cd;--act:#d4a44b;--act-fg:#3b2f26;--act-ink:#7a5714;--focus:#7a5714;
+  --fight-bg:#3b2f26;--fight-fg:#fff;--fight-muted:#d9cfc2;--now-ink:#e0b565;
+  --brand:"Playfair Display",Georgia,"Times New Roman",serif;--body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--r:10px;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151413;--fg:#ede8e0;--muted:#b5ada2;--line:#3d3934;--act-fg:#2a2019;--act-ink:#e0b565;--focus:#e0b565;
+  --fight-bg:#3a322b;--fight-fg:#ede8e0;--fight-muted:#c9c0b4;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#151413;--fg:#ede8e0;--muted:#b5ada2;--line:#3d3934;--act-fg:#2a2019;--act-ink:#e0b565;--focus:#e0b565;
+  --fight-bg:#3a322b;--fight-fg:#ede8e0;--fight-muted:#c9c0b4;color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 var(--body)}
+a{color:var(--act-ink)}
+a:focus-visible{outline:3px solid var(--focus);outline-offset:3px;border-radius:4px}
+.wrap{max-width:34rem;margin:0 auto;padding:0 16px;padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+.hero{text-align:center;padding:28px 0 20px}
+.hero svg{width:60px;height:66px;display:block;margin:0 auto 10px;color:var(--act)}
+h1{font-family:var(--brand);font-weight:700;font-size:2.125rem;line-height:1.1;margin:0}
+.tag{margin:6px 0 0;color:var(--muted);font-size:1.0625rem}
+.tool{background:var(--fight-bg);color:var(--fight-fg);border-radius:var(--r);padding:20px 18px 18px}
+.tool h2{margin:0;font-size:1.375rem;line-height:1.2;font-weight:800}
+.tool h2 span{color:var(--now-ink)}
+.tool p{margin:6px 0 0;color:var(--fight-muted)}
+.cta{display:flex;align-items:center;justify-content:center;min-height:52px;margin-top:16px;padding:0 16px;background:var(--act);color:var(--act-fg);border-radius:var(--r);font-weight:700;font-size:1.0625rem;text-decoration:none}
+.cta:focus-visible{outline:3px solid var(--fight-fg);outline-offset:3px}
+.cta:active{filter:brightness(.94)}
+.facts{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;margin:12px 0 0;padding:0;list-style:none;font-size:.875rem;color:var(--fight-muted)}
+.facts li::before{content:"✓ ";color:var(--now-ink)}
+.feat{list-style:none;margin:28px 0 0;padding:0;display:grid;gap:16px}
+@media (min-width:560px){.feat{grid-template-columns:1fr 1fr;gap:20px}}
+.feat h3{margin:0;font-size:1rem;font-weight:700}
+.feat p{margin:2px 0 0;color:var(--muted);font-size:.9375rem}
+.soon{margin:32px 0 0;padding-top:20px;border-top:1px solid var(--line)}
+.soon h2{margin:0;font-size:.8125rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.soon p{margin:6px 0 0;color:var(--muted);font-size:.9375rem}
+footer{margin:32px 0 0;padding:16px 0 32px;border-top:1px solid var(--line);color:var(--muted);font-size:.8125rem;line-height:1.5}
+footer p{margin:0 0 8px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="hero">
+    <!-- embleem: zelfde tekening als EMBLEM in tools/icons.mjs en de h1 van de app (WP16) --><svg viewBox="20 2 176 196" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M108 16 181 58v84l-73 42-73-42V58Z" stroke-width="11"/><g transform="translate(0 13)" stroke-width="10"><path d="M100 47v-8q8-10 16 0v8"/><path d="M88 55h40l-8 11H96Z"/><path d="M96 70h24l8 10v42H88V80Z"/><path d="M84 130h48"/></g><path d="M108 102c-9 10-9 19 0 26 9-7 9-16 0-26Z" fill="currentColor" stroke="none"/></svg>
+    <h1>Kev’s Inn</h1>
+    <p class="tag">{{t:page.home.tagline}}</p>
+  </header>
+
+  <section class="tool" aria-labelledby="t-init">
+    <h2 id="t-init">Kev’s Inn <span>itiative</span></h2>
+    <p>{{t:page.home.lead}}</p>
+    <a class="cta" href="/{{lang}}/initiative/">{{t:page.home.open}}</a>
+    <ul class="facts">
+      <li>{{t:page.home.factFree}}</li>
+      <li>{{t:page.home.factOffline}}</li>
+      <li>{{t:page.home.factNoAccount}}</li>
+    </ul>
+  </section>
+
+  <ul class="feat" aria-label="{{t:page.home.featLabel}}">
+    <li><h3>{{t:page.home.featMonsters}}</h3><p>{{t:page.home.featMonstersText}}</p></li>
+    <li><h3>{{t:page.home.featParty}}</h3><p>{{t:page.home.featPartyText}}</p></li>
+    <li><h3>{{t:page.home.featRules}}</h3><p>{{t:page.home.featRulesText}}</p></li>
+    <li><h3>{{t:page.home.featScreen}}</h3><p>{{t:page.home.featScreenText}}</p></li>
+  </ul>
+
+  <section class="soon" aria-labelledby="t-soon">
+    <h2 id="t-soon">{{t:page.home.soon}}</h2>
+    <p>{{t:page.home.soonText}}</p>
+  </section>
+
+  <footer>
+    <p>{{t:page.home.privacy}}</p>
+    <p>{{t:page.home.legalSrd}} <a href="https://creativecommons.org/licenses/by/4.0/legalcode" rel="license">CC-BY-4.0</a>.</p>
+    <p>{{t:page.home.legalTm}}</p>
+    <p>{{t:page.home.legalFan}}</p>
+  </footer>
+</main>
+</body>
+</html>

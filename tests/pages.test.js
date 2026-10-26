@@ -3,10 +3,10 @@ import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { build, urlOf, APP_PAGES, REDIRECTS, fillText } from "../tools/pages.mjs";
+import { build, urlOf, APP_PAGES, REDIRECTS, fillText, HOME_PAGE, SITE, OG_IMAGE, NOT_CACHED, seoHead, sitemap } from "../tools/pages.mjs";
 import { htmlStrings, isDutch } from "../tools/i18n-audit.mjs";
 import { target } from "../js/i18n/redirect.js";
-import { SUPPORTED } from "../js/i18n/lang.js";
+import { SUPPORTED, LIVE } from "../js/i18n/lang.js";
 
 const ROOT = new URL("../", import.meta.url).pathname;
 const read = (p) => readFileSync(ROOT + p, "utf8");
@@ -92,7 +92,7 @@ test("redirect.js: oude adressen naar /nl/… met query; voorkeur en browsertaal
 });
 
 test("service worker: elke gegenereerde pagina en redirect.js in de offline-cache, registratie op /", () => {
-  const missing = Object.keys(files).map(urlOf).filter((u) => !assets.has(u));
+  const missing = Object.keys(files).filter((f) => !NOT_CACHED.includes(f)).map(urlOf).filter((u) => !assets.has(u));
   assert.deepEqual(missing, [], "ontbreekt in ASSETS van sw.js");
   assert.ok(assets.has("/js/i18n/redirect.js") && assets.has("/js/i18n/lang.js"));
   assert.match(read("js/main.js"), /navigator\.serviceWorker\.register\("\/sw\.js", \{ scope: "\/" \}\)/);
@@ -139,9 +139,9 @@ test("elke taal heeft hetzelfde skelet als het sjabloon (alleen tekst verschilt)
 });
 
 test("Engelse pagina's zonder Nederlandse tekst (paden als src/2014/en tellen niet)", () => {
-  for (const rest of Object.keys(APP_PAGES)) {
-    const p = `en/${rest}index.html`;
-    const nl = htmlStrings(files[p]).map((x) => x.text.replace(/\S*\/\S*/g, " ")).filter(isDutch);
+  for (const rest of [...Object.keys(APP_PAGES), "", "404"]) { // WP30: ook homepage en 404
+    const p = rest === "404" ? "en/404.html" : `en/${rest}index.html`;
+    const nl = htmlStrings(files[p]).map((x) => x.text.replace(/\S*\/\S*|\b[a-z]{2}_[A-Z]{2}\b/g, " ")).filter(isDutch); // og:locale en_US
     assert.deepEqual(nl, [], p);
   }
 });
@@ -162,5 +162,99 @@ test("plaatshouders op de juiste plek: {{tjs:}} alleen in script of on…=\"…\
     const inJs = (i) => js.some(([a, b]) => i >= a && i < b);
     for (const m of h.matchAll(/\{\{(t|tjs):/g)) assert.equal(inJs(m.index), m[1] === "tjs", `${src}: ${h.slice(m.index, m.index + 40)}`);
     assert.doesNotMatch(h, /=\s*'[^']*\{\{t:|=\s*\{\{t:/, src + ": {{t:}} escapet geen enkele aanhalingstekens");
+  }
+});
+
+// WP30 (TA14): publieke homepage, metadata en SEO. docs/i18n.md §2.1 en WP30; besluiten V1 (domein), V4 (x-default).
+const head = (h) => h.slice(0, h.indexOf("</head>"));
+const links = (h, re) => [...head(h).matchAll(re)].map((m) => m[1] + (m[2] ? " " + m[2] : ""));
+test("homepage per taal: lang, eigen title en description, canonical naar zichzelf op het domein, Open Graph", () => {
+  const titles = new Set(), descs = new Set();
+  for (const lang of SUPPORTED) {
+    const h = files[`${lang}/index.html`], url = `${SITE}/${lang}/`;
+    assert.match(h, new RegExp(`<html lang="${lang}">`));
+    const title = /<title>([^<]+)<\/title>/.exec(h)[1], desc = /<meta name="description" content="([^"]+)">/.exec(h)[1];
+    titles.add(title); descs.add(desc);
+    assert.deepEqual(links(h, /<link rel="canonical" href="([^"]+)">/g), [url], lang + ": één canonical, naar zichzelf");
+    assert.ok(h.includes(`<meta property="og:url" content="${url}">`), lang);
+    assert.ok(h.includes(`<meta property="og:title" content="${title}">`) && h.includes(`<meta property="og:description" content="${desc}">`), lang + ": og = title/description");
+    assert.ok(h.includes(`<meta property="og:locale" content="${lang === "en" ? "en_US" : "nl_NL"}">`), lang);
+    assert.ok(h.includes(`<meta property="og:image" content="${SITE}${OG_IMAGE.src}">`), lang);
+    assert.ok(h.includes(`<a class="cta" href="/${lang}/initiative/">`), lang + ": knop naar de app in dezelfde taal");
+    assert.doesNotMatch(h, /\{\{|\bpage\.[a-z]+\.[A-Za-z]+/, lang + ": geen plaatshouder of sleutel");
+    const rel = [...h.matchAll(/\s(?:src|href)="([^"]*)"/g)].map((m) => m[1]).filter((u) => !/^(\/|https?:|#)/.test(u));
+    assert.deepEqual(rel, [], lang + ": geen relatieve paden");
+  }
+  assert.equal(titles.size, SUPPORTED.length, "elke taal een eigen title");
+  assert.equal(descs.size, SUPPORTED.length, "elke taal een eigen description");
+  // og.png bestaat en is 1200×630 (PNG: breedte/hoogte op byte 16–23)
+  const png = readFileSync(ROOT + OG_IMAGE.src.slice(1));
+  assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [OG_IMAGE.width, OG_IMAGE.height]);
+});
+
+test("hreflang: live homepages wijzen wederzijds naar elkaar plus x-default (terugval binnen LIVE); niet live = noindex zonder hreflang", () => {
+  const alts = (h) => links(h, /<link rel="alternate" hreflang="([^"]+)" href="([^"]+)">/g).sort();
+  for (const lang of SUPPORTED) {
+    const h = files[`${lang}/index.html`];
+    if (LIVE.includes(lang)) {
+      assert.doesNotMatch(h, /name="robots"/, lang + ": indexeerbaar");
+      assert.deepEqual(alts(h), [...LIVE.map((l) => `${l} ${SITE}/${l}/`), `x-default ${SITE}/${LIVE.includes("en") ? "en" : LIVE[0]}/`].sort(), lang);
+    } else {
+      assert.match(h, /<meta name="robots" content="noindex">/, lang + ": nog niet live (WP33)");
+      assert.deepEqual(alts(h), [], lang);
+    }
+  }
+  // na WP33 (beide live): wederzijds, x-default → /en/ (V4), og:locale:alternate naar de andere taal
+  const both = { "page.home.title": "T", "page.home.desc": "D", "page.home.ogAlt": "A" };
+  for (const lang of ["en", "nl"]) {
+    const h = seoHead(lang, both, ["en", "nl"]);
+    assert.deepEqual(alts(h + "</head>"), [`en ${SITE}/en/`, `nl ${SITE}/nl/`, `x-default ${SITE}/en/`]);
+    assert.doesNotMatch(h, /noindex/);
+    assert.ok(h.includes(`<meta property="og:locale:alternate" content="${lang === "en" ? "nl_NL" : "en_US"}">`), lang);
+  }
+  assert.throws(() => seoHead("nl", {}), /page\.home\.ogAlt|page\.home\.title/, "ontbrekende tekst = fout");
+});
+
+test("app, spelersscherm, doorverwijzers en 404: noindex en geen hreflang of canonical", () => {
+  for (const [f, h] of Object.entries(files)) {
+    if (!f.endsWith(".html") || /^(en|nl)\/index\.html$/.test(f)) continue;
+    assert.match(h, /<meta name="robots" content="noindex">/, f);
+    assert.doesNotMatch(h, /hreflang=|rel="canonical"/, f);
+  }
+});
+
+test("robots.txt en sitemap.xml: crawlen mag (noindex moet leesbaar zijn), sitemap = alleen live homepages", () => {
+  const r = files["robots.txt"];
+  assert.doesNotMatch(r, /Disallow/, "geen Disallow: dan leest Google de noindex van de app niet");
+  assert.ok(r.includes(`Sitemap: ${SITE}/sitemap.xml`));
+  const sm = files["sitemap.xml"];
+  assert.deepEqual([...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]), LIVE.map((l) => `${SITE}/${l}/`));
+  assert.match(sm, /xmlns:xhtml="http:\/\/www\.w3\.org\/1999\/xhtml"/);
+  const two = sitemap(["en", "nl"]);
+  assert.equal((two.match(/<url>/g) || []).length, 2);
+  assert.equal((two.match(/hreflang="x-default" href="https:\/\/kevs-inn\.com\/en\/"/g) || []).length, 2, "elke url met alle alternates");
+  assert.equal(SITE, "https://kevs-inn.com", "V1: canonieke host, ook vanaf workers.dev");
+});
+
+test("404-pagina's: zetten een ongeldig prefix recht via redirect.js, linken naar homepage en app in hun taal", () => {
+  for (const [f, lang] of [["404.html", LIVE.includes("en") ? "en" : LIVE[0]], ...SUPPORTED.map((l) => [`${l}/404.html`, l])]) {
+    const h = files[f];
+    assert.match(h, new RegExp(`<html lang="${lang}">`), f);
+    assert.ok(h.includes(`import { go } from "/js/i18n/redirect.js"; go();`), f);
+    assert.ok(h.includes(`<a href="/${lang}/">`) && h.includes(`<a href="/${lang}/initiative/">`), f);
+  }
+  assert.match(read("wrangler.jsonc"), /"not_found_handling": "404-page"/, "Cloudflare serveert de dichtstbijzijnde 404.html");
+  const go = (href) => target(loc(href), { languages: ["nl-NL"] }, store(null));
+  assert.equal(go("/xx/initiative/"), "/nl/initiative/");
+  assert.equal(go("/de/"), "/nl/");
+  assert.equal(go("/nl/bestaat-niet"), null, "geldig prefix: blijft op de 404");
+});
+
+test("app linkt in Hulp naar de homepage in de eigen taal, in hetzelfde tabblad", () => {
+  for (const lang of SUPPORTED) {
+    const m = /<a class="homelink" href="([^"]+)"([^>]*)>/.exec(files[`${lang}/initiative/index.html`]);
+    assert.ok(m, lang);
+    assert.equal(m[1], `/${lang}/`);
+    assert.doesNotMatch(m[2], /target=/, "beginscherm-app: geen losse browser");
   }
 });

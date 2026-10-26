@@ -154,7 +154,7 @@ export function dutchIn(path, src) {
 // Welk werkpakket haalt de tekst uit welk bestand (docs/i18n.md §7). Elk bestand met Nederlandse tekst moet hier
 // staan (test). render.js en actions.js zijn te groot voor één pakket: verdeeld over WP24–WP26 per scherm.
 export const PLAN = {
-  "pages/initiative.html": "WP23", "pages/player.html": "WP23",
+  "pages/initiative.html": "WP23", "pages/player.html": "WP23", "pages/home.html": "WP30",
   "js/ui/render.js": "WP24–WP26", "js/ui/actions.js": "WP24–WP26", "js/ddb.js": "WP24", "js/exportnudge.js": "WP24",
   "js/ui/statblock.js": "WP25", "js/ui/initroll.js": "WP25", "js/ui/keys.js": "WP25", "js/ui/pcreact.js": "WP25",
   "js/ui/spellinfo.js": "WP25", "js/ui/condinfo.js": "WP25", "js/ui/spellrules.js": "WP25", "js/ui/avatar.js": "WP25",
@@ -179,7 +179,7 @@ export function auditFiles(root = ROOT) {
     const p = dir + nm;
     return statSync(root + p).isDirectory() ? walk(p + "/") : [p];
   });
-  return [...walk("js/").filter((p) => p.endsWith(".js")), "pages/initiative.html", "pages/player.html"].sort();
+  return [...walk("js/").filter((p) => p.endsWith(".js")), "pages/initiative.html", "pages/player.html", "pages/home.html"].sort();
 }
 
 /** { bestand: aantal } voor alle bestanden met minstens één Nederlandse tekst */
