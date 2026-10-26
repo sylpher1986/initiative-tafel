@@ -155,7 +155,7 @@ ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 /* AF6: knop- en summary-links 44 px hoog (ook midden in een zin: de regel wordt dan hoger) */
 button.link,summary.link{display:inline-flex;align-items:center;gap:.3em;min-height:44px;padding:0 8px}
 /* inline-flex haalt de standaard ▸ weg: zelf tekenen, behalve waar die al bewust uit stond (.cast, .conds) */
-/* WP17 (HS7): chevron als CSS-lijn (geen tekenglyph: Inter heeft ▸/▾ niet); rechts = dicht, omlaag = open */
+/* WP17 (HS7): chevron als CSS-lijn (geen tekenglyph: de huisletter heeft ▸/▾ niet); rechts = dicht, omlaag = open */
 details:not(.cast):not(.conds)>summary.link::before,.setsec .schev::before{content:"";flex:0 0 auto;width:.42em;height:.42em;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(-45deg);margin:0 .45em 0 .1em}
 details[open]:not(.cast):not(.conds)>summary.link::before,.setsec[open] .schev::before{transform:rotate(45deg)}
 .link.strong{color:var(--act-ink);font-weight:700}
@@ -670,7 +670,7 @@ body.pv{font-size:clamp(16px,1.1rem + .9vw,30px);padding-bottom:max(24px,env(saf
 .pvwrap{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:.8em}
 .pvtop{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .pv h1{font-size:1.3em}
-/* WP16: tagline alleen in de wachtstand (geen gevecht), Inter en gedempt: het wachtbericht blijft de hoofdboodschap */
+/* WP16: tagline alleen in de wachtstand (geen gevecht), huisletter en gedempt: het wachtbericht blijft de hoofdboodschap */
 .pvbrand{min-width:0}
 .pvtag{margin:.15em 0 0;font-size:1rem;color:var(--muted)}
 .pvnow{background:var(--fight-bg);color:var(--fight-fg);border:1px solid var(--fight-bg);border-radius:var(--r);padding:.6em .9em;display:flex;justify-content:space-between;align-items:flex-end;gap:.4em 1.2em;flex-wrap:wrap}

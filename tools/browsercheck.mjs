@@ -137,7 +137,7 @@ const SCEN = {
     await page.waitForSelector("#next");
     // WP34: DM Sans heeft geen tabular-nums (geen tnum in het lettertype, ook upstream niet): de initiative-kolom moet dan
     // zelf een vaste breedte hebben, anders verspringen naam en HP-balk per kaart ("1" is half zo breed als "0")
-    const iw = await page.$$eval("#order .c.k .i", (els) => els.map((e) => Math.round(e.getBoundingClientRect().width * 2) / 2));
+    const iw = await page.$$eval("#order .c.k:not(.lair) .khead .i", (els) => els.map((e) => Math.round(e.getBoundingClientRect().width * 2) / 2));
     if (new Set(iw).size > 1) throw new Error("initiative-kolom niet even breed: " + iw.join(","));
     const mon = page.locator("#order .c.k.mon").first();
     if (!(await mon.evaluate((el) => el.classList.contains("open")))) await mon.locator(".khead").tap();
@@ -460,7 +460,7 @@ async function main() {
         if (SCEN[name]) { if (!START[name] || /\/initiative\/$/.test(START[name])) await page.waitForSelector("#dock"); await SCEN[name](page, base); }
         else await page.waitForLoadState("networkidle");
         if (process.env.BC_PROBE) await page.evaluate(() => document.body.insertAdjacentHTML("afterbegin", '<button id="probe" style="width:30px;height:30px">x</button>'));
-        await page.evaluate(() => document.fonts.ready); // Inter is breder dan de terugvalletter: meten met de echte letter
+        await page.evaluate(() => document.fonts.ready); // de huisletter (DM Sans) is anders breed dan de terugvalletter: meten met de echte letter
         await page.waitForTimeout(150);
       } catch (e) { errs.push("scenario: " + e.message.split("\n")[0]); }
       const m = await page.evaluate(measure).catch((e) => ({ hscroll: NaN, small: [], err: e.message }));

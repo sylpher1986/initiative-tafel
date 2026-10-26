@@ -31,7 +31,7 @@ test("preload in de DM-pagina wijst naar een gebruikt lettertype", () => {
 });
 
 test("geen oude lettertypes; Newsreader alleen via --brand", () => {
-  assert.doesNotMatch(css, /Alegreya|Inter"|Playfair/);
+  assert.doesNotMatch(css, /Alegreya|\bInter\b|Playfair/);
   assert.match(css, /--body:"DM Sans"/);
   assert.match(css, /--brand:Newsreader,/);
   const uses = [...css.matchAll(/([^{}]+)\{[^}]*var\(--brand\)/g)].map((m) => m[1].trim().split("\n").pop());

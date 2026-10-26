@@ -162,7 +162,7 @@ Afgerond in WP13–WP17 (1.44.1–1.48.0); keuzes in CLAUDE.md, overzicht in pro
 ## Huisstijl 2.0 (26-10-2026)
 - [x] **HS9** Merkpalet als tokens, licht/donker/tv/homepage, contrast opnieuw gemeten (WP34)
 - [x] **HS10** DM Sans + Newsreader in plaats van Inter + Playfair Display, zelf meegeleverd (WP34; DM Sans heeft geen tabular-nums)
-- [ ] **HS11** Knoppen, formulieren, dialogen, menu's, dock in de nieuwe stijl
+- [ ] **HS11** Knoppen, formulieren, dialogen, menu's, dock in de nieuwe stijl (meenemen: DM Sans heeft geen tabular-nums, dus `.hpnum`, `.round`, `.lg-meta` en het AC-schildje een vaste min-width in ch geven waar verspringen hindert)
 - [ ] **HS12** Speler rond portret, monster schildvorm; identiteit los van HP-kleuren
 - [ ] **HS13** Open monsterkaart rustiger op mobiel
 - [ ] **HS14** Homepage volgens de screens, alleen bestaande tools, hero-illustratie
