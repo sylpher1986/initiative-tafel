@@ -46,7 +46,7 @@ function serve() {
 }
 
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
-const START = { speler: "/speler", tagline: "/speler", stale: "/speler" };
+const START = { speler: "/speler", tagline: "/speler", stale: "/speler", mixed: "/en/initiative/player/" };
 const tap = (page, sel) => page.locator(sel).first().tap();
 
 // Scenario's. Elk begint op een verse pagina (rondleiding uit, lege opslag).
@@ -193,6 +193,28 @@ const SCEN = {
     });
     const low = Object.entries(r).filter(([, v]) => v < 4.5);
     if (low.length) throw new Error("stale + jij onleesbaar: " + low.map(([k, v]) => `${k} ${v.toFixed(2)}`).join(", "));
+  },
+  // WP28: DM op Nederlands (tweede tabblad, zelfde browser), spelersscherm op Engels: alles Engels, ook onbekend wezen en status
+  async mixed(page, base) {
+    const dm = await page.context().newPage();
+    await dm.goto(base + "/nl/initiative/");
+    await dm.waitForSelector("#dock");
+    await SCEN.fight(dm);
+    await dm.evaluate(async () => { // alle monsters: naam onbekend, de eerste half HP (status Bloodied/Hurt)
+      const { app, commit } = await import("/js/state.js"), { render } = await import("/js/ui/render.js");
+      let n = 0;
+      for (const c of app.S.list) if (c.kind === "monster") { c.anon = ++n; if (n === 1) c.hp = Math.ceil(c.max / 2); }
+      commit(); render();
+    });
+    // met --i18n=xx staat er testtaal: dan alleen wachten op de onbekende wezens (lengte op 320 px), niet op Engels
+    const xx = await page.evaluate(() => localStorage.getItem("kevs-i18n-debug") === "xx");
+    await page.waitForFunction((x) => [...document.querySelectorAll("#pv-list .pvc .av")].some((a) => a.innerHTML.includes("unknown")) && (x || /Unknown creature/.test(document.querySelector("#pv-list").innerText)), xx, { timeout: 5000 });
+    const txt = await page.locator("main").innerText();
+    await dm.close();
+    if (xx) return;
+    if (!/Round \d/i.test(txt)) throw new Error("kop niet Engels: " + txt.slice(0, 120));
+    if (!/Unknown creature/.test(txt)) throw new Error("geen 'Unknown creature': " + txt.slice(0, 200));
+    if (/Ronde|aan de beurt|Daarna|Onbekend|Ongedeerd|Gewond|Bijna dood/i.test(txt)) throw new Error("Nederlandse tekst op het Engelse spelersscherm: " + txt.slice(0, 200));
   },
   async tagline(page) { if (!(await page.locator("#pv-tag").isVisible())) throw new Error("tagline niet zichtbaar in de wachtstand"); },
 };

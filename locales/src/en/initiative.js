@@ -70,7 +70,7 @@ export default {
   "init.set.visLog": "What just happened", // zelfde naam als het blok op het spelersscherm (player.log)
   "init.set.on": "On",
   "init.set.off": "Off",
-  "init.set.visHint": "Status = Unhurt, Hurt, Bloodied, Near death. \"What just happened\": the last 2 lines (3 on a TV), only what the list also shows. Applies on this device, for all player views.", // statusnamen moeten gelijk blijven aan STATUS in js/playerview.js (WP28)
+  "init.set.visHint": "Status = Unhurt, Hurt, Bloodied, Near death. \"What just happened\": the last 2 lines (3 on a TV), only what the list also shows. Applies on this device, for all player views.", // statusnamen gelijk houden met dnd.hs.* (WP28)
   "init.set.otherDevices": "On other devices",
   "init.set.roomNotStarted": "Sharing with players didn't start. Reload the page.", // alleen zichtbaar als js/ui/kamer.js niet laadt
   "init.set.thisDevice": "On this device",
@@ -219,7 +219,6 @@ export default {
   "init.mon.flagAnon": "name hidden",
   "init.mon.hidHint": "Players don't see them, not even their turn. Show them later via ⋯ → Show to players.",
   "init.mon.anonHint": "Players see \"{anon}\" with a generic icon. Show the name later via ⋯ → Show name to players.",
-  "init.mon.anonName": "Unknown creature", // gelijk houden met de naam op het spelersscherm (WP28)
   "init.mon.initEach": "Each", // initiative per monster
   "init.mon.initGroup": "Group",
   "init.mon.initFixed": "Fixed", // zelf een getal invullen

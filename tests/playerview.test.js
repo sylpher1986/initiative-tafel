@@ -27,8 +27,8 @@ test("geen DM-info in de snapshot: monster-HP alleen als status, geen AC, statbl
     mon({ id: "b", name: "Goblin 1", init: 12, hp: 2, eff: [{ id: "e", n: "Shield", st: "ac", op: "+", v: 5, txt: "geheim" }] }),
   ]), () => "Small humanoid (goblinoid), neutral evil");
   const [a, b] = V.list;
-  assert.deepEqual(a.hp, { hp: 12, max: 20, temp: 3, st: "Gewond" });
-  assert.deepEqual(b.hp, { st: "Bijna dood" });
+  assert.deepEqual(a.hp, { hp: 12, max: 20, temp: 3, st: "Gewond", hs: "hurt" });
+  assert.deepEqual(b.hp, { st: "Bijna dood", hs: "near" });
   assert.equal(b.icon, "m-humanoid");
   assert.deepEqual(b.tags, ["Shield"]);
   const j = JSON.stringify(V);
@@ -60,7 +60,7 @@ test("instellingen: exacte monster-HP, getallen, geen tags; lair alleen weg als 
   const V = toPlayerView(S(list), () => "", { ...VIS, monHp: "exact", init: true, tags: "none" });
   assert.equal(V.list.length, 2);
   assert.equal(V.list[0].init, 20, "lair (20) eerst");
-  assert.deepEqual(V.list[1].hp, { hp: 2, max: 10, temp: 0, st: "Bijna dood" });
+  assert.deepEqual(V.list[1].hp, { hp: 2, max: 10, temp: 0, st: "Bijna dood", hs: "near" });
   assert.equal(V.list[1].init, 12);
   assert.deepEqual(V.list[1].tags, []);
   const W = toPlayerView(S(list));
@@ -74,7 +74,7 @@ test("instellingen: exacte monster-HP, getallen, geen tags; lair alleen weg als 
 test("instellingen: monster-HP geen, condities alleen bij spelers; spelers-HP altijd exact", () => {
   const list = [pc({ id: "a", name: "A", init: 15, hp: 5, cond: ["Prone"] }), mon({ id: "m", name: "M", init: 12, hp: 0, cond: ["Prone"] })];
   const V = toPlayerView(S(list), () => "", { ...VIS, monHp: "none", tags: "pc" });
-  assert.deepEqual(V.list[0].hp, { hp: 5, max: 20, temp: 0, st: "Bijna dood" });
+  assert.deepEqual(V.list[0].hp, { hp: 5, max: 20, temp: 0, st: "Bijna dood", hs: "near" });
   assert.deepEqual(V.list[0].tags, ["Prone"]);
   assert.equal(V.list[1].hp, null);
   assert.equal(V.list[1].out, true, "Neer blijft: spelers zagen hem vallen");
@@ -125,7 +125,7 @@ test("death saves alleen zolang ze lopen; concentratie-spell alleen bij spelers"
 
 test("cleanView: rommel en scripts eruit, onbekende ids weg", () => {
   assert.equal(cleanView(null), null);
-  assert.equal(cleanView({ v: 2, list: [] }), null);
+  assert.equal(cleanView({ v: 3, list: [] }), null); // v 2 = zonder oude velden (WP28/WP32)
   const V = cleanView({
     v: 1, round: "3", active: "x", next: "zz",
     list: [{ id: "x", kind: "pc", name: "<b>A</b>", icon: '"><script>', img: "javascript:alert(1)", hp: { hp: "5", max: 9, temp: null, st: "Gewond" }, tags: ["Prone", 7, null], ds: { s: 9, f: -1 } }, "rommel", { kind: "lair", name: "Lair" }],
@@ -133,11 +133,11 @@ test("cleanView: rommel en scripts eruit, onbekende ids weg", () => {
   const [a, l] = V.list;
   assert.equal(V.round, 3); assert.equal(V.active, "x"); assert.equal(V.next, null);
   assert.equal(a.icon, "r-pc"); assert.equal(a.img, null);
-  assert.deepEqual(a.hp, { hp: 5, max: 9, temp: 0, st: "Gewond" });
+  assert.deepEqual(a.hp, { hp: 5, max: 9, temp: 0, st: "Gewond", hs: "hurt" }, "v1: woord → code");
   assert.deepEqual(a.tags, ["Prone"]);
   assert.deepEqual(a.ds, { s: 3, f: 0 });
   assert.equal(l.kind, "lair");
-  assert.equal(cleanView({ v: 1, list: [{ id: "q", hp: { st: "constructor" } }] }).list[0].hp.st, "", "alleen bekende statussen");
+  assert.deepEqual(cleanView({ v: 1, list: [{ id: "q", hp: { st: "constructor", hs: "constructor" } }] }).list[0].hp, { st: "", hs: "" }, "alleen bekende statussen");
   // een echte snapshot komt er ongeschonden doorheen
   const real = toPlayerView(S([pc({ id: "a", name: "A", init: 5 }), mon({ id: "m", name: "M", init: 3 })]));
   assert.deepEqual(cleanView(JSON.parse(JSON.stringify(real))), real);

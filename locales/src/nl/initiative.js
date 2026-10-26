@@ -69,7 +69,7 @@ export default {
   "init.set.visLog": "Wat er net gebeurde", // zelfde naam als het blok op het spelersscherm (player.log)
   "init.set.on": "Aan",
   "init.set.off": "Uit",
-  "init.set.visHint": "Status = Ongedeerd, Gewond, Bloodied, Bijna dood. \"Wat er net gebeurde\": de laatste 2 regels (tv 3), alleen wat de lijst zelf ook toont. Geldt op dit apparaat, voor alle spelersschermen.", // statusnamen moeten gelijk blijven aan STATUS in js/playerview.js (WP28)
+  "init.set.visHint": "Status = Ongedeerd, Gewond, Bloodied, Bijna dood. \"Wat er net gebeurde\": de laatste 2 regels (tv 3), alleen wat de lijst zelf ook toont. Geldt op dit apparaat, voor alle spelersschermen.", // statusnamen gelijk houden met dnd.hs.* (WP28)
   "init.set.otherDevices": "Op andere apparaten",
   "init.set.roomNotStarted": "Delen met spelers is niet gestart. Ververs de pagina.", // alleen zichtbaar als js/ui/kamer.js niet laadt
   "init.set.thisDevice": "Op dit apparaat",
@@ -218,7 +218,6 @@ export default {
   "init.mon.flagAnon": "onbekend",
   "init.mon.hidHint": "Spelers zien ze niet, ook hun beurt niet. Later tonen via ⋯ → Tonen aan spelers.",
   "init.mon.anonHint": "Spelers zien \"{anon}\" met een algemeen icoon. Later tonen via ⋯ → Naam tonen aan spelers.",
-  "init.mon.anonName": "Onbekend wezen",
   "init.mon.initEach": "Per monster",
   "init.mon.initGroup": "Groep",
   "init.mon.initFixed": "Invullen",

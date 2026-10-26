@@ -933,7 +933,7 @@ export const addLabel = (n, name, hid, anon) => {
   return t("init.mon.addBtn", { what: flags.length ? t("init.mon.flags", { what, flags: flags.join(", ") }) : what });
 };
 export const hidHint = () => t("init.mon.hidHint");
-export const anonHint = () => t("init.mon.anonHint", { anon: t("init.mon.anonName") }); // naam = die op het spelersscherm (ANON, WP28)
+export const anonHint = () => t("init.mon.anonHint", { anon: t("player.anon") }); // naam = die op het spelersscherm (WP28)
 
 /* ---------- één bedieningsblok voor monsters toevoegen (IN4): Monster-paneel en snel toevoegen ---------- */
 /**
