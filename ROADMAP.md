@@ -43,7 +43,7 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 - Regels: ~~RE3~~ (klaar in 1.41.0), **RE4–RE6**, ~~RE14~~ (klaar in 1.42.0), ~~RE15~~ (klaar in 1.44.0)
 - Voorbereiding: ~~VB4~~ · ~~VB5~~ (klaar in 1.43.0, WP11)
 - Gevecht: ~~GV10~~ (klaar in 1.37.1), ~~GV11~~ (klaar in 1.42.0)
-- Taal: **TA1** (uitgewerkt tot TA2–TA16 en WP18–WP33, zie "Taal" en `docs/i18n.md`; WP18–WP29 klaar, volgende WP30)
+- Taal: **TA1** (uitgewerkt tot TA2–TA16 en WP18–WP33, zie "Taal" en `docs/i18n.md`; alle pakketten klaar, Engels live in 1.53.0)
 - Technische schuld: **TS1**, **TS3** (oppakken wanneer je die code toch aanraakt)
 - Fase 2 en 3
 - Bewust niet: zie "Persona-test 3 → Niet overgenomen"
@@ -73,7 +73,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | Backlog | Niet ingepland | RE4, RE5, RE6, TS1, TS3, fase 2 en 3 | |
 
 ### Werkpakketten meertaligheid (besloten 24-10-2026)
-Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (geen cookie), Engelse padsegmenten, `/` opent de app, Engels live als 2.0.0, Engelse tekst nagelezen door een aparte vertaalagent met D&D-kennis (zie `docs/i18n.md` §0). Plan en details per pakket (doel, scope, bestanden, acceptatie, risico's, operationele acties): `docs/i18n.md`. Volgorde = uitvoervolgorde; kritiek pad WP19 → WP21 → WP27 → WP28 → WP32 → WP33. Tot WP33 blijft alleen Nederlands zichtbaar (`LIVE = ["nl"]`), zodat er nooit een half vertaalde app live staat.
+Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (geen cookie), Engelse padsegmenten, `/` opent de app, Engels live als 1.53.0 (niet 2.0.0: dat nummer is voor het redesign, besluit 26-10), Engelse tekst nagelezen door een aparte vertaalagent met D&D-kennis (zie `docs/i18n.md` §0). Plan en details per pakket (doel, scope, bestanden, acceptatie, risico's, operationele acties): `docs/i18n.md`. Volgorde = uitvoervolgorde; kritiek pad WP19 → WP21 → WP27 → WP28 → WP32 → WP33. Sinds WP33 (1.53.0) zijn Engels en Nederlands live (`LIVE = ["en", "nl"]`).
 
 | WP | Inhoud | Codes | Afhankelijk van | Versie |
 |---|---|---|---|---|
@@ -92,13 +92,13 @@ Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (g
 | ~~**WP30**~~ | Publieke homepage `/en/`, `/nl/`: meta, Open Graph, hreflang, canonical, robots, sitemap, 404 (klaar; operationeel: workers.dev en Search Console door Michiel) | TA14 | WP21, WP29 | 1.52.0 |
 | ~~**WP31**~~ | Conventies voor alle tools (CLAUDE.md, `docs/i18n.md` §9) (klaar) | TA15 | WP27, WP28 | geen |
 | ~~**WP32**~~ | Verificatie: offline, import/export, spelersscherm gemengde talen, gevecht, persona-test EN (klaar) | TA16 | WP22–WP30 | 1.52.1 |
-| **WP33** | Engels live: standaard en terugval, kiezer zichtbaar, homepage indexeerbaar | TA1 | WP32 | 2.0.0 |
+| ~~**WP33**~~ | Engels live: standaard en terugval, kiezer zichtbaar, homepage indexeerbaar (klaar; operationeel: sitemap in Search Console zodra `HIDDEN` uit staat) | TA1 | WP32 | 1.53.0 |
 
 ---
 
 ## Persona-test EN (WP32, 26-10-2026)
-Rapport: projectdoc `claude/persona-test-en.md`. P1's opgelost in 1.52.1. Vóór WP33 (Engels live) oppakken:
-- [x] **TA17 Engelse tekst P2** (klaar, 1.52.2): `rules.drops` "its next turn" bij spelers → "their"; `init.log.turn` → "{name}'s turn" (gelijk aan `log.turn`); `log.renew` "Exhaustion refreshed" bij een hoger niveau; `rules.dur.sstart` "(active creature)"; effectchip "10r" (vaste tekst in `js/ui/render.js`) → catalogus; `init.aoe.lose` loopt niet.
+Rapport: projectdoc `claude/persona-test-en.md`. P1's opgelost in 1.52.1. Vóór WP33 (Engels live) opgepakt:
+- [x] **TA17 Engelse tekst P2** (klaar, 1.52.2): `rules.drops` "its next turn" bij spelers → "their"; `init.log.turn` → "{name}'s turn" (gelijk aan `log.turn`); `log.renew` "Exhaustion refreshed" bij een hoger niveau; `rules.dur.sstart` "(active creature)"; effectchip "10r" (vaste tekst in `js/ui/render.js`) → catalogus; `init.aoe.lose` loopt niet. (1.53.0: ook de korte vorm `rules.dur.sstartS`, die nog "(active creature)" had.)
 - [x] **TA18 Weergave P2** (klaar, 1.52.2; tv: de rij liep over de rand, HP-kolom nu begrensd): "MAX HP 2D6" (uppercase-label raakt de hit dice); tv: death saves-tag afgekapt; "Stat block"-knop breekt op 320 px; `_mage armor_` zichtbaar in `data/monsters.json` (data, beide talen).
 - P3 (8): zie het rapport.
 
@@ -148,7 +148,7 @@ Afgerond in WP13–WP17 (1.44.1–1.48.0); keuzes in CLAUDE.md, overzicht in pro
 - [x] **HS8** Spelersscherm en tv-stand in huisstijl
 
 ## Taal
-- [ ] **TA1 Taaloptie Nederlands / English** (Instellingen, keuze bewaard op het apparaat). Bij English alle Nederlandse tekst vervangen: knoppen, labels, meldingen, logboek, hints, formulieren, spelersscherm en foutmeldingen (ook van de Worker). D&D-termen zijn al Engels. Aanpak: teksten centraal in een vertaalbestand per taal (`js/i18n/nl.js`, `en.js`) met een `t("sleutel")`-functie; logboekregels als sleutel + waarden opslaan zodat ze na wisselen ook vertaald zijn; test die bewaakt dat elke sleutel in beide talen bestaat
+- [x] **TA1 Taaloptie Nederlands / English** (Instellingen, keuze bewaard op het apparaat). **Klaar in 1.53.0 (WP33): Engels en Nederlands live.** Bij English alle Nederlandse tekst vervangen: knoppen, labels, meldingen, logboek, hints, formulieren, spelersscherm en foutmeldingen (ook van de Worker). D&D-termen zijn al Engels. Aanpak: teksten centraal in een vertaalbestand per taal (`js/i18n/nl.js`, `en.js`) met een `t("sleutel")`-functie; logboekregels als sleutel + waarden opslaan zodat ze na wisselen ook vertaald zijn; test die bewaakt dat elke sleutel in beide talen bestaat
   - **Uitgewerkt (24-10-2026)** voor heel Kev's Inn (Initiative nu, later Characters, Campaigns, Companion): plan in `docs/i18n.md`, pakketten WP18–WP33 hierboven. TA1 zelf = het eindpakket WP33 (Engels live). Bijstellingen op de oorspronkelijke tekst, na inspectie van de code: (1) de Worker geeft al alleen foutcodes terug (`private`, `rate`, …), de tekst maakt de client (`ddbMsg`); (2) catalogi per laag i.p.v. één bestand per taal (`locales/{en,nl}/{common,initiative,rules,log,player,dnd,pages}.js`, ± 1.000 teksten); (3) URL's krijgen een taalprefix (`/en/`, `/nl/`), de keuze in Instellingen blijft daarnaast; (4) Engels wordt standaard en terugval, Nederlands blijft voor bestaande gebruikers; (5) de snapshot naar spelers bevat nu NL-woorden (HP-status, "Onbekend wezen", duur) en gaat naar codes, zodat speler en DM elk hun eigen taal hebben.
   - **Taalbepaling** (`resolveLang`, één functie voor alle tools): 1. prefix in de URL (`/en/…`, `/nl/…`) wint altijd, zonder doorverwijzen of melding, en verandert de opgeslagen voorkeur niet; 2. ongeldig/niet-ondersteund prefix → `/en/…`; 3. zonder prefix (`/`, `/initiative/`, `/speler`): opgeslagen voorkeur (`localStorage` `kevs-lang`) → eerste ondersteunde browsertaal (`nl-BE` → nl) → Engels. Alleen de taalkiezer schrijft de voorkeur; account-opslag volgt met Fase 2 (nieuwste keuze wint). De spelerslink/QR (`/speler?k=`) blijft zonder taal, zodat elke speler zijn eigen taal krijgt en bestaande QR's blijven werken.
   - **Indexeren**: alleen de nieuwe homepage `/en/`, `/nl/` (hreflang + x-default, canonical); de app en het spelersscherm krijgen `noindex`. Er is nu geen publieke pagina: `/` is de app.

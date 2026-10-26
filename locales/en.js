@@ -1137,7 +1137,7 @@ export default {
   "rules.dur.infS": "unlimited",
   "rules.dur.tendS": "until end of next turn (target)",
   "rules.dur.tstartS": "until start of next turn (target)",
-  "rules.dur.sstartS": "until start of next turn (active creature)",
+  "rules.dur.sstartS": "until the start of the current creature's next turn",
   "rules.dur.r1S": "1 round",
   "rules.dur.r2S": "2 rounds",
   "rules.dur.r3S": "3 rounds",

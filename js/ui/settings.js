@@ -57,7 +57,7 @@ let langOn = false;
 export function bindSettings() {
   const p = $("#data-panel");
   if (!p) return;
-  langOn = mountLangPick($("#lang-seg"), $("#lang-lbl")); // WP22: tot WP33 alleen in de i18n-debugstand
+  langOn = mountLangPick($("#lang-seg"), $("#lang-lbl")); // WP22; zichtbaar sinds WP33
   p.addEventListener("click", () => queueMicrotask(paintSetStat)); // na de handlers van de knoppen zelf
   document.addEventListener("it-kamer", paintSetStat);
 }

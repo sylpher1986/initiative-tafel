@@ -4,7 +4,7 @@
 //
 // Uitvoer:
 //   /{taal}/initiative/index.html, /{taal}/initiative/player/index.html   app-pagina's uit pages/*.html, per taal in
-//                                                  SUPPORTED ({{lang}} ingevuld); /en/ bestaat al maar is pas live in WP33
+//                                                  SUPPORTED ({{lang}} ingevuld); en en nl live sinds WP33 (1.53.0)
 // Tekst in de sjablonen (WP23): {{t:sleutel}} = catalogustekst, geëscaped voor HTML (tekst en attributen);
 // {{tjs:sleutel}} = binnen een JS-string in een inline script of on…-attribuut (alles wat de string of het attribuut
 // kan breken als \uXXXX). Een onbekende sleutel is een fout: dan wordt er niets geschreven.
@@ -115,7 +115,7 @@ export function redirectPage(addr, fb) {
 const homeUrl = (lang) => `${SITE}/${lang}/`;
 
 /** Kopregels voor SEO van een homepage. Indexeerbaar = taal in live: canonical naar zichzelf, hreflang voor elke live
- *  taal plus x-default (de terugvaltaal binnen live: nu nl, na WP33 en, V4). Niet live (/en/ tot WP33): noindex, geen
+ *  taal plus x-default (de terugvaltaal binnen live: en sinds WP33, V4). Niet live (een nieuwe taal vóór haar livegang): noindex, geen
  *  hreflang, zodat zoekmachines nog geen half vrijgegeven taal tonen. */
 export function seoHead(lang, cat, live = LIVE) {
   const attr = (k) => { const v = cat[k]; if (typeof v !== "string") throw new Error(`${HOME_PAGE}: geen tekst voor ${k}`); return escHtml(v); };

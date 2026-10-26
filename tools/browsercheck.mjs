@@ -54,9 +54,9 @@ function serve() {
 
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/en/initiative/player/", home: "/nl/", homeen: "/en/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/en/initiative/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/en/initiative/", wp33: "/nl/" };
 // Eigen taalopzet: niet per taal herhalen (WP32)
-const ONCE = new Set(["i18n-mixed", "i18n-switch", "i18n-offline", "i18n-legacy", "homeen"]);
+const ONCE = new Set(["i18n-mixed", "i18n-switch", "i18n-offline", "i18n-legacy", "homeen", "wp33"]);
 // Startpagina in een taal: taalloze adressen en /nl/… worden /{taal}/…; vaste talen (ONCE) blijven zoals ze zijn
 function startFor(name, lang) {
   const p = START[name] || "/";
@@ -311,7 +311,7 @@ const SCEN = {
   },
   // WP32: één bezoek (nl) met de service worker, daarna offline: beide talen, spelersscherm, homepage en doorverwijzer laden
   async "i18n-offline"(page, base) {
-    const ctx = await page.context().browser().newContext({ serviceWorkers: "allow" });
+    const ctx = await page.context().browser().newContext({ serviceWorkers: "allow", locale: "nl-NL" }); // taalloze adressen volgen sinds WP33 de browsertaal
     const p = await ctx.newPage();
     try {
       await p.goto(base + "/nl/initiative/"); await p.waitForSelector("#dock");
@@ -334,6 +334,33 @@ const SCEN = {
         if (unt) throw new Error(`offline ${u}: ontbrekende vertaling`);
       }
     } finally { OFFLINE = false; await ctx.close(); }
+  },
+  // WP33: Engels live. Nieuwe Engelstalige browser → /en/, Nederlandse → /nl/, bestaande gebruiker (it-*, geen voorkeur)
+  // met een Engelse browser blijft Nederlands; taalkiezer zichtbaar; een nieuwe gebruiker telt later niet als bestaand.
+  async wp33(page, base) {
+    const browser = page.context().browser();
+    const visit = async (locale, seed, steps) => {
+      const ctx = await browser.newContext({ locale });
+      if (seed) await ctx.addInitScript(() => { if (!localStorage.getItem("bc-seeded")) { localStorage.setItem("it-tour", "pf"); localStorage.setItem("bc-seeded", "1"); } });
+      const p = await ctx.newPage();
+      try { for (const [u, want, sel] of steps) {
+        await p.goto(base + u);
+        await p.waitForURL((x) => x.pathname.startsWith(want), { timeout: 8000 }).catch(() => { throw new Error(`${locale}${seed ? " (bestaand)" : ""} ${u}: ${p.url()}, verwacht ${want}`); });
+        await p.waitForSelector(sel, { state: "attached" });
+        const l = await p.evaluate(() => document.documentElement.lang);
+        if (l !== want.slice(1, 3)) throw new Error(`${u}: lang ${l}`);
+      } return p; } catch (e) { await ctx.close(); throw e; }
+    };
+    const a = await visit("en-US", false, [["/", "/en/initiative/", "#dock"], ["/", "/en/initiative/", "#dock"], ["/speler?k=ABC234", "/en/initiative/player/", "#pv-wait"]]);
+    if (!(await a.url()).includes("?k=ABC234")) throw new Error("?k= weg na doorverwijzen");
+    await a.goto(base + "/en/initiative/"); await a.waitForSelector("#dock");
+    if (await a.evaluate(() => document.querySelector("#lang-seg")?.hidden !== false)) throw new Error("taalkiezer verborgen in Instellingen");
+    await a.context().close();
+    await (await visit("nl-NL", false, [["/", "/nl/initiative/", "#dock"]])).context().close();
+    const c = await visit("en-US", true, [["/", "/nl/initiative/", "#dock"], ["/speler", "/nl/initiative/player/", "#pv-wait"]]);
+    const pref = await c.evaluate(() => JSON.parse(localStorage.getItem("kevs-lang") || "null"));
+    if (!pref || pref.lang !== "nl") throw new Error("bestaande gebruiker kreeg geen voorkeur nl: " + JSON.stringify(pref));
+    await c.context().close();
   },
   // WP32: export van 1.48.0 (Nederlands logboek zonder descriptoren) importeren in de Engelse app: oude regels blijven
   // zoals ze waren, nieuwe regels in het Engels, undo werkt, geen fouten

@@ -1,5 +1,6 @@
 // Spelersscherm: toont alleen de snapshot die het DM-scherm stuurt (js/playerview.js), nooit eigen data.
 import { initI18n, t, tr, i18n } from "./i18n/boot.js";
+import { adoptExisting } from "./i18n/lang.js";
 import { ico } from "./ui/icons.js";
 import { cleanView, headHtml, findMe, meState, buzzFor, dsText, logLines, pushLog, pvName, hsText, tagText } from "./playerview.js";
 import { ORD } from "./rules/spells.js";
@@ -271,7 +272,7 @@ function boot() {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     else document.documentElement.requestFullscreen().catch(() => {});
   });
-  mountLangPick($("#pv-lang")); // WP22: tot WP33 alleen in de i18n-debugstand
+  mountLangPick($("#pv-lang")); // WP22; zichtbaar sinds WP33
   keepAwake();
   bindMe();
   addEventListener("resize", refit);
@@ -418,4 +419,5 @@ function tryJoin(submit) {
   $("#pv-joinmsg").textContent = t("player.codeBad");
 }
 
+adoptExisting(); // WP33: zie js/i18n/lang.js
 initI18n().then(boot).catch((e) => console.error(e)); // vertalingen vóór de eerste weergave (WP20; gooit nooit, wacht max. 3 s)

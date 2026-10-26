@@ -3,7 +3,7 @@
 // Taal volgens resolveLang (docs/i18n.md §2.2): voorkeur → browsertaal → terugval; query en hash blijven (ook ?k=).
 // Ook vanuit de 404-pagina's (WP30): een ongeldig prefix (/xx/…) gaat altijd naar Engels.
 // Werkt offline: de doorverwijspagina's, dit bestand en lang.js staan in de cache van sw.js.
-import { resolveLang, prefStore, offered, debugStored } from "./lang.js";
+import { resolveLang, prefStore, offered, debugStored, adoptExisting } from "./lang.js";
 
 /** Doeladres voor een locatie, of null als de pagina al goed is. Puur op de meegegeven objecten.
  *  live: talen voor voorkeur en browsertaal; in de debugstand alle ondersteunde (WP22), anders LIVE. */
@@ -15,6 +15,7 @@ export function target(loc, nav = {}, store = prefStore(), live = offered(debugS
 
 /** Doorsturen zonder extra regel in de geschiedenis (terug-knop springt niet terug naar de doorverwijzer) */
 export function go(w = globalThis) {
+  adoptExisting(); // WP33: bestaande gebruiker zonder voorkeur blijft Nederlands
   const to = target(w.location, w.navigator);
   if (to) w.location.replace(to);
   return to;

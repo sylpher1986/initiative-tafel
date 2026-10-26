@@ -46,19 +46,19 @@ test("manifest: zelfde identiteit als oude installaties, start via de doorverwij
     for (const i of m.icons) { assert.match(i.src, /^\//, p); assert.ok(existsSync(ROOT + i.src.slice(1)), i.src); }
   }
   assert.equal(JSON.parse(files["en/manifest.webmanifest"]).lang, "en");
-  assert.equal(JSON.parse(files["manifest.webmanifest"]).lang, "nl", "oud manifestadres = terugvaltaal zolang Engels niet live is");
+  assert.equal(JSON.parse(files["manifest.webmanifest"]).lang, "en", "oud manifestadres = terugvaltaal (Engels sinds WP33); start_url gaat via de doorverwijzer");
 });
 
 test("doorverwijzers: laden redirect.js, en zonder modules of JavaScript naar de terugvaltaal", () => {
-  const want = { "index.html": "/nl/initiative/", "speler.html": "/nl/initiative/player/", "player.html": "/nl/initiative/player/",
-    "initiative/index.html": "/nl/initiative/", "initiative/player/index.html": "/nl/initiative/player/" };
+  const want = { "index.html": "/en/initiative/", "speler.html": "/en/initiative/player/", "player.html": "/en/initiative/player/",
+    "initiative/index.html": "/en/initiative/", "initiative/player/index.html": "/en/initiative/player/" };
   assert.deepEqual(Object.keys(want).sort(), Object.keys(REDIRECTS).sort());
   for (const [f, to] of Object.entries(want)) {
     const h = files[f];
     const back = `location.replace('${to}' + location.search + location.hash)`;
     assert.ok(h.includes(`<script type="module" onerror="${back}">import { go } from "/js/i18n/redirect.js"; go();</script>`), f + ": module met terugval");
     assert.ok(h.includes(`<script nomodule>${back}</script>`), f + ": nomodule");
-    assert.match(h, /<html lang="nl">/, f);
+    assert.match(h, /<html lang="en">/, f);
     assert.ok(h.includes(`url=${to}"`) && h.includes(`<a href="${to}">`), f + ": noscript en link");
     assert.match(h, /<meta name="robots" content="noindex">/, f);
   }
@@ -66,7 +66,7 @@ test("doorverwijzers: laden redirect.js, en zonder modules of JavaScript naar de
 
 const store = (lang) => ({ get: () => lang });
 const loc = (href) => { const u = new URL(href, "https://kevs-inn.com"); return { pathname: u.pathname, search: u.search, hash: u.hash }; };
-test("redirect.js: oude adressen naar /nl/… met query; voorkeur en browsertaal tellen alleen uit LIVE", () => {
+test("redirect.js: oude adressen naar de taal van voorkeur of browser, met query; Engels als terugval (WP33)", () => {
   const go = (href, nav = { languages: ["nl-NL"] }, s = store(null)) => target(loc(href), nav, s);
   assert.equal(go("/"), "/nl/initiative/");
   assert.equal(go("/speler?k=ABC234"), "/nl/initiative/player/?k=ABC234");
@@ -75,20 +75,20 @@ test("redirect.js: oude adressen naar /nl/… met query; voorkeur en browsertaal
   assert.equal(go("/initiative/"), "/nl/initiative/");
   assert.equal(go("/initiative/player/?k=K7M3QX"), "/nl/initiative/player/?k=K7M3QX");
   assert.equal(go("/index.html"), "/nl/initiative/");
-  // Engels nog niet live: Engelse browser en Engelse voorkeur gaan ook naar nl (WP33 zet en in LIVE)
-  assert.equal(go("/", { languages: ["en-GB"] }), "/nl/initiative/");
-  assert.equal(go("/", { languages: [] }, store("en")), "/nl/initiative/");
+  // Engels live: Engelse browser of voorkeur → /en/; voorkeur wint van de browser; onbekende browsertaal → Engels
+  assert.equal(go("/", { languages: ["en-US"] }), "/en/initiative/");
+  assert.equal(go("/speler?k=ABC234", { languages: ["en-GB"] }), "/en/initiative/player/?k=ABC234");
+  assert.equal(go("/", { languages: ["en-US"] }, store("nl")), "/nl/initiative/", "bestaande gebruiker (adoptExisting) blijft nl");
+  assert.equal(go("/", { languages: ["nl-NL"] }, store("en")), "/en/initiative/");
+  assert.equal(go("/", { languages: ["de-DE", "fr"] }), "/en/initiative/");
+  assert.equal(go("/", { languages: ["de-DE", "nl-BE"] }), "/nl/initiative/", "eerste ondersteunde browsertaal");
   // oude browser: alleen navigator.language, of niets
   assert.equal(go("/speler?k=A", { language: "nl-BE" }), "/nl/initiative/player/?k=A");
-  assert.equal(go("/", {}), "/nl/initiative/");
-  // een pagina met een goed prefix verwijst niet door (geen lus)
+  assert.equal(go("/", {}), "/en/initiative/");
+  // een pagina met een goed prefix verwijst niet door (geen lus), ook niet tegen de voorkeur in
   assert.equal(go("/nl/initiative/player/?k=A"), null);
   assert.equal(go("/en/initiative/"), null);
-  // WP22: in de i18n-debugstand telt een Engelse voorkeur (taalkiezer) wel, ook voor de spelerslink
-  const dbg = (href, s, nav = { languages: ["nl-NL"] }) => target(loc(href), nav, s, ["en", "nl"]);
-  assert.equal(dbg("/speler?k=ABC234", store("en")), "/en/initiative/player/?k=ABC234");
-  assert.equal(dbg("/", store("nl"), { languages: ["en-GB"] }), "/nl/initiative/");
-  assert.equal(dbg("/nl/initiative/", store("en")), null, "een /nl/-link blijft Nederlands");
+  assert.equal(go("/nl/initiative/", { languages: ["en-US"] }, store("en")), null, "een /nl/-link blijft Nederlands");
 });
 
 test("service worker: elke gegenereerde pagina en redirect.js in de offline-cache, registratie op /", () => {
@@ -249,7 +249,7 @@ test("404-pagina's: zetten een ongeldig prefix recht via redirect.js, linken naa
   const go = (href) => target(loc(href), { languages: ["nl-NL"] }, store(null));
   assert.equal(go("/xx/initiative/"), "/en/initiative/", "ongeldig prefix → Engels (besluit 26-10)");
   assert.equal(go("/de/"), "/en/");
-  assert.equal(go("/foo/bar"), "/nl/foo/bar", "zonder taalprefix: voorkeur/browser/terugval binnen LIVE, niet Engels");
+  assert.equal(go("/foo/bar"), "/nl/foo/bar", "zonder taalprefix: voorkeur/browser/terugval binnen LIVE");
   assert.equal(go("/nl/bestaat-niet"), null, "geldig prefix: blijft op de 404");
 });
 

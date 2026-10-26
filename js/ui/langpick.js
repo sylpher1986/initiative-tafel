@@ -2,7 +2,7 @@
 // Gedeeld door de DM-app (Instellingen → Weergave) en het spelersscherm. Kiezen = voorkeur bewaren (kevs-lang, per
 // apparaat) + location.replace naar dezelfde pagina met de andere prefix (query en hash blijven, ook ?k=). De pagina
 // herlaadt: stand en undo uit IndexedDB (DA2), de kamer verbindt opnieuw (it-room), het tabblad claimt opnieuw (DA3).
-// Alleen zichtbaar bij meer dan één taal in offered(): tot WP33 alleen in de i18n-debugstand.
+// Alleen zichtbaar bij meer dan één taal in offered() (sinds WP33 altijd: Engels en Nederlands live).
 import { offered, normLang, prefStore, switchPath, DEFAULT } from "../i18n/lang.js";
 import { t, i18nDebug } from "../i18n/boot.js";
 import { esc } from "./util.js";

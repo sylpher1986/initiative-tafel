@@ -6,25 +6,27 @@
 //      (alleen de taalkiezer schrijft de voorkeur; resolveLang schrijft nooit)
 //   2. ongeldig of niet-ondersteund prefix (/de/…, /xx/…) → Engels (DEFAULT, ook als en nog niet live is), zelfde rest van het pad
 //   3. geen prefix: opgeslagen voorkeur → eerste ondersteunde browsertaal (nl-BE → nl) → terugvaltaal
-// Tot Engels live gaat (WP33) kiest 3 alleen uit LIVE; een /en/-link werkt wel (SUPPORTED).
+// 3 kiest alleen uit LIVE (sinds WP33 beide talen; daarvoor alleen nl).
 
 /** Talen met code, catalogi en pagina's */
 export const SUPPORTED = ["en", "nl"];
-/** Talen die automatisch gekozen en in de taalkiezer aangeboden worden (WP33: ["en", "nl"]) */
-export const LIVE = ["nl"];
+/** Talen die automatisch gekozen en in de taalkiezer aangeboden worden (sinds WP33, 1.53.0: Engels live) */
+export const LIVE = ["en", "nl"];
 /** Standaard- en terugvaltaal */
 export const DEFAULT = "en";
 /** Intl-locale per taal (getallen, datums); één plek om te wijzigen */
 export const LOCALES = { en: "en-GB", nl: "nl-NL" }; // en-GB: "12 Oct 2026" en 24-uursklok (vertaalagent WP20); spelling blijft Amerikaans (PHB)
 /** localStorage-sleutel van de voorkeur (platformbreed voorvoegsel kevs-) */
 export const PREF_KEY = "kevs-lang";
+/** localStorage-sleutel: eenmalige overgang bij Engels live (WP33) is gedaan op dit apparaat (adoptExisting) */
+export const ADOPT_KEY = "kevs-lang-adopt";
 /** localStorage-sleutel van de i18n-debugstand (?i18n=debug|xx|off, zie boot.js) */
 export const DEBUG_KEY = "kevs-i18n-debug";
 /** Geldige debugstanden (boot.js) */
 export const DEBUG_MODES = ["debug", "xx"];
 
-/** Talen in de taalkiezer en voor de automatische keuze: LIVE, in de debugstand alle ondersteunde (WP22: testen vóór
- *  WP33). De kiezer is er alleen bij meer dan één taal. */
+/** Talen in de taalkiezer en voor de automatische keuze: LIVE, in de debugstand alle ondersteunde (WP22; voor een
+ *  toekomstige taal die nog niet live is). De kiezer is er alleen bij meer dan één taal. */
 export const offered = (debug) => (debug ? SUPPORTED : LIVE);
 /** Staat de debugstand aan volgens de opslag? Nooit een fout (geen opslag = uit). */
 export function debugStored(storage) {
@@ -138,4 +140,24 @@ export function prefStore(storage) {
       try { const x = s(); if (!x) return false; x.setItem(PREF_KEY, prefValue(l, now)); return true; } catch { return false; }
     },
   };
+}
+
+/**
+ * Eenmalige overgang bij Engels live (WP33, docs/i18n.md): wie de app al gebruikte toen alleen Nederlands live was
+ * (er staat een it-*-sleutel) en geen voorkeur heeft, krijgt stil de voorkeur "nl", zodat een Engelstalige browser
+ * hem niet ineens Engels geeft. Draait vóór de doorverwijzing en vóór het opstarten van de app (die it-*-sleutels
+ * schrijft); daarna nooit meer (ADOPT_KEY), dus een nieuwe gebruiker van na de update houdt zijn browsertaal.
+ * Zonder localStorage: niets. Nooit een fout. Geeft de gezette taal of null.
+ */
+export function adoptExisting(storage, lang = "nl") {
+  try {
+    const s = storage === undefined ? globalThis.localStorage : storage;
+    if (!s || s.getItem(ADOPT_KEY) != null) return null;
+    let old = false;
+    for (let i = 0; i < s.length && !old; i++) old = String(s.key(i) || "").startsWith("it-");
+    s.setItem(ADOPT_KEY, "1");
+    if (!old || parsePref(s.getItem(PREF_KEY))) return null;
+    s.setItem(PREF_KEY, prefValue(lang));
+    return lang;
+  } catch { return null; }
 }

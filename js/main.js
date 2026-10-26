@@ -10,6 +10,7 @@ import { localChannel, dmLink } from "./share.js";
 import { bindSharing, dropSharing } from "./ui/kamer.js";
 import { setWriteGuard } from "./storage.js";
 import { initI18n, i18nDebug, t } from "./i18n/boot.js";
+import { adoptExisting } from "./i18n/lang.js";
 import { claimTab } from "./tablock.js";
 import { $, esc, toastBad } from "./ui/util.js";
 import { VERSION, APP } from "./version.js";
@@ -61,6 +62,7 @@ function tabLost() {
 }
 
 async function boot() {
+  adoptExisting(); // WP33: vóór claimTab (schrijft it-tab), anders telt een nieuwe gebruiker als bestaande
   // vóór het laden: het vorige tabblad stopt met opslaan voordat dit tabblad de stand leest
   setWriteGuard(claimTab(tabLost));
   setWarn(toastBad); // opslaan mislukt = de belangrijkste fout (WP17-review)

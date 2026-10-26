@@ -1137,7 +1137,7 @@ export default {
   "rules.dur.infS": "[üñlímítéd ····]",
   "rules.dur.tendS": "[üñtíl éñd öf ñéxt türñ (tárgét) ···········]",
   "rules.dur.tstartS": "[üñtíl stárt öf ñéxt türñ (tárgét) ············]",
-  "rules.dur.sstartS": "[üñtíl stárt öf ñéxt türñ (áçtívé çréátüré) ···············]",
+  "rules.dur.sstartS": "[üñtíl thé stárt öf thé çürréñt çréátüré's ñéxt türñ ··················]",
   "rules.dur.r1S": "[1 röüñd ···]",
   "rules.dur.r2S": "[2 röüñds ···]",
   "rules.dur.r3S": "[3 röüñds ···]",

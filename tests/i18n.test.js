@@ -110,9 +110,24 @@ test("elke sleutel in js/ en de pagina's bestaat in de Engelse catalogus", () =>
   assert.deepEqual([...used].filter(([k]) => !(k in en)).map(([k, f]) => `${k} (${f})`), []);
 });
 
-test("ongebruikte sleutels (melding, geen fout tot WP33)", (t) => {
-  const unused = Object.keys(en).filter((k) => !used.has(k) && !k.startsWith("common.") && !k.startsWith("page."));
-  if (unused.length) t.diagnostic(`ongebruikt: ${unused.join(", ")}`);
+// Sleutels die de code samenstelt (`dnd.cond.${id}.${n}`): de scanner ziet ze niet letterlijk. Elk patroon met de plek
+// waar de sleutel ontstaat; een patroon dat niets meer dekt is zelf een fout (geen dode uitzonderingen).
+const DYNAMIC = [
+  [/^init\.custom\.f\.(act|re|la|tr)$/, "js/data/statparse.js n()"],
+  [/^rules\.dur\.\w+S$/, "js/rules/turns.js durShort"],
+  [/^rules\.sv\.(ok|fail)(Note)?$/, "js/rules/saves.js"],
+  [/^rules\.aoeRes\./, "js/rules/aoe.js aoeOutcome"],
+  [/^rules\.rd\.n\./, "js/rules/monrules.js"],
+  [/^dnd\.hs\./, "js/playerview.js hsText"],
+  [/^dnd\.cond\.\w+\.\d+$/, "js/rules/conditions.js condInfo"],
+  [/^dnd\.exh\.s?\d$/, "js/rules/conditions.js, effects.js"],
+];
+
+test("ongebruikte sleutels zijn een fout (sinds WP33); samengestelde sleutels via DYNAMIC", () => {
+  const free = (k) => !used.has(k) && !k.startsWith("common.") && !k.startsWith("page.");
+  const unused = Object.keys(en).filter((k) => free(k) && !DYNAMIC.some(([re]) => re.test(k)));
+  assert.deepEqual(unused, [], "ongebruikt: weghalen uit locales/src/{en,nl}, of een samengestelde sleutel in DYNAMIC zetten");
+  for (const [re, where] of DYNAMIC) assert.ok(Object.keys(en).some((k) => free(k) && re.test(k)), `DYNAMIC ${re} (${where}) dekt niets meer`);
 });
 
 test("pseudo: placeholders blijven heel, tekst wordt langer en herkenbaar", () => {

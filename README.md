@@ -1,6 +1,8 @@
 # Kev’s Inn itiative
 
-Voorheen Initiative Tafel; onderdeel van Kev’s Inn ("Your home between adventures."). Initiative tracker voor D&D 5e (2014) om gevechten aan tafel te draaien: spelers (ook via een D&D Beyond-link of PDF), alle 322 SRD-monsters, uitleg van alle SRD-spells (2014 en 2024), condities met duur, spell slots, concentration, death saves, recharge, legendary en lair actions, vaste party, logboek en undo.
+**English** · Initiative and encounter tracker for D&D 5e (2014), built for running combat at the table on a phone or tablet. Works offline, keeps all data in your browser, and comes in English and Dutch (`/en/initiative/`, `/nl/initiative/`; switch under Settings → Display). The rest of this README and the code comments are in Dutch.
+
+**Nederlands** · Voorheen Initiative Tafel; onderdeel van Kev’s Inn ("Your home between adventures."). Initiative tracker voor D&D 5e (2014) om gevechten aan tafel te draaien: spelers (ook via een D&D Beyond-link of PDF), alle 322 SRD-monsters, uitleg van alle SRD-spells (2014 en 2024), condities met duur, spell slots, concentration, death saves, recharge, legendary en lair actions, vaste party, logboek en undo.
 
 Werkt offline als app op je beginscherm (PWA). Alle data staat lokaal in je browser; via **Opslag → Exporteer** maak je een backup of neem je alles mee naar een ander apparaat. Klaargezette encounters deel je los via **+ Monster → Encounters → ⋯ → Delen**.
 

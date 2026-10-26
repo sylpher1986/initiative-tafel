@@ -8,10 +8,10 @@ import { resolveLang, parsePath, normLang, browserLang, pathFor, pageFor, switch
 const BOTH = ["en", "nl"]; // na WP33
 const r = (o) => resolveLang({ live: BOTH, ...o });
 
-test("constanten: Engels is standaard en ondersteund; tot WP33 is alleen Nederlands live", () => {
+test("constanten: Engels is standaard en ondersteund; sinds WP33 zijn Engels en Nederlands live", () => {
   assert.equal(DEFAULT, "en");
   assert.deepEqual(SUPPORTED, ["en", "nl"]);
-  assert.deepEqual(LIVE, ["nl"]);
+  assert.deepEqual(LIVE, ["en", "nl"]);
   for (const l of SUPPORTED) assert.ok(LOCALES[l], l);
   assert.equal(PREF_KEY, "kevs-lang");
 });
@@ -52,9 +52,12 @@ test("3. een expliciete keuze gaat voor de browsertaal; een ongeldige voorkeur t
   assert.deepEqual(r({ path: "/", pref: "de", languages: ["nl"] }), { lang: "nl", source: "browser", redirect: "/nl/initiative/" });
 });
 
-test("3. tot WP33: Engels-voorkeur of Engelse browser geeft nog Nederlands (geen half vertaalde app)", () => {
-  assert.equal(resolveLang({ path: "/", pref: "en" }).lang, "nl");
-  assert.equal(resolveLang({ path: "/", languages: ["en-US"] }).lang, "nl");
+test("3. sinds WP33 (standaard LIVE): Engelse voorkeur of browser geeft Engels, onbekend geeft Engels, Nederlands blijft", () => {
+  assert.equal(resolveLang({ path: "/", pref: "en" }).lang, "en");
+  assert.equal(resolveLang({ path: "/", languages: ["en-US"] }).lang, "en");
+  assert.equal(resolveLang({ path: "/", languages: ["nl-NL"] }).lang, "nl");
+  assert.equal(resolveLang({ path: "/", languages: ["ja"] }).lang, "en");
+  assert.equal(resolveLang({ path: "/", pref: "nl", languages: ["en-US"] }).lang, "nl");
 });
 
 test("oude adressen gaan naar de juiste pagina, met ?k= (spelerslink en QR blijven werken)", () => {
@@ -212,4 +215,38 @@ test("WP22: taalkiezer wisselt naar dezelfde pagina in de andere taal, query en 
   assert.equal(langLabelHtml("nl", ["en", "nl"]), 'Taal · <span lang="en">Language</span>');
   assert.equal(langLabelHtml("en", ["en", "nl"]), 'Language · <span lang="nl">Taal</span>');
   assert.equal(langLabelText("en", ["en", "nl"]), "Language, Taal");
+});
+
+test("WP33: adoptExisting zet eenmalig nl voor een bestaande gebruiker zonder voorkeur, nooit voor een nieuwe", async () => {
+  const { adoptExisting, ADOPT_KEY, parsePref } = await import("../js/i18n/lang.js");
+  const mk = (init = {}) => { const m = new Map(Object.entries(init)); return {
+    m, get length() { return m.size; }, key: (i) => [...m.keys()][i] ?? null,
+    getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)) }; };
+  // bestaande gebruiker (it-tour, it-theme …), geen voorkeur → nl, en daarna nooit meer
+  const a = mk({ "it-tour": "pf" });
+  assert.equal(adoptExisting(a), "nl");
+  assert.equal(parsePref(a.getItem(PREF_KEY)), "nl");
+  assert.equal(a.getItem(ADOPT_KEY), "1");
+  a.setItem(PREF_KEY, JSON.stringify({ lang: "en", t: 1 })); // later zelf Engels gekozen
+  assert.equal(adoptExisting(a), null);
+  assert.equal(parsePref(a.getItem(PREF_KEY)), "en", "tweede keer verandert niets");
+  // nieuwe gebruiker: vlag gezet, geen voorkeur; later it-* erbij → blijft zonder voorkeur (browsertaal)
+  const b = mk();
+  assert.equal(adoptExisting(b), null);
+  assert.equal(b.getItem(PREF_KEY), null);
+  b.setItem("it-tab", "{}");
+  assert.equal(adoptExisting(b), null);
+  assert.equal(b.getItem(PREF_KEY), null);
+  // bestaande voorkeur (tester koos Engels in de debugstand) blijft
+  const c = mk({ "it-tour": "p", [PREF_KEY]: JSON.stringify({ lang: "en", t: 1 }) });
+  assert.equal(adoptExisting(c), null);
+  assert.equal(parsePref(c.getItem(PREF_KEY)), "en");
+  // kapotte voorkeur telt als geen voorkeur
+  const d = mk({ "it-tour": "p", [PREF_KEY]: "{kapot" });
+  assert.equal(adoptExisting(d), "nl");
+  // alleen kevs-*-sleutels (bv. debugstand) = geen bestaande app-gebruiker
+  assert.equal(adoptExisting(mk({ "kevs-i18n-debug": "debug" })), null);
+  // geen opslag of geblokkeerd: nooit een fout
+  assert.equal(adoptExisting(null), null);
+  assert.equal(adoptExisting({ getItem() { throw new Error("geblokkeerd"); } }), null);
 });
