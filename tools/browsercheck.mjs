@@ -69,6 +69,13 @@ function startFor(name, lang) {
 const OWN = ["Hinderlaag bij de oude brug", "Aurelianus Vandermeer", "Zonder Level", "Vrije regel zonder punt"];
 const noPaths = (l) => l.replace(/\S*\/\S*/g, " "); // paden en URL's (src/2014/en, /speler?k=) zijn geen tekst, zoals in tests/pages.test.js
 const tap = (page, sel) => page.locator(sel).first().tap();
+let SHOTS = new Set(); // --shots=…, gezet in main()
+// WP35: extra screenshot midden in een scenario (alleen 320 px en alleen met --shots=<scenario>)
+async function snap(page, name, part) {
+  if (!SHOTS.has(name) || page.viewportSize().width !== 320) return;
+  const [lang, dark] = await page.evaluate(() => [document.documentElement.lang, matchMedia("(prefers-color-scheme: dark)").matches]);
+  await page.screenshot({ path: join(ROOT, "shots", `${name}-${part}-${lang}-320-${dark ? "dark" : "light"}.png`) });
+}
 
 // WP32: export zoals 1.48.0 die maakte (versie 2, logboek alleen als Nederlandse tekst, geen descriptoren m/w, snapshot-tijdperk v1)
 const LEGACY = { format: "initiative-tafel", version: 2, exported: "2026-10-20T19:00:00.000Z", app: "1.48.0",
@@ -226,6 +233,66 @@ const SCEN = {
     if (!r.undo || r.undo < 18) throw new Error("undo-icoon ontbreekt of te klein");
     if (!r.tico || !r.vh) throw new Error("foutmelding zonder icoon of \"Let op:\"");
     if (r.sb === "rgb(255, 255, 255)" || r.card === "rgb(255, 255, 255)") throw new Error("statblock/kaart nog wit: " + JSON.stringify(r));
+  },
+  // WP35: gedeelde componenten. Dock (Volgende het enige gouden vlak buiten een open formulier als ⋯: één primaire knop per context; secundaire knoppen op --btn), ⋯-paneeltje zonder eigen rand,
+  // HP-balken even lang (DM Sans zonder tnum), melding boven de dock, schadepaneel (seg zonder omgekeerd vlak, warme dim),
+  // desktop 1280: lijst en zijkolom gescheiden, dock binnen de linkerkolom. Eindstand = dialoog (Gevecht afronden).
+  // Met --shots=redesign-components ook losse screenshots van dock en paneel (320 px).
+  async "redesign-components"(page) {
+    await SCEN.fight(page);
+    await tap(page, '#order .c.k.turn [data-p="more"]');
+    await page.waitForSelector("#order .c.k.turn .kpanel.more");
+    const r = await page.evaluate(async () => {
+      const u = await import("/js/ui/util.js"); u.toastHtml("Test");
+      const cs = (el) => getComputedStyle(el), root = cs(document.documentElement);
+      const tok = (k) => { const d = document.createElement("i"); d.style.color = `var(--${k})`; document.body.append(d); const c = cs(d).color; d.remove(); return c; };
+      const vis = (el) => { const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0 && cs(el).visibility !== "hidden"; };
+      const gold = [...document.querySelectorAll("button")].filter((b) => vis(b) && !b.closest(".kpanel") && cs(b).backgroundColor === tok("act")).map((b) => b.id || b.className || b.textContent.trim());
+      const sec = ["#undo", "#prev", "#order .c.k.turn .acts button:not(.dmg2):not([aria-pressed=\"true\"])"].map((s) => document.querySelector(s)).filter(Boolean)
+        .filter((b) => cs(b).backgroundColor !== tok("btn")).map((b) => b.id || b.textContent.trim());
+      const kp = document.querySelector("#order .c.k.turn .kpanel.more");
+      const bars = [...document.querySelectorAll("#order .c.k:not(.lair):not(.turn) .khp .hpw .bar")].map((b) => Math.round(b.getBoundingClientRect().width));
+      const t = document.querySelector("#toast .tmsg:last-child").getBoundingClientRect(), d = document.querySelector("#dock").getBoundingClientRect();
+      return { gold, sec, kpBorder: cs(kp).borderTopWidth, kpBg: cs(kp).backgroundColor === tok("sunk"), bars, toastGap: Math.round(d.top - t.bottom), dockH: root.getPropertyValue("--dock-h").trim(), dh: Math.ceil(d.height) };
+    });
+    if (r.gold.length !== 1 || !/next/.test(r.gold[0])) throw new Error("gouden knoppen in Gevecht: " + JSON.stringify(r.gold));
+    if (r.sec.length) throw new Error("secundaire knop niet op --btn: " + r.sec.join(", "));
+    if (r.kpBorder !== "0px" || !r.kpBg) throw new Error("⋯-paneeltje met eigen rand of zonder verzonken vlak");
+    if (r.bars.length > 1 && Math.max(...r.bars) - Math.min(...r.bars) > 1) throw new Error("HP-balken ongelijk: " + r.bars.join(","));
+    if (r.toastGap < 0) throw new Error(`melding overlapt de dock (${r.toastGap}px)`);
+    if (parseInt(r.dockH) !== r.dh) throw new Error(`--dock-h ${r.dockH} ≠ dock ${r.dh}px`);
+    await snap(page, "redesign-components", "dock");
+    // schadepaneel: gekozen tab = zacht vlak (geen omgekeerd --fg), dim warm
+    await page.evaluate(() => document.querySelectorAll("#toast .tmsg").forEach((m) => m.remove()));
+    await tap(page, "#order .c.k.turn .khp");
+    await page.waitForSelector("#sheet .pad");
+    const s = await page.evaluate(() => {
+      const cs = (el) => getComputedStyle(el), on = document.querySelector("#sheet .seg2 [aria-pressed=\"true\"]");
+      return { onBg: on && cs(on).backgroundColor, fg: cs(document.body).color, dim: cs(document.querySelector("#sheet .dim")).backgroundColor };
+    });
+    if (s.onBg && s.onBg === s.fg) throw new Error("seg2: gekozen knop nog omgekeerd (--fg-vlak)");
+    if (/rgba\(10, 12, 18/.test(s.dim)) throw new Error("paneel-dim nog koel");
+    await snap(page, "redesign-components", "paneel");
+    await page.keyboard.press("Escape");
+    await page.waitForSelector("#sheet", { state: "hidden" });
+    // desktop: lijst en zijkolom naast elkaar zonder overloop, dock binnen de linkerkolom
+    const vp = page.viewportSize();
+    if (vp.width === 320) {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.waitForTimeout(150);
+      const k = await page.evaluate(() => {
+        const [a, b] = [".wrap>section", "#sbwrap"].map((q) => document.querySelector(q)?.getBoundingClientRect()), d = document.querySelector("#dock").getBoundingClientRect();
+        return { gap: b ? Math.round(b.left - a.right) : null, dockR: Math.round(d.right - a.right), h: document.documentElement.scrollWidth - innerWidth };
+      });
+      if (k.gap === null || k.gap < 8) throw new Error("desktop: lijst en zijkolom niet gescheiden: " + JSON.stringify(k));
+      if (k.dockR > 1 || k.h > 0) throw new Error("desktop: dock of pagina loopt over: " + JSON.stringify(k));
+      await page.setViewportSize(vp);
+      await page.waitForTimeout(150);
+    }
+    // dialoog: Gevecht afronden (samenvatting)
+    await tap(page, '.fhead [data-setmode="prep"]');
+    await tap(page, "#stop");
+    await page.waitForSelector("#esheet .esheet");
   },
   // WP17-review: spelersscherm "jij aan de beurt" + verbinding kwijt: de kop wordt neutraal en alle tekst blijft leesbaar
   async stale(page) {
@@ -444,6 +511,7 @@ async function main() {
   const srv = await serve(), base = `http://127.0.0.1:${srv.address().port}`;
   const browser = await chromium.launch();
   if (shots.size) await mkdir(join(ROOT, "shots"), { recursive: true });
+  SHOTS = shots;
   let fails = 0;
   try {
     for (const lang of langs) for (const name of names) for (const w of WIDTHS) for (const scheme of SCHEMES) {

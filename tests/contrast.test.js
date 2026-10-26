@@ -51,6 +51,10 @@ const PAIRS = [
   ["focus", "bg", UI, "focusring"], ["focus", "surface", UI, "focusring op kaart"], ["focus", "act-soft", UI, "focusring op geselecteerd"],
   ["mon", "surface", UI, "zijstreep monster"], ["line-strong", "surface", UI, "componentrand"], ["line-strong", "bg", UI, "componentrand op pagina"],
   ["fight-btn-line", "fight-bg", UI, "knoprand in Gevecht-kop"],
+  // WP35: secundaire knop (--btn) en invoervelden (vlak --card, rand --line-strong)
+  ["fg", "btn", TEXT, "tekst op secundaire knop"], ["muted", "btn", TEXT, "bijschrift op knop (Vorige, cijferpad)"], ["good", "btn", TEXT, "Heal-knop"],
+  ["warn", "btn", TEXT, "save-knop, LA-chip"], ["bad", "btn", TEXT, "destructieve knop"], ["focus", "btn", UI, "focusring op knop"],
+  ["line-strong", "card", UI, "rand invoerveld"], ["line-strong", "sunk", UI, "rand invoerveld op verzonken paneeltje"],
 ];
 
 for (const [name, T] of [["licht", light], ["donker", darkSys]]) {

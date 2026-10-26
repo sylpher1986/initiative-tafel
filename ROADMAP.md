@@ -101,7 +101,7 @@ Plan: projectdoc `claude/werkpakketten-2.0.md`. Alles op branch `redesign` (niet
 | WP | Inhoud | Codes | Afhankelijk van | Versie |
 |---|---|---|---|---|
 | ~~**WP34**~~ | Merkpalet en typografie als tokens (DM Sans, Newsreader) (klaar op `redesign`) | HS9, HS10 | – | branch |
-| **WP35** | Gedeelde componenten in de nieuwe stijl | HS11 | WP34 | branch |
+| ~~**WP35**~~ | Gedeelde componenten in de nieuwe stijl (klaar op `redesign`) | HS11 | WP34 | branch |
 | **WP36** | Deelnemerskaarten: speler/monster via vorm, open monsterkaart | HS12, HS13 | WP35 | branch |
 | **WP37** | Homepage in de nieuwe stijl, alleen Initiative, hero-illustratie | HS14 | WP34 | branch |
 | **WP38** | QA, persona-test, release | HS15 | WP34–WP37 | 2.0.0 |
@@ -162,7 +162,7 @@ Afgerond in WP13–WP17 (1.44.1–1.48.0); keuzes in CLAUDE.md, overzicht in pro
 ## Huisstijl 2.0 (26-10-2026)
 - [x] **HS9** Merkpalet als tokens, licht/donker/tv/homepage, contrast opnieuw gemeten (WP34)
 - [x] **HS10** DM Sans + Newsreader in plaats van Inter + Playfair Display, zelf meegeleverd (WP34; DM Sans heeft geen tabular-nums)
-- [ ] **HS11** Knoppen, formulieren, dialogen, menu's, dock in de nieuwe stijl (meenemen: DM Sans heeft geen tabular-nums, dus `.hpnum`, `.round`, `.lg-meta` en het AC-schildje een vaste min-width in ch geven waar verspringen hindert)
+- [x] **HS11** Knoppen, formulieren, dialogen, menu's, dock in de nieuwe stijl (WP35; `.hpnum`/`.hpn` 5ch en `.round b` 2ch; `.lg-meta` en het AC-schildje hadden al een vaste breedte)
 - [ ] **HS12** Speler rond portret, monster schildvorm; identiteit los van HP-kleuren
 - [ ] **HS13** Open monsterkaart rustiger op mobiel
 - [ ] **HS14** Homepage volgens de screens, alleen bestaande tools, hero-illustratie
