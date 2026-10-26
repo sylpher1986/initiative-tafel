@@ -117,10 +117,11 @@ const homeUrl = (lang) => `${SITE}/${lang}/`;
 
 /** Taalkiezer van de homepage (WP37): een link per live taal naar haar homepage, label = eigen taalnaam (common.lang.*),
  *  de huidige taal met aria-current. Zichtbaar de code in kleine letters (CSS maakt hoofdletters: "EN" is voor de
- *  Nederlands-heuristiek het woord "en"). Zonder JavaScript: het voorvoegsel in de URL bepaalt de taal. */
+ *  Nederlands-heuristiek het woord "en"); de naam "English (EN)" bevat de zichtbare code (WCAG 2.5.3 label-in-name). Zonder JavaScript: het voorvoegsel in de URL bepaalt de taal. */
 export function langNav(lang, cat, live = LIVE) {
   const name = (l) => { const v = cat[`common.lang.${l}`]; if (typeof v !== "string") throw new Error(`${HOME_PAGE}: geen tekst voor common.lang.${l}`); return escHtml(v); };
-  return live.map((l) => `<a href="/${l}/" hreflang="${l}" lang="${l}" aria-label="${name(l)}"${l === lang ? ' aria-current="page"' : ""}>${l}</a>`).join("");
+  const langs = live.includes(lang) ? live : [...live, lang]; // een niet-live taal (vóór haar livegang) staat er zelf ook in
+  return langs.map((l) => `<a href="/${l}/" hreflang="${l}" lang="${l}" aria-label="${name(l)} (${l.toUpperCase()})"${l === lang ? ' aria-current="page"' : ""}>${l}</a>`).join("");
 }
 
 /** Kopregels voor SEO van een homepage. Indexeerbaar = taal in live: canonical naar zichzelf, hreflang voor elke live

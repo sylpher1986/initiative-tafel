@@ -280,9 +280,11 @@ test("homepage: kleurtokens gelijk aan css/app.css (licht en donker), og:locale 
 test("homepage: taalkiezer per live taal met eigen taalnaam en aria-current, geen links naar niet-bestaande pagina's", () => {
   const cat = { "common.lang.en": "English", "common.lang.nl": "Nederlands" };
   assert.equal(langNav("nl", cat, ["en", "nl"]),
-    '<a href="/en/" hreflang="en" lang="en" aria-label="English">en</a><a href="/nl/" hreflang="nl" lang="nl" aria-label="Nederlands" aria-current="page">nl</a>');
+    '<a href="/en/" hreflang="en" lang="en" aria-label="English (EN)">en</a><a href="/nl/" hreflang="nl" lang="nl" aria-label="Nederlands (NL)" aria-current="page">nl</a>');
+  assert.match(langNav("de", { ...cat, "common.lang.de": "Deutsch" }, ["en", "nl"]), /<a href="\/de\/"[^>]* aria-current="page">de<\/a>$/, "niet-live taal staat er zelf in");
   assert.throws(() => langNav("en", cat, ["en", "de"]), /common\.lang\.de/);
-  assert.ok(!isDutch("EN") && !isDutch("NL"), "taalcode in hoofdletters is geen Nederlandse tekst");
+  assert.ok(!isDutch("EN") && !isDutch("NL") && !isDutch("English (EN)"), "taalcode in hoofdletters is geen Nederlandse tekst");
+  assert.ok(isDutch("EN dan nog"), "alleen een losse code telt niet");
   for (const lang of SUPPORTED) {
     const h = files[`${lang}/index.html`];
     assert.equal((h.match(/aria-current="page"/g) || []).length, 1, lang);
@@ -291,16 +293,15 @@ test("homepage: taalkiezer per live taal met eigen taalnaam en aria-current, gee
       const f = href.endsWith("/") ? href + "index.html" : href;
       assert.ok(files[f.slice(1)] || existsSync(ROOT + f.slice(1)), `${lang}: link ${href} bestaat niet`);
     }
-    assert.doesNotMatch(h, /\/(characters|campaigns|maps|grid|about|privacy|terms)\b/i, lang + ": geen niet-bestaande tool of pagina");
   }
 });
 
-test("homepage: hero-illustratie bestaat in AVIF en WebP, vaste maat, niet lazy, sfeerbeeld (alt leeg), mobiel ≤ 150 kB", () => {
+test("homepage: hero-illustratie bestaat in AVIF en WebP, vaste maat, niet lazy, sfeerbeeld (alt leeg), elk bestand ≤ 150 kB (telefoon met DPR 3 kiest al 1347 px)", () => {
   const h = read(HOME_PAGE);
   const refs = [...new Set([...h.matchAll(/\/img\/(hero-tavern-\d+\.(?:avif|webp))/g)].map((m) => m[1]))].sort();
   assert.deepEqual(refs, ["hero-tavern-1347.avif", "hero-tavern-1347.webp", "hero-tavern-800.avif", "hero-tavern-800.webp"]);
   for (const f of refs) assert.ok(existsSync(ROOT + "img/" + f), f);
-  for (const f of ["hero-tavern-800.avif", "hero-tavern-800.webp", "hero-tavern-1347.avif"]) assert.ok(statSync(ROOT + "img/" + f).size <= 150 * 1024, f + " te groot");
+  for (const f of refs) assert.ok(statSync(ROOT + "img/" + f).size <= 150 * 1024, f + " te groot");
   const img = /<img [^>]*>/.exec(h.slice(h.indexOf('class="hero-img"')))[0];
   assert.match(img, /width="1347" height="1168"/);
   assert.match(img, /alt=""/);

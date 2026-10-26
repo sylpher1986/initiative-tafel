@@ -65,7 +65,7 @@ h1{font-family:var(--brand);font-weight:700;font-size:clamp(1.5rem,8vw,3.25rem);
 .cta:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
 .cta:active{filter:brightness(.94)}
 .facts{display:flex;flex-wrap:wrap;gap:4px 0;margin:10px 0 0;padding:0;list-style:none;font-size:.875rem;color:var(--muted)}
-.facts li+li::before{content:"·";padding:0 8px}
+.facts li+li::before{content:"·";content:"·"/"";padding:0 8px}
 @media (min-width:600px){.cta{display:inline-flex}}
 @media (min-width:900px){
   .hero{max-width:72rem;margin:0 auto;display:grid;grid-template-columns:1fr 1.3fr;align-items:center;gap:8px;padding:0 var(--pad)}
@@ -92,7 +92,7 @@ h1{font-family:var(--brand);font-weight:700;font-size:clamp(1.5rem,8vw,3.25rem);
 .feat{list-style:none;margin:24px 0 0;padding:0;display:grid;gap:16px}
 @media (min-width:560px){.feat{grid-template-columns:1fr 1fr;gap:20px}}
 @media (min-width:900px){.feat{grid-template-columns:repeat(4,1fr)}}
-.feat h3{margin:0;font-size:1rem;font-weight:700}
+.feat h4{margin:0;font-size:1rem;font-weight:700}
 .feat p{margin:2px 0 0;color:var(--muted);font-size:.9375rem}
 footer{margin:36px 0 0;padding:16px 0 32px;border-top:1px solid var(--line);color:var(--muted);font-size:.8125rem;line-height:1.5}
 footer p{margin:0 0 8px}
@@ -103,7 +103,7 @@ footer .facts{margin:0 0 12px;font-size:.875rem;color:var(--fg)}
 <header class="wrap top">
   <!-- embleem: zelfde tekening als EMBLEM in tools/icons.mjs en de h1 van de app (WP16) -->
   <div class="mark"><svg viewBox="20 2 176 196" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M108 16 181 58v84l-73 42-73-42V58Z" stroke-width="11"/><g transform="translate(0 13)" stroke-width="10"><path d="M100 47v-8q8-10 16 0v8"/><path d="M88 55h40l-8 11H96Z"/><path d="M96 70h24l8 10v42H88V80Z"/><path d="M84 130h48"/></g><path d="M108 102c-9 10-9 19 0 26 9-7 9-16 0-26Z" fill="currentColor" stroke="none"/></svg>Kev’s Inn</div>
-  <nav class="lang" aria-label="Language"><a href="/en/" hreflang="en" lang="en" aria-label="English" aria-current="page">en</a><a href="/nl/" hreflang="nl" lang="nl" aria-label="Nederlands">nl</a></nav>
+  <nav class="lang" aria-label="Language"><a href="/en/" hreflang="en" lang="en" aria-label="English (EN)" aria-current="page">en</a><a href="/nl/" hreflang="nl" lang="nl" aria-label="Nederlands (NL)">nl</a></nav>
 </header>
 
 <main>
@@ -137,10 +137,10 @@ footer .facts{margin:0 0 12px;font-size:.875rem;color:var(--fg)}
       <svg class="go" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </a>
     <ul class="feat" aria-label="What Initiative does">
-      <li><h3>All 322 SRD 5.1 monsters</h3><p>With stat blocks. Search, tap, done.</p></li>
-      <li><h3>Your party in one tap</h3><p>Enter them once, by hand or from a D&amp;D Beyond link.</p></li>
-      <li><h3>Rules at hand</h3><p>Conditions explained. Concentration save prompted on damage.</p></li>
-      <li><h3>Player view via QR code</h3><p>Put the turn order on the TV or your players’ phones.</p></li>
+      <li><h4>All 322 SRD 5.1 monsters</h4><p>With stat blocks. Search, tap, done.</p></li>
+      <li><h4>Your party in one tap</h4><p>Enter them once, by hand or from a D&amp;D Beyond link.</p></li>
+      <li><h4>Rules at hand</h4><p>Conditions explained. Concentration save prompted on damage.</p></li>
+      <li><h4>Player view via QR code</h4><p>Put the turn order on the TV or your players’ phones.</p></li>
     </ul>
   </section>
 </main>
