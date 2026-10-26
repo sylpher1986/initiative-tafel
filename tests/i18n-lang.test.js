@@ -246,6 +246,10 @@ test("WP33: adoptExisting zet eenmalig nl voor een bestaande gebruiker zonder vo
   assert.equal(adoptExisting(d), "nl");
   // alleen kevs-*-sleutels (bv. debugstand) = geen bestaande app-gebruiker
   assert.equal(adoptExisting(mk({ "kevs-i18n-debug": "debug" })), null);
+  // opslag vol (setItem faalt): geen fout en geen vlag, dus de volgende start probeert het opnieuw
+  const full = mk({ "it-tour": "p" }); full.setItem = () => { throw new Error("QuotaExceededError"); };
+  assert.equal(adoptExisting(full), null);
+  assert.equal(full.getItem(ADOPT_KEY), null);
   // geen opslag of geblokkeerd: nooit een fout
   assert.equal(adoptExisting(null), null);
   assert.equal(adoptExisting({ getItem() { throw new Error("geblokkeerd"); } }), null);

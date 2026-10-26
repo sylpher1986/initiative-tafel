@@ -10,6 +10,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { SUPPORTED, DEFAULT } from "../js/i18n/lang.js";
 import { NS, SRC_LANGS, loadSrc, merge, pseudo, pseudoText, build } from "../tools/i18n-build.mjs";
 import { i18nMode, initI18n, i18nDebug, t as bootT, DEBUG_KEY } from "../js/i18n/boot.js";
+import { CINFO } from "../js/rules/conditions.js";
+import { HS } from "../js/playerview.js";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const PH = /\{([A-Za-z_][\w.]*)\}/g;
@@ -112,15 +114,16 @@ test("elke sleutel in js/ en de pagina's bestaat in de Engelse catalogus", () =>
 
 // Sleutels die de code samenstelt (`dnd.cond.${id}.${n}`): de scanner ziet ze niet letterlijk. Elk patroon met de plek
 // waar de sleutel ontstaat; een patroon dat niets meer dekt is zelf een fout (geen dode uitzonderingen).
+const cinfoKeys = new Set(Object.entries(CINFO).flatMap(([id, n]) => Array.from({ length: n }, (_, i) => `dnd.cond.${id}.${i + 1}`)));
 const DYNAMIC = [
   [/^init\.custom\.f\.(act|re|la|tr)$/, "js/data/statparse.js n()"],
   [/^rules\.dur\.\w+S$/, "js/rules/turns.js durShort"],
   [/^rules\.sv\.(ok|fail)(Note)?$/, "js/rules/saves.js"],
   [/^rules\.aoeRes\./, "js/rules/aoe.js aoeOutcome"],
-  [/^rules\.rd\.n\./, "js/rules/monrules.js"],
-  [/^dnd\.hs\./, "js/playerview.js hsText"],
-  [/^dnd\.cond\.\w+\.\d+$/, "js/rules/conditions.js condInfo"],
-  [/^dnd\.exh\.s?\d$/, "js/rules/conditions.js, effects.js"],
+  [/^rules\.rd\.n\.(maxLr|max|swallow|curse|wound|die|moved|uncon|see)$/, "js/rules/monrules.js"],
+  [{ test: (k) => HS.some((c) => k === `dnd.hs.${c}`) }, "js/playerview.js hsText (HS)"],
+  [{ test: (k) => cinfoKeys.has(k) }, "js/rules/conditions.js condInfo (CINFO)"],
+  [/^dnd\.exh\.s?[1-6]$/, "js/rules/conditions.js, effects.js"],
 ];
 
 test("ongebruikte sleutels zijn een fout (sinds WP33); samengestelde sleutels via DYNAMIC", () => {
