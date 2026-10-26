@@ -165,7 +165,7 @@ Afgerond in WP13–WP17 (1.44.1–1.48.0); keuzes in CLAUDE.md, overzicht in pro
 - [x] **HS11** Knoppen, formulieren, dialogen, menu's, dock in de nieuwe stijl (WP35; kaart-HP `.hpn` 5ch; `.lg-meta` en het AC-schildje hadden al een vaste breedte; `.round`/`.hpnum` bestaan niet meer)
 - [x] **HS12** Speler rond portret, monster schildvorm (WP36: achthoek, schild botst met het AC-schildje; .hpn 7ch gedaan); identiteit los van HP-kleuren (meenemen: HP-getal op de DM-kaart `.hpn` van 5ch naar 7ch, zodat de HP-balken ook bij 100–999 HP even lang zijn; gemeten na WP35 op 320 px: 999/999 geeft 153 px balk tegen 162 px bij 7/999, kost elke balk ± 9 px; temp HP daarbij nog meten)
 - [x] **HS13** Open monsterkaart rustiger op mobiel (WP36: legendary-rijen op één regel)
-- [x] **HS14** Homepage volgens de screens, alleen bestaande tools, hero-illustratie (WP37: hero met uitgeveegde illustratie, één toolkaart, taalkiezer; licentie illustratie nog vastleggen vóór WP38)
+- [x] **HS14** Homepage volgens de screens, alleen bestaande tools, hero-illustratie (WP37: hero met uitgeveegde illustratie, één toolkaart, taalkiezer; illustratie AI-gegenereerd door Michiel, herkomst in brand/README.md)
 - [ ] **HS15** QA, persona-test, release 2.0.0
 
 ## Taal

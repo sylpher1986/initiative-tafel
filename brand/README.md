@@ -16,4 +16,4 @@ Bronnen voor de homepage; niet gepubliceerd (`brand/` staat in `.assetsignore`).
 
 Publieke varianten (WP37): `img/hero-tavern-{800,1347}.{avif,webp}` (Pillow: AVIF q55 speed 4, WebP q78 method 6; 800 px: 51 kB / 82 kB, 1347 px: 109 kB / 160 kB), via `<picture>` met srcset in `pages/home.html`, `alt=""` (sfeerbeeld), niet in de offline-cache. Opnieuw maken na een nieuwe bron: zelfde instellingen. `initiative.svg` staat inline in `pages/home.html` (geen extra request).
 
-**Licentie hero-illustratie: nog aan te vullen door Michiel** (herkomst: aangeleverd 26-10-2026; vóór de release in WP38 vastleggen wie de rechten heeft en onder welke voorwaarden het beeld publiek mag).
+**Herkomst en rechten hero-illustratie** (vastgelegd 26-10-2026, opgave Michiel): gegenereerd door Michiel met de beeldgeneratie van ChatGPT (OpenAI) tijdens het uitwerken van de homepage; niet overgenomen van een website of fotobibliotheek. Exact model en instellingen onbekend. Gebruik valt onder de gebruiksvoorwaarden van OpenAI; bij commercieel gebruik de dan geldende voorwaarden en wetgeving rond AI-beelden nalopen. Geen naamsvermelding vereist op de pagina.
