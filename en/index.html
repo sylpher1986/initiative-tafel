@@ -28,85 +28,132 @@
 <link rel="apple-touch-icon" href="/icons/icon-180.png">
 <link rel="preload" href="/fonts/newsreader-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <script src="/js/theme.js"></script>
-<!-- Publieke homepage (WP30). Eigen kleine CSS, geen app.css: snel op 3G, geen JavaScript nodig voor de inhoud.
-     Kleuren = tokens van css/app.css (licht, donker via systeem of de Weergave-keuze in de app: data-theme). -->
+<!-- Publieke homepage (WP30, huisstijl 2.0 in WP37). Eigen kleine CSS, geen app.css: snel op 3G, geen JavaScript nodig voor de inhoud.
+     Kleuren = tokens van css/app.css (licht, donker via systeem of de Weergave-keuze in de app: data-theme; tests/pages.test.js bewaakt de waarden).
+     Hero-illustratie: img/hero-tavern-{800,1347}.{avif,webp} uit brand/hero-tavern.png; alt="" (sfeer), niet in de offline-cache:
+     zonder beeld blijft de box staan met een warm verloop (UX-keuze WP37). -->
 <style>
 @font-face{font-family:"DM Sans";font-style:normal;font-weight:100 1000;font-display:swap;src:url("/fonts/dm-sans-latin-wght.woff2") format("woff2")}
 @font-face{font-family:"Newsreader";font-style:normal;font-weight:200 800;font-display:swap;src:url("/fonts/newsreader-latin-wght.woff2") format("woff2")}
-:root{--bg:#faf6ec;--fg:#241811;--muted:#665647;--line:#e3d9c6;--act:#e3a83b;--act-fg:#241811;--act-ink:#7a5512;--focus:#7a5512;
-  --fight-bg:#241811;--fight-fg:#faf6ec;--fight-muted:#d8c9ae;--now-ink:#e3a83b;
-  --brand:Newsreader,Georgia,"Times New Roman",serif;--body:"DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--r:10px;color-scheme:light}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1d130d;--fg:#f3ead8;--muted:#c4b498;--line:#4a382c;--act-fg:#241811;--act-ink:#e3a83b;--focus:#e3a83b;
-  --fight-bg:#3a281e;--fight-fg:#f3ead8;--fight-muted:#d2c3a8;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#1d130d;--fg:#f3ead8;--muted:#c4b498;--line:#4a382c;--act-fg:#241811;--act-ink:#e3a83b;--focus:#e3a83b;
-  --fight-bg:#3a281e;--fight-fg:#f3ead8;--fight-muted:#d2c3a8;color-scheme:dark}
+:root{--bg:#faf6ec;--fg:#241811;--muted:#665647;--line:#e3d9c6;--sunk:#f2ebdc;--card:#fffbf3;--act:#e3a83b;--act-fg:#241811;--act-ink:#7a5512;--focus:#7a5512;--sel:#7a5512;
+  --brand:Newsreader,Georgia,"Times New Roman",serif;--body:"DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--r:10px;--pad:max(16px,env(safe-area-inset-left));color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1d130d;--fg:#f3ead8;--muted:#c4b498;--line:#4a382c;--sunk:#33241a;--card:#2c1e16;--act-fg:#241811;--act-ink:#e3a83b;--focus:#e3a83b;--sel:#e3a83b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1d130d;--fg:#f3ead8;--muted:#c4b498;--line:#4a382c;--sunk:#33241a;--card:#2c1e16;--act-fg:#241811;--act-ink:#e3a83b;--focus:#e3a83b;--sel:#e3a83b;color-scheme:dark}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;background:var(--bg)}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 var(--body)}
 a{color:var(--act-ink)}
 a:focus-visible{outline:3px solid var(--focus);outline-offset:3px;border-radius:4px}
-.wrap{max-width:34rem;margin:0 auto;padding:0 16px;padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
-.hero{text-align:center;padding:28px 0 20px}
-.hero svg{width:60px;height:66px;display:block;margin:0 auto 10px;color:var(--act)}
-h1{font-family:var(--brand);font-weight:700;font-size:2.125rem;line-height:1.1;margin:0}
-.tag{margin:6px 0 0;color:var(--muted);font-size:1.0625rem}
-.tool{background:var(--fight-bg);color:var(--fight-fg);border-radius:var(--r);padding:20px 18px 18px}
-.tool h2{margin:0;font-size:1.375rem;line-height:1.2;font-weight:800}
-.tool h2 span{color:var(--now-ink)}
-.tool p{margin:6px 0 0;color:var(--fight-muted)}
-.cta{display:flex;align-items:center;justify-content:center;min-height:52px;margin-top:16px;padding:0 16px;background:var(--act);color:var(--act-fg);border-radius:var(--r);font-weight:700;font-size:1.0625rem;text-decoration:none}
-.cta:focus-visible{outline:3px solid var(--fight-fg);outline-offset:3px}
+.wrap{max-width:72rem;margin-left:auto;margin-right:auto;padding:0 var(--pad);padding-right:max(16px,env(safe-area-inset-right))}
+/* kop: embleem + woordmerk (geen link: dit is Home), taalkiezer rechts */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px}
+.mark{display:flex;align-items:center;gap:8px;font-family:var(--brand);font-weight:700;font-size:1.3125rem;line-height:1}
+.mark svg{width:28px;height:31px;color:var(--act);flex:none}
+.lang{display:flex}
+.lang a{display:flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;color:var(--muted);font-weight:600;font-size:.875rem;letter-spacing:.04em;text-transform:uppercase;text-decoration:none}
+.lang a[aria-current]{color:var(--fg);font-weight:700;text-decoration:underline 3px var(--sel);text-underline-offset:6px}
+.lang a+a{border-left:1px solid var(--line)}
+/* hero: telefoon beeld boven de tekst tot de rand, onderkant uitgeveegd; desktop tekst 5 : beeld 7, links/onder sterk uitgeveegd */
+.hero-img{display:block;height:clamp(160px,30vh,260px);height:clamp(160px,30svh,260px);background:linear-gradient(var(--sunk),var(--bg));
+  -webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent)}
+.hero-img img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 35%}
+.hero-txt{padding:4px var(--pad) 0;padding-right:max(16px,env(safe-area-inset-right))}
+.kicker{margin:0;color:var(--act-ink);font-size:.8125rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+h1{font-family:var(--brand);font-weight:700;font-size:clamp(1.5rem,8vw,3.25rem);line-height:1.08;margin:6px 0 0}
+.lead{margin:10px 0 0;font-size:1.0625rem;color:var(--muted);max-width:32rem}
+.cta{display:flex;align-items:center;justify-content:center;min-height:52px;margin-top:18px;padding:0 22px;background:var(--act);color:var(--act-fg);border-radius:var(--r);font-weight:700;font-size:1.0625rem;text-decoration:none}
+.cta:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
 .cta:active{filter:brightness(.94)}
-.facts{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;margin:12px 0 0;padding:0;list-style:none;font-size:.875rem;color:var(--fight-muted)}
-.facts li::before{content:"✓ ";color:var(--now-ink)}
-.feat{list-style:none;margin:28px 0 0;padding:0;display:grid;gap:16px}
+.facts{display:flex;flex-wrap:wrap;gap:4px 0;margin:10px 0 0;padding:0;list-style:none;font-size:.875rem;color:var(--muted)}
+.facts li+li::before{content:"·";padding:0 8px}
+@media (min-width:600px){.cta{display:inline-flex}}
+@media (min-width:900px){
+  .hero{max-width:72rem;margin:0 auto;display:grid;grid-template-columns:1fr 1.3fr;align-items:center;gap:8px;padding:0 var(--pad)}
+  .hero-img{order:2;height:auto;aspect-ratio:1347/1168;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 22%,#000 94%,transparent),linear-gradient(transparent,#000 6%,#000 80%,transparent);
+    -webkit-mask-composite:source-in;
+    mask-image:linear-gradient(90deg,transparent,#000 22%,#000 94%,transparent),linear-gradient(transparent,#000 6%,#000 80%,transparent);
+    mask-composite:intersect}
+  .hero-txt{order:1;padding:0}
+}
+/* tools: één brede kaart (hele kaart is de link), daaronder de kenmerken */
+.tools{margin-top:36px}
+.tools>h2{margin:0 0 12px;font-size:.8125rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.toolcard{display:flex;align-items:center;gap:14px;min-height:72px;padding:16px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);color:var(--fg);text-decoration:none}
+.toolcard:focus-visible{border-radius:var(--r)}
+.toolcard:active{background:var(--sunk)}
+.toolcard>svg{flex:none;align-self:flex-start;width:40px;height:40px;color:var(--act-ink)}
+.toolcard div{flex:1;min-width:0}
+.toolcard h3{margin:0;font-size:1.25rem;line-height:1.2;font-weight:800}
+.toolcard h3 span{color:var(--act-ink)}
+.toolcard .sub{margin:2px 0 0;color:var(--muted);font-weight:600;font-size:.9375rem}
+.toolcard .txt{margin:6px 0 0;font-size:.9375rem;max-width:40rem}
+.toolcard .go{flex:none;align-self:center;width:24px;height:24px;color:var(--act-ink)}
+.feat{list-style:none;margin:24px 0 0;padding:0;display:grid;gap:16px}
 @media (min-width:560px){.feat{grid-template-columns:1fr 1fr;gap:20px}}
+@media (min-width:900px){.feat{grid-template-columns:repeat(4,1fr)}}
 .feat h3{margin:0;font-size:1rem;font-weight:700}
 .feat p{margin:2px 0 0;color:var(--muted);font-size:.9375rem}
-.soon{margin:32px 0 0;padding-top:20px;border-top:1px solid var(--line)}
-.soon h2{margin:0;font-size:.8125rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
-.soon p{margin:6px 0 0;color:var(--muted);font-size:.9375rem}
-footer{margin:32px 0 0;padding:16px 0 32px;border-top:1px solid var(--line);color:var(--muted);font-size:.8125rem;line-height:1.5}
+footer{margin:36px 0 0;padding:16px 0 32px;border-top:1px solid var(--line);color:var(--muted);font-size:.8125rem;line-height:1.5}
 footer p{margin:0 0 8px}
+footer .facts{margin:0 0 12px;font-size:.875rem;color:var(--fg)}
 </style>
 </head>
 <body>
-<main class="wrap">
-  <header class="hero">
-    <!-- embleem: zelfde tekening als EMBLEM in tools/icons.mjs en de h1 van de app (WP16) --><svg viewBox="20 2 176 196" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M108 16 181 58v84l-73 42-73-42V58Z" stroke-width="11"/><g transform="translate(0 13)" stroke-width="10"><path d="M100 47v-8q8-10 16 0v8"/><path d="M88 55h40l-8 11H96Z"/><path d="M96 70h24l8 10v42H88V80Z"/><path d="M84 130h48"/></g><path d="M108 102c-9 10-9 19 0 26 9-7 9-16 0-26Z" fill="currentColor" stroke="none"/></svg>
-    <h1>Kev’s Inn</h1>
-    <p class="tag">Tools for the DM, at the table.</p>
-  </header>
+<header class="wrap top">
+  <!-- embleem: zelfde tekening als EMBLEM in tools/icons.mjs en de h1 van de app (WP16) -->
+  <div class="mark"><svg viewBox="20 2 176 196" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M108 16 181 58v84l-73 42-73-42V58Z" stroke-width="11"/><g transform="translate(0 13)" stroke-width="10"><path d="M100 47v-8q8-10 16 0v8"/><path d="M88 55h40l-8 11H96Z"/><path d="M96 70h24l8 10v42H88V80Z"/><path d="M84 130h48"/></g><path d="M108 102c-9 10-9 19 0 26 9-7 9-16 0-26Z" fill="currentColor" stroke="none"/></svg>Kev’s Inn</div>
+  <nav class="lang" aria-label="Language"><a href="/en/" hreflang="en" lang="en" aria-label="English" aria-current="page">en</a><a href="/nl/" hreflang="nl" lang="nl" aria-label="Nederlands">nl</a></nav>
+</header>
 
-  <section class="tool" aria-labelledby="t-init">
-    <h2 id="t-init">Kev’s Inn <span>itiative</span></h2>
-    <p>Track initiative, hit points and conditions for D&amp;D 5e. On your phone or tablet.</p>
-    <a class="cta" href="/en/initiative/">Open Initiative</a>
-    <ul class="facts">
-      <li>Free</li>
-      <li>Works offline</li>
-      <li>No account</li>
+<main>
+  <section class="hero" aria-labelledby="h-hero">
+    <picture class="hero-img">
+      <source type="image/avif" srcset="/img/hero-tavern-800.avif 800w, /img/hero-tavern-1347.avif 1347w" sizes="(min-width: 900px) 56vw, 100vw">
+      <source type="image/webp" srcset="/img/hero-tavern-800.webp 800w, /img/hero-tavern-1347.webp 1347w" sizes="(min-width: 900px) 56vw, 100vw">
+      <img src="/img/hero-tavern-800.webp" width="1347" height="1168" alt="" fetchpriority="high">
+    </picture>
+    <div class="hero-txt">
+      <p class="kicker" lang="en">Your home between adventures</p>
+      <h1 id="h-hero">Build. Play. Explore.</h1>
+      <p class="lead">Free tools for Dungeon Masters running D&amp;D 5e at the table. Prepare an encounter, run the fight on your phone and let your players follow along.</p>
+      <a class="cta" href="/en/initiative/">Open Initiative</a>
+      <ul class="facts">
+        <li>Free</li>
+        <li>Works offline</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="wrap tools" aria-labelledby="h-tools">
+    <h2 id="h-tools">Tools</h2>
+    <a class="toolcard" href="/en/initiative/" aria-labelledby="tc-name tc-sub">
+      <!-- brand/tool-icons/initiative.svg (WP37) --><svg viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 12 46 52M46 12 18 52"/><path d="M12 18 18 12l6 8M40 44l6 8 6-6"/><path d="M10 32h44"/><path d="M14 26h8M42 38h8"/></svg>
+      <div>
+        <h3 id="tc-name">Kev’s Inn <span>itiative</span></h3>
+        <p class="sub" id="tc-sub">Encounter builder &amp; combat tracker</p>
+        <p class="txt">Add SRD monsters and your party, roll initiative and track HP, conditions and turns.</p>
+      </div>
+      <svg class="go" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+    <ul class="feat" aria-label="What Initiative does">
+      <li><h3>All 322 SRD 5.1 monsters</h3><p>With stat blocks. Search, tap, done.</p></li>
+      <li><h3>Your party in one tap</h3><p>Enter them once, by hand or from a D&amp;D Beyond link.</p></li>
+      <li><h3>Rules at hand</h3><p>Conditions explained. Concentration save prompted on damage.</p></li>
+      <li><h3>Player view via QR code</h3><p>Put the turn order on the TV or your players’ phones.</p></li>
     </ul>
   </section>
-
-  <ul class="feat" aria-label="What Initiative does">
-    <li><h3>All 322 SRD 5.1 monsters</h3><p>With stat blocks. Search, tap, done.</p></li>
-    <li><h3>Your party in one tap</h3><p>Enter them once, by hand or from a D&amp;D Beyond link.</p></li>
-    <li><h3>Rules at hand</h3><p>Conditions explained. Concentration save prompted on damage.</p></li>
-    <li><h3>Player view via QR code</h3><p>Put the turn order on the TV or your players’ phones.</p></li>
-  </ul>
-
-  <section class="soon" aria-labelledby="t-soon">
-    <h2 id="t-soon">Still to come</h2>
-    <p>Characters, campaigns and an app for your players.</p>
-  </section>
-
-  <footer>
-    <p>Your data stays on your own device.</p>
-    <p>Includes material from the System Reference Documents 5.1 and 5.2 by Wizards of the Coast LLC, licensed under <a href="https://creativecommons.org/licenses/by/4.0/legalcode" rel="license">CC-BY-4.0</a>.</p>
-    <p>Dungeons &amp; Dragons is a trademark of Wizards of the Coast LLC.</p>
-    <p>Kev’s Inn is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.</p>
-  </footer>
 </main>
+
+<footer class="wrap">
+  <ul class="facts">
+    <li>Works on any device</li>
+    <li>No account needed</li>
+  </ul>
+  <p>Your data stays on your own device.</p>
+  <p>Includes material from the System Reference Documents 5.1 and 5.2 by Wizards of the Coast LLC, licensed under <a href="https://creativecommons.org/licenses/by/4.0/legalcode" rel="license">CC-BY-4.0</a>.</p>
+  <p>Dungeons &amp; Dragons is a trademark of Wizards of the Coast LLC.</p>
+  <p>Kev’s Inn is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.</p>
+</footer>
 </body>
 </html>

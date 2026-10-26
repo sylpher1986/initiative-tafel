@@ -13,7 +13,8 @@
 //   /index.html, /speler.html, /player.html, /initiative/index.html, /initiative/player/index.html
 //                                                  doorverwijzers (js/i18n/redirect.js), ook offline
 //   /{taal}/index.html                             publieke homepage uit pages/home.html (WP30); {{seo}} = canonical,
-//                                                  hreflang en Open Graph op SITE; alleen talen in LIVE indexeerbaar
+//                                                  hreflang en Open Graph op SITE; alleen talen in LIVE indexeerbaar;
+//                                                  {{langnav}} = taalkiezer (WP37)
 //   /404.html, /{taal}/404.html                    niet-gevonden-pagina (Cloudflare not_found_handling: dichtstbijzijnde
 //                                                  404.html); zet een ongeldig prefix (/xx/…) via redirect.js recht
 //   /robots.txt, /sitemap.xml                      sitemap = alleen de indexeerbare homepages met hun alternates
@@ -114,6 +115,14 @@ export function redirectPage(addr, fb) {
 
 const homeUrl = (lang) => `${SITE}/${lang}/`;
 
+/** Taalkiezer van de homepage (WP37): een link per live taal naar haar homepage, label = eigen taalnaam (common.lang.*),
+ *  de huidige taal met aria-current. Zichtbaar de code in kleine letters (CSS maakt hoofdletters: "EN" is voor de
+ *  Nederlands-heuristiek het woord "en"). Zonder JavaScript: het voorvoegsel in de URL bepaalt de taal. */
+export function langNav(lang, cat, live = LIVE) {
+  const name = (l) => { const v = cat[`common.lang.${l}`]; if (typeof v !== "string") throw new Error(`${HOME_PAGE}: geen tekst voor common.lang.${l}`); return escHtml(v); };
+  return live.map((l) => `<a href="/${l}/" hreflang="${l}" lang="${l}" aria-label="${name(l)}"${l === lang ? ' aria-current="page"' : ""}>${l}</a>`).join("");
+}
+
 /** Kopregels voor SEO van een homepage. Indexeerbaar = taal in live: canonical naar zichzelf, hreflang voor elke live
  *  taal plus x-default (de terugvaltaal binnen live: en sinds WP33, V4). Niet live (een nieuwe taal vóór haar livegang): noindex, geen
  *  hreflang, zodat zoekmachines nog geen half vrijgegeven taal tonen. */
@@ -188,7 +197,7 @@ export async function build(root = ROOT) {
   for (const lang of SUPPORTED) {
     const cat = (await import(pathToFileURL(`${root}locales/${lang}.js`).href)).default;
     for (const [rest, src] of Object.entries(APP_PAGES)) out[`${lang}/${rest}index.html`] = appPage(readFileSync(root + src, "utf8"), src, lang, cat);
-    out[`${lang}/index.html`] = appPage(readFileSync(root + HOME_PAGE, "utf8").replace("{{seo}}", () => seoHead(lang, cat)), HOME_PAGE, lang, cat);
+    out[`${lang}/index.html`] = appPage(readFileSync(root + HOME_PAGE, "utf8").replace("{{seo}}", () => seoHead(lang, cat)).replace("{{langnav}}", () => langNav(lang, cat)), HOME_PAGE, lang, cat);
     out[`${lang}/404.html`] = notFoundPage(lang, cat);
     if (lang === DEFAULT) out["404.html"] = notFoundPage(lang, cat); // taalloze 404 in het Engels, zoals een ongeldig prefix
     out[`${lang}/manifest.webmanifest`] = manifest(lang, cat);

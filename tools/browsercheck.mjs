@@ -36,7 +36,7 @@ async function loadPw() {
 
 // Statische server zoals Cloudflare: /speler → speler.html, /nl/initiative/ → nl/initiative/index.html (WP21).
 // /api/* bestaat hier niet (404, wordt genegeerd); elke andere 404 is FOUT (bijv. een relatief pad onder /{taal}/).
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2", ".webmanifest": "application/manifest+json" };
+const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".avif": "image/avif", ".webp": "image/webp", ".woff2": "font/woff2", ".webmanifest": "application/manifest+json" };
 let OFFLINE = false; // i18n-offline: server weigert alles (Chromiums setOffline blokkeert navigaties al vóór de service worker)
 function serve() {
   const srv = createServer(async (req, res) => {
@@ -54,7 +54,7 @@ function serve() {
 
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/en/initiative/player/", home: "/nl/", homeen: "/en/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/en/initiative/", wp33: "/nl/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/en/initiative/", wp33: "/nl/", wp37: "/nl/" };
 // Eigen taalopzet: niet per taal herhalen (WP32)
 const ONCE = new Set(["i18n-mixed", "i18n-switch", "i18n-offline", "i18n-legacy", "homeen", "wp33"]);
 // Startpagina in een taal: taalloze adressen en /nl/… worden /{taal}/…; vaste talen (ONCE) blijven zoals ze zijn
@@ -293,6 +293,42 @@ const SCEN = {
     await tap(page, '.fhead [data-setmode="prep"]');
     await tap(page, "#stop");
     await page.waitForSelector("#esheet .esheet");
+  },
+  // WP37 (HS14): homepage huisstijl 2.0. Illustratie geladen (AVIF/WebP via <picture>) en niet hoger dan 260 px op de telefoon,
+  // kop op één regel, gouden knop boven de vouw en de enige Lantern-knop, taalkiezer met aria-current, toolkaart ≥ 72 px en
+  // hele kaart klikbaar, alle interne links bestaan (geen dode routes). Desktop 1280: tekst links, beeld rechts. --shots=wp37: desktop.
+  async wp37(page, base) {
+    await page.waitForLoadState("networkidle");
+    await page.evaluate(() => document.fonts.ready);
+    const r = await page.evaluate(() => {
+      const img = document.querySelector(".hero-img img"), pic = document.querySelector(".hero-img").getBoundingClientRect();
+      const h1 = document.querySelector("h1"), lh = parseFloat(getComputedStyle(h1).lineHeight), cta = document.querySelector(".cta").getBoundingClientRect();
+      const gold = [...document.querySelectorAll("a,button")].filter((e) => getComputedStyle(e).backgroundColor === "rgb(227, 168, 59)").length;
+      const cur = [...document.querySelectorAll(".lang a[aria-current=page]")].map((a) => a.getAttribute("hreflang"));
+      const card = document.querySelector("a.toolcard"), cb = card.getBoundingClientRect();
+      const links = [...new Set([...document.querySelectorAll("a[href^='/']")].map((a) => a.getAttribute("href")))];
+      return { loaded: img.complete && img.naturalWidth > 0, src: img.currentSrc.split("/").pop(), picH: Math.round(pic.height), lines: Math.round(h1.getBoundingClientRect().height / lh),
+        ctaBottom: Math.round(cta.bottom), vh: innerHeight, gold, cur, lang: document.documentElement.lang, cardH: Math.round(cb.height), name: card.getAttribute("aria-labelledby").split(" ").map((i) => document.getElementById(i).textContent.trim()).join(" "), links };
+    });
+    if (!r.loaded) throw new Error("illustratie niet geladen: " + r.src);
+    if (r.lines !== 1) throw new Error(`h1 op ${r.lines} regels`);
+    if (r.picH > 262 || r.picH < 150) throw new Error("illustratie hoogte " + r.picH);
+    if (r.ctaBottom > r.vh) throw new Error(`knop onder de vouw (${r.ctaBottom} > ${r.vh})`);
+    if (r.gold !== 1) throw new Error("gouden knoppen: " + r.gold);
+    if (r.cur.join() !== r.lang) throw new Error("taalkiezer aria-current: " + r.cur.join());
+    if (r.cardH < 72 || !/itiative/.test(r.name)) throw new Error("toolkaart: " + JSON.stringify([r.cardH, r.name]));
+    for (const href of r.links) { const res = await page.request.get(base + href); if (res.status() !== 200) throw new Error(`link ${href}: ${res.status()}`); }
+    if (page.viewportSize().width === 320) {
+      const vp = page.viewportSize();
+      await page.setViewportSize({ width: 1280, height: 800 }); await page.waitForTimeout(200);
+      const d = await page.evaluate(() => {
+        const t = document.querySelector(".hero-txt").getBoundingClientRect(), i = document.querySelector(".hero-img").getBoundingClientRect();
+        return { side: i.left >= t.right - 1, h: document.documentElement.scrollWidth - innerWidth, cta: document.querySelector(".cta").getBoundingClientRect().bottom, vh: innerHeight };
+      });
+      if (!d.side || d.h > 0 || d.cta > d.vh) throw new Error("desktop-hero: " + JSON.stringify(d));
+      if (SHOTS.has("wp37")) await page.screenshot({ path: join(ROOT, "shots", `wp37-desktop-${r.lang}-${await page.evaluate(() => matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")}.png`), fullPage: true });
+      await page.setViewportSize(vp); await page.waitForTimeout(150);
+    }
   },
   // WP36 (HS12/HS13): speler rond, monster achthoek (vorm hangt aan het soort, ook op spelersscherm en tv), neutrale rand, HP-kleur
   // per fractie gelijk voor speler en monster, beurtvlak gelijk, compacte rijen niet hoger, open legendary-monster met pips op één

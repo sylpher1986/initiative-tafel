@@ -3,7 +3,7 @@ import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { build, urlOf, APP_PAGES, REDIRECTS, fillText, HOME_PAGE, SITE, OG_IMAGE, NOT_CACHED, HIDDEN, seoHead, sitemap, robots } from "../tools/pages.mjs";
+import { build, urlOf, APP_PAGES, REDIRECTS, fillText, HOME_PAGE, SITE, OG_IMAGE, NOT_CACHED, HIDDEN, seoHead, langNav, sitemap, robots } from "../tools/pages.mjs";
 import { htmlStrings, isDutch } from "../tools/i18n-audit.mjs";
 import { target } from "../js/i18n/redirect.js";
 import { SUPPORTED, LIVE } from "../js/i18n/lang.js";
@@ -274,4 +274,36 @@ test("homepage: kleurtokens gelijk aan css/app.css (licht en donker), og:locale 
   assert.deepEqual(vars(/:root:not\(\[data-theme="light"\]\)\{([^}]*)\}/.exec(home)[1]), homeDark);
   for (const lang of SUPPORTED) assert.doesNotThrow(() => seoHead(lang, { "page.home.title": "T", "page.home.desc": "D", "page.home.ogAlt": "A" }), lang);
   assert.throws(() => seoHead("de", { "page.home.title": "T", "page.home.desc": "D", "page.home.ogAlt": "A" }, ["de"]), /og:locale/);
+});
+
+// WP37 (HS14): homepage huisstijl 2.0. Alleen bestaande tools, taalkiezer zonder JavaScript, hero-illustratie licht en boven de vouw.
+test("homepage: taalkiezer per live taal met eigen taalnaam en aria-current, geen links naar niet-bestaande pagina's", () => {
+  const cat = { "common.lang.en": "English", "common.lang.nl": "Nederlands" };
+  assert.equal(langNav("nl", cat, ["en", "nl"]),
+    '<a href="/en/" hreflang="en" lang="en" aria-label="English">en</a><a href="/nl/" hreflang="nl" lang="nl" aria-label="Nederlands" aria-current="page">nl</a>');
+  assert.throws(() => langNav("en", cat, ["en", "de"]), /common\.lang\.de/);
+  assert.ok(!isDutch("EN") && !isDutch("NL"), "taalcode in hoofdletters is geen Nederlandse tekst");
+  for (const lang of SUPPORTED) {
+    const h = files[`${lang}/index.html`];
+    assert.equal((h.match(/aria-current="page"/g) || []).length, 1, lang);
+    assert.match(h, new RegExp(`<a href="/${lang}/" hreflang="${lang}" lang="${lang}" aria-label="[^"]+" aria-current="page">`), lang);
+    for (const [, href] of h.matchAll(/<a [^>]*href="(\/[^"]*)"/g)) {
+      const f = href.endsWith("/") ? href + "index.html" : href;
+      assert.ok(files[f.slice(1)] || existsSync(ROOT + f.slice(1)), `${lang}: link ${href} bestaat niet`);
+    }
+    assert.doesNotMatch(h, /\/(characters|campaigns|maps|grid|about|privacy|terms)\b/i, lang + ": geen niet-bestaande tool of pagina");
+  }
+});
+
+test("homepage: hero-illustratie bestaat in AVIF en WebP, vaste maat, niet lazy, sfeerbeeld (alt leeg), mobiel ≤ 150 kB", () => {
+  const h = read(HOME_PAGE);
+  const refs = [...new Set([...h.matchAll(/\/img\/(hero-tavern-\d+\.(?:avif|webp))/g)].map((m) => m[1]))].sort();
+  assert.deepEqual(refs, ["hero-tavern-1347.avif", "hero-tavern-1347.webp", "hero-tavern-800.avif", "hero-tavern-800.webp"]);
+  for (const f of refs) assert.ok(existsSync(ROOT + "img/" + f), f);
+  for (const f of ["hero-tavern-800.avif", "hero-tavern-800.webp", "hero-tavern-1347.avif"]) assert.ok(statSync(ROOT + "img/" + f).size <= 150 * 1024, f + " te groot");
+  const img = /<img [^>]*>/.exec(h.slice(h.indexOf('class="hero-img"')))[0];
+  assert.match(img, /width="1347" height="1168"/);
+  assert.match(img, /alt=""/);
+  assert.doesNotMatch(img, /loading=/);
+  assert.match(h, /<p class="kicker" lang="en">\{\{t:page\.home\.tagline\}\}<\/p>/, "merkregel blijft Engels, ook op /nl/");
 });
