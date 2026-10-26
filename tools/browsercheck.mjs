@@ -67,6 +67,7 @@ function startFor(name, lang) {
 }
 // Wat scenario's zelf intypen (gebruikersinhoud: wordt nooit vertaald)
 const OWN = ["Hinderlaag bij de oude brug", "Aurelianus Vandermeer", "Zonder Level"];
+const noPaths = (l) => l.replace(/\S*\/\S*/g, " "); // paden en URL's (src/2014/en, /speler?k=) zijn geen tekst, zoals in tests/pages.test.js
 const tap = (page, sel) => page.locator(sel).first().tap();
 
 // WP32: export zoals 1.48.0 die maakte (versie 2, logboek alleen als Nederlandse tekst, geen descriptoren m/w, snapshot-tijdperk v1)
@@ -201,7 +202,7 @@ const SCEN = {
   async huisstijl(page) {
     await SCEN.letters(page);
     const r = await page.evaluate(async () => {
-      const u = await import("/js/ui/util.js"); u.toastBad("Proef: weigering met icoon.");
+      const u = await import("/js/ui/util.js"); u.toastBad("Test: refusal with icon.");
       const ab = [...document.querySelectorAll(".sb .abil button")].map((b) => Math.round(b.getBoundingClientRect().width));
       const ic = document.querySelector("#undo .li"), t = document.querySelector("#toast .tmsg.bad .tico");
       const cs = (el, p) => el && getComputedStyle(el)[p];
@@ -217,7 +218,7 @@ const SCEN = {
   async stale(page) {
     const r = await page.evaluate(() => {
       const n = document.querySelector("#pv-now");
-      n.innerHTML = '<div><span class="l">Ronde 2 · aan de beurt</span><b>Aria</b></div><div class="r"><span class="l">Daarna</span> Goblin 1</div>';
+      n.innerHTML = '<div><span class="l">Round 2 · up now</span><b>Aria</b></div><div class="r"><span class="l">Up next</span> Goblin 1</div>'; // alleen opmaak meten: tekst taalneutraal voor de en-run
       n.classList.add("me"); document.body.classList.add("stale"); n.closest(".pvstick")?.classList.remove("off");
       const rgb = (c) => c.match(/[\d.]+/g).slice(0, 3).map(Number);
       const lum = (c) => { const v = rgb(c).map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
@@ -402,7 +403,7 @@ async function main() {
       if (m.unt && m.unt.length) errs.push("niet vertaald: " + m.unt.join(" "));
       // WP32: in en geen Nederlandse tekst op het scherm (behalve wat het scenario zelf intypt; de oude export is inhoud)
       if (lang === "en" && name !== "i18n-legacy" && m.lines) {
-        const nl = m.lines.map((l) => OWN.reduce((x, o) => x.split(o).join(" "), l)).filter((l) => isDutch(l));
+        const nl = m.lines.filter((l) => isDutch(noPaths(OWN.reduce((x, o) => x.split(o).join(" "), l))));
         if (nl.length) errs.push("Nederlandse tekst: " + nl.slice(0, 3).map((l) => JSON.stringify(l.slice(0, 60))).join(" | "));
       }
       const ok = m.hscroll <= 0 && !errs.length;
