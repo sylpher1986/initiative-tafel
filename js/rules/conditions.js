@@ -1,46 +1,37 @@
-// Uitleg bij condities (RE10) en Exhaustion-niveaus (RE11), 5e 2014. Puur: geen DOM, geen imports.
-// Eigen Nederlandse samenvatting van de SRD 5.1 (appendix A); de namen blijven Engels.
+// Uitleg bij condities (RE10) en Exhaustion-niveaus (RE11), 5e 2014. Puur: geen DOM.
+// De tekst staat in de catalogus (locales/src/*/dnd.js, dnd.cond.* en dnd.exh.*; WP29): eigen samenvatting van de
+// SRD 5.1 (appendix A). Hier alleen de id's en de opbouw; functies geven descriptoren (js/i18n/msg.js) terug.
+import { M, J } from "../i18n/msg.js";
+import { term } from "../i18n/term.js";
 
-/** Korte uitleg per conditie: 2–3 regels, wat de DM aan tafel moet weten */
+/** Uitleg per id: aantal regels (dnd.cond.<id>.1 …). Id = Engelse conditienaam, plus Surprised (badge) en Exhaustion */
 export const CINFO = {
-  Blinded: ["Ziet niets: checks waarvoor je moet zien mislukken vanzelf.", "Aanvallen tegen hem hebben advantage, zijn eigen aanvallen disadvantage."],
-  Charmed: ["Valt de charmer niet aan en richt geen schadelijke effecten op hem.", "De charmer heeft advantage op sociale checks tegen hem."],
-  Deafened: ["Hoort niets: checks waarvoor je moet horen mislukken vanzelf."],
-  Frightened: ["Disadvantage op ability checks en aanvallen zolang de bron van de angst in zicht is.", "Kan niet uit vrije wil dichter naar die bron bewegen."],
-  Grappled: ["Speed 0, bonussen op speed tellen niet.", "Eindigt als de grappler incapacitated raakt of hij buiten diens bereik wordt verplaatst."],
-  Incapacitated: ["Geen actions en geen reactions."],
-  Invisible: ["Niet te zien zonder magie of een speciaal zintuig; wel te horen of te sporen.", "Zijn aanvallen hebben advantage, aanvallen tegen hem disadvantage."],
-  Paralyzed: ["Incapacitated, kan niet bewegen of praten. STR- en DEX-saves mislukken vanzelf.", "Aanvallen tegen hem hebben advantage; raak binnen 5 ft is een kritieke treffer."],
-  Petrified: ["Versteend: incapacitated, kan niet bewegen of praten. STR- en DEX-saves mislukken vanzelf.", "Aanvallen tegen hem hebben advantage. Resistance tegen alle schade, immuun voor poison en disease."],
-  Poisoned: ["Disadvantage op aanvallen en ability checks."],
-  Prone: ["Kan alleen kruipen; opstaan kost de helft van zijn speed. Zijn aanvallen hebben disadvantage.", "Aanvallen tegen hem binnen 5 ft hebben advantage, van verder weg disadvantage."],
-  Restrained: ["Speed 0. Zijn aanvallen en DEX-saves hebben disadvantage.", "Aanvallen tegen hem hebben advantage."],
-  Stunned: ["Incapacitated, kan niet bewegen en praat haperend. STR- en DEX-saves mislukken vanzelf.", "Aanvallen tegen hem hebben advantage."],
-  Unconscious: ["Incapacitated, kan niet bewegen of praten, laat vallen wat hij vasthoudt en ligt prone. STR- en DEX-saves mislukken vanzelf.", "Aanvallen tegen hem hebben advantage; raak binnen 5 ft is een kritieke treffer."],
-  Concentrating: ["Houdt een spell vast. Bij schade een CON-save: DC 10 of de helft van de schade, het hoogste telt.", "Voorbij bij incapacitated, 0 HP of een andere concentratie-spell."],
-  Verrast: ["Slaat zijn eerste beurt over en heeft geen reaction tot die beurt voorbij is.", "Alleen in ronde 1: wie de ander niet zag aankomen (Stealth tegen passive Perception)."],
-  Exhaustion: ["Zes niveaus, die optellen. Weg met één niveau per long rest (met eten en drinken)."],
+  Blinded: 2, Charmed: 2, Deafened: 1, Frightened: 2, Grappled: 2, Incapacitated: 1, Invisible: 2, Paralyzed: 2,
+  Petrified: 2, Poisoned: 1, Prone: 2, Restrained: 2, Stunned: 2, Unconscious: 2, Concentrating: 2, Surprised: 2, Exhaustion: 1,
 };
+/** Id van de uitleg bij de badge Verrast (geen conditie in c.cond, maar c.sur) */
+export const SUR = "Surprised";
+/** Heeft deze id uitleg? (eigen sleutel: geen "constructor" of andere prototype-naam) */
+export const hasCondInfo = (k) => Object.prototype.hasOwnProperty.call(CINFO, k);
+/** Label bij een id: de D&D-term, Verrast in de taal van de app (tekst of descriptor) */
+export const condName = (k) => (k === SUR ? M("dnd.cond.Surprised.name") : term("cond", k));
 
-/** Exhaustion (PHB 2014, appendix A): wat er bij elk niveau bijkomt */
-export const EXH = ["", "Disadvantage op ability checks", "Speed gehalveerd", "Disadvantage op aanvallen en saves", "Max HP gehalveerd", "Speed 0", "Dood"];
 export const EXH_NAME = "Exhaustion";
 export const isExh = (e) => !!e && e.n === EXH_NAME;
 /** Kort, voor de rij in het Conditie-paneel; speed 0 (5) vervangt speed ½ (2) */
-const EXH_SHORT = ["", "disadvantage op checks", "speed ½", "disadvantage op attacks en saves", "max HP ½", "speed 0", "dood"];
-export const exhSummary = (x) => (x ? `Niveau ${x}: ${EXH_SHORT.slice(1, x + 1).filter((t, i) => !(x >= 5 && i === 1)).join(" · ")}` : "Niveau 0: geen exhaustion");
+export const exhSummary = (x) => (x ? M("dnd.exh.sum", { n: x, list: J([1, 2, 3, 4, 5, 6].slice(0, x).filter((i) => !(x >= 5 && i === 2)).map((i) => M(`dnd.exh.s${i}`)), " · ") }) : M("dnd.exh.none"));
 /** Niveau 0–6 uit de effecten */
 export const exhLevel = (c) => { const e = (c && c.eff || []).find(isExh); return e ? Math.max(1, Math.min(6, e.x | 0 || 1)) : 0; };
-/** Wat er bij dit niveau geldt, opgeteld: ["1 Disadvantage op ability checks", …] */
-export const exhRows = (x) => EXH.slice(1, Math.max(0, Math.min(6, x)) + 1).map((t, i) => `${i + 1} ${t}`);
+/** Wat er bij dit niveau geldt, opgeteld: ["1 Disadvantage on ability checks", …] als descriptoren (PHB 2014, appendix A) */
+export const exhRows = (x) => Array.from({ length: Math.max(0, Math.min(6, x | 0)) }, (_, i) => J([String(i + 1), M(`dnd.exh.${i + 1}`)], " "));
 
 /**
- * Uitleg voor het paneel (RE10). name = conditienaam (of "Exhaustion"/"Verrast"); lvl = Exhaustion-niveau.
- * → { name, lines } of null als er geen uitleg is.
+ * Uitleg voor het paneel (RE10). name = id (conditienaam, "Exhaustion" of "Surprised"); lvl = Exhaustion-niveau.
+ * → { name, lines } (tekst of descriptoren, tonen met tr) of null als er geen uitleg is.
  */
 export function condInfo(name, lvl = 0) {
-  const base = CINFO[name];
-  if (!base) return null;
-  if (name !== EXH_NAME) return { name, lines: base };
-  return { name: lvl ? `${EXH_NAME} ${lvl}` : EXH_NAME, lines: [...exhRows(lvl || 6), base[0]] };
+  if (!hasCondInfo(name)) return null;
+  const lines = Array.from({ length: CINFO[name] }, (_, i) => M(`dnd.cond.${name}.${i + 1}`));
+  if (name !== EXH_NAME) return { name: condName(name), lines };
+  return { name: lvl ? `${EXH_NAME} ${lvl}` : EXH_NAME, lines: [...exhRows(lvl || 6), lines[0]] };
 }

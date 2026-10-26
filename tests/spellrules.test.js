@@ -59,7 +59,7 @@ test("Haste voorbij: 2014 = Lethargy-effect; 2024 = Incapacitated + Lethargy, co
 
   const b = pc("Brann"); startConc(b, "Bless");
   addEffect(b, H24, null);
-  assert.deepEqual(b.eff[0].af, { n: "Lethargy", txt: "speed 0", cond: "Incapacitated" });
+  assert.deepEqual(b.eff[0].af, { n: "Lethargy", txt: "", tk: "dnd.pre.lethargy24", cond: "Incapacitated" });
   const r = removeEffect(b, b.eff[0].id, "concentratie voorbij", { active: "X" });
   assert.deepEqual(b.eff.map((e) => e.n), ["Lethargy"]);
   assert.ok(b.cond.includes("Incapacitated")); assert.ok(!b.cond.includes("Concentrating"), "Incapacitated breekt concentratie");

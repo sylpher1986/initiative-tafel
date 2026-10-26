@@ -6,7 +6,7 @@ import { pactRest } from "./slots.js";
 import { M, J } from "../i18n/msg.js";
 import { tr } from "../i18n/boot.js";
 import { d } from "./dice.js";
-import { EXH, EXH_NAME, isExh, exhLevel } from "./conditions.js";
+import { EXH_NAME, isExh, exhLevel } from "./conditions.js";
 
 export const fx = () => ({ msgs: [], why: [] });
 /** Melding: descriptor meteen als tekst in de actieve taal (meldingen worden direct getoond, niet bewaard) */
@@ -221,7 +221,7 @@ export function revertMax(c, hpd) {
  * vanzelf terugdraait. Geeft het effect; de dood bij niveau 6 regelt de aanroeper.
  */
 export function exhEffect(c, x) {
-  const e = { id: Math.random().toString(36).slice(2, 9), n: EXH_NAME, x, st: "", op: "+", v: 0, txt: EXH[x], end: "", d: null, lr: false, by: null, spell: null, hpd: 0 };
+  const e = { id: Math.random().toString(36).slice(2, 9), n: EXH_NAME, x, st: "", op: "+", v: 0, txt: "", end: "", d: null, lr: false, by: null, spell: null, hpd: 0 };
   c.eff = [...(c.eff || []).filter((y) => !isExh(y)), e];
   reExh(c);
   return e;

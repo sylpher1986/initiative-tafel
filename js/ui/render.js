@@ -7,9 +7,11 @@ import { $, esc, n0, spellLink, tb } from "./util.js";
 import { t, tr } from "../i18n/boot.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
+import { SYN } from "../data/syn.js";
 import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf, isSurprised, reactUsed, reactTag, canToggleSurprise, nextUp, freshRoll, initPlan, initText, durShort } from "../rules/turns.js";
-import { PRESETS as PRESETS_14, presetsFor, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn, effName, isRage, rageOf, rageRes, barbLevel, rageDmg } from "../rules/effects.js";
-import { isExh, exhLevel, exhSummary } from "../rules/conditions.js";
+import { PRESETS as PRESETS_14, presetsFor, effAc, effText, effNote, acBreakdown, baseMax, saveMods, modsText, isWarn, effName, isRage, rageOf, rageRes, barbLevel, rageDmg } from "../rules/effects.js";
+import { isExh, exhLevel, exhSummary, SUR, condName } from "../rules/conditions.js";
+import { term } from "../i18n/term.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList, splitSpells, edFor, sheetEd } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus, saveKnown, targetMode, drText, drKind, DR_LBL, saveAdv } from "../rules/aoe.js";
@@ -191,11 +193,12 @@ function condChips(c, S, interactive, info = interactive) {
       const label = `Concentrating${c.concSpell ? ` · ${esc(c.concSpell)}` : ""}${dl}`;
       return interactive ? `<button class="bd cc cbtn" data-a="dropconc" title="${esc(t("init.card.concEnd"))}">${label} ${ico("x")}<span class="vh">${esc(t("init.card.end"))}</span></button>` : `<span class="bd cc">${label}</span>`;
     }
-    return info ? cinfoBtn(c, x, `${esc(x)}${dl}`) : `<span class="bd cc">${x}${dl}</span>`;
+    const nm = esc(term("cond", x));
+    return info ? cinfoBtn(c, x, `${nm}${dl}`) : `<span class="bd cc">${nm}${dl}</span>`;
   }).join("");
 }
 /** RE10: tikbare chip voor de uitleg (stippel eronder, geen ✕) */
-const cinfoBtn = (c, key, html, cls = "bd cc") => `<button type="button" class="${cls} cinf" data-cinfo="${esc(key)}" data-cid="${esc(c.id)}" aria-label="${esc(t("init.card.explain", { name: key }))}">${html}</button>`;
+const cinfoBtn = (c, key, html, cls = "bd cc") => `<button type="button" class="${cls} cinf" data-cinfo="${esc(key)}" data-cid="${esc(c.id)}" aria-label="${esc(t("init.card.explain", { name: condName(key) }))}">${html}</button>`;
 
 /** Samenvatting voor een gesloten kaart */
 /** AC in de kop (AF13): schildje met het effectieve getal, gestippeld op een verzonken vlak als effecten hem veranderen (WP14) */
@@ -214,7 +217,7 @@ function effChips(c, S, interactive, info = interactive) {
     const w = isWarn(e), cls = w ? "bd w" : "bd ef";
     const by = e.by && e.by !== c.id ? S.list.find((x) => x.id === e.by) : null;
     const dur = e.d ? durLabel(e.d, S.list, !interactive) : e.lr ? "long rest" : "";
-    const tx = [`${e.n}${e.st ? " " + effText(e) : ""}`, w ? e.txt : "", dur, by ? by.name : ""].filter(Boolean).map(esc).join(" · ");
+    const tx = [`${e.n}${e.st ? " " + effText(e) : ""}`, w ? effNote(e) : "", dur, by ? by.name : ""].filter(Boolean).map(esc).join(" · ");
     return interactive ? `<button class="${cls} cbtn" data-a="effdel" data-e="${esc(e.id)}" title="${esc(t("init.card.effDel"))}">${tx} ${ico("x")}<span class="vh">${esc(t("init.card.remove"))}</span></button>`
       : `<span class="${cls}">${tx}</span>`;
   }).join("");
@@ -241,7 +244,7 @@ const reactChip = (c, S) => (reactUsed(c, S, pcReact()) ? `<span class="bd">${es
 
 const hidBadge = (c) => (c.hidden ? `<span class="bd hid" title="${esc(t("init.card.hiddenTip"))}">${esc(t("init.card.hidden"))}</span>` : "")
   + (c.kind === "monster" && c.anon ? `<span class="bd hid" title="${esc(t("init.card.anonTip", { name: anonName(c, app.S.list) }))}">${esc(t("init.card.anon"))}</span>` : "");
-const surBadge = (c, S, info = false) => (!isSurprised(c, S) ? "" : info ? cinfoBtn(c, "Verrast", esc(t("init.card.sur")), "bd cc sur")
+const surBadge = (c, S, info = false) => (!isSurprised(c, S) ? "" : info ? cinfoBtn(c, SUR, esc(t("init.card.sur")), "bd cc sur")
   : `<span class="bd cc sur" title="${esc(t("init.card.surTip"))}">${esc(t("init.card.sur"))}</span>`);
 
 function badges(c, S) {
@@ -344,7 +347,7 @@ function condPanel(c) {
       <label>${esc(t("init.cond.dur"))}<select data-f="cdur">${DURS.map(([v, l]) => `<option value="${v}" ${(opt.dur || "inf") === v ? "selected" : ""}>${esc(t(l))}</option>`).join("")}</select></label>
       <label>${esc(t("init.cond.save"))}<span style="display:flex;gap:4px"><select data-f="cab"><option value="">${esc(t("init.card.none"))}</option>${["STR", "DEX", "CON", "INT", "WIS", "CHA"].map((a) => `<option ${opt.ab === a ? "selected" : ""}>${a}</option>`).join("")}</select><input data-f="cdc" type="number" inputmode="numeric" placeholder="DC" value="${esc(opt.dc || "")}" style="width:64px"></span></label>
     </div>
-    <div class="condgrid">${CONDS.map((x) => `<button type="button" data-cond="${x}" aria-pressed="${c.cond.includes(x)}">${x}</button>`).join("")}<button type="button" data-a="exh-open" aria-pressed="${exhLevel(c) > 0}" aria-expanded="${!!ui.exhOpen}">${exhLevel(c) ? `Exhaustion ${exhLevel(c)}` : "Exhaustion"}</button></div>
+    <div class="condgrid">${CONDS.map((x) => `<button type="button" data-cond="${x}" aria-pressed="${c.cond.includes(x)}">${esc(term("cond", x))}</button>`).join("")}<button type="button" data-a="exh-open" aria-pressed="${exhLevel(c) > 0}" aria-expanded="${!!ui.exhOpen}">${exhLevel(c) ? `Exhaustion ${exhLevel(c)}` : "Exhaustion"}</button></div>
     ${ui.exhOpen ? exhRow(c) : ""}</div>`;
 }
 
@@ -353,7 +356,7 @@ function exhRow(c) {
   const x = exhLevel(c), dead = c.kind === "pc" ? !!(c.ds && c.ds.dead) : c.max > 0 && c.hp <= 0;
   return `<div class="exhrow"><button type="button" class="btn" data-a="exh" data-v="-1" ${x && !dead ? "" : "disabled"} aria-label="${esc(t("init.cond.exhDown"))}">−</button>
     <b aria-live="polite">Exhaustion ${x}</b><button type="button" class="btn" data-a="exh" data-v="1" ${x >= 6 ? "disabled" : ""} aria-label="${esc(t("init.cond.exhUp"))}">+</button></div>
-    <p class="hint exhtxt">${esc(exhSummary(x))}. ${esc(t(dead && x ? "init.cond.exhBack" : "init.cond.exhLr"))}</p>`;
+    <p class="hint exhtxt">${esc(tr(exhSummary(x)))}. ${esc(t(dead && x ? "init.cond.exhBack" : "init.cond.exhLr"))}</p>`;
 }
 
 
@@ -456,7 +459,7 @@ function effPanel(c) {
     <div class="effgrid">${presetOrder(c).map((i) => {
       const p0 = PRESETS_14[i], p = presetsFor(presetEd(act, p0.n))[i], tag = edTag(act, p0.n, p); // caster = wie aan de beurt is
       const off = p.st === "ac" && p.op === "+" && !c.ac;
-      return `<button class="btn tap" data-a="effp" data-i="${i}" ${off ? `disabled title="${esc(t("init.eff.acFirst"))}"` : ""}><span>${esc(p.n)}${tag ? ` <span class="tag">${esc(tag)}</span>` : ""}</span><small>${esc(p.dex ? "AC 13 + Dex" : p.st ? effText(p) : p.txt.split(" op ")[0])}${p.conc ? " · conc" : ""}</small></button>`;
+      return `<button class="btn tap" data-a="effp" data-i="${i}" ${off ? `disabled title="${esc(t("init.eff.acFirst"))}"` : ""}><span>${esc(p.n)}${tag ? ` <span class="tag">${esc(tag)}</span>` : ""}</span><small>${esc(p.dex ? "AC 13 + Dex" : p.st ? effText(p) : p.sh || effText(p))}${p.conc ? " · conc" : ""}</small></button>`;
     }).join("")}<button class="btn tap" data-a="effcustom" aria-pressed="${ui.effCustom}">${esc(t("init.eff.custom"))}</button></div>
     ${!c.ac ? `<p class="hint">${esc(t("init.eff.noAc"))}</p>` : ""}
     <p class="hint">${act ? tb("init.eff.hintTurn", {}, act.name) : esc(t("init.eff.hintPick"))}</p>
@@ -997,7 +1000,7 @@ export function paintQadd() {
     </div>`;
     el.hidden = false;
   }
-  const f = filterMonsters(allMonsters(), q.q, q.sel, !!q.typed);
+  const f = filterMonsters(allMonsters(), q.q, q.sel, !!q.typed, SYN);
   if (f.sel !== q.sel) q.full = false; // andere keuze: preview weer kort
   q.sel = f.sel; // UI-toestand: de selectie volgt wat zichtbaar is (zoals in de Monster-tab)
   const lbl = monLabel(f);

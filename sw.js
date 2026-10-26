@@ -1,6 +1,6 @@
 // Service worker: maakt de app offline bruikbaar. Geregistreerd als /sw.js met scope "/" (js/main.js), dus "./x" = "/x". Verhoog VERSION bij elke release zodat de cache ververst.
 // Gelijk houden aan js/version.js (de test bewaakt dat); dit is ook het nummer dat de app toont.
-const VERSION = "1.51.0";
+const VERSION = "1.51.1";
 const CACHE = "initiative-tafel-" + VERSION;
 // Pagina's (WP21): app per taal plus de taalloze doorverwijzers (/, /speler, /player, /initiative/), die offline moeten
 // werken voor beginscherm-apps en QR-links; tests/pages.test.js bewaakt dat elke gegenereerde pagina hier staat.
@@ -35,6 +35,7 @@ const ASSETS = [
   "./js/data/monsters.js",
   "./js/data/statparse.js",
   "./js/data/spells.js",
+  "./js/data/syn.js",
   "./js/ddb.js",
   "./js/ddbjson.js",
   "./js/log.js",
@@ -70,6 +71,7 @@ const ASSETS = [
   "./js/i18n/lang.js",
   "./js/i18n/msg.js",
   "./js/i18n/redirect.js",
+  "./js/i18n/term.js",
   "./js/storage.js",
   "./js/tablock.js",
   "./js/theme.js",
@@ -97,6 +99,7 @@ const ASSETS = [
   "./locales/en.js",
   "./locales/nl.js",
   "./locales/xx.js",
+  "./locales/nl/search.js",
   "./manifest.webmanifest",
   "./speler",
 ];

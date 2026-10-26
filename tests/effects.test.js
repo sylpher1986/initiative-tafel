@@ -1,7 +1,7 @@
 import { nlw } from "./_nl.js"; // WP27: Nederlandse catalogus; nlw = oorzaken als tekst
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PRESETS, effAc, effText, acBreakdown, addEffect, removeEffect, endConcEffects, endFightEffects, baseMax, saveMods, modsText, endOtherCasts } from "../js/rules/effects.js";
+import { PRESETS, effAc, effText, effNote, acBreakdown, addEffect, removeEffect, endConcEffects, endFightEffects, baseMax, saveMods, modsText, endOtherCasts } from "../js/rules/effects.js";
 import { diffLog } from "../js/log.js";
 import { cleanCombatant } from "../js/backup.js";
 import { mergeSheet } from "../js/ddbjson.js";
@@ -159,7 +159,7 @@ test("Haste voorbij → Lethargy als effect tot na de volgende beurt van het doe
   // concentratie weg (bv. 0 HP) tijdens de beurt van de cleric
   dropConc(cl, "0 HP");
   const r = endConcEffects(S.list, S.active);
-  assert.deepEqual(f.eff.map((e) => [e.n, e.txt, e.d.kind, e.d.who, e.d.count]), [["Lethargy", "geen beweging of acties", "tend", "p", 1]]);
+  assert.deepEqual(f.eff.map((e) => [e.n, effNote(e), e.d.kind, e.d.who, e.d.count]), [["Lethargy", "geen beweging of acties", "tend", "p", 1]]);
   assert.ok(nlw(r.why).some((w) => /Lethargy na Haste/.test(w.t)));
   assert.equal(effAc(f), 16, "+2 AC van Haste is weg");
   // fighter (15) na cleric (12)? volgorde: goblin 18, fighter 15, cleric 12 → beurt van de fighter eindigt: Lethargy weg

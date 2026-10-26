@@ -111,6 +111,8 @@ export default {
   "rules.fightEnd": "gevecht voorbij",
   "rules.exhEnd": "{name}: Exhaustion voorbij.",
   "rules.exh6": "{name} sterft: Exhaustion 6.",
+  "rules.exhLvl": "{name}: Exhaustion {n}.",
+  "rules.exhUp": "{name}: Exhaustion {n} ({what}).", // what = dnd.exh.s<n>
   "rules.rage0": "{name} ligt op 0 HP en kan niet ragen.",
   "rules.rageInc": "{name} is {cond} en kan niet ragen.",
   "rules.resLeft": "{name}: nog {n} van {max} over.",

@@ -8,7 +8,7 @@ import { esc } from "./ui/util.js";
 import { icon } from "./ui/avatar.js";
 import { tvPlan } from "./tvfit.js";
 import { qrSvg } from "./qr.js";
-import { CINFO } from "./rules/conditions.js";
+import { hasCondInfo, SUR } from "./rules/conditions.js";
 import { openCond, closeCond, condOpen, condSheetClick } from "./ui/condinfo.js";
 import { mountLangPick } from "./ui/langpick.js";
 
@@ -35,14 +35,14 @@ function hp(c) {
 
 const dsB = (c) => (c.ds ? `<span class="bd r">${dsText(c.ds)}</span>` : "");
 /** RE10: welke uitleg bij een tag hoort ("Exhaustion 3" → niveau 3, "Concentrating · Bless" → Concentrating); null = geen.
- *  Verrast (code sur) heeft zijn uitleg onder de oude naam in CINFO. */
+ *  Verrast (code sur) heeft zijn uitleg onder de id Surprised. */
 function tagKey(tag, code) {
-  if (code === "sur") return { key: "Verrast", lvl: 0 };
+  if (code === "sur") return { key: SUR, lvl: 0 };
   if (code) return null;
   const x = /^Exhaustion (\d)$/.exec(tag);
   if (x) return { key: "Exhaustion", lvl: +x[1] };
   const k = String(tag).split(" · ")[0];
-  return CINFO[k] ? { key: k, lvl: 0 } : null;
+  return hasCondInfo(k) && k !== SUR ? { key: k, lvl: 0 } : null;
 }
 /** Tags; met uitleg tikbaar (telefoon), op de tv alleen tekst (niet tikbaar, kort) */
 const tagsB = (c) => (c.tags || []).map((tag, i) => {

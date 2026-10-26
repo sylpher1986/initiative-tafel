@@ -3,7 +3,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { passives, sheetPassives, cleanPas, pasText, percList, pasVal } from "../js/rules/passives.js";
-import { filterMonsters, editDist, SYN, crNum } from "../js/data/monsters.js";
+import { filterMonsters, editDist, crNum } from "../js/data/monsters.js";
+import { SYN } from "../js/data/syn.js";
+import { nl } from "./_nl.js";
 
 const srd = JSON.parse(readFileSync(new URL("../data/monsters.json", import.meta.url)));
 
@@ -42,7 +44,7 @@ test("SP5: opschonen, tekst en volgorde voor de hinderlaag", () => {
 });
 
 /* ---------- VB4 ---------- */
-const names = (q, sel = null, typed = false) => filterMonsters(srd, q, sel, typed);
+const names = (q, sel = null, typed = false) => { const f = filterMonsters(srd, q, sel, typed, SYN); return { ...f, label: nl(f.label) }; };
 
 test("VB4: NL-woorden vinden het Engelse monster, met uitleg in de kop", () => {
   const f = names("bandiet");

@@ -19,6 +19,7 @@ import { exhLevel } from "../rules/conditions.js";
 import { openCond, closeCond, condOpen, condSheetClick } from "./condinfo.js";
 import { showSB, showSheet, monCard, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
+import { SYN } from "../data/syn.js";
 import { parseStatText, foundText, hasStructure, withParsed } from "../data/statparse.js";
 import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
 import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant, setInit, durWords, saveWords } from "../rules/turns.js";
@@ -1135,7 +1136,7 @@ export function bindForms() {
     $("#mon-anonh").hidden = !$("#mon-anon").checked;
   };
   const renderMonList = (typed) => {
-    const f = filterMonsters(allMonsters(), $("#mon-q").value, selMon, typed === true); // VB5: tijdens typen wint een exacte naam
+    const f = filterMonsters(allMonsters(), $("#mon-q").value, selMon, typed === true, SYN); // VB5: tijdens typen wint een exacte naam
     if (f.sel !== selMon) ui.monFull = false; // andere keuze: preview weer kort
     selMon = f.sel; // UI-toestand, geen data: de selectie volgt wat zichtbaar is
     monBtn();

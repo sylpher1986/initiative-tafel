@@ -1,13 +1,14 @@
 // Monsterbibliotheek: SRD (data/monsters.json) + geïmporteerde + eigen monsters, met één index.
 import { HD_RE } from "../rules/dice.js";
 import { withParsed } from "./statparse.js";
+import { M, J } from "../i18n/msg.js";
 
 let srd = [], custom = [], imported = [];
 let list = null, index = null;
 
 export async function loadSrd(url = "/data/monsters.json") {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Monsterdata niet geladen (${res.status})`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`); // taalneutraal: de UI zet er init.boot.srdFail omheen
   srd = await res.json();
   invalidate();
 }
@@ -90,31 +91,12 @@ export function queryLabel(p) {
   return [type && type[0].toUpperCase() + type.slice(1), cr].filter(Boolean).join(" · ");
 }
 
-/* ---------- VB4: Nederlandse woorden en typfouten ---------- */
-/** NL-zoekwoord → Engelse naamdelen of types (SRD). Meervouden staan erbij waar ze onregelmatig zijn. */
-const SYN_SRC = {
-  "bandiet|bandieten|rover|rovers": "bandit", "skelet|skeletten|geraamte": "skeleton", "draak|draken": "dragon", "draakje": "wyrmling|pseudodragon",
-  "reus|reuzen": "giant", "spin|spinnen": "spider", "rat|ratten": "rat", "wolf|wolven": "wolf", "beer|beren": "bear", "slang|slangen": "snake",
-  "geest|geesten|spook|spoken": "ghost|specter|wraith", "schim": "shadow|specter", "vampier|vampiers": "vampire", "weerwolf|weerwolven": "werewolf", "weerdier": "were",
-  "duivel|duivels": "devil", "demoon|demonen": "demon", "ridder|ridders": "knight", "wacht|wachter|wachters|bewaker|bewakers": "guard",
-  "soldaat|soldaten": "guard|veteran", "priester|priesters": "priest|acolyte", "tovenaar|tovenaars|magiër": "mage", "heks|heksen": "hag",
-  "dwerg|dwergen": "duergar", "kabouter|kabouters|gnoom": "gnome", "ork|orks": "orc", "trol|trollen": "troll", "aap|apen": "ape|baboon",
-  "paard|paarden": "horse|pony|warhorse|pegasus", "krokodil|krokodillen": "crocodile", "haai|haaien": "shark", "adelaar|arend": "eagle",
-  "uil|uilen": "owl", "vleermuis|vleermuizen": "bat", "kat|katten": "cat", "hond|honden": "dog|mastiff|jackal|hound", "everzwijn|zwijn": "boar",
-  "kever|kevers": "beetle", "zwerm": "swarm", "slijm": "ooze|pudding|jelly|cube", "raaf|raven|kraai": "raven", "kikker|kikkers": "frog",
-  "pad|padden": "toad", "schorpioen|schorpioenen": "scorpion", "sekte|sektelid|sekteleden": "cult", "schurk|schurken|boef|boeven": "thug",
-  "boer|boeren|burger|burgers": "commoner", "edelman|edele": "noble", "tijger|tijgers": "tiger", "leeuw|leeuwen": "lion", "olifant": "elephant",
-  "mummie|mummies": "mummy", "gargouille": "gargoyle", "eenhoorn": "unicorn", "griffioen": "griffon", "minotaurus": "minotaur", "harpij|harpijen": "harpy",
-  "sater": "satyr", "nimf|boomnimf": "dryad", "meermin|zeemeermin|meermens": "merfolk", "inktvis": "octopus|kraken", "wesp|wespen": "wasp",
-  "hagedis|hagedissen": "lizard", "gier|gieren": "vulture", "havik": "hawk", "geit|geiten": "goat", "hert|herten": "deer|elk", "kameel": "camel",
-  "ezel|muilezel": "mule", "das|dassen": "badger", "wezel": "weasel", "neushoorn": "rhinoceros", "mammoet": "mammoth", "duizendpoot": "centipede",
-  "insect|insecten": "insect", "boom|bomen": "tree|treant", "struik": "shrub", "zwaard": "sword", "harnas": "armor", "elementaal": "elemental",
-  "vuur": "fire", "ijs": "ice", "aarde": "earth", "lucht": "air", "engel|engelen": "deva|planetar|solar", "ondode|ondoden": "undead",
-  "beest|beesten|dier|dieren": "beast", "reuzenspin": "giant spider", "reuzenrat": "giant rat", "huurling|huurlingen": "veteran|thug", "spion": "spy",
-  "verkenner": "scout", "moordenaar|sluipmoordenaar": "assassin", "gladiator": "gladiator", "dinosaurus": "triceratops|tyrannosaurus|plesiosaurus",
-};
-export const SYN = new Map(Object.entries(SYN_SRC).flatMap(([k, v]) => k.split("|").map((w) => [w, v.split("|")])));
-const synKeys = [...SYN.keys()];
+/* ---------- VB4: woorden in andere talen en typfouten ---------- */
+/** Synoniemen { "woord|meervoud": "doel|doel" } (locales/<taal>/search.js) → Map woord → [doelen]; meerdere bronnen samen */
+export const synMap = (...srcs) => new Map(srcs.flatMap((src) => Object.entries(src || {}).flatMap(([k, v]) => k.split("|").map((w) => [w, String(v).split("|")]))));
+const NO_SYN = new Map();
+const synKeysCache = new WeakMap();
+const synKeys = (syn) => { let k = synKeysCache.get(syn); if (!k) { k = [...syn.keys()]; synKeysCache.set(syn, k); } return k; };
 
 /** Past één zoekwoord bij een monster: 2 = naam begint ermee, 1 = naam bevat het, 0 = type/subtype, -1 = niet */
 function wordScore(m, w) {
@@ -124,10 +106,10 @@ function wordScore(m, w) {
   const x = metaInfo(m.meta);
   return (x.type && x.type === typeWord(w)) || (x.sub && x.sub.includes(w)) ? 0 : -1;
 }
-/** NL-synoniem voor een zoekwoord: hele woord, anders (vanaf 4 letters) het eerste woord dat ermee begint ("draa" → draak) */
-function synFor(w) {
-  if (SYN.has(w)) return w;
-  return w.length >= 4 ? synKeys.find((k) => k.startsWith(w)) || null : null;
+/** Synoniem voor een zoekwoord: hele woord, anders (vanaf 4 letters) het eerste woord dat ermee begint ("draa" → draak) */
+function synFor(SY, w) {
+  if (SY.has(w)) return w;
+  return w.length >= 4 ? synKeys(SY).find((k) => k.startsWith(w)) || null : null;
 }
 
 /** Damerau-Levenshtein (beperkt): afstand tussen a en b, of max + 1 zodra die zeker groter is */
@@ -148,7 +130,7 @@ export function editDist(a, b, max = 2) {
   }
   return p[b.length];
 }
-/** Typfout: dichtstbijzijnde woord uit namen, types en NL-woorden. 4–6 letters: afstand 1, vanaf 7: 2. Ook tegen het begin
+/** Typfout: dichtstbijzijnde woord uit namen, types en synoniemen. 4–6 letters: afstand 1, vanaf 7: 2. Ook tegen het begin
  *  van een langer woord (nog aan het typen). Korter dan 4: geen gok. */
 function fuzzyWord(w, vocab) {
   if (w.length < 4) return null;
@@ -162,13 +144,15 @@ function fuzzyWord(w, vocab) {
   }
   return bd <= max + 0.5 ? best : null; // hele woord ≤ max, of begin van een woord ≤ max (+0,5)
 }
-const vocabCache = new WeakMap();
-function vocabOf(list) {
-  let v = vocabCache.get(list);
+const vocabCache = new WeakMap(); // list → Map(synoniemen → woorden)
+function vocabOf(list, SY) {
+  let byS = vocabCache.get(list);
+  if (!byS) { byS = new WeakMap(); vocabCache.set(list, byS); }
+  let v = byS.get(SY);
   if (!v) {
-    const s = new Set([...TYPES, ...synKeys]);
+    const s = new Set([...TYPES, ...synKeys(SY)]);
     for (const m of list) for (const t of m.n.toLowerCase().split(/[^a-z]+/)) if (t.length >= 3) s.add(t);
-    v = [...s]; vocabCache.set(list, v);
+    v = [...s]; byS.set(SY, v);
   }
   return v;
 }
@@ -180,14 +164,14 @@ function synScore(m, t) {
   if (n.includes(" " + t) || n.includes("(" + t)) return 1;
   return metaInfo(m.meta).type === t ? 0 : -1;
 }
-/** Score van alle woorden; synoniem telt als het woord zelf niet past. ks: NL-woord per woord (één keer per zoektocht
- *  bepaald), syn: gebruikte NL-woorden (voor de kop) */
-function scoreAll(m, words, ks, syn) {
+/** Score van alle woorden; synoniem telt als het woord zelf niet past. ks: synoniem per woord (één keer per zoektocht
+ *  bepaald), syn: gebruikte synoniemen (voor de kop) */
+function scoreAll(SY, m, words, ks, syn) {
   const out = [];
   for (let i = 0; i < words.length; i++) {
     let s = wordScore(m, words[i]);
     if (s < 0 && ks[i]) {
-      for (const t of SYN.get(ks[i])) { const x = synScore(m, t); if (x > s) s = x; }
+      for (const t of SY.get(ks[i])) { const x = synScore(m, t); if (x > s) s = x; }
       if (s >= 0) syn.add(ks[i]);
     }
     if (s < 0) return null;
@@ -203,15 +187,16 @@ function scoreAll(m, words, ks, syn) {
  *  → Bandit) van een eerdere keuze. Een tik in de lijst blijft staan zolang de zoektekst gelijk blijft.
  *  Met een type- of CR-filter: CR oplopend, dan naam. Alleen naam: wie met het eerste woord begint eerst, dan wie het
  *  in de naam heeft, dan treffers op type/subtype (Bugbear bij "goblin"). Een exacte naam staat altijd bovenaan.
- *  VB4: NL-woorden (bandiet, skelet) doen altijd mee; vindt de zoektocht niets, dan een typfout-correctie ("gobin" → goblin). */
-export function filterMonsters(list, q, sel, typed = false) {
+ *  VB4: synoniemen SY (synMap van locales/<taal>/search.js, via js/data/syn.js; WP29) doen altijd mee: NL-woorden (bandiet,
+ *  skelet); vindt de zoektocht niets, dan een typfout-correctie ("gobin" → goblin). Zonder SY alleen Engelse namen. */
+export function filterMonsters(list, q, sel, typed = false, SY = NO_SYN) {
   const t = String(q || "").trim().toLowerCase();
   let p = parseQuery(t), fix = null, viaType = false;
   const run = (words) => {
-    const sc = new Map(), syn = new Set(), ks = words.map(synFor);
+    const sc = new Map(), syn = new Set(), ks = words.map((w) => synFor(SY, w));
     const L0 = list.filter((m) => {
       if (p.cr) { const v = crNum(m.cr); if (!(v >= p.cr.min && v <= p.cr.max)) return false; }
-      const s = scoreAll(m, words, ks, syn);
+      const s = scoreAll(SY, m, words, ks, syn);
       if (!s) return false;
       sc.set(m, s.length ? s[0] : 0); // rangorde op het eerste woord
       return true;
@@ -222,31 +207,31 @@ export function filterMonsters(list, q, sel, typed = false) {
   if (p.words.length || p.cr) {
     let r = run(p.words);
     if (!r.L0.length && p.words.length) { // VB4: niets gevonden → typfouten verbeteren en opnieuw
-      const voc = vocabOf(list);
-      const w2 = p.words.map((w) => (scoreAnyFits(list, w) ? w : fuzzyWord(w, voc) || w));
+      const voc = vocabOf(list, SY);
+      const w2 = p.words.map((w) => (scoreAnyFits(list, w, SY) ? w : fuzzyWord(w, voc) || w));
       if (w2.some((w, i) => w !== p.words[i])) {
         const r2 = run(w2);
         if (r2.L0.length) { r = r2; fix = w2.filter((w, i) => w !== p.words[i]); p = { ...p, words: w2, type: p.type || w2.map(typeWord).find(Boolean) || "" }; }
       }
     }
     const { L0, sc } = r; syn = r.syn;
-    if (!p.type && p.words.length === 1 && syn.size) { const ty = SYN.get([...syn][0]).map(typeWord).find(Boolean); if (ty) { p = { ...p, type: ty }; viaType = true; } } // "ondode" = undead
+    if (!p.type && p.words.length === 1 && syn.size) { const ty = SY.get([...syn][0]).map(typeWord).find(Boolean); if (ty) { p = { ...p, type: ty }; viaType = true; } } // "ondode" = undead
     if (fix && p.words.length === 1 && typeWord(p.words[0])) viaType = true; // "drakon" → dragon
     if (p.cr || p.type) L = L0.slice().sort((a, b) => (crNum(a.cr) || 0) - (crNum(b.cr) || 0) || a.n.localeCompare(b.n));
     else L = L0.slice().sort((a, b) => sc.get(b) - sc.get(a)); // stabiel: verder de bestaande (alfabetische) volgorde
   }
-  const tgt = SYN.get(t), ex = L.filter((m) => { const n = m.n.toLowerCase(); return n === t || (tgt && tgt.includes(n)); });
+  const tgt = SY.get(t), ex = L.filter((m) => { const n = m.n.toLowerCase(); return n === t || (tgt && tgt.includes(n)); });
   const exact = ex.length === 1 ? ex[0] : L.find((m) => m.n.toLowerCase() === t) || null;
   if (exact && L[0] !== exact) L = [exact, ...L.filter((m) => m !== exact)]; // exacte naam bovenaan ("giant spider")
   const vis = L.some((m) => m.n === sel);
   const pick = typed && ex.length === 1 ? ex[0].n : vis ? sel : exact ? exact.n : L.length === 1 ? L[0].n : null;
-  const head = queryLabel(viaType ? { ...p, type: "" } : p), extra = fix ? `Bedoelde je: ${fix.join(" ")}` : syn.size ? [...syn].map((k) => `"${k}" = ${SYN.get(k).join(", ")}`).join(" · ") : "";
-  return { L, sel: pick, label: [head, extra].filter(Boolean).join(" · "), bad: p.bad };
+  const head = queryLabel(viaType ? { ...p, type: "" } : p), extra = fix ? M("dnd.search.fix", { words: fix.join(" ") }) : syn.size ? [...syn].map((k) => `"${k}" = ${SY.get(k).join(", ")}`).join(" · ") : "";
+  return { L, sel: pick, label: head || extra ? J([head, extra], " · ") : "", bad: p.bad }; // label: tekst of descriptor ("" = geen kop); tonen met t/tr
 }
 /** Past dit woord (zelf of als NL-woord) bij minstens één monster? Dan is het geen typfout maar een te strenge combinatie. */
-function scoreAnyFits(list, w) {
-  const syn = new Set(), ks = [synFor(w)];
-  return list.some((m) => scoreAll(m, [w], ks, syn));
+function scoreAnyFits(list, w, SY) {
+  const syn = new Set(), ks = [synFor(SY, w)];
+  return list.some((m) => scoreAll(SY, m, [w], ks, syn));
 }
 
 /* ---------- import: Open5e, 5e-bits (dnd5eapi) en het eigen formaat ---------- */

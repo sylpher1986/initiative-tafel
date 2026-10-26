@@ -1,4 +1,4 @@
-import { nlw } from "./_nl.js"; // WP27: Nederlandse catalogus; nlw = oorzaken als tekst
+import { nl, nlw } from "./_nl.js"; // WP27: Nederlandse catalogus; nlw = oorzaken als tekst
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { condInfo, CINFO, exhLevel, exhRows, exhSummary } from "../js/rules/conditions.js";
@@ -16,12 +16,14 @@ const gob = (o = {}) => ({ id: "g", name: "Goblin", kind: "monster", init: 12, d
 const seq = (...a) => () => (a.shift() - 1) / 20; // d20-worpen
 
 test("RE10: elke conditie uit het raster heeft uitleg, Exhaustion met de niveaus", () => {
-  for (const k of CONDS) assert.ok(CINFO[k] && CINFO[k].length >= 1 && CINFO[k].length <= 3, k);
-  assert.ok(condInfo("Verrast"));
+  for (const k of CONDS) assert.ok(CINFO[k] >= 1 && CINFO[k] <= 3, k);
+  assert.ok(condInfo("Surprised"));
+  assert.equal(nl(condInfo("Surprised").name), "Verrast");
+  assert.equal(condInfo("constructor"), null); // geen prototype-naam als uitleg
   assert.equal(condInfo("Onbekend"), null);
   const e = condInfo("Exhaustion", 3);
   assert.equal(e.name, "Exhaustion 3");
-  assert.deepEqual(e.lines.slice(0, 3), ["1 Disadvantage op ability checks", "2 Speed gehalveerd", "3 Disadvantage op aanvallen en saves"]);
+  assert.deepEqual(nl(e.lines.slice(0, 3)), ["1 Disadvantage op ability checks", "2 Speed gehalveerd", "3 Disadvantage op aanvallen en saves"]);
   assert.equal(exhRows(0).length, 0); assert.equal(exhRows(9).length, 6);
 });
 
@@ -202,8 +204,8 @@ test("RE11 (review): halvering loopt mee met Aid, bewerken en onbekende max HP",
   assert.equal(m.max, 0);
   setMax(m, 40);
   assert.equal(m.max, 20, "max HP ingevuld: nu gehalveerd");
-  assert.equal(exhSummary(5), "Niveau 5: disadvantage op checks · disadvantage op attacks en saves · max HP ½ · speed 0");
-  assert.equal(exhSummary(0), "Niveau 0: geen exhaustion");
+  assert.equal(nl(exhSummary(5)), "Niveau 5: disadvantage op checks · disadvantage op attacks en saves · max HP ½ · speed 0");
+  assert.equal(nl(exhSummary(0)), "Niveau 0: geen exhaustion");
 });
 
 test("RE16 (review): geen rage als hij Unconscious of Incapacitated is", () => {

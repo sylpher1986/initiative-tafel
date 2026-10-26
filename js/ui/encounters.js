@@ -11,6 +11,7 @@ import { addMonsters, scrollToCard, newLair, CLEAR_UI } from "./actions.js";
 import { wantSB } from "./statblock.js";
 import { clearMonsters } from "../rules/turns.js";
 import { findMon, allMonsters, filterMonsters, sanitizeOwn } from "../data/monsters.js";
+import { SYN } from "../data/syn.js";
 import * as E from "../rules/encounters.js";
 import { addEnc, encName } from "../rules/fight.js";
 
@@ -193,7 +194,7 @@ function editHtml() {
 function paintEditList() {
   const x = ui.encEdit, box = $("#ee-list");
   if (!x || !box) return;
-  const f = filterMonsters(allMonsters(), x.q, null);
+  const f = filterMonsters(allMonsters(), x.q, null, false, SYN);
   box.hidden = !x.q.trim();
   box.innerHTML = x.q.trim() ? monListHtml({ ...f, L: f.L.slice(0, 40) }, null, "data-eepick", t("init.enc.noneFound")) : "";
 }

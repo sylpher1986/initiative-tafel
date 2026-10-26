@@ -24,11 +24,11 @@ export function loadSpells(ed = "2014", url = FILES[ed]) {
   if (lib.has(ed)) return Promise.resolve();
   if (!busy.has(ed)) {
     busy.set(ed, fetch(url).then((r) => {
-      if (!r.ok) throw new Error(`Spells niet geladen (${r.status})`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`); // taalneutraal: de UI zet er init.spell.err omheen
       return r.json();
     }).then((doc) => {
       setSpells(doc);
-      if (!lib.has(ed)) throw new Error("ongeldige spelldata"); // anders blijft het paneel op "Laden…" staan
+      if (!lib.has(ed)) throw new Error(""); // ongeldige data; lege melding = init.spell.loadFail // anders blijft het paneel op "Laden…" staan
     }).finally(() => busy.delete(ed)));
   }
   return busy.get(ed);

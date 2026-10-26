@@ -3,9 +3,10 @@
 // De basis-AC blijft in c.ac; de kaart toont effAc(c). Max HP-effecten passen c.max echt aan en onthouden hun verschil (hpd).
 import { fx, say, applyPcHp, revertMax, newDs, setUncon, dropConc, merge, exhEffect, reExh } from "./combat.js";
 import { M, J } from "../i18n/msg.js";
+import { tr } from "../i18n/boot.js";
 /** Reden "handmatig" (descriptor, of de oude tekst): dan geen "(reden)" in de melding */
 import { DTYPES } from "./aoe.js";
-import { EXH, isExh, exhLevel } from "./conditions.js";
+import { isExh, exhLevel } from "./conditions.js";
 const manual = (w) => w === "handmatig" || (!!w && w.k === "rules.manual");
 
 /**
@@ -13,22 +14,24 @@ const manual = (w) => w === "handmatig" || (!!w && w.k === "rules.manual");
  * after: effect dat volgt als dit effect afloopt (Haste → Lethargy, tot na de volgende beurt van het doelwit); after.cond = ook die conditie.
  * r24: afwijkingen volgens de spellregels van 2024 (instelling "Spells"), zie presetsFor.
  * lv: spell-level (WP9: slot afschrijven bij Shield en bij een nieuwe cast van de caster).
+ * tk: uitleg als catalogussleutel (dnd.pre.*, WP29): het effect bewaart de sleutel, niet de tekst, zodat die in de taal
+ *   van de app verschijnt; eigen effecten hebben txt (tekst van de DM, inhoud). sh: korte, taalneutrale tekst in het Effect-paneel.
  * sv: invloed op saves ({ ab, b } vaste bonus, alleen op die ability; { d } = ±1dN op elke save). grp: sluiten elkaar uit (cover).
  */
 export const PRESETS = [
-  { n: "Shield", lv: 1, st: "ac", op: "+", v: 5, dur: "tstart", react: true, txt: "reaction; ook geen schade van Magic Missile" },
+  { n: "Shield", lv: 1, st: "ac", op: "+", v: 5, dur: "tstart", react: true, tk: "dnd.pre.shield" },
   { n: "Shield of Faith", lv: 1, st: "ac", op: "+", v: 2, dur: "r100", conc: true },
-  { n: "Haste", lv: 3, st: "ac", op: "+", v: 2, dur: "r10", conc: true, txt: "speed ×2, advantage op Dex saves, extra action", after: { n: "Lethargy", txt: "geen beweging of acties" },
-    r24: { after: { n: "Lethargy", txt: "speed 0", cond: "Incapacitated" } } },
-  { n: "Mage Armor", lv: 1, st: "ac", op: "=", v: 13, dex: true, dur: "lr", txt: "alleen zonder armor" },
-  { n: "Barkskin", lv: 2, st: "ac", op: "min", v: 16, dur: "inf", conc: true, r24: { v: 17, conc: false, txt: "1 uur, geen concentratie" } },
-  { n: "Half cover", st: "ac", op: "+", v: 2, dur: "inf", txt: "ook +2 op Dex saves", sv: { ab: "DEX", b: 2 }, grp: "cover" },
-  { n: "Three-quarters cover", st: "ac", op: "+", v: 5, dur: "inf", txt: "ook +5 op Dex saves", sv: { ab: "DEX", b: 5 }, grp: "cover" },
-  { n: "Aid", lv: 2, st: "max", op: "+", v: 5, dur: "lr", txt: "+5 per slot-level boven de 2e" },
-  { n: "Bless", lv: 1, st: "", v: 0, dur: "r10", conc: true, txt: "+1d4 op attack rolls en saves", sv: { d: 4 } },
-  { n: "Bane", lv: 1, st: "", v: 0, dur: "r10", conc: true, txt: "−1d4 op attack rolls en saves", sv: { d: -4 } },
+  { n: "Haste", lv: 3, st: "ac", op: "+", v: 2, dur: "r10", conc: true, tk: "dnd.pre.haste", after: { n: "Lethargy", tk: "dnd.pre.lethargy" },
+    r24: { after: { n: "Lethargy", tk: "dnd.pre.lethargy24", cond: "Incapacitated" } } },
+  { n: "Mage Armor", lv: 1, st: "ac", op: "=", v: 13, dex: true, dur: "lr", tk: "dnd.pre.mageArmor" },
+  { n: "Barkskin", lv: 2, st: "ac", op: "min", v: 16, dur: "inf", conc: true, r24: { v: 17, conc: false, tk: "dnd.pre.barkskin24" } },
+  { n: "Half cover", st: "ac", op: "+", v: 2, dur: "inf", tk: "dnd.pre.halfCover", sv: { ab: "DEX", b: 2 }, grp: "cover" },
+  { n: "Three-quarters cover", st: "ac", op: "+", v: 5, dur: "inf", tk: "dnd.pre.tqCover", sv: { ab: "DEX", b: 5 }, grp: "cover" },
+  { n: "Aid", lv: 2, st: "max", op: "+", v: 5, dur: "lr", tk: "dnd.pre.aid" },
+  { n: "Bless", lv: 1, st: "", v: 0, dur: "r10", conc: true, tk: "dnd.pre.bless", sh: "+1d4", sv: { d: 4 } },
+  { n: "Bane", lv: 1, st: "", v: 0, dur: "r10", conc: true, tk: "dnd.pre.bane", sh: "−1d4", sv: { d: -4 } },
   // RE16: barbarian (2014). Geen spell: geen caster-koppeling en geen 2024-variant. rs = tijdelijke resistance.
-  { n: "Rage", st: "", v: 0, dur: "r10", rage: true, pc: true, rs: ["bludgeoning", "piercing", "slashing"], txt: "resist B/P/S, adv. STR, geen spells" },
+  { n: "Rage", st: "", v: 0, dur: "r10", rage: true, pc: true, rs: ["bludgeoning", "piercing", "slashing"], tk: "dnd.pre.rage" },
 ];
 
 const OPS = ["+", "=", "min"];
@@ -49,8 +52,14 @@ export function effText(e) {
   const v = e.v;
   if (e.st === "ac") return e.op === "=" ? `AC ${v}` : e.op === "min" ? `AC min. ${v}` : `${v >= 0 ? "+" : "−"}${Math.abs(v)} AC`;
   if (e.st === "max") return `${v >= 0 ? "+" : "−"}${Math.abs(v)} max HP`;
-  return e.txt || "";
+  return effNote(e);
 }
+/** Uitlegsleutels van de presets (en hun vervolg): alleen deze mogen uit een import komen (cleanTk) */
+const TKS = new Set([...PRESETS.flatMap((p) => [p.tk, p.after && p.after.tk, p.r24 && p.r24.tk, p.r24 && p.r24.after && p.r24.after.tk]), "dnd.pre.rageBear"].filter(Boolean));
+/** Uitlegsleutel uit opgeslagen/geïmporteerde data: alleen een bekende, anders weg (dan telt txt) */
+export const cleanTk = (k) => (typeof k === "string" && TKS.has(k) ? k : undefined);
+/** Notitie bij een effect als tekst in de taal: presetuitleg (tk), anders de tekst van de DM */
+export const effNote = (e) => (e && e.tk && TKS.has(e.tk) ? tr(M(e.tk)) : (e && e.txt) || "");
 
 /** Effectieve AC: "=" vervangt de basis (hoogste telt), dan alle "+", dan "minimaal". Zonder bekende AC blijft het 0. */
 export function effAc(c) {
@@ -89,14 +98,14 @@ export function addEffect(c, spec, d, opt = {}) {
   const op = st === "ac" && OPS.includes(spec.op) ? spec.op : "+";
   let v = st === "max" ? clampInt(spec.v, -999, 999) : st === "ac" ? clampInt(spec.v, op === "+" ? -20 : 0, 40) : 0;
   if (st === "ac" && spec.dex) v += c.dex || 0;
-  const e = { id: opt.id || Math.random().toString(36).slice(2, 9), n, st, op, v, txt: String(spec.txt || "").slice(0, 120),
+  const e = { id: opt.id || Math.random().toString(36).slice(2, 9), n, st, op, v, txt: String(spec.txt || "").slice(0, 120), ...(cleanTk(spec.tk) ? { tk: spec.tk } : {}),
     end: String(spec.end || "").slice(0, 120), d: d || null, lr: !!opt.lr, by: opt.by || null, spell: opt.by ? String(opt.spell || n).slice(0, 120) : null, hpd: 0 };
   if (opt.by && opt.cast) e.cast = String(opt.cast).slice(0, 60);
   const rs = cleanRs(spec.rs);
   if (rs) e.rs = rs; // tijdelijke resistance (Rage)
   if (spec.rage) { e.rg = 1; if (spec.frz) e.frz = 1; if (spec.bear) e.bear = 1; }
   // vervolg (Lethargy) vastleggen bij het effect: een latere wissel van de spellregels verandert een lopende spell niet
-  if (spec.after && spec.after.n) e.af = { n: String(spec.after.n).slice(0, 60), txt: String(spec.after.txt || "").slice(0, 120), ...(spec.after.cond ? { cond: String(spec.after.cond).slice(0, 20) } : {}) };
+  if (spec.after && spec.after.n) e.af = { n: String(spec.after.n).slice(0, 60), txt: String(spec.after.txt || "").slice(0, 120), ...(cleanTk(spec.after.tk) ? { tk: spec.after.tk } : {}), ...(spec.after.cond ? { cond: String(spec.after.cond).slice(0, 20) } : {}) };
   c.eff = [...(c.eff || []), e];
   if (st === "max" && v && c.max > 0) { // zonder bekende HP alleen een herinnering
     if (v > 0) {
@@ -114,7 +123,7 @@ export function addEffect(c, spec, d, opt = {}) {
     }
   }
   if (st === "max") reExh(c); // Aid bij Exhaustion 4+: de halvering op de nieuwe max
-  out.msgs.push(say("rules.eff", { name: c.name, what: st ? `${n} (${effText(e)})` : e.txt ? `${n} (${e.txt})` : n }));
+  out.msgs.push(say("rules.eff", { name: c.name, what: st ? `${n} (${effText(e)})` : effNote(e) ? `${n} (${effNote(e)})` : n }));
   return out;
 }
 
@@ -176,14 +185,14 @@ export function removeEffect(c, id, why = M("rules.manual"), opt = {}) {
   const nx = opt.after !== false && (e.af || (preset(e.n) || {}).after); // oude opslag zonder af: de 2014-preset
   const alive = !(c.kind === "monster" && c.hp <= 0) && !(c.ds && c.ds.dead);
   out.why.push({ t: why, id: c.id });
-  const what = nx && (nx.cond ? say("rules.afterCond", { cond: nx.cond, what: nx.txt || nx.n }) : say("rules.after", { name: nx.n }));
+  const what = nx && (nx.cond ? say("rules.afterCond", { cond: nx.cond, what: effNote(nx) || nx.n }) : say("rules.after", { name: nx.n }));
   const end = say(why && !manual(why) ? "rules.overWhy" : "rules.over", { name: c.name, what: e.n, why: why || "" });
   out.msgs.push(`${end}${nx ? (alive ? ` ${what}` : "") : e.end ? ` ${e.end}.` : ""}`);
   if (nx && alive) {
     // PHB 2014: "can't move or take actions until after its next turn"; 2024: Incapacitated en speed 0 tot einde volgende beurt.
     // Midden in de eigen beurt telt die beurt niet.
     const dur = () => ({ kind: "tend", who: c.id, at: "end", count: opt.active === c.id ? 2 : 1 });
-    addEffect(c, { n: nx.n, txt: nx.txt }, dur());
+    addEffect(c, { n: nx.n, txt: nx.txt, tk: nx.tk }, dur());
     out.why.push({ t: M("rules.afterWhy", { name: nx.n, of: e.n }), id: c.id });
     if (nx.cond && !c.cond.includes(nx.cond)) { // al Incapacitated (met eigen duur): niet overschrijven
       c.cond = [...c.cond, nx.cond];
@@ -265,7 +274,7 @@ export function setExh(c, x, why = M("rules.manual")) {
     out.msgs.push(say("rules.exh6", { name: c.name }));
     return out;
   }
-  out.msgs.push(`${c.name}: Exhaustion ${x}${x > was ? ` (${EXH[x].toLowerCase()})` : ""}.`);
+  out.msgs.push(x > was ? say("rules.exhUp", { name: c.name, n: x, what: M(`dnd.exh.s${x}`) }) : say("rules.exhLvl", { name: c.name, n: x }));
   return out;
 }
 
@@ -300,7 +309,7 @@ export function startRage(c, d, opt = {}) {
   const inc = c.cond.find((k) => NO_RAGE.includes(k)); // Rage is een bonus action
   if (inc) { out.msgs.push(say("rules.rageInc", { name: c.name, cond: inc })); return out; }
   const p = preset("Rage");
-  merge(out, addEffect(c, { ...p, rs: opt.bear ? RS_ALL : p.rs, txt: opt.bear ? "resist alles behalve psychic, adv. STR, geen spells" : p.txt, bear: !!opt.bear, frz: !!opt.frz }, d));
+  merge(out, addEffect(c, { ...p, rs: opt.bear ? RS_ALL : p.rs, tk: opt.bear ? "dnd.pre.rageBear" : p.tk, bear: !!opt.bear, frz: !!opt.frz }, d));
   const r = rageRes(c);
   if (r) {
     if (r.left > 0) { r.left--; out.msgs.push(say("rules.resLeft", { name: r.n, n: String(r.left), max: String(r.max) })); }
