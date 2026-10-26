@@ -127,9 +127,13 @@ ol.order{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .defl{font-size:.8rem;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}
 .defl b{color:var(--fg);font-weight:700}
 .row3{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center}
-.pips{display:flex;align-items:center;gap:0;flex-wrap:wrap;margin-top:2px;font-size:.85rem;color:var(--muted)}
-.pips .lbl{min-width:0;margin-right:6px}
-.pips .pg{display:inline-flex;flex-wrap:wrap} /* pips breken als groep af, niet los van elkaar */
+/* WP36 (HS13): label en pips op één regel van 44 px (was: label boven een eigen rij pips, ±46 px per bron hoger); label mag over
+   twee regels, pips rechts in duimbereik; past het niet (veel pips), dan breken de pips als groep naar een rechts uitgelijnde regel */
+.pips{display:flex;align-items:center;gap:0 8px;flex-wrap:wrap;min-height:44px;margin-top:4px;font-size:.8rem;line-height:1.15;color:var(--muted)}
+.pips .lbl{flex:1 1 7rem;min-width:7rem}
+.pips .pn{font-weight:600;color:var(--fg);white-space:nowrap}
+.pips:has(+.acts){margin-bottom:6px}
+.pips .pg{display:inline-flex;flex-wrap:wrap;margin-left:auto} /* pips breken als groep af, niet los van elkaar */
 /* AF6: tikvlak 44×44 zonder overlap, het zichtbare bolletje is ::before */
 .pip{width:44px;height:44px;border:0;background:none;padding:0;display:inline-grid;place-items:center;color:var(--act-ink);border-radius:var(--r)}
 .pip::before{content:"";box-sizing:border-box;width:24px;height:24px;border-radius:50%;border:2px solid currentColor;background:currentColor}
@@ -394,18 +398,26 @@ ol.order{gap:6px}
 .hpw .bar{display:block;flex:1;height:6px;border-radius:3px;background:var(--sunk);overflow:hidden}
 .hpw .bar i{display:block;height:100%;background:var(--good)}
 .hpw .bar i.mid{background:var(--warn)}.hpw .bar i.low{background:var(--bad)}
-.hpn{font-size:.85rem;font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap;min-width:5ch;text-align:right} /* WP35: kaart-HP vaste breedte (DM Sans zonder tnum): balken even lang tot 99/99 */
+.hpn{font-size:.85rem;font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap;min-width:7ch;text-align:right} /* WP35/WP36: kaart-HP vaste breedte (DM Sans zonder tnum): balken even lang tot 999/999 */
 /* Gevecht (GV1): HP-rij als eigen knop onder de kop, tik = schadepaneel; links uitgelijnd onder de naam (4 + 44 + 10) */
 .c.k.fhp .khead{padding-bottom:0;min-height:44px}
 .khp{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 12px 0 58px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .khp .hpn{color:var(--fg)}
 .khp:active{background:var(--sunk)}
 .khp:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;border-radius:var(--r)}
-/* Avatar: portret of icoon (ras / creature type) */
-.av{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:inline-grid;place-items:center;overflow:hidden;background:var(--mon-soft);color:var(--fg)}
-.pm .av,.c.k.pc .av{background:var(--pc-soft);color:var(--fg)}
+/* Avatar: portret of icoon (ras / creature type). WP36 (HS12; UX-agent koos): de vorm hangt aan het soort (avKind in js/ui/avatar.js),
+   niet aan de plek: speler rond, monster achthoek (afgeschuinde hoeken; schild botst met het AC-schildje .acv, ruit lijkt op de LR-pip
+   en houdt te weinig vlak over), lair afgeronde rechthoek. Rand neutraal --line-strong voor iedereen (Forest/Copper 1,2:1 tegen
+   Success/Warning, Forest 2,8:1 op donker). De rand is de buitenste laag (achtergrond + padding), .avi het vlak erin: clip-path
+   snijdt zo geen rand weg; de focus-ring zit op .khead, niet op de avatar. 32 px: even hoog als .acv, rij wordt niet hoger. */
+.av{--avb:1.5px;flex:0 0 auto;box-sizing:border-box;width:32px;height:32px;padding:var(--avb);display:inline-grid;background:var(--line-strong);border-radius:50%}
+.avi{display:grid;place-items:center;overflow:hidden;border-radius:inherit;clip-path:inherit;background:var(--pc-soft);color:var(--fg)}
+.av-mon,.av-mon .avi{border-radius:0;clip-path:polygon(25% 0,75% 0,100% 25%,100% 75%,75% 100%,25% 100%,0 75%,0 25%)}
+.av-mon .avi{background:var(--mon-soft)}
+.av-lair,.av-lair .avi{border-radius:6px}
+.av-lair .avi{background:var(--sunk)}
 .av .ic{width:20px;height:20px}
-.av.img{background:var(--sunk)}
+.av.img .avi{background:var(--sunk)}
 .av img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}
 .ic{fill:currentColor}
 /* WP17 (HS7): lijn-iconen uit icons/ui.svg (ico() in js/ui/icons.js); kleur = currentColor, maat volgt de letter */
@@ -415,9 +427,6 @@ ol.order{gap:6px}
 .c.k .tri .li{width:12px;height:12px}
 .li.big{width:22px;height:22px;vertical-align:middle} /* icoonknoppen: ✎ en + in de Gevecht-kop, ⚙ in de prep-rij */
 #undo .li,.c.k .acts [data-p="more"] .li,.emore .li{width:22px;height:22px;vertical-align:middle}
-.c.k.out .av{filter:grayscale(1)}
-/* AF12: monster of speler niet alleen via kleur: speler rond, monster afgeronde rechthoek */
-.c.k.mon .av,.pvc.monster .av{border-radius:6px}
 .hint .pv{width:28px;height:28px;border-radius:50%;object-fit:cover;object-position:50% 20%;vertical-align:middle}
 .badges{display:flex;gap:5px;flex-wrap:wrap;padding:0 12px 10px 48px}
 .kbody .badges{padding:0 0 8px}
@@ -695,17 +704,15 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .pvc{background:var(--card);border:1px solid var(--line);border-radius:var(--r);display:grid;grid-template-columns:1.8em minmax(0,1fr) auto;align-items:center;gap:.25em .6em;padding:.45em .7em .45em 0}
 .pvc.turn{border-color:var(--sel);box-shadow:0 0 0 1px var(--sel) inset} /* WP17: 2 px, 1 px viel op 3 m weg */
 .pvc.out{opacity:.5}
-.pvc.out .av{filter:grayscale(1)}
+.c.k.out .av,.pvc.out .av{filter:grayscale(1)}
 .pvi{text-align:center;font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted)}
 .pvi .tri{display:block;font-size:.6em;color:inherit}
 .pvc.turn .pvi{align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:.4em;background:var(--act);color:var(--act-fg)}
 .pvn{display:flex;align-items:center;gap:.45em;min-width:0}
 .pvn .nm{flex:0 1 auto;min-width:0;font-weight:700;font-size:1.05em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pvn .av,.pvnext{flex:0 0 auto}
-.pvc .av{width:1.9em;height:1.9em}
+.pvc .av{width:1.9em;height:1.9em;--avb:max(1.5px,.07em)}
 .pvc .av .ic{width:1.25em;height:1.25em}
-.pvc.pc .av{background:var(--pc-soft);color:var(--fg)}
-.pvc.lair .av{background:var(--sunk)}
 .pvc.lair .nm{font-family:var(--display);font-weight:600;color:var(--muted)}
 .pvnext{font-size:.6em;padding:1px .5em;border:1px solid var(--line-strong);color:var(--fg);border-radius:99px;white-space:nowrap}
 .pvhp{display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:0}
@@ -901,7 +908,7 @@ body.tv .pvlog{min-height:calc(3 * 1.35em)}
 .pvpick{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:.6em .8em;display:grid;gap:.4em}
 .pvpick h2{font-size:1em;margin:0}
 .pvpickb{display:flex;align-items:center;gap:.5em;justify-content:flex-start;text-align:left;width:100%;min-height:44px}
-.pvpickb .av{width:1.6em;height:1.6em;flex:0 0 auto}
+.pvpickb .av{width:1.6em;height:1.6em;flex:0 0 auto;--avb:max(1.5px,.07em)}
 .pvpickb .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .pvpickb[aria-pressed="true"]{border-color:var(--sel);box-shadow:0 0 0 2px var(--sel) inset;background:var(--act-soft)}
 .pvpick .chk{font-size:.8em}
@@ -916,7 +923,7 @@ body.stale .pvnow b,body.stale .pvnow .l,body.stale .pvnow .r{color:var(--muted)
 .pvme{background:var(--surface);border:2px solid var(--line-strong);border-radius:var(--r);padding:.5em .8em;display:grid;grid-template-columns:minmax(0,1fr);gap:.35em}
 .pvme>*{grid-column:1/-1}
 .pvmehead{display:flex;align-items:center;gap:.5em;min-width:0}
-.pvmehead .av{width:1.9em;height:1.9em;flex:0 0 auto;background:var(--pc-soft);color:var(--fg)}
+.pvmehead .av{width:1.9em;height:1.9em;flex:0 0 auto;--avb:max(1.5px,.07em)}
 .pvmehead .av .ic{width:1.25em;height:1.25em}
 .pvmehead .nm{font-family:var(--display);font-size:1.05em;line-height:1.2;min-width:0;overflow-wrap:anywhere}
 .pvme>.pvhp{display:flex;flex-direction:row;align-items:center;gap:.5em}

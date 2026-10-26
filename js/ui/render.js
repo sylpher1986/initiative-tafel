@@ -22,6 +22,7 @@ import { sgn } from "../rules/dice.js";
 import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
 import { hasUF, ufDc, ufNeed, ufInfo, riderWhat, riderFor, parryOf, canParry } from "../rules/monrules.js";
 import { openSaves, lastTurn } from "../rules/saves.js";
+import { hpPct, hpCls } from "./hpbar.js";
 import { avatar, icon, monType } from "./avatar.js";
 import { SPELLS, SPELL_CONDS, customSpell, spellTargets, spellDefault, condImmune, spellFor, rulesDiffer, slotFor } from "../rules/spellcast.js";
 import { DMG_SPELLS } from "../rules/dmgtable.js";
@@ -172,9 +173,8 @@ export function paintPrep() {
 /* ---------- onderdelen van een kaart ---------- */
 /** Balk + "12/30 +5": in de kop (Voorbereiden) of als eigen knop onder de kop (Gevecht, GV1) */
 const hpIn = (c) => {
-  const pct = c.max ? Math.max(0, c.hp) / c.max : 1;
-  const cls = pct <= 0.25 ? "low" : pct <= 0.5 ? "mid" : "";
-  return `<span class="bar" aria-hidden="true"><i class="${cls}" style="width:${pct * 100}%"></i></span>
+  const pct = hpPct(c.hp, c.max);
+  return `<span class="bar" aria-hidden="true"><i class="${hpCls(c.hp, c.max)}" style="width:${pct * 100}%"></i></span>
     <span class="hpn">${n0(c.hp)}/${n0(c.max)}${c.temp ? ` <span class="thp">+${n0(c.temp)}</span>` : ""}</span>`;
 };
 const hpBar = (c) => `<div class="hpw">${hpIn(c)}</div>`;
@@ -267,10 +267,11 @@ function badges(c, S) {
 /** AF12: "1st-level slot 1 van 4, beschikbaar"; geen aria-pressed (CSS stijlt op data-used) */
 const pipState = (label, i, o) => `data-used="${i >= o.left}" aria-label="${esc(t(i >= o.left ? "init.card.pipUsed" : "init.card.pipFree", { label, i: i + 1, n: n0(o.max) }))}"`;
 
-function pips(o, key, label) {
+/** WP36: zichtbaar label kort (naast de pips, max twee regels op 320 px); het volledige label blijft voor de schermlezer per pip */
+function pips(o, key, label, full = label) {
   if (!o) return "";
-  return `<div class="pips"><span class="lbl">${label} ${n0(o.left)}/${n0(o.max)}</span><span class="pg">${Array.from({ length: n0(o.max) }, (_, i) =>
-    `<button class="pip ${key}" data-pip="${key}" data-i="${i}" ${pipState(label, i, o)}></button>`).join("")}</span></div>`;
+  return `<div class="pips"><span class="lbl">${label} <b class="pn">${n0(o.left)}/${n0(o.max)}</b></span><span class="pg">${Array.from({ length: n0(o.max) }, (_, i) =>
+    `<button class="pip ${key}" data-pip="${key}" data-i="${i}" ${pipState(full, i, o)}></button>`).join("")}</span></div>`;
 }
 
 function defLine(c) {
@@ -635,7 +636,7 @@ function row(c, S, down = false) {
       ${dsBlock(c)}
       ${prep ? `${prepFields(c)}${prepActions(c)}` : `${atkBlock(c, S)}
       ${c.rc && c.rc.length ? `<div class="rcs">${c.rc.map((r, i) => `<button class="rc" data-rc="${i}" aria-pressed="${!!r.ready}" title="${esc(t("init.card.rcTip"))}">${esc(r.n)} · ${esc(r.ready ? t("init.card.rcReady") : r.rest ? t("init.card.rcRest") : `recharge ${n0(r.min)}–6`)}</button>`).join("")}</div>` : ""}
-      ${pips(c.la, "la", "Legendary actions")}${pips(c.lr, "lr", t("init.card.lrPer"))}
+      ${pips(c.la, "la", "Legendary actions")}${pips(c.lr, "lr", "Legendary resistance", t("init.card.lrPer"))}
       ${actionsBlock(c)}`}
       ${castBlock(c)}
       ${resBlock(c)}

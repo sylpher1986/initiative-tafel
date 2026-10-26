@@ -41,11 +41,16 @@ export const cleanImg = (v) => (typeof v === "string" && v.length <= IMG_MAX && 
 /** Sprite-icoon als inline svg (decoratief) */
 export const icon = (id, cls = "") => `<svg class="ic ${cls}" aria-hidden="true" focusable="false"><use href="${SPRITE}#${esc(id)}"/></svg>`;
 
-/** Rond avatar: portret als het er is, anders icoon */
+/** WP36: vorm volgt het soort deelnemer (niet de plek): speler rond, monster achthoek, lair afgeronde rechthoek */
+export const avKind = (kind) => (kind === "pc" ? "av-pc" : kind === "lair" ? "av-lair" : "av-mon");
+/** Avatar-container: buitenste laag = neutrale rand, .avi = vlak met portret of icoon (rand blijft heel bij clip-path) */
+export const avBox = (kind, inner, img = false) => `<span class="av ${avKind(kind)}${img ? " img" : ""}" aria-hidden="true"><span class="avi">${inner}</span></span>`;
+
+/** Avatar: portret als het er is, anders icoon */
 export function avatar(c, meta) {
   const img = cleanImg(c.img);
-  if (img) return `<span class="av img" aria-hidden="true"><img src="${esc(img)}" alt=""></span>`;
-  return `<span class="av" aria-hidden="true">${icon(iconId(c, meta))}</span>`;
+  if (img) return avBox(c.kind, `<img src="${esc(img)}" alt="">`, true);
+  return avBox(c.kind, icon(iconId(c, meta)));
 }
 
 /** Leeg vlak? (standaardafwijking van de helderheid, RGBA-pixels). Puur, voor het portret uit een PDF. */

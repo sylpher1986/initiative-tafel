@@ -100,7 +100,7 @@ test("AF12: slots en death saves zonder aria-pressed, toestand in het label; ari
   assert.match(r, /t\(i >= o\.left \? "init\.card\.pipUsed" : "init\.card\.pipFree"/); // WP25: tekst uit de catalogus
   assert.match(r, /aria-current="true"/);
   const css = readFileSync(new URL("../css/app.css", import.meta.url), "utf8");
-  assert.match(css, /\.pip\[data-used="true"\]::before/); assert.match(css, /\.c\.k\.mon \.av,\.pvc\.monster \.av\{border-radius:6px\}/);
+  assert.match(css, /\.pip\[data-used="true"\]::before/); assert.match(css, /\.av-mon,\.av-mon \.avi\{border-radius:0;clip-path:polygon\(/); // WP36: monster achthoek, speler rond
 });
 
 /* ---------- review WP12 ---------- */

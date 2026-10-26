@@ -79,6 +79,7 @@ const ASSETS = [
   "./js/theme.js",
   "./js/ui/actions.js",
   "./js/ui/avatar.js",
+  "./js/ui/hpbar.js",
   "./js/ui/encounters.js",
   "./js/ui/einde.js",
   "./js/ui/render.js",

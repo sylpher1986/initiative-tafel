@@ -294,6 +294,92 @@ const SCEN = {
     await tap(page, "#stop");
     await page.waitForSelector("#esheet .esheet");
   },
+  // WP36 (HS12/HS13): speler rond, monster achthoek (vorm hangt aan het soort, ook op spelersscherm en tv), neutrale rand, HP-kleur
+  // per fractie gelijk voor speler en monster, beurtvlak gelijk, compacte rijen niet hoger, open legendary-monster met pips op één
+  // regel. Twee monstertypes, speler met en zonder portret. Met --shots=wp36: compact, beurt bij speler/monster, open, grijswaarden
+  // (320 px) en desktop 1280.
+  async wp36(page, base) {
+    await SCEN.fight(page);
+    const setup = async (activeKind) => page.evaluate(async (ak) => {
+      const { app, commit } = await import("/js/state.js"), { render, ui } = await import("/js/ui/render.js"), a = await import("/js/ui/actions.js");
+      const L = app.S.list;
+      if (!L.some((c) => c.ref === "Adult Black Dragon")) {
+        a.addMonsters("Adult Black Dragon", 1, "avg", "each", true);
+        const cv = document.createElement("canvas"); cv.width = cv.height = 48; const g = cv.getContext("2d");
+        g.fillStyle = "#7a4a2a"; g.fillRect(0, 0, 48, 48); g.fillStyle = "#e9c9a0"; g.beginPath(); g.arc(24, 20, 11, 0, 7); g.fill();
+        const pcs = L.filter((c) => c.kind === "pc"); pcs[0].img = cv.toDataURL("image/jpeg", 0.8); pcs[1].hp = Math.floor(pcs[1].max * 0.2);
+        const gob = L.filter((c) => c.ref === "Goblin"); if (gob[0]) gob[0].hp = Math.floor(gob[0].max * 0.4); if (gob[1]) gob[1].hp = 1;
+      }
+      const t = L.find((c) => (ak === "pc" ? c.kind === "pc" : c.ref === "Adult Black Dragon"));
+      app.S.active = t.id; ui.open = t.id; commit(); render();
+    }, activeKind);
+    const check = () => page.evaluate(() => {
+      const cs = (e) => getComputedStyle(e), out = [];
+      const tok = (k) => { const d = document.createElement("i"); d.style.color = `var(--${k})`; document.body.append(d); const c = cs(d).color; d.remove(); return c; };
+      const cards = [...document.querySelectorAll("#order .c.k:not(.lair)")];
+      for (const c of cards) {
+        const av = c.querySelector(".av"), pc = c.classList.contains("pc"), st = cs(av), clip = st.clipPath;
+        if (pc ? !(st.borderTopLeftRadius === "50%" && clip === "none") : !/polygon/.test(clip)) out.push(`vorm ${c.querySelector(".nm").textContent}: ${st.borderTopLeftRadius} ${clip}`);
+        if (st.backgroundColor !== tok("line-strong")) out.push("rand niet neutraal: " + c.querySelector(".nm").textContent);
+        if (Math.round(av.getBoundingClientRect().height) !== 32) out.push("avatar niet 32 px");
+      }
+      // HP-kleur: klasse → kleur, gelijk voor speler en monster
+      const col = {};
+      for (const i of document.querySelectorAll("#order .c.k .hpw .bar i")) {
+        const k = i.className || "ok", kind = i.closest(".c.k").classList.contains("pc") ? "pc" : "mon", v = cs(i).backgroundColor;
+        (col[k] ||= {})[kind] = v;
+      }
+      for (const [k, v] of Object.entries(col)) if (v.pc && v.mon && v.pc !== v.mon) out.push(`HP-kleur ${k} verschilt: ${v.pc} / ${v.mon}`);
+      const want = { ok: tok("good"), mid: tok("warn"), low: tok("bad") };
+      for (const [k, v] of Object.entries(col)) for (const x of Object.values(v)) if (x !== want[k]) out.push(`HP-kleur ${k} ≠ token`);
+      // beurtvlak
+      const turn = document.querySelector("#order .c.k.turn .i");
+      if (!turn || cs(turn).backgroundColor !== tok("act")) out.push("beurtvlak niet Lantern");
+      // compacte rij zonder badges niet hoger dan 92 px (± 2 px op de 90 px van vóór WP36)
+      const tall = cards.filter((c) => !c.classList.contains("open") && !c.querySelector(".badges") && c.getBoundingClientRect().height > 92)
+        .map((c) => `${c.querySelector(".nm").textContent} ${Math.round(c.getBoundingClientRect().height)}`);
+      if (tall.length) out.push("rij te hoog: " + tall.join(", "));
+      // HP-balken even lang (7ch), ook 195/195 naast 1/7
+      const bars = cards.filter((c) => !c.classList.contains("turn")).map((c) => c.querySelector(".khp .bar")).filter(Boolean).map((b) => Math.round(b.getBoundingClientRect().width));
+      if (bars.length > 1 && Math.max(...bars) - Math.min(...bars) > 1) out.push("HP-balken ongelijk: " + bars.join(","));
+      return out;
+    });
+    await setup("pc");
+    let bad = await check(); if (bad.length) throw new Error("WP36 (beurt speler): " + bad.join("; "));
+    await snap(page, "wp36", "beurt-speler");
+    await setup("mon");
+    await page.waitForSelector("#order .c.k.open .pips");
+    bad = await check(); if (bad.length) throw new Error("WP36 (beurt monster): " + bad.join("; "));
+    const pips = await page.evaluate(() => [...document.querySelectorAll("#order .c.k.open .pips")].map((p) => Math.round(p.getBoundingClientRect().height)));
+    if (pips.length !== 2 || pips.some((h) => h > 46)) throw new Error("legendary-rijen niet op één regel: " + pips.join(","));
+    await page.locator("#order .c.k.open").scrollIntoViewIfNeeded();
+    await snap(page, "wp36", "open-monster");
+    await page.addStyleTag({ content: "html{filter:grayscale(1)}" });
+    await snap(page, "wp36", "grijs");
+    await page.evaluate(() => document.querySelectorAll("style").forEach((s) => { if (s.textContent.includes("grayscale(1)}")) s.remove(); }));
+    // spelersscherm (telefoon) en tv: zelfde vormen, rand op de tv ≥ 1,5 px
+    for (const [w, h] of [[page.viewportSize().width, 780], [1280, 720]]) {
+      const pv = await page.context().newPage();
+      await pv.setViewportSize({ width: w, height: h });
+      await pv.goto(base + "/" + (await page.evaluate(() => document.documentElement.lang)) + "/initiative/player/");
+      await pv.waitForSelector("#pv-list .pvc .av");
+      const r = await pv.evaluate(() => [...document.querySelectorAll("#pv-list .pvc")].map((c) => {
+        const av = c.querySelector(".av"), st = getComputedStyle(av);
+        return { kind: ["pc", "monster", "lair"].find((k) => c.classList.contains(k)), r: st.borderTopLeftRadius, clip: st.clipPath, pad: parseFloat(st.paddingTop) };
+      }));
+      const wrong = r.filter((x) => (x.kind === "pc" ? !(x.r === "50%" && x.clip === "none") : x.kind === "monster" ? !/polygon/.test(x.clip) : false) || x.pad < 1.5);
+      if (!r.some((x) => x.kind === "pc") || !r.some((x) => x.kind === "monster") || wrong.length) throw new Error(`spelersscherm ${w}px: ` + JSON.stringify(wrong.length ? wrong : r));
+      if (w === 1280 && SHOTS.has("wp36") && page.viewportSize().width === 320) await pv.screenshot({ path: join(ROOT, "shots", `wp36-tv-${await pv.evaluate(() => document.documentElement.lang)}-${await pv.evaluate(() => matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")}.png`) });
+      await pv.close();
+    }
+    if (page.viewportSize().width === 320 && SHOTS.has("wp36")) {
+      const vp = page.viewportSize();
+      await page.setViewportSize({ width: 1280, height: 800 }); await page.waitForTimeout(150);
+      bad = await check(); if (bad.length) throw new Error("WP36 desktop: " + bad.join("; "));
+      await page.screenshot({ path: join(ROOT, "shots", `wp36-desktop-${await page.evaluate(() => document.documentElement.lang)}-${await page.evaluate(() => matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")}.png`) });
+      await page.setViewportSize(vp); await page.waitForTimeout(150);
+    }
+  },
   // WP17-review: spelersscherm "jij aan de beurt" + verbinding kwijt: de kop wordt neutraal en alle tekst blijft leesbaar
   async stale(page) {
     const r = await page.evaluate(() => {

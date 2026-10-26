@@ -6,7 +6,7 @@ import { cleanView, headHtml, findMe, meState, buzzFor, dsText, logLines, pushLo
 import { ORD } from "./rules/spells.js";
 import { localChannel, roomChannel, normCode, fmtCode } from "./share.js";
 import { esc } from "./ui/util.js";
-import { icon } from "./ui/avatar.js";
+import { icon, avBox } from "./ui/avatar.js";
 import { tvPlan } from "./tvfit.js";
 import { qrSvg } from "./qr.js";
 import { hasCondInfo, SUR } from "./rules/conditions.js";
@@ -18,9 +18,9 @@ const $ = (s) => document.querySelector(s);
 const ST_CLS = { ok: "ok", hurt: "ok", bloodied: "mid", near: "low", unconscious: "low", stable: "mid", down: "out", dead: "out" };
 
 function av(c) {
-  if (c.kind === "lair") return `<span class="av" aria-hidden="true"></span>`;
-  if (c.img) return `<span class="av img" aria-hidden="true"><img src="${esc(c.img)}" alt=""></span>`;
-  return `<span class="av" aria-hidden="true">${icon(c.icon)}</span>`;
+  if (c.kind === "lair") return avBox("lair", "");
+  if (c.img) return avBox(c.kind, `<img src="${esc(c.img)}" alt="">`, true);
+  return avBox(c.kind, icon(c.icon));
 }
 
 function hp(c) {
