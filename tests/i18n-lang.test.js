@@ -35,7 +35,8 @@ test("1. schrijfwijze van het prefix wordt rechtgezet, taal blijft", () => {
 test("2. ongeldig of niet-ondersteund prefix → Engels, rest van het pad en de query blijven", () => {
   assert.deepEqual(r({ path: "/de/initiative/", pref: "nl", search: "?k=ABC234" }), { lang: "en", source: "default", redirect: "/en/initiative/?k=ABC234" });
   assert.deepEqual(r({ path: "/xx/" }), { lang: "en", source: "default", redirect: "/en/" });
-  assert.equal(resolveLang({ path: "/xx/" }).redirect, "/nl/", "tot WP33: de terugval binnen LIVE");
+  assert.equal(resolveLang({ path: "/xx/" }).redirect, "/en/", "ongeldig prefix: altijd Engels, ook vóór WP33 (besluit 26-10)");
+  assert.equal(resolveLang({ path: "/xx/initiative/", pref: "nl", languages: ["nl-NL"] }).redirect, "/en/initiative/");
 });
 
 test("3. zonder prefix: voorkeur, dan browsertaal, dan Engels", () => {

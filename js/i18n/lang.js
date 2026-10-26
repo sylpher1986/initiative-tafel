@@ -4,9 +4,9 @@
 // Volgorde:
 //   1. ondersteund prefix in de URL (/en/…, /nl/…) wint altijd, zonder melding; verandert de voorkeur niet
 //      (alleen de taalkiezer schrijft de voorkeur; resolveLang schrijft nooit)
-//   2. ongeldig of niet-ondersteund prefix (/de/…, /xx/…) → terugvaltaal, zelfde rest van het pad
+//   2. ongeldig of niet-ondersteund prefix (/de/…, /xx/…) → Engels (DEFAULT, ook als en nog niet live is), zelfde rest van het pad
 //   3. geen prefix: opgeslagen voorkeur → eerste ondersteunde browsertaal (nl-BE → nl) → terugvaltaal
-// Tot Engels live gaat (WP33) kiezen 2 en 3 alleen uit LIVE; een /en/-link werkt wel (SUPPORTED).
+// Tot Engels live gaat (WP33) kiest 3 alleen uit LIVE; een /en/-link werkt wel (SUPPORTED).
 
 /** Talen met code, catalogi en pagina's */
 export const SUPPORTED = ["en", "nl"];
@@ -109,7 +109,7 @@ export function resolveLang({ path = "/", search = "", hash = "", pref = null, l
     const to = langPath(lang, rest); // /en/ = homepage (HOME); zonder homepage zou dat /en/initiative/ zijn
     return { lang, source: "path", redirect: prefix === lang && to === `/${lang}${slash(rest)}` ? null : to + tail };
   }
-  if (prefix) return { lang: fb, source: "default", redirect: langPath(fb, rest) + tail }; // 2. ongeldig prefix
+  if (prefix) return { lang: DEFAULT, source: "default", redirect: langPath(DEFAULT, rest) + tail }; // 2. ongeldig prefix: altijd Engels (besluit 26-10, WP30), ook vóór WP33
   const p = normLang(pref, live), b = browserLang(languages, live); // 3. geen prefix
   const pick = p ? [p, "pref"] : b ? [b, "browser"] : [fb, "default"];
   return { lang: pick[0], source: pick[1], redirect: pathFor(pick[0], path) + tail };

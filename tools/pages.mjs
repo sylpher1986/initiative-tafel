@@ -21,7 +21,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { SUPPORTED, LIVE, fallbackIn, pathFor } from "../js/i18n/lang.js";
+import { SUPPORTED, LIVE, DEFAULT, fallbackIn, pathFor } from "../js/i18n/lang.js";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
@@ -31,6 +31,9 @@ export const APP_PAGES = { "initiative/": "pages/initiative.html", "initiative/p
 export const HOME_PAGE = "pages/home.html";
 /** Canonieke host (V1): canonical, hreflang, sitemap en Open Graph wijzen hierheen, ook vanaf *.workers.dev */
 export const SITE = "https://kevs-inn.com";
+/** Hele site verborgen voor zoekmachines (besluit Michiel 26-10): robots.txt = Disallow: /. Op false zetten om te
+ *  laten indexeren (dan gelden canonical, hreflang, noindex van de app en de sitemap, die al klaarstaan). */
+export const HIDDEN = true;
 /** Deelafbeelding (1200×630) voor Open Graph */
 export const OG_IMAGE = { src: "/icons/og.png", width: 1200, height: 630 };
 const OG_LOCALE = { en: "en_US", nl: "nl_NL" }; // en_US: Amerikaanse spelling zoals de PHB
@@ -138,9 +141,9 @@ export function seoHead(lang, cat, live = LIVE) {
   ].join("\n");
 }
 
-/** robots.txt: alles mag gecrawld worden; de app-pagina's houden zichzelf buiten de index met noindex, dat moet de
- *  crawler kunnen lezen (dus geen Disallow op /{taal}/initiative/) */
-export const robots = () => `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`;
+/** robots.txt. Verborgen (HIDDEN): niets crawlen. Anders: alles mag gecrawld worden; de app-pagina's houden zichzelf
+ *  buiten de index met noindex, dat moet de crawler kunnen lezen (dus geen Disallow op /{taal}/initiative/) */
+export const robots = (hidden = HIDDEN) => (hidden ? "User-agent: *\nDisallow: /\n" : `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`);
 
 /** sitemap.xml: alleen indexeerbare homepages, elk met alle live alternates en x-default. Geen lastmod (geen ruis per build). */
 export function sitemap(live = LIVE) {
@@ -175,7 +178,7 @@ export function notFoundPage(lang, cat) {
 <p><a href="/{{lang}}/">{{t:page.nf.home}}</a><a href="/{{lang}}/initiative/">{{t:page.home.open}}</a></p>
 </body>
 </html>
-`, lang === fallbackIn(LIVE) ? "404.html" : `${lang}/404.html`, lang, cat);
+`, `${lang}/404.html`, lang, cat);
 }
 
 /** Alle bestanden: { relatief pad: inhoud } */
@@ -187,7 +190,7 @@ export async function build(root = ROOT) {
     for (const [rest, src] of Object.entries(APP_PAGES)) out[`${lang}/${rest}index.html`] = appPage(readFileSync(root + src, "utf8"), src, lang, cat);
     out[`${lang}/index.html`] = appPage(readFileSync(root + HOME_PAGE, "utf8").replace("{{seo}}", () => seoHead(lang, cat)), HOME_PAGE, lang, cat);
     out[`${lang}/404.html`] = notFoundPage(lang, cat);
-    if (lang === fb) out["404.html"] = notFoundPage(lang, cat);
+    if (lang === DEFAULT) out["404.html"] = notFoundPage(lang, cat); // taalloze 404 in het Engels, zoals een ongeldig prefix
     out[`${lang}/manifest.webmanifest`] = manifest(lang, cat);
     if (lang === fb) out["manifest.webmanifest"] = manifest(lang, cat);
   }

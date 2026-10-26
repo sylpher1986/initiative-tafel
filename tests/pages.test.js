@@ -3,7 +3,7 @@ import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { build, urlOf, APP_PAGES, REDIRECTS, fillText, HOME_PAGE, SITE, OG_IMAGE, NOT_CACHED, seoHead, sitemap } from "../tools/pages.mjs";
+import { build, urlOf, APP_PAGES, REDIRECTS, fillText, HOME_PAGE, SITE, OG_IMAGE, NOT_CACHED, HIDDEN, seoHead, sitemap, robots } from "../tools/pages.mjs";
 import { htmlStrings, isDutch } from "../tools/i18n-audit.mjs";
 import { target } from "../js/i18n/redirect.js";
 import { SUPPORTED, LIVE } from "../js/i18n/lang.js";
@@ -223,9 +223,11 @@ test("app, spelersscherm, doorverwijzers en 404: noindex en geen hreflang of can
   }
 });
 
-test("robots.txt en sitemap.xml: crawlen mag (noindex moet leesbaar zijn), sitemap = alleen live homepages", () => {
-  const r = files["robots.txt"];
-  assert.doesNotMatch(r, /Disallow/, "geen Disallow: dan leest Google de noindex van de app niet");
+test("robots.txt: verborgen = Disallow alles; open = crawlen mag (noindex moet leesbaar zijn); sitemap = alleen live homepages", () => {
+  assert.equal(HIDDEN, true, "besluit 26-10: hele site verborgen voor zoekmachines");
+  assert.equal(files["robots.txt"], "User-agent: *\nDisallow: /\n");
+  const r = robots(false);
+  assert.doesNotMatch(r, /Disallow/, "open: geen Disallow, anders leest Google de noindex van de app niet");
   assert.ok(r.includes(`Sitemap: ${SITE}/sitemap.xml`));
   const sm = files["sitemap.xml"];
   assert.deepEqual([...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]), LIVE.map((l) => `${SITE}/${l}/`));
@@ -237,7 +239,7 @@ test("robots.txt en sitemap.xml: crawlen mag (noindex moet leesbaar zijn), sitem
 });
 
 test("404-pagina's: zetten een ongeldig prefix recht via redirect.js, linken naar homepage en app in hun taal", () => {
-  for (const [f, lang] of [["404.html", LIVE.includes("en") ? "en" : LIVE[0]], ...SUPPORTED.map((l) => [`${l}/404.html`, l])]) {
+  for (const [f, lang] of [["404.html", "en"], ...SUPPORTED.map((l) => [`${l}/404.html`, l])]) {
     const h = files[f];
     assert.match(h, new RegExp(`<html lang="${lang}">`), f);
     assert.ok(h.includes(`import { go } from "/js/i18n/redirect.js"; go();`), f);
@@ -245,8 +247,8 @@ test("404-pagina's: zetten een ongeldig prefix recht via redirect.js, linken naa
   }
   assert.match(read("wrangler.jsonc"), /"not_found_handling": "404-page"/, "Cloudflare serveert de dichtstbijzijnde 404.html");
   const go = (href) => target(loc(href), { languages: ["nl-NL"] }, store(null));
-  assert.equal(go("/xx/initiative/"), "/nl/initiative/");
-  assert.equal(go("/de/"), "/nl/");
+  assert.equal(go("/xx/initiative/"), "/en/initiative/", "ongeldig prefix → Engels (besluit 26-10)");
+  assert.equal(go("/de/"), "/en/");
   assert.equal(go("/nl/bestaat-niet"), null, "geldig prefix: blijft op de 404");
 });
 
