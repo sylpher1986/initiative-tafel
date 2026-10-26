@@ -110,3 +110,8 @@ test("effect-presets: uitleg als sleutel (tk), tekst in de taal; import laat all
   assert.equal(effNote(back.eff[1]), "eigen"); // tekst van de DM blijft inhoud
   assert.equal(effNote(cleanCombatant(c).eff[0]), nl(effNote(e)));
 });
+
+test("exhSummary buiten 0–6 (review): begrensd", () => {
+  assert.equal(nl(exhSummary(-1)), "Niveau 0: geen exhaustion");
+  assert.equal(nl(exhSummary(9)), nl(exhSummary(6)));
+});

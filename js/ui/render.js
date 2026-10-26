@@ -190,7 +190,7 @@ function condChips(c, S, interactive, info = interactive) {
     const dt = durText(c, x, S.list);
     const dl = dt ? ` · ${esc(dt)}` : "";
     if (x === "Concentrating") {
-      const label = `Concentrating${c.concSpell ? ` · ${esc(c.concSpell)}` : ""}${dl}`;
+      const label = `${esc(term("cond", "Concentrating"))}${c.concSpell ? ` · ${esc(c.concSpell)}` : ""}${dl}`;
       return interactive ? `<button class="bd cc cbtn" data-a="dropconc" title="${esc(t("init.card.concEnd"))}">${label} ${ico("x")}<span class="vh">${esc(t("init.card.end"))}</span></button>` : `<span class="bd cc">${label}</span>`;
     }
     const nm = esc(term("cond", x));
@@ -347,7 +347,7 @@ function condPanel(c) {
       <label>${esc(t("init.cond.dur"))}<select data-f="cdur">${DURS.map(([v, l]) => `<option value="${v}" ${(opt.dur || "inf") === v ? "selected" : ""}>${esc(t(l))}</option>`).join("")}</select></label>
       <label>${esc(t("init.cond.save"))}<span style="display:flex;gap:4px"><select data-f="cab"><option value="">${esc(t("init.card.none"))}</option>${["STR", "DEX", "CON", "INT", "WIS", "CHA"].map((a) => `<option ${opt.ab === a ? "selected" : ""}>${a}</option>`).join("")}</select><input data-f="cdc" type="number" inputmode="numeric" placeholder="DC" value="${esc(opt.dc || "")}" style="width:64px"></span></label>
     </div>
-    <div class="condgrid">${CONDS.map((x) => `<button type="button" data-cond="${x}" aria-pressed="${c.cond.includes(x)}">${esc(term("cond", x))}</button>`).join("")}<button type="button" data-a="exh-open" aria-pressed="${exhLevel(c) > 0}" aria-expanded="${!!ui.exhOpen}">${exhLevel(c) ? `Exhaustion ${exhLevel(c)}` : "Exhaustion"}</button></div>
+    <div class="condgrid">${CONDS.map((x) => `<button type="button" data-cond="${x}" aria-pressed="${c.cond.includes(x)}">${esc(term("cond", x))}</button>`).join("")}<button type="button" data-a="exh-open" aria-pressed="${exhLevel(c) > 0}" aria-expanded="${!!ui.exhOpen}">${esc(term("cond", "Exhaustion"))}${exhLevel(c) ? ` ${exhLevel(c)}` : ""}</button></div>
     ${ui.exhOpen ? exhRow(c) : ""}</div>`;
 }
 
@@ -355,7 +355,7 @@ function condPanel(c) {
 function exhRow(c) {
   const x = exhLevel(c), dead = c.kind === "pc" ? !!(c.ds && c.ds.dead) : c.max > 0 && c.hp <= 0;
   return `<div class="exhrow"><button type="button" class="btn" data-a="exh" data-v="-1" ${x && !dead ? "" : "disabled"} aria-label="${esc(t("init.cond.exhDown"))}">−</button>
-    <b aria-live="polite">Exhaustion ${x}</b><button type="button" class="btn" data-a="exh" data-v="1" ${x >= 6 ? "disabled" : ""} aria-label="${esc(t("init.cond.exhUp"))}">+</button></div>
+    <b aria-live="polite">${esc(term("cond", "Exhaustion"))} ${x}</b><button type="button" class="btn" data-a="exh" data-v="1" ${x >= 6 ? "disabled" : ""} aria-label="${esc(t("init.cond.exhUp"))}">+</button></div>
     <p class="hint exhtxt">${esc(tr(exhSummary(x)))}. ${esc(t(dead && x ? "init.cond.exhBack" : "init.cond.exhLr"))}</p>`;
 }
 

@@ -19,7 +19,7 @@ export const condName = (k) => (k === SUR ? M("dnd.cond.Surprised.name") : term(
 export const EXH_NAME = "Exhaustion";
 export const isExh = (e) => !!e && e.n === EXH_NAME;
 /** Kort, voor de rij in het Conditie-paneel; speed 0 (5) vervangt speed ½ (2) */
-export const exhSummary = (x) => (x ? M("dnd.exh.sum", { n: x, list: J([1, 2, 3, 4, 5, 6].slice(0, x).filter((i) => !(x >= 5 && i === 2)).map((i) => M(`dnd.exh.s${i}`)), " · ") }) : M("dnd.exh.none"));
+export const exhSummary = (lvl) => { const x = Math.max(0, Math.min(6, lvl | 0)); return x ? M("dnd.exh.sum", { n: x, list: J([1, 2, 3, 4, 5, 6].slice(0, x).filter((i) => !(x >= 5 && i === 2)).map((i) => M(`dnd.exh.s${i}`)), " · ") }) : M("dnd.exh.none"); };
 /** Niveau 0–6 uit de effecten */
 export const exhLevel = (c) => { const e = (c && c.eff || []).find(isExh); return e ? Math.max(1, Math.min(6, e.x | 0 || 1)) : 0; };
 /** Wat er bij dit niveau geldt, opgeteld: ["1 Disadvantage on ability checks", …] als descriptoren (PHB 2014, appendix A) */

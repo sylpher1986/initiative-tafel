@@ -28,7 +28,7 @@ export function loadSpells(ed = "2014", url = FILES[ed]) {
       return r.json();
     }).then((doc) => {
       setSpells(doc);
-      if (!lib.has(ed)) throw new Error(""); // ongeldige data; lege melding = init.spell.loadFail // anders blijft het paneel op "Laden…" staan
+      if (!lib.has(ed)) throw new Error(""); // ongeldige data (anders blijft het paneel op "Laden…" staan); lege melding = init.spell.loadFail
     }).finally(() => busy.delete(ed)));
   }
   return busy.get(ed);
