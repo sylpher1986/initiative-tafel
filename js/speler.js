@@ -7,6 +7,7 @@ import { ORD } from "./rules/spells.js";
 import { localChannel, roomChannel, normCode, fmtCode } from "./share.js";
 import { esc } from "./ui/util.js";
 import { icon, avBox } from "./ui/avatar.js";
+import { hpPct, hpCls } from "./ui/hpbar.js";
 import { tvPlan } from "./tvfit.js";
 import { qrSvg } from "./qr.js";
 import { hasCondInfo, SUR } from "./rules/conditions.js";
@@ -28,9 +29,8 @@ function hp(c) {
   if (!h) return "";
   const st = h.hs ? `<span class="pvst ${ST_CLS[h.hs]}">${esc(hsText(h.hs))}</span>` : "";
   if (h.max == null) return st;
-  const pct = h.max ? Math.max(0, Math.min(1, h.hp / h.max)) : 0;
-  const cls = pct <= 0.25 ? "low" : pct <= 0.5 ? "mid" : "";
-  return `<div class="hpw"><div class="bar" aria-hidden="true"><i class="${cls}" style="width:${pct * 100}%"></i></div>
+  // zelfde fractie en kleurklasse als de DM-kaart (js/ui/hpbar.js, WP36): niet per soort, zonder max HP vol
+  return `<div class="hpw"><div class="bar" aria-hidden="true"><i class="${hpCls(h.hp, h.max)}" style="width:${hpPct(h.hp, h.max) * 100}%"></i></div>
     <span class="hpn">${h.hp}/${h.max}${h.temp ? ` <span class="thp">+${h.temp}</span>` : ""}</span></div>${h.hp <= 0 ? st : ""}`;
 }
 

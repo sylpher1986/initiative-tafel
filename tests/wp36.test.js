@@ -25,6 +25,9 @@ test("HP-klasse: zelfde fractie geeft dezelfde klasse voor speler en monster (ge
 test("HP-balk: render gebruikt alleen hpCls; geen kleur per soort op of naast de balk", () => {
   assert.match(render, /class="\$\{hpCls\(c\.hp, c\.max\)\}"/);
   assert.doesNotMatch(render, /pct <= 0\.25/, "geen tweede drempelregel in render");
+  // spelersscherm en tv: zelfde helpers, geen eigen drempels (bij max 0 anders een lege kritieke balk tegenover een volle op de DM-kaart)
+  assert.match(speler, /class="\$\{hpCls\(h\.hp, h\.max\)\}"/);
+  assert.doesNotMatch(speler, /<= 0\.25/, "geen tweede drempelregel op het spelersscherm");
   // geen soort-selector op de balk, de baan, het HP-getal of de HP-knop (DM-kaart en spelersscherm)
   const bad = css.match(/[^{}]*\.(pc|mon|monster|av-pc|av-mon)\b[^{}]*\.(bar|hpw|hpn|khp|pvhp|thp)\b[^{}]*\{/g) || [];
   assert.deepEqual(bad.map((s) => s.trim()), []);
