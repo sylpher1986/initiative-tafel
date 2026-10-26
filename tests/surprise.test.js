@@ -1,3 +1,4 @@
+import { nlw } from "./_nl.js"; // WP27: Nederlandse catalogus; nlw = oorzaken als tekst
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { startCombat, step, stopCombat, nextUp, sortOrder, isSurprised, setSurprise, toggleSurprise } from "../js/rules/turns.js";
@@ -14,7 +15,7 @@ test("surprise: verraste monsters slaan hun beurt in ronde 1 over, ronde 2 doen 
   assert.equal(S.list[0].sur, 2); assert.equal(S.list[0].reaction, false, "na de overgeslagen beurt reaction weer beschikbaar");
   assert.equal(S.list[2].reaction, true, "g2 nog verrast: geen reaction");
   assert.match(r0.msgs.join(" "), /Verrast, beurt overgeslagen: g1/);
-  assert.ok(r0.why.some((w) => w.id === "g1" && /verrast/.test(w.t)));
+  assert.ok(nlw(r0.why).some((w) => w.id === "g1" && /verrast/.test(w.t)));
   step(S, 1, rng);
   assert.equal(S.active, "b", "g2 overgeslagen");
   assert.equal(S.list[2].reaction, false);

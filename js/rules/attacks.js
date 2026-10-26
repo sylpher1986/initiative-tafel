@@ -3,6 +3,8 @@
 import { exhLevel } from "./conditions.js";
 import { d } from "./dice.js";
 import { applyDamage, critAtZero, merge, wakeByDamage } from "./combat.js";
+import { M, J } from "../i18n/msg.js";
+import { t } from "../i18n/boot.js";
 
 const ABIL = { strength: "STR", dexterity: "DEX", constitution: "CON", intelligence: "INT", wisdom: "WIS", charisma: "CHA" };
 const DICE = String.raw`(\d+d\d+(?:\s*[+−-]\s*\d+)?)`;
@@ -176,14 +178,14 @@ export function atkAdv(by, tgt, kind = "") {
   for (const k of DIS_BY) if (bc.includes(k)) dis.push(`${by.name} ${k}`);
   if (exhLevel(by) >= 3) dis.push(`${by.name} Exhaustion ${exhLevel(by)}`); // RE11: niveau 3+ disadvantage op aanvallen
   if (bc.includes("Invisible")) adv.push(`${by.name} Invisible`);
-  if (bc.includes("Frightened")) hint.push(`${by.name} Frightened: disadvantage als de bron in zicht is`);
+  if (bc.includes("Frightened")) hint.push(t("rules.adv.fright", { name: by.name }));
   for (const k of ADV_TGT) if (tc.includes(k)) adv.push(`${tgt.name} ${k}`);
   if (tc.includes("Invisible")) dis.push(`${tgt.name} Invisible`);
   if (tc.includes("Prone")) {
-    if (kind === "ranged") dis.push(`${tgt.name} Prone (op afstand)`);
+    if (kind === "ranged") dis.push(t("rules.adv.proneFar", { name: tgt.name }));
     else {
       adv.push(`${tgt.name} Prone`);
-      hint.push(`${tgt.name} Prone: advantage binnen 5 ft, disadvantage van verder weg`);
+      hint.push(t("rules.adv.prone", { name: tgt.name }));
     }
   }
   return { v: adv.length && !dis.length ? 1 : dis.length && !adv.length ? -1 : 0, adv, dis, hint };
@@ -233,13 +235,12 @@ export function atkResult(atk, ac, parts, modes = {}, force = {}) {
 /** Tekst van de to-hit-worp: "d20 [14, 7] adv +11 = 25 vs AC 16" */
 export const atkText = (atk, ac) => `d20 [${atk.d.join(", ")}]${atk.adv ? (atk.adv > 0 ? " adv" : " dis") : ""} ${atk.bo >= 0 ? "+" : "−"}${Math.abs(atk.bo)} = ${atk.tot}${ac != null ? ` vs AC ${ac}` : ""}`;
 
-const MODE_STEP = { 0.5: "×½", 2: "×2", 0: "immuun" };
-/** Logboek-oorzaak: "Bite (Dragon): d20 [14] +11 = 25 vs AC 16, raak; 2d10+6 [7, 3] +6 = 16 piercing + … → 21" */
+const MODE_STEP = { 0.5: "×½", 2: "×2" };
+/** Logboek-oorzaak (descriptor): "Bite (Dragon): d20 [14] +11 = 25 vs AC 16, raak; 2d10+6 [7, 3] +6 = 16 piercing + … → 21" */
 export function atkWhy(label, atk, ac, parts, res) {
-  const head = `${label}: ${atkText(atk, ac)}, ${res.crit ? "kritiek" : res.natHit ? "raak" : "toch raak"}`;
   const dm = parts.map((p) => partText(p, res.crit)).join(" + ");
-  const md = res.types.filter((t) => t.mode !== 1).map((t) => `${t.type} ${MODE_STEP[t.mode]} = ${t.dealt}`).join(", ");
-  return `${head}; ${dm}${md ? `, ${md}` : ""} → ${res.dealt}`;
+  const md = res.types.filter((t) => t.mode !== 1).map((t) => (t.mode === 0 ? M("rules.atk.immune", { type: t.type, n: String(t.dealt) }) : `${t.type} ${MODE_STEP[t.mode]} = ${t.dealt}`));
+  return M("rules.atk.why", { label, roll: atkText(atk, ac), res: M(res.crit ? "rules.atk.crit" : res.natHit ? "rules.atk.hit" : "rules.atk.forced"), dmg: J([dm, ...md]), n: String(res.dealt) });
 }
 
 /**

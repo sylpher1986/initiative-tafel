@@ -1,4 +1,5 @@
 // WP9: schade-spells (RE18), slots verbruiken (RE1/RE2), Pact Magic apart (RE3)
+import { nlw } from "./_nl.js"; // WP27: Nederlandse catalogus; nlw = oorzaken als tekst
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -106,7 +107,7 @@ test("RE1: afschrijven, zelf bijhouden onthouden, niets over = niet blokkeren", 
   spendSlot(c, "s3", "Fireball", 3); r = spendSlot(c, "s3", "Fireball", 3);
   assert.equal(c.casting.slots[2].left, 0);
   assert.equal(r.txt, "geen 3rd-level slot meer over");
-  assert.equal(r.why[0].id, "w", "niets afgeschreven: oorzaak bij de caster");
+  assert.equal(nlw(r.why)[0].id, "w", "niets afgeschreven: oorzaak bij de caster");
   assert.equal(c.slotSelf, undefined, "slot op maakt de caster niet stil 'Zelf' (review)");
   spendSlot(c, "self", "Fireball", 3);
   assert.equal(c.slotSelf, undefined, "standaard Zelf zonder tik: niet onthouden");

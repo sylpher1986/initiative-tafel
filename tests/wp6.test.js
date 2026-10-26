@@ -1,4 +1,5 @@
 // WP6: spelersscherm op de telefoon (SC5 "Dit ben ik", SC8 teksten) en GV12 (reaction gebruikt zichtbaar).
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { toPlayerView, cleanView, findMe, meState, buzzFor, dsText, headHtml, REACT_TAG, VIS } from "../js/playerview.js";

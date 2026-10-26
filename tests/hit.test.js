@@ -1,3 +1,4 @@
+import { nl } from "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { rollAttack, withAdv, atkKind, atkAdv, parseAction, rollDmgCrit, atkResult, atkText, atkWhy, partText, atkDamage, partsKey, dmgKey } from "../js/rules/attacks.js";
@@ -69,7 +70,7 @@ test("logboek-oorzaak met crit en resist", () => {
   const parts = rollDmgCrit("1d8+3:slashing", dice(5, 6));
   const r = { d: [20], nat: 20, bo: 5, tot: 25 };
   const res = atkResult(r, 15, parts, { slashing: 0.5 });
-  assert.equal(atkWhy("Claw (Owlbear)", r, 15, parts, res), "Claw (Owlbear): d20 [20] +5 = 25 vs AC 15, kritiek; 1d8+3 [5 | 6] = 14 slashing, slashing ×½ = 7 → 7");
+  assert.equal(nl(atkWhy("Claw (Owlbear)", r, 15, parts, res)), "Claw (Owlbear): d20 [20] +5 = 25 vs AC 15, kritiek; 1d8+3 [5 | 6] = 14 slashing, slashing ×½ = 7 → 7");
 });
 
 test("aanval zonder schade-worp: raak/mis zonder schade", () => {

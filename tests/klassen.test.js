@@ -1,5 +1,6 @@
 // 1.48.3: korte klassenamen botsen. `.dim` is de achtergrond van een paneel (`.sheet-wrap .dim`: absolute, inset 0);
 // de grijze kamercode droeg dezelfde klasse en dekte na Stop met delen de helft van Instellingen af (eerder: `.lg`, WP17).
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";

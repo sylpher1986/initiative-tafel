@@ -1,5 +1,6 @@
 // WP16 (HS5): embleem in de h1 van beide pagina's (zelfde tekening als de app-iconen), tagline op het spelersscherm,
 // manifest-iconen bestaan met de juiste maat.
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

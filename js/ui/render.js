@@ -4,10 +4,10 @@ import { MAC } from "./keys.js";
 import { ico, chev, dsMini } from "./icons.js";
 import { paintSetStat } from "./settings.js";
 import { $, esc, n0, spellLink, tb } from "./util.js";
-import { t } from "../i18n/boot.js";
+import { t, tr } from "../i18n/boot.js";
 import { app, commit, canUndo } from "../state.js";
 import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
-import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf, isSurprised, reactUsed, REACT_TAG, canToggleSurprise, nextUp, freshRoll, initPlan, initText } from "../rules/turns.js";
+import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf, isSurprised, reactUsed, reactTag, canToggleSurprise, nextUp, freshRoll, initPlan, initText, durShort } from "../rules/turns.js";
 import { PRESETS as PRESETS_14, presetsFor, effAc, effText, acBreakdown, baseMax, saveMods, modsText, isWarn, effName, isRage, rageOf, rageRes, barbLevel, rageDmg } from "../rules/effects.js";
 import { isExh, exhLevel, exhSummary } from "../rules/conditions.js";
 import * as R from "../rules/combat.js";
@@ -34,7 +34,7 @@ import { PAS, passives, pasText, sheetPassives, percList } from "../rules/passiv
 import { pcReact } from "./pcreact.js";
 import { clsLevel } from "../rules/encounters.js";
 import { oldMons, oldText } from "../rules/fight.js";
-import { logRound } from "../log.js";
+import { logRound, logMsg, logWhy } from "../log.js";
 import { exportDue, nudgeState, lastExportText } from "../exportnudge.js";
 
 /** UI-toestand die niet in de encounter (en dus niet in undo/opslag) hoort */
@@ -237,7 +237,7 @@ function rageChip(c, e, S, interactive) {
 /** Conditie- en effect-chips voor de speler-sheet in het zijpaneel (condities tikbaar voor uitleg, RE10) */
 const sbChips = (c) => condChips(c, app.S, false, true) + effChips(c, app.S, false, true) + reactChip(c, app.S);
 /** GV12: reaction gebruikt tot hij terug is (begin eigen beurt); dichte kaart en live-blok */
-const reactChip = (c, S) => (reactUsed(c, S, pcReact()) ? `<span class="bd">${REACT_TAG}</span>` : "");
+const reactChip = (c, S) => (reactUsed(c, S, pcReact()) ? `<span class="bd">${esc(reactTag())}</span>` : "");
 
 const hidBadge = (c) => (c.hidden ? `<span class="bd hid" title="${esc(t("init.card.hiddenTip"))}">${esc(t("init.card.hidden"))}</span>` : "")
   + (c.kind === "monster" && c.anon ? `<span class="bd hid" title="${esc(t("init.card.anonTip", { name: anonName(c, app.S.list) }))}">${esc(t("init.card.anon"))}</span>` : "");
@@ -341,7 +341,7 @@ function condPanel(c) {
   const opt = ui.condOpt[c.id] || {};
   return `<div class="kpanel">
     <div class="durrow">
-      <label>${esc(t("init.cond.dur"))}<select data-f="cdur">${DURS.map(([v, l]) => `<option value="${v}" ${(opt.dur || "inf") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      <label>${esc(t("init.cond.dur"))}<select data-f="cdur">${DURS.map(([v, l]) => `<option value="${v}" ${(opt.dur || "inf") === v ? "selected" : ""}>${esc(t(l))}</option>`).join("")}</select></label>
       <label>${esc(t("init.cond.save"))}<span style="display:flex;gap:4px"><select data-f="cab"><option value="">${esc(t("init.card.none"))}</option>${["STR", "DEX", "CON", "INT", "WIS", "CHA"].map((a) => `<option ${opt.ab === a ? "selected" : ""}>${a}</option>`).join("")}</select><input data-f="cdc" type="number" inputmode="numeric" placeholder="DC" value="${esc(opt.dc || "")}" style="width:64px"></span></label>
     </div>
     <div class="condgrid">${CONDS.map((x) => `<button type="button" data-cond="${x}" aria-pressed="${c.cond.includes(x)}">${x}</button>`).join("")}<button type="button" data-a="exh-open" aria-pressed="${exhLevel(c) > 0}" aria-expanded="${!!ui.exhOpen}">${exhLevel(c) ? `Exhaustion ${exhLevel(c)}` : "Exhaustion"}</button></div>
@@ -371,7 +371,7 @@ export function editPreview(c) {
   if ((c.eff || []).some((e) => e.st === "ac")) parts.push(t("init.card.edBaseAc", { ac: effAc({ ...c, ac: Number.isFinite(ac) ? ac : c.ac }) }));
   const ini = parseInit(ed.init);
   if (ini !== null && ini !== c.init && (!ed.keys || ed.keys.includes("init"))) { // RE9: wat de nieuwe initiative deze ronde betekent
-    const it = initText(initPlan(app.S, c, ini), ini, (app.S.list.find((x) => x.id === app.S.active) || {}).name);
+    const it = tr(initText(initPlan(app.S, c, ini), ini, (app.S.list.find((x) => x.id === app.S.active) || {}).name));
     if (it) parts.push(`<b class="warn">${esc(it[0].toUpperCase() + it.slice(1))}</b>`);
   }
   if (c.pid) parts.push(t("init.card.edParty"));
@@ -420,9 +420,9 @@ function pasFields(c, ed) {
 function drBox(c) {
   const open = ui.drOpen === c.id, k = ui.drKind;
   const sum = drText(c.dr);
-  const body = !open ? "" : `<div class="seg2 sm" role="group" aria-label="${esc(t("init.card.drKind"))}">${Object.entries(DR_LBL).map(([v, l]) => `<button type="button" data-a="dr-kind" data-v="${v}" aria-pressed="${k === v}">${l}</button>`).join("")}</div>
-    <div class="drgrid">${DTYPES.map((ty) => { const at = drKind(c.dr, ty); return `<button type="button" class="drt${at && at !== k ? " other" : ""}" data-a="dr-t" data-t="${ty}" aria-pressed="${at === k}"${at && at !== k ? ` aria-label="${esc(t("init.card.drNow", { type: ty, kind: DR_LBL[at] }))}"` : ""}>${ty}${at && at !== k ? `<small aria-hidden="true">${{ r: "R", i: "I", v: "V" }[at]}</small>` : ""}</button>`; }).join("")}</div>
-    <p class="hint">${esc([t("init.card.drHint", { kind: DR_LBL[k] }), c.sheet && c.sheet.dr ? t("init.card.drDdb") : "", c.pid ? t("init.card.drParty") : ""].filter(Boolean).join(" "))}</p>`;
+  const body = !open ? "" : `<div class="seg2 sm" role="group" aria-label="${esc(t("init.card.drKind"))}">${Object.entries(DR_LBL).map(([v, l]) => `<button type="button" data-a="dr-kind" data-v="${v}" aria-pressed="${k === v}">${esc(t(l))}</button>`).join("")}</div>
+    <div class="drgrid">${DTYPES.map((ty) => { const at = drKind(c.dr, ty); return `<button type="button" class="drt${at && at !== k ? " other" : ""}" data-a="dr-t" data-t="${ty}" aria-pressed="${at === k}"${at && at !== k ? ` aria-label="${esc(t("init.card.drNow", { type: ty, kind: t(DR_LBL[at]) }))}"` : ""}>${ty}${at && at !== k ? `<small aria-hidden="true">${{ r: "R", i: "I", v: "V" }[at]}</small>` : ""}</button>`; }).join("")}</div>
+    <p class="hint">${esc([t("init.card.drHint", { kind: t(DR_LBL[k]) }), c.sheet && c.sheet.dr ? t("init.card.drDdb") : "", c.pid ? t("init.card.drParty") : ""].filter(Boolean).join(" "))}</p>`;
   return `<div class="drbox"><div class="drhead"><span><span class="qlbl">Resistances</span> ${sum ? esc(sum) : esc(t("init.card.none"))}</span>
     <button type="button" class="link tap" data-a="dr-open" aria-expanded="${open}">${esc(t(open ? "init.card.drDone" : "init.card.drEdit"))} ${chev(open)}</button></div>${body}</div>`;
 }
@@ -447,7 +447,7 @@ function effPanel(c) {
       <div class="ed3">
         <label>${esc(t("init.eff.on"))}<select data-f="ef-k">${EFF_OPS.map(([v, l]) => `<option value="${v}" ${(f.k || "ac+") === v ? "selected" : ""}>${esc(t(l))}</option>`).join("")}</select></label>
         <label>${esc(t("init.eff.value"))}<input data-f="ef-v" type="number" inputmode="numeric" min="0" autocomplete="off" value="${esc(f.v ?? "")}"></label>
-        <label>${esc(t("init.eff.dur"))}<select data-f="ef-dur">${[...DURS, ["lr", t("init.eff.durLr")]].map(([v, l]) => `<option value="${v}" ${(f.dur || "inf") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+        <label>${esc(t("init.eff.dur"))}<select data-f="ef-dur">${[...DURS, ["lr", "init.eff.durLr"]].map(([v, l]) => `<option value="${v}" ${(f.dur || "inf") === v ? "selected" : ""}>${esc(t(l))}</option>`).join("")}</select></label>
       </div>
       <label>${esc(t("init.eff.note"))}<input data-f="ef-txt" value="${esc(f.txt || "")}" placeholder="${esc(t("init.eff.notePh"))}" maxlength="120"></label>
       <label>${esc(t("init.eff.concBy"))}<select data-f="ef-by"><option value="">${esc(t("init.card.none"))}</option>${S.list.filter((x) => x.id === f.by || spellTargets([x]).length).map((x) => `<option value="${esc(x.id)}" ${f.by === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label>
@@ -493,7 +493,7 @@ function actionsBlock(c) {
   const react = c.kind !== "pc" || pcReact(); // GV4: spelers houden hun reaction zelf bij (instelling); Heal neemt de plek over
   return `<div class="acts">
     ${c.max ? `<button class="dmg2 wide" data-a="sheet-open" data-kind="dmg">${esc(t("init.card.dmg"))}</button><button class="heal2${react ? "" : " wide"}" data-a="sheet-open" data-kind="heal">${esc(t("init.card.heal"))}</button>` : ""}
-    ${!react ? "" : isSurprised(c, app.S) ? `<button disabled title="${esc(t("init.card.surReact"))}">${esc(t("init.card.sur"))}</button>` : `<button data-a="react" aria-pressed="${!!c.reaction}"${c.reaction ? ` title="${esc(t("init.card.reactTip"))}"` : ""}>${c.reaction ? REACT_TAG : "Reaction"}</button>`}
+    ${!react ? "" : isSurprised(c, app.S) ? `<button disabled title="${esc(t("init.card.surReact"))}">${esc(t("init.card.sur"))}</button>` : `<button data-a="react" aria-pressed="${!!c.reaction}"${c.reaction ? ` title="${esc(t("init.card.reactTip"))}"` : ""}>${esc(c.reaction ? reactTag() : "Reaction")}</button>`}
     <button data-a="panel" data-p="conds" aria-pressed="${ui.panel === "conds"}">${esc(t("init.prep.cond"))}</button>
     <button data-a="panel" data-p="eff" aria-pressed="${ui.panel === "eff"}" ${gone ? "disabled" : ""}>${esc(t("init.prep.eff"))}</button>
     ${sideBtn}
@@ -1035,12 +1035,12 @@ const advHint = (c, ab) => { const v = saveAdv(c, ab); return v.v ? `${v.v > 0 ?
 
 function aoeRow(a, c, p, o, n) {
   const id = esc(c.id), nm = esc(c.name), dc = parseInt(a.dc);
-  const end = !n ? "" : o.res ? ` · <b class="bad">${o.res}</b>` : c.hp > 0 ? ` · ${n0(c.hp)} → ${n0(o.hp)} HP` : "";
+  const end = !n ? "" : o.res ? ` · <b class="bad">${esc(o.res)}</b>` : c.hp > 0 ? ` · ${n0(c.hp)} → ${n0(o.hp)} HP` : "";
   const mods = p.roll ? [] : saveMods(c, a.ab);
   const info = [
     p.roll ? `${esc(a.ab)} save ${esc(rollText(p.roll, dc))}` : mods.length ? esc(t("init.aoe.mods", { mods: modsText(mods) })) : "",
     p.roll ? "" : advHint(c, a.ab),
-    p.auto && p.mode !== 1 && a.type ? esc(`${MODE_LBL[p.mode]} (${p.def && p.def.eff ? "Rage" : c.kind === "pc" ? t("init.aoe.saved") : t("init.aoe.sb")})`) : "",
+    p.auto && p.mode !== 1 && a.type ? esc(`${t(MODE_LBL[p.mode])} (${p.def && p.def.eff ? "Rage" : c.kind === "pc" ? t("init.aoe.saved") : t("init.aoe.sb")})`) : "",
     p.auto && p.def.cond ? esc(t("init.aoe.note", { what: p.def.cond })) : "",
   ].filter(Boolean).join(" · ");
   const lrLeft = c.lr ? n0(c.lr.left) : 0;
@@ -1174,7 +1174,7 @@ export const curSpell = (a) => {
   const sp = SPELLS[a.sp], caster = app.S.list.find((x) => x.id === a.by);
   return sp && spellFor(sp, presetEd(caster, sp.n)) ? sp : null;
 };
-const durName = (v) => ((DURS.find((x) => x[0] === v) || [])[1] || "").replace(/ \(10 rondes\)| \(100 rondes\)/, "").toLowerCase();
+const durName = durShort; // WP27: "1 minuut" i.p.v. "1 minuut (10 rondes)", uit de catalogus
 
 /** Keuze per doel: wat de DM tikte, anders de standaard (kant van de caster, immuniteit, humanoid) */
 export function spellPick(a, sp, caster, c) {
@@ -1217,7 +1217,7 @@ function paintSpell(el, a) {
         <div class="ed3">
           <label>${esc(t("init.prep.cond"))}<select id="s-cond">${SPELL_CONDS.map((k) => `<option ${(cf.cond || "Frightened") === k ? "selected" : ""}>${k}</option>`).join("")}</select></label>
           <label>Save<select id="s-ab"><option value="">${esc(t("init.card.none"))}</option>${ABS.map((x) => `<option ${cf.ab === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
-          <label>${esc(t("init.eff.dur"))}<select id="s-dur">${DURS.map(([v, l]) => `<option value="${v}" ${(cf.dur || "r10") === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></label>
+          <label>${esc(t("init.eff.dur"))}<select id="s-dur">${DURS.map(([v, l]) => `<option value="${v}" ${(cf.dur || "r10") === v ? "selected" : ""}>${esc(t(l))}</option>`).join("")}</select></label>
         </div>
         <div class="schk"><label><input type="checkbox" id="s-rep" ${cf.rep ? "checked" : ""}> ${esc(t("init.cond.save"))}</label><label><input type="checkbox" id="s-conc" ${cf.conc === false ? "" : "checked"}> ${esc(t("init.sp.conc"))}</label></div>
       </div>` : "";
@@ -1409,7 +1409,7 @@ function atkRes(x, c, by) {
     const end = !c.max ? "" : sim.ds && sim.ds.dead && !(c.ds && c.ds.dead) ? ` · <b class="bad">${esc(t("init.dmg.dies"))}</b>`
       : uf && uf.dc ? ` · ${esc(t("init.dmg.uf", { dc: uf.dc }))}`
       : was > 0 && sim.hp <= 0 ? ` · <b class="bad">${esc(t(c.kind === "pc" ? "init.dmg.unc" : "init.card.down"))}</b>${uf && uf.skip ? ` · ${esc(t("init.atk.noUf", { why: uf.skip }))}` : ""}`
-      : c.kind === "pc" && was <= 0 && res.dealt ? ` · <b class="bad">${esc(res.crit ? t("init.atk.twoFail") : "death save failure")}</b>` : "";
+      : c.kind === "pc" && was <= 0 && res.dealt ? ` · <b class="bad">${esc(res.crit ? t("init.atk.twoFail") : t("rules.aoeRes.dsf"))}</b>` : "";
     body = `${x.parts.length ? `<div class="xdmg">${x.parts.map((p) => esc(partText(p, res.crit))).join("<br>")}</div>` : `<p class="hint">${esc(t("init.atk.noRoll"))}</p>`}
       ${res.types.map((ty) => `<div class="xmode"><span class="qlbl">${esc(ty.type || t("init.atk.dmgW"))}${ty.mode !== 1 && ty.mode === targetMode(c, null, ty.type).mode ? (targetMode(c, null, ty.type).eff ? " · Rage" : c.kind === "pc" ? ` · ${esc(t("init.aoe.saved"))}` : "") : ""}</span><div class="seg2 sm" role="group" aria-label="${esc(t("init.atk.resAria", { type: ty.type }))}">${XMODES.map(([v, l]) => `<button type="button" data-xa="mode" data-t="${esc(ty.type)}" data-v="${v}" aria-pressed="${ty.mode === v}">${esc(t(l))}</button>`).join("")}</div></div>`).join("")}
       <div class="xrow"><button type="button" class="btn small" data-xa="crit" aria-pressed="${res.crit}">${esc(t("init.atk.critBtn"))}</button>
@@ -1518,11 +1518,12 @@ const logCount = (S) => (S.log || []).filter((e) => !e.type).length;
 /** Regels van het logboek, nieuwste bovenaan (gedeeld door het blok onder de lijst en het paneel in Gevecht) */
 function logItems(L) {
   return [...L].reverse().map((e) => {
-    if (e.type === "round") return `<li class="lg-round">${esc(e.msg)}</li>`;
-    if (e.type === "turn") return `<li class="lg-turn">${esc(e.msg)}</li>`;
+    const msg = logMsg(e), why = logWhy(e); // WP27: descriptor in de actieve taal, oude regels als bewaarde tekst
+    if (e.type === "round") return `<li class="lg-round">${esc(msg)}</li>`;
+    if (e.type === "turn") return `<li class="lg-turn">${esc(msg)}</li>`;
     return `<li class="lg"><span class="lg-meta">${esc(logRound(e.r))}${e.turn ? ` · ${esc(t("init.log.turn", { name: e.turn }))}` : ""}</span>
-      <button type="button" class="lg-msg" data-logedit="${esc(e.id)}" aria-label="${esc(t("init.log.whyAria", { msg: e.msg }))}">${esc(e.msg)}</button>
-      ${e.why ? `<span class="lg-why">${esc(e.why)}</span>` : ""}
+      <button type="button" class="lg-msg" data-logedit="${esc(e.id)}" aria-label="${esc(t("init.log.whyAria", { msg }))}">${esc(msg)}</button>
+      ${why ? `<span class="lg-why">${esc(why)}</span>` : ""}
       ${ui.editLog === e.id ? `<input class="lg-in" data-lognote="${esc(e.id)}" value="${esc(e.note || "")}" placeholder="${esc(t("init.log.whyPh"))}" aria-label="${esc(t("init.log.why"))}">`
         : e.note ? `<button type="button" class="lg-note" data-logedit="${esc(e.id)}">${esc(e.note)}</button>` : ""}</li>`;
   }).join("");

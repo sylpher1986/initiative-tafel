@@ -1,5 +1,6 @@
 // WP17 (HS7): lijn-iconen uit één sprite. Elke gebruikte naam bestaat, de sprite staat in de service worker,
 // en de oude tekenglyphs (Inter heeft ze niet, iOS tekent ▶ soms als emoji) staan niet meer in de interface.
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";

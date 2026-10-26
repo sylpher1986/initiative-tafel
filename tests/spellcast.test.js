@@ -1,3 +1,4 @@
+import { nlw } from "./_nl.js"; // WP27: Nederlandse catalogus; nlw = oorzaken als tekst
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { SPELLS, customSpell, castSpell, endConcConds, spellDefault, condImmune, casterDC, spellTargets, isHumanoid, slotFor } from "../js/rules/spellcast.js";
@@ -31,8 +32,8 @@ test("Hold Person: gefaald = Paralyzed met herhaalsave en koppeling; geslaagd en
   assert.deepEqual(b1.cond, ["Paralyzed"]);
   assert.deepEqual(b1.cd.Paralyzed, { kind: "rounds", who: "Elara", at: "start", count: 10, save: { ab: "WIS", dc: 15 }, by: "Elara", spell: "Hold Person", cast: "2:Elara" });
   assert.deepEqual(b2.cond, []); assert.deepEqual(dr.cond, []); assert.equal(dr.lr.left, 2);
-  assert.ok(r.why.some((w) => w.id === "B1" && /save gefaald/.test(w.t) && /d20 \[6\]/.test(w.t)));
-  assert.ok(r.why.some((w) => w.id === "Elara" && /B2 save geslaagd/.test(w.t)), "geslaagd: in het logboek bij de caster");
+  assert.ok(nlw(r.why).some((w) => w.id === "B1" && /save gefaald/.test(w.t) && /d20 \[6\]/.test(w.t)));
+  assert.ok(nlw(r.why).some((w) => w.id === "Elara" && /B2 save geslaagd/.test(w.t)), "geslaagd: in het logboek bij de caster");
   // herhaalsave opent bij het begin van de beurt van het doelwit; geslaagd = Paralyzed weg
   const S = { list, saves: [] };
   turnSaves(S, "B1");
@@ -50,7 +51,7 @@ test("Hypnotic Pattern: twee condities, beide weg als de concentratie breekt", (
   applyDamage(bard, 99); // 0 HP: concentratie weg
   const r = endConcConds(list);
   assert.deepEqual(g.cond, []); assert.equal(r.why.length, 2);
-  assert.match(r.why[0].t, /concentratie van Bard op Hypnotic Pattern voorbij/);
+  assert.match(nlw(r.why)[0].t, /concentratie van Bard op Hypnotic Pattern voorbij/);
 });
 
 test("concentratie op iets anders of caster weg: condities vervallen; andere condities blijven", () => {
@@ -75,7 +76,7 @@ test("opnieuw casten: zelfde beurt sluit aan, latere beurt = nieuwe cast en de o
   assert.ok(a.cond.includes("Paralyzed") && b.cond.includes("Paralyzed"), "zelfde beurt: beide");
   const r = castSpell(list, SP("Hold Person"), wiz, [pick(b)], { round: 2, active: "W", dc: 15 });
   assert.deepEqual(a.cond, []); assert.ok(b.cond.includes("Paralyzed"));
-  assert.ok(r.why.some((w) => w.id === "W" && w.t === "Hold Person opnieuw gecast"));
+  assert.ok(nlw(r.why).some((w) => w.id === "W" && w.t === "Hold Person opnieuw gecast"));
   // Bless/Bane: effecten volgen dezelfde regel
   const cl = pc("C"), p1 = pc("P1"), p2 = pc("P2"), L2 = [cl, p1, p2];
   castSpell(L2, SP("Bless"), cl, [pick(p1)], { round: 1, active: "C" });

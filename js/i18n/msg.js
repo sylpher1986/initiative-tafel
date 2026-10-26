@@ -6,5 +6,17 @@
 /** Descriptor maken: M("rules.save.lost", { name: "Lotte", dc: 13 }) → { k, p } (p alleen als er waarden zijn) */
 export const M = (k, p) => (p && Object.keys(p).length ? { k, p } : { k });
 
+/**
+ * Samengestelde tekst (WP27): delen (tekst of descriptoren) met een vast scheidingsteken, zonder "en"/"and".
+ * J(["−7 HP", M("rules.x")], ", ") → { j: [...], s: ", " }; tr/t vertalen elk deel en voegen samen.
+ */
+export const J = (parts, s = ", ") => {
+  const j = parts.filter((x) => x != null && x !== "");
+  if (j.length === 1) return j[0]; // één deel: geen omhulsel (kleiner logboek); tr geeft dezelfde tekst
+  return s === ", " ? { j } : { j, s }; // standaard-scheidingsteken niet opslaan
+};
+/** Is dit een samengestelde tekst uit J()? */
+export const isJoin = (x) => !!x && typeof x === "object" && Array.isArray(x.j);
+
 /** Is dit een descriptor? (object met een string-sleutel k, geen array) */
 export const isMsg = (x) => !!x && typeof x === "object" && !Array.isArray(x) && typeof x.k === "string" && x.k !== "";

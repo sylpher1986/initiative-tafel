@@ -1,3 +1,4 @@
+import { nl } from "./_nl.js"; // WP27: Nederlandse catalogus; nl = descriptor als tekst
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { startCombat, step, stopCombat, nextUp, sortOrder, setInit, initPlan, initText, turnOrder, removeCombatant } from "../js/rules/turns.js";
@@ -40,7 +41,7 @@ test("RE9: wie aan de beurt is verlaagt zijn eigen init → niemand overgeslagen
   startCombat(S, rng); // bram 12
   const r = setInit(S, by(S, "bram"), 4);
   assert.equal(r.plan.own, true); assert.equal(by(S, "bram").atR.r, 1, "houdt deze ronde zijn plek");
-  assert.match(initText(r.plan, 4), /beurt loopt door, volgende ronde op 4/);
+  assert.match(nl(initText(r.plan, 4)), /beurt loopt door, volgende ronde op 4/);
   assert.equal(nextUp(S, sortOrder(S.list), S.active).id, "gob");
   assert.deepEqual(turns(S, 6), ["1:gob", "1:noor", "1:orc", "2:gob", "2:noor", "2:bram"]);
 });

@@ -2,7 +2,9 @@
 // Eén caster, per doel een save (gefaald = effect/conditie, geslaagd = niets), alles in één stap.
 // Condities van een concentratie-spell hangen aan de caster (cd[k].by/spell/cast), net als effecten:
 // endConcConds haalt ze weg zodra die concentratie voorbij is (aangeroepen in commit()). Puur: geen DOM.
-import { fx, merge, startConc, dropConc, downPc } from "./combat.js";
+import { fx, merge, startConc, dropConc, downPc, say } from "./combat.js";
+import { M } from "../i18n/msg.js";
+import { t } from "../i18n/boot.js";
 import { PRESETS, presetsFor, addEffect, endOtherCasts } from "./effects.js";
 import { isConc, keys } from "./spells.js";
 import { makeDur, isOut } from "./turns.js";
@@ -89,9 +91,9 @@ export function spellDefault(sp, caster, c, m) {
   if (immune && !im.length && sp.auto) im.push(sp.auto);
   const human = !sp.humanoid || isHumanoid(c, m);
   if (caster && c.id === caster.id) tags.push("caster");
-  if (immune) tags.push(`immuun ${im.join(", ")}`);
-  if (!human) tags.push("geen humanoid");
-  if (c.hidden) tags.push("verborgen");
+  if (immune) tags.push(t("rules.sp.tagImmune", { what: im.join(", ") }));
+  if (!human) tags.push(t("rules.sp.tagHuman"));
+  if (c.hidden) tags.push(t("rules.sp.tagHidden"));
   const own = caster ? (caster.kind === "pc") === (c.kind === "pc") : false;
   const side = sp.side === "own" ? own : !own;
   const sel = !!caster && sp.max !== 1 && side && c.id !== caster.id && !immune && human && !(c.kind === "pc" && c.max && c.hp <= 0); // één doel: de DM kiest (RE8)
@@ -109,7 +111,7 @@ export function endOtherCondCasts(list, by, spell, cast) {
   const out = fx();
   for (const c of list) for (const [k, e] of Object.entries(c.cd || {})) {
     if (!e || e.by !== by || e.spell !== spell || e.cast === cast) continue;
-    merge(out, dropCond(c, k, `${spell} opnieuw gecast`));
+    merge(out, dropCond(c, k, M("rules.recast", { spell })));
   }
   return out;
 }
@@ -119,7 +121,7 @@ function dropCond(c, k, why) {
   if (!(k === "Unconscious" && downPc(c))) c.cond = c.cond.filter((x) => x !== k); // speler op 0 HP blijft bewusteloos
   if (c.cd) delete c.cd[k];
   out.why.push({ t: why, id: c.id });
-  out.msgs.push(`${c.name}: ${k} is voorbij (${why}).`);
+  out.msgs.push(say("rules.overWhy", { name: c.name, what: k, why }));
   return out;
 }
 
@@ -130,7 +132,7 @@ export function endConcConds(list) {
     if (!e || !e.by || !c.cond.includes(k)) continue;
     const by = list.find((x) => x.id === e.by);
     const ok = by && by.cond.includes("Concentrating") && !(by.concSpell && e.spell && by.concSpell !== e.spell);
-    if (!ok) merge(out, dropCond(c, k, `concentratie${by ? ` van ${by.name}` : ""} op ${e.spell || "spell"} voorbij`));
+    if (!ok) merge(out, dropCond(c, k, by ? M("rules.sp.concOfOver", { name: by.name, spell: e.spell || "spell" }) : M("rules.sp.concOver", { spell: e.spell || "spell" })));
   }
   return out;
 }
@@ -147,20 +149,20 @@ export function castSpell(list, sp, caster, picks, ctx = {}) {
   if (by) {
     if (caster.cond.includes("Concentrating") && caster.concSpell === sp.n) {
       const a = endOtherCasts(list, by, sp.n, cast, ctx.active), b = endOtherCondCasts(list, by, sp.n, cast);
-      if (a.why.length || b.why.length) { out.why.push(...a.why, ...b.why, { t: `${sp.n} opnieuw gecast`, id: by }); out.msgs.push(...a.msgs, ...b.msgs); }
+      if (a.why.length || b.why.length) { out.why.push(...a.why, ...b.why, { t: M("rules.recast", { spell: sp.n }), id: by }); out.msgs.push(...a.msgs, ...b.msgs); }
     } else merge(out, startConc(caster, sp.n));
   }
   const pre = sp.eff ? presetsFor(ctx.ed).find((p) => p.n === sp.eff) : null;
   for (const p of picks) {
     const c = p.c, note = p.note ? `${p.note}, ` : "";
     const lr = !p.ok && p.lr && c.lr && c.lr.left > 0; // zonder resistance over telt de save gewoon als gefaald
-    if (lr) { c.lr.left--; out.why.push({ t: "legendary resistance gebruikt", id: c.id }); }
+    if (lr) { c.lr.left--; out.why.push({ t: M("rules.lrUsed"), id: c.id }); }
     // wie niets krijgt verandert niet en heeft dus geen eigen logregel: de oorzaak hangt aan de caster
     const own = caster ? caster.id : c.id;
-    if (p.ok || lr) { out.ok.push(c.name); out.why.push({ t: `${label}: ${c.name} ${note}save geslaagd, geen effect`, id: own }); continue; }
-    if (spellImmune(sp, p.m)) { out.immune.push(c.name); out.why.push({ t: `${label}: ${c.name} immuun voor ${condImmune(p.m).includes(sp.conds[0]) ? sp.conds[0] : sp.auto}`, id: own }); continue; }
+    if (p.ok || lr) { out.ok.push(c.name); out.why.push({ t: M("rules.sp.saved", { label, name: c.name, note }), id: own }); continue; }
+    if (spellImmune(sp, p.m)) { out.immune.push(c.name); out.why.push({ t: M("rules.sp.immune", { label, name: c.name, what: condImmune(p.m).includes(sp.conds[0]) ? sp.conds[0] : sp.auto }), id: own }); continue; }
     out.hit.push(c.name);
-    out.why.push({ t: `${label}${sp.ab ? `: ${note}save gefaald` : ""}`, id: c.id });
+    out.why.push({ t: sp.ab ? M("rules.sp.failed", { label, note }) : label, id: c.id });
     if (pre) {
       merge(out, addEffect(c, pre, makeDur(c, { dur: pre.dur }, ctx.active), { by, spell: sp.n, cast }));
       continue;
@@ -175,7 +177,7 @@ export function castSpell(list, sp, caster, picks, ctx = {}) {
       c.cd[k] = by ? { ...d, by, spell: sp.n, cast } : d;
     });
     // PHB p. 203: incapacitated (ook Paralyzed/Stunned/Petrified) beëindigt de eigen concentratie; effecten volgen in commit()
-    if (sp.conds.some((k) => NO_ACT.includes(k))) merge(out, dropConc(c, `${sp.conds.find((k) => NO_ACT.includes(k))} door ${sp.n}`));
+    if (sp.conds.some((k) => NO_ACT.includes(k))) merge(out, dropConc(c, M("rules.condBy", { cond: sp.conds.find((k) => NO_ACT.includes(k)), name: sp.n })));
   }
   return out;
 }

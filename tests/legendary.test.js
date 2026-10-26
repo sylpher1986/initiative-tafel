@@ -1,3 +1,4 @@
+import { nlw } from "./_nl.js"; // WP27: Nederlandse catalogus; nlw = oorzaken als tekst
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -62,7 +63,7 @@ test("gebruiken: kosten aftrekken, te duur of niet mogelijk = geen wijziging", (
   const [, tail, wing] = laOptions(mon("Adult Black Dragon"));
   let r = useLA(c, wing, S);
   assert.equal(c.la.left, 1);
-  assert.match(r.why[0].t, /Wing Attack \(2 LA\)/);
+  assert.match(nlw(r.why)[0].t, /Wing Attack \(2 LA\)/);
   r = useLA(c, wing, S);
   assert.equal(c.la.left, 1); assert.equal(r.why.length, 0); assert.match(r.msgs[0], /kost 2 LA/);
   useLA(c, tail, S); assert.equal(c.la.left, 0);

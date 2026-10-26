@@ -2,12 +2,15 @@
 // Volgorde (PHB): eerst de save (½ of 0, naar beneden afgerond), daarna resistance/vulnerability.
 // Voorbeeld: 27 fire, save geslaagd en resistant → 13 → 6.
 import { fx, merge, applyDamage } from "./combat.js";
+import { M, J } from "../i18n/msg.js";
+import { t } from "../i18n/boot.js";
 import { mod, d } from "./dice.js";
 
 export const DTYPES = ["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"];
 export const ABS = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
 
-export const MODE_LBL = { 0.5: "resistant", 2: "kwetsbaar", 0: "immuun" };
+/** Weerstand per schadefactor → catalogussleutel (t(MODE_LBL[m])) */
+export const MODE_LBL = { 0.5: "rules.mode.r", 2: "rules.mode.v", 0: "rules.mode.i" };
 /** Schade-invoer → heel getal 0..999 */
 export const clampDmg = (v) => Math.max(0, Math.min(999, parseInt(v, 10) || 0));
 /** Keuze per doelwit; mode null = volg het statblock. roll = { r, r2, bo, tot } of null */
@@ -48,15 +51,16 @@ export function drDiff(a, b) {
   for (const [k, l] of Object.entries(DR_LBL)) {
     const x = (a && a[k]) || [], y = (b && b[k]) || [];
     const d = [...y.filter((t) => !x.includes(t)).map((t) => "+" + t), ...x.filter((t) => !y.includes(t)).map((t) => "−" + t)];
-    if (d.length) out.push(`${l} ${d.join(" ")}`);
+    if (d.length) out.push(`${t(l)} ${d.join(" ")}`);
   }
   return out.join(", ");
 }
 /** In welke soort een type staat ("r" | "i" | "v" | null) */
 export const drKind = (dr, t) => (dr ? ["r", "i", "v"].find((k) => (dr[k] || []).includes(t)) || null : null);
-export const DR_LBL = { r: "Resist", i: "Immuun", v: "Kwetsb." };
+/** Soorten weerstand → catalogussleutel van het korte label (t(DR_LBL[k])) */
+export const DR_LBL = { r: "rules.dr.r", i: "rules.dr.i", v: "rules.dr.v" };
 /** Korte tekst: "Resist fire, cold · Immuun poison"; leeg zonder weerstanden */
-export const drText = (dr) => (!dr ? "" : [["r", "Resist"], ["i", "Immuun"], ["v", "Kwetsb."]].filter(([k]) => (dr[k] || []).length).map(([k, l]) => `${l} ${dr[k].join(", ")}`).join(" · "));
+export const drText = (dr) => (!dr ? "" : ["r", "i", "v"].filter((k) => (dr[k] || []).length).map((k) => `${t(DR_LBL[k])} ${dr[k].join(", ")}`).join(" · "));
 /** Modus voor een doelwit: monster uit het statblock (m.x), speler uit zijn weerstanden */
 export const targetMode = (c, m, type) => withEff(c, c && c.kind === "pc" ? drMode(c.dr, type) : defMode(m && m.x, type), type);
 /**
@@ -110,10 +114,10 @@ export function aoeOutcome(c, pick, raw) {
   const sim = structuredClone(c);
   const r = applyAoe([{ c: sim, save: pick.save, mode: pick.mode }], raw, "");
   const dealt = r.hits[0].dealt;
-  const res = sim.ds && sim.ds.dead && !(c.ds && c.ds.dead) ? "sterft"
-    : c.hp > 0 && sim.hp <= 0 ? (c.kind === "pc" ? "bewusteloos" : "neer")
-    : c.kind === "pc" && c.hp <= 0 && dealt ? "death save failure" : "";
-  return { dealt, res, hp: sim.hp, steps: aoeCalc(raw, pick.save, pick.mode).steps, down: !!res && res !== "death save failure" };
+  const code = sim.ds && sim.ds.dead && !(c.ds && c.ds.dead) ? "dies"
+    : c.hp > 0 && sim.hp <= 0 ? (c.kind === "pc" ? "uncon" : "down")
+    : c.kind === "pc" && c.hp <= 0 && dealt ? "dsf" : "";
+  return { dealt, res: code ? t(`rules.aoeRes.${code}`) : "", hp: sim.hp, steps: aoeCalc(raw, pick.save, pick.mode).steps, down: !!code && code !== "dsf" };
 }
 
 /** save: "fail" (volle schade), "half" (geslaagd, ½) of "none" (geen schade, bijv. Evasion). mode: 1, 0.5, 2 of 0 */
@@ -126,7 +130,7 @@ export function aoeCalc(raw, save, mode) {
   if (save === "none") steps.push("save 0");
   if (base && mode === 0.5) steps.push(`resist ${dealt}`);
   if (base && mode === 2) steps.push(`×2 ${dealt}`);
-  if (base && mode === 0) steps.push("immuun 0");
+  if (base && mode === 0) steps.push(`${t("rules.aoe.immune")} 0`);
   return { base, dealt, steps };
 }
 
@@ -183,10 +187,10 @@ export function applyAoe(picks, raw, label) {
   const out = Object.assign(fx(), { hits: [] });
   for (const p of picks) {
     const c = p.c;
-    if (p.lr && c.lr && c.lr.left > 0) { c.lr.left--; out.why.push({ t: "legendary resistance gebruikt", id: c.id }); }
+    if (p.lr && c.lr && c.lr.left > 0) { c.lr.left--; out.why.push({ t: M("rules.lrUsed"), id: c.id }); }
     const r = aoeCalc(raw, p.save, p.mode);
-    const sv = p.save === "half" ? "save geslaagd" : p.save === "none" ? "geen schade door save" : "save gefaald";
-    out.why.push({ t: `AoE ${label}: ${p.note ? p.note + ", " : ""}${sv}${p.mode === 0 ? ", immuun" : ""} → ${r.steps.join(" → ")}`, id: c.id });
+    const sv = M(p.save === "half" ? "rules.aoe.half" : p.save === "none" ? "rules.aoe.none" : "rules.aoe.fail");
+    out.why.push({ t: M("rules.aoe.why", { label, what: J([p.note, sv, p.mode === 0 ? M("rules.aoe.immune") : null]), steps: r.steps.join(" → ") }), id: c.id });
     if (r.base > 0 && p.mode !== 0) merge(out, applyDamage(c, r.base, p.mode, true));
     out.hits.push({ id: c.id, dealt: r.dealt });
   }

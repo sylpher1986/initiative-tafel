@@ -4,6 +4,8 @@
 // S.endSum  = samenvatting van het laatst afgeronde gevecht (blijft tot Start gevecht of monsters wissen)
 import { crXp } from "./encounters.js";
 import { isOut, dropIds } from "./turns.js";
+import { M, J } from "../i18n/msg.js";
+import { t } from "../i18n/boot.js";
 
 const MAX_ENC = 5;
 const str = (v, max) => (v == null ? "" : String(v)).slice(0, max);
@@ -73,19 +75,19 @@ export function endCalc(es) {
   return { mons, xp, noXp, by, share, per: share.length ? Math.floor(xp / share.length) : null, down, dead };
 }
 
-const fmt = (n) => Math.round(n).toLocaleString("nl-NL");
 export const byText = (by) => by.map(([n, k]) => (k > 1 ? `${k}× ${n}` : n)).join(", ");
 
-/** Eén regel voor logboek en klembord */
+/** Eén regel voor het logboek (descriptor, WP27; getallen worden in de taal van het scherm opgemaakt) */
 export function endText(es) {
   const k = endCalc(es);
-  const parts = [`${es.enc ? `${es.enc}: ` : "Gevecht afgerond: "}${es.r} ${es.r === 1 ? "ronde" : "rondes"}${es.min ? ` (± ${es.min} min)` : ""}`];
-  parts.push(k.by.length ? `Verslagen: ${byText(k.by)}` : "Niets verslagen");
-  parts.push(`${fmt(k.xp)} XP${k.share.length ? `, ${fmt(k.per)} per speler (${k.share.map((p) => p.name).join(", ")})` : ", niemand deelt"}`);
-  if (k.noXp.length) parts.push(`Zonder CR of statblock niet geteld: ${k.noXp.join(", ")}`);
-  if (k.down.length) parts.push(`Neer geweest: ${k.down.map((x) => `${x.name}${x.up ? " (stond weer op)" : ""}`).join(", ")}`);
-  if (k.dead.length) parts.push(`Gestorven: ${k.dead.join(", ")}`);
-  return parts.join(". ") + ".";
+  const head = M(es.enc ? "rules.end.headEnc" : "rules.end.head", { enc: es.enc || "", n: es.r });
+  const parts = [es.min ? M("rules.end.min", { head, min: es.min }) : head];
+  parts.push(k.by.length ? M("rules.end.beaten", { what: byText(k.by) }) : M("rules.end.none"));
+  parts.push(k.share.length ? M("rules.end.xpShare", { xp: Math.round(k.xp), per: Math.round(k.per), names: k.share.map((p) => p.name).join(", ") }) : M("rules.end.xpNone", { xp: Math.round(k.xp) }));
+  if (k.noXp.length) parts.push(M("rules.end.noXp", { names: k.noXp.join(", ") }));
+  if (k.down.length) parts.push(M("rules.end.down", { what: J(k.down.map((x) => (x.up ? M("rules.end.up", { name: x.name }) : x.name))) }));
+  if (k.dead.length) parts.push(M("rules.end.dead", { names: k.dead.join(", ") }));
+  return M("rules.end.line", { body: J(parts, ". ") });
 }
 
 /** Schakelt meetellen (monster) of delen (speler) om */
@@ -105,7 +107,7 @@ export function oldMons(S) {
 /** "Nog 3 monsters uit het vorige gevecht: Adult Red Dragon 83/178 HP, Goblin 1, Goblin 2 +1." (max 3 namen) */
 export function oldText(L) {
   const nm = (c) => (c.max && c.hp < c.max ? `${c.name} ${Math.max(0, c.hp)}/${c.max} HP` : c.name);
-  return `Nog ${L.length} monster${L.length === 1 ? "" : "s"} uit het vorige gevecht: ${L.slice(0, 3).map(nm).join(", ")}${L.length > 3 ? ` +${L.length - 3}` : ""}.`;
+  return t("rules.old", { n: L.length, names: L.slice(0, 3).map(nm).join(", "), more: L.length > 3 ? ` +${L.length - 3}` : "" });
 }
 /** Oude monsters weghalen (vóór Start of los); geeft het aantal */
 export function dropOld(S) {

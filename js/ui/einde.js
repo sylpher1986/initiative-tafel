@@ -1,5 +1,6 @@
 // GV2: samenvatting bij Gevecht afronden (paneel #esheet) en de strook "Laatste gevecht" in Voorbereiden.
 // Regels puur in js/rules/fight.js; de samenvatting staat in app.S.endSum (undo: Ongedaan na afronden laat het gevecht doorlopen).
+import { M } from "../i18n/msg.js";
 import { $, esc, toast, toastHtml, toastBad, undoBtn } from "./util.js";
 import { t, i18n } from "../i18n/boot.js";
 import { ico, chev } from "./icons.js";
@@ -12,7 +13,7 @@ const fmt = (n) => i18n().num(Math.round(n));
 const downTxt = (k) => k.down.map((x) => (x.up ? t("init.end.upAgain", { name: x.name }) : x.name)).join(", ");
 const roundsTxt = (es) => t("init.end.rounds", { n: es.r });
 
-/** WP26: samenvatting voor het klembord in de taal van de app (het logboek houdt endText tot WP27) */
+/** Samenvatting voor het klembord in de taal van de app (WP26) */
 export function copyText(es) {
   const k = endCalc(es);
   const head = `${es.enc ? `${es.enc}: ` : `${t("init.end.title")}: `}${roundsTxt(es)}${es.min ? ` (± ${es.min} min)` : ""}`;
@@ -111,7 +112,7 @@ export function bindEnd(resetMons) {
     }
     if (a === "wipe") { // één eigen undo-stap; het logboek noemt per speler "Prone voorbij" met deze reden
       const keys = condList().filter(picked).map((x) => x.k); if (!keys.length) return;
-      because("na het gevecht gewist");
+      because(M("log.w.wiped"));
       const done = wipeConds(app.S.list, keys);
       render(); ui.condDone = stepNo(); paintEnd();
       toastHtml(`${esc(t("init.end.wiped", { what: done }))} ${undoBtn()}`);

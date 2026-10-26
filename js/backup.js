@@ -1,6 +1,7 @@
 // Export/import van alle data als één JSON-bestand met versienummer.
 import { APP } from "./version.js";
 import { t } from "./i18n/boot.js";
+import { MAX_DEPTH } from "./i18n/core.js";
 import { sanitizeOwn } from "./data/monsters.js";
 import { CONDS } from "./rules/turns.js";
 import { cleanImg } from "./ui/avatar.js";
@@ -32,6 +33,36 @@ const str = (v, max = 2000) => (v == null ? "" : String(v).slice(0, max));
 const num = (v, def = 0) => (Number.isFinite(+v) ? +v : def);
 const obj = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : null);
 const arr = (v) => (Array.isArray(v) ? v : []);
+/**
+ * Descriptor uit een logregel (WP27): sleutel uit rules./log./init./dnd., waarden tekst/getal/descriptor/J/array,
+ * begrensd in diepte en grootte. Ongeldig = null (de regel houdt dan alleen zijn tekst msg/why).
+ */
+const KEY_RE = /^(rules|log|init|dnd)\.[A-Za-z0-9.]{1,80}$/;
+export function cleanDesc(x, depth = 0) {
+  if (depth > MAX_DEPTH) return null; // zelfde grens als de vertaler (core.js)
+  if (typeof x === "string") return str(x, 1000);
+  if (typeof x === "number") return Number.isFinite(x) ? x : null;
+  if (Array.isArray(x)) { const L = x.slice(0, 20).map((y) => cleanDesc(y, depth + 1)); return L.includes(null) ? null : L; }
+  if (!obj(x)) return null;
+  if (Array.isArray(x.j)) { const j = cleanDesc(x.j, depth + 1); return !j ? null : typeof x.s === "string" ? { j, s: str(x.s, 5) } : { j }; }
+  if (typeof x.k !== "string" || !KEY_RE.test(x.k)) return null;
+  if (x.p === undefined) return { k: x.k };
+  if (!obj(x.p)) return null;
+  const p = {};
+  for (const [k, v] of Object.entries(x.p).slice(0, 12)) { const c = cleanDesc(v, depth + 1); if (c === null || !/^\w{1,20}$/.test(k)) return null; p[k] = c; }
+  return { k: x.k, p };
+}
+/** Logregel opschonen; m en w (descriptoren, WP27) alleen als ze geldig zijn */
+function cleanLog(e) {
+  const out = { id: str(e.id, 40), r: num(e.r), turn: str(e.turn, 120), type: ["round", "turn"].includes(e.type) ? e.type : "", msg: str(e.msg, 1000), why: str(e.why, 1000), note: str(e.note, 1000) };
+  const m = e.m && typeof e.m === "object" ? cleanDesc(e.m) : null;
+  if (m) out.m = m;
+  const w = Array.isArray(e.w) ? cleanDesc(e.w.slice(0, 12)) : null;
+  if (w) out.w = w;
+  if (typeof e.key === "string" && /^\w{1,20}$/.test(e.key)) out.key = e.key;
+  return out;
+}
+
 /** Teller (legendary actions/resistance): hele getallen, max 0–20, left 0–max (een import kan rare waarden bevatten) */
 const counter = (o) => { if (!obj(o)) return null; const max = Math.min(20, Math.max(0, Math.trunc(num(o.max)))); return { max, left: Math.min(max, Math.max(0, Math.trunc(num(o.left)))) }; };
 
@@ -135,7 +166,7 @@ export function parseImport(json) {
     S: {
       list: dedupeAnon(arr(S.list).map(cleanCombatant)), round: Math.max(0, num(S.round)), active: S.active ? str(S.active, 40) : null, ...(Number.isInteger(S.ai) && S.round ? { ai: S.ai } : {}), sample: false, // ai: beurtplek (RE9)
       ...(cleanEnc(S.enc).length ? { enc: cleanEnc(S.enc) } : {}), ...(S.allMon === true ? { allMon: true } : {}), // ingeladen encounter (VB2); samenvatting en gevechtsduur gaan niet mee
-      log: arr(S.log).slice(-600).map((e) => ({ id: str(e.id, 40), r: num(e.r), turn: str(e.turn, 120), type: ["round", "turn"].includes(e.type) ? e.type : "", msg: str(e.msg, 1000), why: str(e.why, 1000), note: str(e.note, 1000) })),
+      log: arr(S.log).slice(-600).filter(obj).map(cleanLog),
     },
     party: arr(json.party).map((m) => ({ ...cleanCombatant({ ...m, kind: "pc", id: m.pid }), pid: str(m.pid, 40) })).map(({ id, kind, init, cond, reaction, ...m }) => m),
     lairs,

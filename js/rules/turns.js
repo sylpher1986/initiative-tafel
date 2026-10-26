@@ -1,19 +1,24 @@
 // Beurtvolgorde, conditie-duur en alles wat aan het begin/einde van een beurt gebeurt.
 import { d, sgn } from "./dice.js";
-import { fx } from "./combat.js";
+import { fx, say } from "./combat.js";
+import { M, J } from "../i18n/msg.js";
+import { t } from "../i18n/boot.js";
 import { tickEffects, endFightEffects, rageOf } from "./effects.js";
 import { tickSaves, turnSaves, untickSaves } from "./saves.js";
 
 export const CONDS = ["Blinded", "Charmed", "Deafened", "Frightened", "Grappled", "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned", "Prone", "Restrained", "Stunned", "Unconscious", "Concentrating"];
 
+// [waarde, sleutel] (WP27): de UI vertaalt bij het tekenen; durShort = zonder het aantal rondes erachter
 export const DURS = [
-  ["inf", "Onbeperkt"],
-  ["tend", "Tot einde volgende beurt (doelwit)"],
-  ["tstart", "Tot begin volgende beurt (doelwit)"],
-  ["sstart", "Tot begin volgende beurt (wie nu aan de beurt is)"],
-  ["r1", "1 ronde"], ["r2", "2 rondes"], ["r3", "3 rondes"],
-  ["r10", "1 minuut (10 rondes)"], ["r100", "10 minuten (100 rondes)"],
+  ["inf", "rules.dur.inf"],
+  ["tend", "rules.dur.tend"],
+  ["tstart", "rules.dur.tstart"],
+  ["sstart", "rules.dur.sstart"],
+  ["r1", "rules.dur.r1"], ["r2", "rules.dur.r2"], ["r3", "rules.dur.r3"],
+  ["r10", "rules.dur.r10"], ["r100", "rules.dur.r100"],
 ];
+/** Korte duur in een zin ("1 minuut", "2 rondes"): kleine letters, zonder "(10 rondes)" */
+export const durShort = (v) => { const e = DURS.find((x) => x[0] === v); return e ? t(e[1] + "S") : ""; };
 
 /**
  * Volgorde van twee deelnemers: init hoog→laag; lair verliest gelijke stand; dan Dex; dan spelers vóór monsters; dan naam.
@@ -122,16 +127,17 @@ export function setInit(S, c, v) {
   if (p.skip) c.skipR = S.round; else if (c.skipR != null) delete c.skipR;
   if (p.next && !pending(c, S)) c.nextR = { r: S.round, after: S.active, ...(cur && !pending(cur, S) ? { ai: at.init } : {}) }; // ai: plek van het anker nu
   else if (!p.next && c.nextR && !(p.own && pending(c, S))) delete c.nextR;
-  const t = initText(p, v, cur && cur.name);
-  if (t) { out.msgs.push(`${c.name}: ${t}.`); out.why.push({ t: t.toLowerCase(), id: c.id }); }
+  const it = initText(p, v, cur && cur.name);
+  if (it) { out.msgs.push(say("rules.initMsg", { name: c.name, what: it })); out.why.push({ t: it, id: c.id }); }
   return out;
 }
 
-/** Tekst bij een plan (melding en live hint in ⋯); "" als er niets bijzonders is */
+/** Descriptor bij een plan (melding, logoorzaak en live hint in ⋯; kleine letter vooraan); "" als er niets bijzonders is */
 export function initText(p, v, curName) {
-  if (p.own) return `is aan de beurt: beurt loopt door, volgende ronde op ${v}`;
-  if (p.skip) return `al geweest deze ronde: speelt pas volgende ronde op ${v}`;
-  if (p.next) return `nog niet geweest: komt direct na ${curName || "de huidige beurt"}, daarna op ${v}`;
+  const n = String(v);
+  if (p.own) return M("rules.initOwn", { v: n });
+  if (p.skip) return M("rules.initSkip", { v: n });
+  if (p.next) return curName ? M("rules.initNext", { name: curName, v: n }) : M("rules.initNextCur", { v: n });
   return "";
 }
 
@@ -154,7 +160,9 @@ export const skipsTurn = (c, round) => isOut(c) || (round === 1 && !!c.sur) || (
 /** Nog verrast: geen reaction, geen legendary actions */
 export const isSurprised = (c, S) => c.sur === true && S.round === 1 && !isOut(c);
 /** GV12: label overal gelijk (dichte kaart, knop, live-blok, spelersscherm) */
-export const REACT_TAG = "Reaction op";
+export const REACT_TAG = "Reaction op"; // spelersscherm: tot WP28 als vaste tekst (de snapshot vergelijkt erop)
+/** Hetzelfde label in de actieve taal (DM-app, WP27) */
+export const reactTag = () => t("rules.reactTag");
 /** GV12: reaction gebruikt en nog niet terug (begin eigen beurt). Verrast heeft een eigen badge; pcr = false (GV4 "Spelers
  *  zelf"): niet bij spelers. Eén voorwaarde voor kaart, live-blok en spelersscherm. */
 export const reactUsed = (c, S, pcr = true) => !!c.reaction && !(c.max && c.hp <= 0) && !(c.ds && c.ds.dead) /* dood = 0 HP; verdediging tegen rare data */ && !isSurprised(c, S) && (c.kind !== "pc" || pcr);
@@ -188,8 +196,8 @@ export function canToggleSurprise(c, S) {
 export function toggleSurprise(c, S) {
   if (!canToggleSurprise(c, S)) return null;
   const out = fx();
-  if (c.sur === true) { delete c.sur; c.reaction = false; out.why.push({ t: "toch niet verrast", id: c.id }); }
-  else { c.sur = true; c.reaction = true; out.why.push({ t: "verrast", id: c.id }); }
+  if (c.sur === true) { delete c.sur; c.reaction = false; out.why.push({ t: M("rules.surNot"), id: c.id }); }
+  else { c.sur = true; c.reaction = true; out.why.push({ t: M("rules.sur"), id: c.id }); }
   return out;
 }
 
@@ -260,12 +268,13 @@ export const durText = (c, n, list) => durLabel(c.cd && c.cd[n], list);
 export function durLabel(e, list, short = false) {
   if (!e) return "";
   const who = list.find((x) => x.id === e.who);
-  let t = e.kind === "rounds" ? `${e.count}r`
-    : e.kind === "tend" ? (short ? "einde beurt" : e.count > 1 ? "t/m einde volgende beurt" : "t/m einde beurt")
-    : e.kind === "tstart" ? (short ? "begin beurt" : "t/m begin volgende beurt")
-    : e.kind === "sstart" ? `${short ? "" : "t/m "}beurt ${who ? who.name : "?"}` : "";
-  if (e.save) t += `${t ? ", " : ""}${e.save.ab} ${e.save.dc}`;
-  return t;
+  // tekst in de actieve taal (alleen weergave)
+  let x = e.kind === "rounds" ? `${e.count}r`
+    : e.kind === "tend" ? t(short ? "rules.dl.tendS" : e.count > 1 ? "rules.dl.tend2" : "rules.dl.tend")
+    : e.kind === "tstart" ? t(short ? "rules.dl.tstartS" : "rules.dl.tstart")
+    : e.kind === "sstart" ? t(short ? "rules.dl.sstartS" : "rules.dl.sstart", { name: who ? who.name : "?" }) : "";
+  if (e.save) x += `${x ? ", " : ""}${e.save.ab} ${e.save.dc}`;
+  return x;
 }
 
 /**
@@ -274,14 +283,14 @@ export function durLabel(e, list, short = false) {
  */
 export function durWords(e, list, name = (id) => (list.find((x) => x.id === id) || {}).name || "") {
   if (!e) return "";
-  if (e.kind === "rounds") return e.count === 1 ? "nog 1 ronde" : `nog ${e.count} rondes`;
-  if (e.kind === "tend") return e.count > 1 ? "t/m einde van zijn volgende beurt" : "t/m einde van zijn beurt";
-  if (e.kind === "tstart") return "t/m begin van zijn volgende beurt";
-  if (e.kind === "sstart") { const n = name(e.who); return n ? `t/m begin van de beurt van ${n}` : "t/m begin van een andere beurt"; }
+  if (e.kind === "rounds") return t("rules.dw.rounds", { n: e.count });
+  if (e.kind === "tend") return t(e.count > 1 ? "rules.dw.tend2" : "rules.dw.tend");
+  if (e.kind === "tstart") return t("rules.dw.tstart");
+  if (e.kind === "sstart") { const n = name(e.who); return n ? t("rules.dw.sstart", { name: n }) : t("rules.dw.sstartX"); }
   return "";
 }
-/** Herhaalsave in woorden: "STR DC 13 aan het einde van zijn beurt" */
-export const saveWords = (e) => (e && e.save ? `${e.save.ab} DC ${e.save.dc} aan het einde van zijn beurt` : "");
+/** Herhaalsave in woorden: "STR DC 13 aan het einde van zijn beurt" (actieve taal) */
+export const saveWords = (e) => (e && e.save ? t("rules.saveWords", { ab: e.save.ab, dc: String(e.save.dc) }) : "");
 
 /** Een beurtgrens ("start" of "end" van deelnemer id): duur aftellen (herhaal-saves: saves.js, open bij het begin van de beurt) */
 export function turnBoundary(list, at, id) {
@@ -293,11 +302,11 @@ export function turnBoundary(list, at, id) {
       if (e.who === id && e.at === at && e.count) {
         e.count--;
         if (e.count <= 0) {
-          out.why.push({ t: "duur verlopen", id: c.id });
+          out.why.push({ t: M("rules.durEnd"), id: c.id });
           c.cond = c.cond.filter((x) => x !== n);
           delete c.cd[n];
           if (n === "Concentrating") c.concSpell = null;
-          out.msgs.push(`${c.name}: ${n} is voorbij.`);
+          out.msgs.push(say("rules.over", { name: c.name, what: n }));
         }
       }
     }
@@ -335,8 +344,8 @@ export function step(state, dir, rng = Math.random) {
     if (!skipsTurn(L[i], state.round)) break;
   }
   if (sur.length) {
-    out.msgs.push(`Verrast, beurt overgeslagen: ${sur.map((c) => c.name).join(", ")}.`);
-    for (const c of sur) out.why.push({ t: "verrast: eerste beurt overgeslagen", id: c.id });
+    out.msgs.push(say("rules.surSkip", { names: sur.map((c) => c.name).join(", ") }));
+    for (const c of sur) out.why.push({ t: M("rules.surSkipWhy"), id: c.id });
   }
   const cur = L[i];
   if (dir > 0 && was && was !== cur && pending(was, state)) was.nextR.done = 1; // ingeschoven beurt is gespeeld (RE9)
@@ -359,11 +368,11 @@ export function step(state, dir, rng = Math.random) {
     if (r.ready || r.rest) continue;
     const x = d(6, rng);
     r.ready = x >= r.min;
-    rc.push(`${r.n}: d6 [${x}] → ${r.ready ? "weer beschikbaar" : "nog niet"}`);
+    rc.push(say(r.ready ? "rules.rcYes" : "rules.rcNo", { name: r.n, x: String(x) }));
     if (r.ready) out.why.push({ t: `recharge d6 [${x}]`, id: cur.id });
   }
-  if (rc.length) out.msgs.push(`${cur.name} recharge: ${rc.join("; ")}`);
-  if (cur.kind === "pc" && cur.max && cur.hp <= 0 && cur.ds && !cur.ds.stable && !cur.ds.dead) out.msgs.push(`${cur.name} ligt op 0 HP: death save!`);
+  if (rc.length) out.msgs.push(say("rules.rc", { name: cur.name, what: rc.join("; ") }));
+  if (cur.kind === "pc" && cur.max && cur.hp <= 0 && cur.ds && !cur.ds.stable && !cur.ds.dead) out.msgs.push(say("rules.dsTurn", { name: cur.name }));
   return out;
 }
 
@@ -374,7 +383,7 @@ export function step(state, dir, rng = Math.random) {
 function rageTurnEnd(c, out) {
   const e = rageOf(c);
   if (!e) return;
-  if (!e.hit) out.msgs.push(`Rage ${c.name} loopt door.`);
+  if (!e.hit) out.msgs.push(say("rules.rageOn", { name: c.name }));
   e.ph = e.hit ? 1 : 0; // ‹ Vorige terug in zijn beurt: de schade-markering komt terug
   delete e.hit;
 }
@@ -433,7 +442,7 @@ export function clearMonsters(state) {
   const gone = new Set(state.list.filter((c) => c.kind === "monster" || c.kind === "lair").map((c) => c.id));
   const n = state.list.filter((c) => c.kind === "monster").length;
   dropIds(state, gone);
-  out.why.push({ t: "volgende encounter: monsters gewist", id: null });
+  out.why.push({ t: M("rules.nextEnc"), id: null });
   return Object.assign(out, { n, lairs: gone.size - n });
 }
 
@@ -465,9 +474,9 @@ export function rerollMonsters(list, rng = Math.random) {
     let r = k ? groups.get(k) : undefined;
     if (r === undefined) { r = d(20, rng); if (k) groups.set(k, r); }
     c.roll = r; c.init = r + c.dex; out.n++;
-    out.why.push({ t: `d20 [${r}] ${sgn(c.dex)}, opnieuw bij Start${k ? ", groepsworp" : ""}`, id: c.id });
+    out.why.push({ t: J([`d20 [${r}] ${sgn(c.dex)}`, M("rules.rerollWhy"), k && M("rules.grpRoll")].filter(Boolean), ", "), id: c.id });
   }
-  if (out.n) out.msgs.push(`Initiative monsters opnieuw gerold (${out.n}).`);
+  if (out.n) out.msgs.push(say("rules.reroll", { n: String(out.n) }));
   return out;
 }
 

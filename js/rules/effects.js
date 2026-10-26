@@ -1,9 +1,12 @@
 // Tijdelijke effecten op een deelnemer (5e 2014): op AC (+N, =N, minimaal N), op max HP (±N) of alleen een herinnering.
 // Duur zoals bij condities (zie makeDur in turns.js), "tot long rest", en optioneel gekoppeld aan de concentratie van een caster.
 // De basis-AC blijft in c.ac; de kaart toont effAc(c). Max HP-effecten passen c.max echt aan en onthouden hun verschil (hpd).
-import { fx, applyPcHp, revertMax, newDs, setUncon, dropConc, merge, exhEffect, reExh } from "./combat.js";
+import { fx, say, applyPcHp, revertMax, newDs, setUncon, dropConc, merge, exhEffect, reExh } from "./combat.js";
+import { M, J } from "../i18n/msg.js";
+/** Reden "handmatig" (descriptor, of de oude tekst): dan geen "(reden)" in de melding */
 import { DTYPES } from "./aoe.js";
 import { EXH, isExh, exhLevel } from "./conditions.js";
+const manual = (w) => w === "handmatig" || (!!w && w.k === "rules.manual");
 
 /**
  * Presets. dur: sleutel uit DURS (turns.js) of "lr" (tot long rest). dex: 13 + Dex-mod (Mage Armor).
@@ -111,7 +114,7 @@ export function addEffect(c, spec, d, opt = {}) {
     }
   }
   if (st === "max") reExh(c); // Aid bij Exhaustion 4+: de halvering op de nieuwe max
-  out.msgs.push(`${c.name}: ${n}${st ? ` (${effText(e)})` : e.txt ? ` (${e.txt})` : ""}.`);
+  out.msgs.push(say("rules.eff", { name: c.name, what: st ? `${n} (${effText(e)})` : e.txt ? `${n} (${e.txt})` : n }));
   return out;
 }
 
@@ -121,7 +124,7 @@ function dieByMax(c, n) {
   c.temp = 0;
   if (c.kind === "pc") { c.ds = { ...newDs(), f: 3, dead: true }; setUncon(c, true); }
   merge(out, dropConc(c, "max HP 0"));
-  out.why.push({ t: `max HP tot 0 door ${n}`, id: c.id }); out.msgs.unshift(`${c.name} sterft: max HP 0 (${n}).`);
+  out.why.push({ t: M("rules.max0Why", { what: n }), id: c.id }); out.msgs.unshift(say("rules.max0", { name: c.name, what: n }));
   return out;
 }
 
@@ -149,7 +152,7 @@ export function endOtherCasts(list, by, spell, cast, active = null) {
   const out = fx();
   for (const c of list) for (const e of [...(c.eff || [])]) {
     if (e.by !== by || e.spell !== spell || e.cast === cast) continue;
-    const r = removeEffect(c, e.id, `${spell} opnieuw gecast`, { active }); out.msgs.push(...r.msgs); out.why.push(...r.why);
+    const r = removeEffect(c, e.id, M("rules.recast", { spell }), { active }); out.msgs.push(...r.msgs); out.why.push(...r.why);
   }
   return out;
 }
@@ -159,7 +162,7 @@ export function endOtherCasts(list, by, spell, cast, active = null) {
  * opt.active = wie aan de beurt is (Lethargy midden in de eigen beurt duurt t/m het einde van de volgende);
  * opt.after = false: geen vervolgeffect (gevecht voorbij).
  */
-export function removeEffect(c, id, why = "handmatig", opt = {}) {
+export function removeEffect(c, id, why = M("rules.manual"), opt = {}) {
   const out = fx();
   const e = (c.eff || []).find((x) => x.id === id);
   if (!e) return out;
@@ -167,24 +170,25 @@ export function removeEffect(c, id, why = "handmatig", opt = {}) {
   if (e.hpd) { revertMax(c, e.hpd); if (!isExh(e)) reExh(c); }
   if (why === null) return out;
   if (e.frz) { // Frenzy (Path of the Berserker): na afloop één niveau exhaustion, ook als het gevecht stopt
-    const r = setExh(c, exhLevel(c) + 1, "Frenzy voorbij");
+    const r = setExh(c, exhLevel(c) + 1, M("rules.frenzyEnd"));
     out.why.push(...r.why); out.msgs.push(...r.msgs);
   }
   const nx = opt.after !== false && (e.af || (preset(e.n) || {}).after); // oude opslag zonder af: de 2014-preset
   const alive = !(c.kind === "monster" && c.hp <= 0) && !(c.ds && c.ds.dead);
   out.why.push({ t: why, id: c.id });
-  const what = nx && (nx.cond ? `${nx.cond} + ${nx.txt || nx.n} tot einde volgende beurt.` : `${nx.n} tot na de volgende beurt.`);
-  out.msgs.push(`${c.name}: ${e.n} is voorbij${why && why !== "handmatig" ? ` (${why})` : ""}.${nx ? (alive ? ` ${what}` : "") : e.end ? ` ${e.end}.` : ""}`);
+  const what = nx && (nx.cond ? say("rules.afterCond", { cond: nx.cond, what: nx.txt || nx.n }) : say("rules.after", { name: nx.n }));
+  const end = say(why && !manual(why) ? "rules.overWhy" : "rules.over", { name: c.name, what: e.n, why: why || "" });
+  out.msgs.push(`${end}${nx ? (alive ? ` ${what}` : "") : e.end ? ` ${e.end}.` : ""}`);
   if (nx && alive) {
     // PHB 2014: "can't move or take actions until after its next turn"; 2024: Incapacitated en speed 0 tot einde volgende beurt.
     // Midden in de eigen beurt telt die beurt niet.
     const dur = () => ({ kind: "tend", who: c.id, at: "end", count: opt.active === c.id ? 2 : 1 });
     addEffect(c, { n: nx.n, txt: nx.txt }, dur());
-    out.why.push({ t: `${nx.n} na ${e.n}`, id: c.id });
+    out.why.push({ t: M("rules.afterWhy", { name: nx.n, of: e.n }), id: c.id });
     if (nx.cond && !c.cond.includes(nx.cond)) { // al Incapacitated (met eigen duur): niet overschrijven
       c.cond = [...c.cond, nx.cond];
       c.cd = { ...(c.cd || {}), [nx.cond]: dur() };
-      merge(out, dropConc(c, `${nx.cond} door ${nx.n}`)); // Incapacitated beëindigt concentratie
+      merge(out, dropConc(c, M("rules.condBy", { cond: nx.cond, name: nx.n }))); // Incapacitated beëindigt concentratie
     }
   }
   return out;
@@ -197,7 +201,7 @@ export function tickEffects(list, at, id) {
     const d = e.d;
     if (!d || d.who !== id || d.at !== at || !d.count) continue;
     d.count--;
-    if (d.count <= 0) { const r = removeEffect(c, e.id, "duur verlopen"); out.msgs.push(...r.msgs); out.why.push(...r.why); }
+    if (d.count <= 0) { const r = removeEffect(c, e.id, M("rules.durEnd")); out.msgs.push(...r.msgs); out.why.push(...r.why); }
   }
   return out;
 }
@@ -212,7 +216,7 @@ export function endConcEffects(list, active = null) {
       if (!e.by) continue;
       const by = list.find((x) => x.id === e.by);
       const ok = by && by.cond.includes("Concentrating") && !(by.concSpell && e.spell && by.concSpell !== e.spell);
-      if (!ok) { const r = removeEffect(c, e.id, `concentratie${by ? ` van ${by.name}` : ""} voorbij`, { active }); out.msgs.push(...r.msgs); out.why.push(...r.why); more = true; }
+      if (!ok) { const r = removeEffect(c, e.id, by ? M("rules.concOfEnd", { name: by.name }) : M("rules.concEnd"), { active }); out.msgs.push(...r.msgs); out.why.push(...r.why); more = true; }
     }
   }
   return out;
@@ -223,7 +227,7 @@ export function endFightEffects(list) {
   const out = fx();
   for (const c of list) for (const e of [...(c.eff || [])]) {
     if (!e.d || e.d.kind === "inf") continue;
-    const r = removeEffect(c, e.id, "gevecht voorbij", { after: false }); out.msgs.push(...r.msgs); out.why.push(...r.why);
+    const r = removeEffect(c, e.id, M("rules.fightEnd"), { after: false }); out.msgs.push(...r.msgs); out.why.push(...r.why);
   }
   return out;
 }
@@ -244,21 +248,21 @@ export function effSpec(k, v) {
  * Exhaustion op niveau x zetten (0 = weg). Eén effect "Exhaustion" met niveau `x`; niveau 4+ halveert max HP (hpd,
  * draait terug bij een lager niveau), niveau 6 is de dood. why = reden voor het logboek.
  */
-export function setExh(c, x, why = "handmatig") {
+export function setExh(c, x, why = M("rules.manual")) {
   const out = fx();
   x = Math.max(0, Math.min(6, Math.round(+x) || 0));
   const old = (c.eff || []).find(isExh), was = exhLevel(c);
   if (x === was) return out;
   if (old) removeEffect(c, old.id, null);
-  out.why.push({ t: `Exhaustion ${was} → ${x}${why && why !== "handmatig" ? ` (${why})` : ""}`, id: c.id });
-  if (!x) { out.msgs.push(`${c.name}: Exhaustion voorbij.`); return out; }
+  out.why.push({ t: why && !manual(why) ? J([`Exhaustion ${was} → ${x} (`, why, ")"], "") : `Exhaustion ${was} → ${x}`, id: c.id });
+  if (!x) { out.msgs.push(say("rules.exhEnd", { name: c.name })); return out; }
   exhEffect(c, x);
   const dead = c.kind === "pc" ? !!(c.ds && c.ds.dead) : c.max > 0 && c.hp <= 0;
   if (x === 6 && !dead) {
     if (c.kind === "pc") { c.ds = { ...newDs(), f: 3, dead: true }; c.hp = 0; c.temp = 0; setUncon(c, true); }
     else { c.hp = 0; c.temp = 0; }
     merge(out, dropConc(c, "Exhaustion 6"));
-    out.msgs.push(`${c.name} sterft: Exhaustion 6.`);
+    out.msgs.push(say("rules.exh6", { name: c.name }));
     return out;
   }
   out.msgs.push(`${c.name}: Exhaustion ${x}${x > was ? ` (${EXH[x].toLowerCase()})` : ""}.`);
@@ -292,15 +296,15 @@ export const rageRes = (c) => (c && c.res || []).find((r) => /^rage\b/i.test(Str
  */
 export function startRage(c, d, opt = {}) {
   const out = fx();
-  if (c.max && c.hp <= 0) { out.msgs.push(`${c.name} ligt op 0 HP en kan niet ragen.`); return out; }
+  if (c.max && c.hp <= 0) { out.msgs.push(say("rules.rage0", { name: c.name })); return out; }
   const inc = c.cond.find((k) => NO_RAGE.includes(k)); // Rage is een bonus action
-  if (inc) { out.msgs.push(`${c.name} is ${inc} en kan niet ragen.`); return out; }
+  if (inc) { out.msgs.push(say("rules.rageInc", { name: c.name, cond: inc })); return out; }
   const p = preset("Rage");
   merge(out, addEffect(c, { ...p, rs: opt.bear ? RS_ALL : p.rs, txt: opt.bear ? "resist alles behalve psychic, adv. STR, geen spells" : p.txt, bear: !!opt.bear, frz: !!opt.frz }, d));
   const r = rageRes(c);
   if (r) {
-    if (r.left > 0) { r.left--; out.msgs.push(`${r.n}: nog ${r.left} van ${r.max} over.`); }
-    else out.msgs.push(`${r.n}: niets meer over op de sheet (gebruikt tot long rest).`);
+    if (r.left > 0) { r.left--; out.msgs.push(say("rules.resLeft", { name: r.n, n: String(r.left), max: String(r.max) })); }
+    else out.msgs.push(say("rules.resNone", { name: r.n }));
   }
   merge(out, dropConc(c, "Rage"));
   return out;
@@ -313,7 +317,7 @@ export function endRage(list) {
     const e = rageOf(c);
     if (!e) continue;
     if ((c.max && c.hp <= 0) || c.cond.includes("Unconscious")) {
-      const r = removeEffect(c, e.id, "bewusteloos"); out.msgs.push(...r.msgs); out.why.push(...r.why);
+      const r = removeEffect(c, e.id, M("rules.unc")); out.msgs.push(...r.msgs); out.why.push(...r.why);
     }
   }
   return out;

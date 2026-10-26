@@ -1,3 +1,4 @@
+import { nlw } from "./_nl.js"; // WP27: Nederlandse catalogus; nlw = oorzaken als tekst
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { addSave, turnSaves, tickSaves, openSaves, resolveSave, TTL, lastTurn } from "../js/rules/saves.js";
@@ -26,7 +27,7 @@ test("niet afgehandeld: blijft één beurtwissel staan, vervalt daarna zonder ge
   assert.equal(lastTurn(openSaves(S)[0]), true, "RE12: rij zegt 'vervalt bij Volgende'");
   r = step(S, 1); // Wolfim: verlopen
   assert.equal(openSaves(S).length, 0);
-  assert.ok(r.why.some((w) => w.id === "m" && /niet afgehandeld, vervallen zonder gevolg/.test(w.t)));
+  assert.ok(nlw(r.why).some((w) => w.id === "m" && /niet afgehandeld, vervallen zonder gevolg/.test(w.t)));
   assert.ok(r.msgs.includes("Save vervallen zonder uitslag: Bugbear WIS 13 · Paralyzed blijft"), "RE12: niet meer stil");
   assert.ok(S.list[1].cond.includes("Paralyzed"));
   assert.equal(TTL, 2);
@@ -37,7 +38,7 @@ test("geslaagde condition save haalt de conditie weg; gefaald laat hem staan", (
   turnSaves(S, "m");
   let s = openSaves(S)[0];
   let r = resolveSave(S, s.sid, false, "d20 [3] +0 = 3 ✗");
-  assert.ok(S.list[0].cond.includes("Paralyzed")); assert.match(r.why[0].t, /gefaald/);
+  assert.ok(S.list[0].cond.includes("Paralyzed")); assert.match(nlw(r.why)[0].t, /gefaald/);
   turnSaves(S, "m"); s = openSaves(S)[0];
   r = resolveSave(S, s.sid, true);
   assert.ok(!S.list[0].cond.includes("Paralyzed")); assert.equal(S.list[0].cd.Paralyzed, undefined);

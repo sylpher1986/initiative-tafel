@@ -2,6 +2,7 @@
 // knop, link, invoerveld, pip of conditie-toggle met een gedeclareerde (min-)hoogte in px onder 44. Hoogte die alleen uit
 // padding komt, ziet deze test niet. Uitzonderingen staan hieronder met reden.
 // De echte meting in de browser (Playwright, 320–390 px) hoort bij de browsercheck van elke release.
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

@@ -1,3 +1,4 @@
+import { nlw } from "./_nl.js"; // WP27: Nederlandse catalogus; nlw = oorzaken als tekst
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { condInfo, CINFO, exhLevel, exhRows, exhSummary } from "../js/rules/conditions.js";
@@ -119,7 +120,7 @@ test("RE16: rage voorbij bij bewusteloos; Frenzy geeft exhaustion, ook bij gevec
   applyDamage(c, 100);
   const r = endRage([c]);
   assert.equal(rageOf(c), null); assert.equal(exhLevel(c), 1);
-  assert.ok(r.why.some((w) => /bewusteloos/.test(w.t)));
+  assert.ok(nlw(r.why).some((w) => /bewusteloos/.test(w.t)));
   const f = pc();
   startRage(f, makeDur(f, { dur: "r10" }, f.id), { frz: true });
   endFightEffects([f]);

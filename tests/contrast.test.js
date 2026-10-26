@@ -1,6 +1,7 @@
 // WP14: kleurtokens en contrast (WCAG 2.2 AA). Leest de tokenblokken bovenaan css/app.css en toetst elk thema apart:
 // tekst 4,5:1, componentranden, focus, selectie en betekenisvolle grafiek (HP-balk, zijstreep) 3:1.
 // Uitgeschakelde knoppen (opacity) vallen buiten WCAG 1.4.3. Componenten gebruiken geen hex buiten de tokens (QR: altijd zwart op wit).
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

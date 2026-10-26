@@ -10,6 +10,8 @@ import { tidy } from "./rules/fight.js";
 import { markDirty } from "./exportnudge.js";
 import { VERSION } from "./version.js";
 import { pack, unpack } from "./histpack.js";
+import { tr } from "./i18n/boot.js";
+import { isMsg, isJoin } from "./i18n/msg.js";
 
 /** Alle data van de app. S = de lopende encounter. */
 export const app = { S: null, party: [], lairs: {}, custom: [], imported: [], encounters: [] }; // encounters: klaargezet, niet in undo
@@ -37,14 +39,14 @@ let redos = [], redoing = false;
 let warn = () => {}, warned = false;
 export const setWarn = (fn) => { warn = fn; };
 
-/** Oorzaak voor de volgende logregel(s); id = deelnemer, of leeg voor alle regels van deze stap */
+/** Oorzaak voor de volgende logregel(s); t = descriptor (M, WP27) of tekst; id = deelnemer, of leeg voor alle regels van deze stap */
 export const because = (t, id) => pendingWhy.push({ t, id: id || null });
 export const addWhy = (arr) => pendingWhy.push(...arr);
 /**
  * Eén logregel voor deze stap in plaats van een regel per deelnemer die erbij kwam of wegging (encounter inladen).
  * key: de regel is later terug te vinden en bij te werken (samenvatting bij Gevecht afronden, GV2).
  */
-export const logAs = (msg, key) => { pendingSum = msg; pendingKey = key || null; };
+export const logAs = (msg, key) => { pendingSum = msg; pendingKey = key || null; }; // msg: descriptor (WP27) of tekst
 export const canUndo = () => hist.length > 0;
 export const canRedo = () => redos.length > 0;
 /** Opnieuw onmogelijk maken (bv. Ongedaan haalde ook buiten S iets weg dat Opnieuw niet terugzet) */
@@ -57,7 +59,7 @@ export const stepNo = () => steps;
 
 function save(key, value) {
   store.set(key, value).then((ok) => {
-    if (!ok && !warned) { warned = true; warn("Opslaan in deze browser lukt niet (vol of geblokkeerd). Maak een export als je je data wilt bewaren."); }
+    if (!ok && !warned) { warned = true; warn(tr({ k: "init.saveFail" })); }
   });
 }
 // Waardevolle data (niet de lopende encounter): telt voor de exportherinnering (DA1)
@@ -183,8 +185,11 @@ export function commit() {
 /** Logregel van deze stap of een eerdere met deze key bijwerken (de laatste); hoort bij de volgende commit */
 export function relog(key, msg) {
   const L = app.S.log || [];
-  for (let i = L.length - 1; i >= 0; i--) if (L[i].key === key) { L[i].msg = msg; return; } // geen findLast: oudere iPads
+  for (let i = L.length - 1; i >= 0; i--) if (L[i].key === key) { setMsg(L[i], msg); return; } // geen findLast: oudere iPads
 }
+const desc = (x) => isMsg(x) || isJoin(x);
+/** Tekst en descriptor van een logregel: msg altijd tekst (actieve taal; oudere apps, export), m alleen bij een descriptor (WP27) */
+function setMsg(e, msg) { e.msg = tr(msg); if (desc(msg)) e.m = msg; else delete e.m; }
 
 export function undo() {
   if (!hist.length) return false;
@@ -230,14 +235,17 @@ function writeLog(prev) {
   if (pendingSum) { // erbij of weg (encounter inladen): samen één regel, met alleen de oorzaken die voor de hele stap gelden
     const P = new Set(prev.list.map((c) => c.id)), C = new Set(S.list.map((c) => c.id));
     entries = entries.filter((e) => e.type || (P.has(e.who) && C.has(e.who)));
-    entries.push({ msg: pendingSum, sum: true, key: pendingKey });
+    entries.push({ m: pendingSum, sum: true, key: pendingKey });
   }
   if (!entries.length) return false;
   S.log = S.log || [];
   const act = S.list.find((c) => c.id === S.active);
   for (const e of entries) {
-    const why = e.type ? "" : pendingWhy.filter((w) => !w.id || (!e.sum && w.id === e.who)).map((w) => w.t).join("; ");
-    S.log.push({ id: uid(), r: S.round || 0, turn: e.type ? "" : act ? act.name : "", type: e.type || "", msg: e.msg, why, note: "", ...(e.key ? { key: e.key } : {}) });
+    const ws = e.type ? [] : pendingWhy.filter((w) => !w.id || (!e.sum && w.id === e.who)).map((w) => w.t).filter((x) => x != null && x !== "");
+    const row = { id: uid(), r: S.round || 0, turn: e.type ? "" : act ? act.name : "", type: e.type || "", msg: "", why: ws.map(tr).join("; "), note: "", ...(e.key ? { key: e.key } : {}) };
+    setMsg(row, e.m !== undefined ? e.m : e.msg);
+    if (ws.some(desc)) row.w = ws; // oorzaken als descriptoren (WP27); why blijft de tekst
+    S.log.push(row);
   }
   if (S.log.length > 600) S.log.splice(0, S.log.length - 600);
   return true;

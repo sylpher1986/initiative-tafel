@@ -966,4 +966,6 @@ export default {
   "init.imp.done": "Import klaar.",
   "init.enc.copyWord": "kopie",
   "init.end.clear": "Monsters wissen",
+  "init.saveFail": "Opslaan in deze browser lukt niet (vol of geblokkeerd). Maak een export als je je data wilt bewaren.",
+  "init.uf.radOrCrit": "radiant of kritiek",
 };

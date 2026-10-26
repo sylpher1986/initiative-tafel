@@ -1,3 +1,4 @@
+import { nlw } from "./_nl.js"; // WP27: Nederlandse catalogus; nlw = oorzaken als tekst
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { PRESETS, effAc, effText, acBreakdown, addEffect, removeEffect, endConcEffects, endFightEffects, baseMax, saveMods, modsText, endOtherCasts } from "../js/rules/effects.js";
@@ -45,7 +46,7 @@ test("Shield: tot begin volgende beurt van het doelwit, ook als het in andermans
   const r = step(S, 1); // beurt fighter begint → Shield voorbij
   assert.equal(S.active, "p"); assert.equal(f.eff.length, 0); assert.equal(effAc(f), 16);
   assert.ok(r.msgs.some((m) => /Shield is voorbij/.test(m)));
-  assert.ok(r.why.some((w) => w.t === "duur verlopen" && w.id === "p"));
+  assert.ok(nlw(r.why).some((w) => w.t === "duur verlopen" && w.id === "p"));
 });
 
 test("rondes tellen af bij het begin van de beurt van wie het gaf", () => {
@@ -65,7 +66,7 @@ test("concentratie: effect verdwijnt bij 0 HP, nieuwe spell of handmatig stoppen
   assert.equal(endConcEffects([f, c]).msgs.length, 0, "zolang de cleric concentreert blijft het");
   applyDamage(c, 40); // 0 HP → concentratie weg
   const r = endConcEffects([f, c]);
-  assert.equal(f.eff.length, 0); assert.match(r.why[0].t, /concentratie van Cleric voorbij/);
+  assert.equal(f.eff.length, 0); assert.match(nlw(r.why)[0].t, /concentratie van Cleric voorbij/);
   [f, c] = mk(); startConc(c, "Bless"); endConcEffects([f, c]); assert.equal(f.eff.length, 0, "andere spell");
   [f, c] = mk(); dropConc(c); endConcEffects([f, c]); assert.equal(f.eff.length, 0, "handmatig");
   [f, c] = mk(); endConcEffects([f]); assert.equal(f.eff.length, 0, "caster niet meer in het gevecht");
@@ -92,7 +93,7 @@ test("max HP tot 0 (Life Drain) = dood; speler als 3 failures, concentratie weg,
   const r = addEffect(g, { n: "Life Drain", st: "max", v: -10 }, null);
   assert.deepEqual([g.max, g.hp, g.cond], [1, 0, []], "max blijft ≥ 1 (0 = onbekend), hp 0");
   assert.match(r.msgs[0], /Goblin sterft: max HP 0 \(Life Drain\)/);
-  assert.ok(r.why.some((w) => /max HP tot 0/.test(w.t)));
+  assert.ok(nlw(r.why).some((w) => /max HP tot 0/.test(w.t)));
   const f = pc({ hp: 12, temp: 5 });
   addEffect(f, { n: "Life Drain", st: "max", v: -30 }, null);
   assert.deepEqual([f.hp, f.temp, f.ds.dead, f.ds.f, f.cond.includes("Unconscious")], [0, 0, true, 3, true]);
@@ -159,7 +160,7 @@ test("Haste voorbij → Lethargy als effect tot na de volgende beurt van het doe
   dropConc(cl, "0 HP");
   const r = endConcEffects(S.list, S.active);
   assert.deepEqual(f.eff.map((e) => [e.n, e.txt, e.d.kind, e.d.who, e.d.count]), [["Lethargy", "geen beweging of acties", "tend", "p", 1]]);
-  assert.ok(r.why.some((w) => /Lethargy na Haste/.test(w.t)));
+  assert.ok(nlw(r.why).some((w) => /Lethargy na Haste/.test(w.t)));
   assert.equal(effAc(f), 16, "+2 AC van Haste is weg");
   // fighter (15) na cleric (12)? volgorde: goblin 18, fighter 15, cleric 12 → beurt van de fighter eindigt: Lethargy weg
   S.active = "p"; step(S, 1);

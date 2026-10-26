@@ -43,8 +43,8 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 - Regels: ~~RE3~~ (klaar in 1.41.0), **RE4–RE6**, ~~RE14~~ (klaar in 1.42.0), ~~RE15~~ (klaar in 1.44.0)
 - Voorbereiding: ~~VB4~~ · ~~VB5~~ (klaar in 1.43.0, WP11)
 - Gevecht: ~~GV10~~ (klaar in 1.37.1), ~~GV11~~ (klaar in 1.42.0)
-- Taal: **TA1** (uitgewerkt tot TA2–TA16 en WP18–WP33, zie "Taal" en `docs/i18n.md`; WP18–WP26 klaar, volgende WP27)
-- Technische schuld: **TS1** (oppakken wanneer je die code toch aanraakt)
+- Taal: **TA1** (uitgewerkt tot TA2–TA16 en WP18–WP33, zie "Taal" en `docs/i18n.md`; WP18–WP27 klaar, volgende WP28)
+- Technische schuld: **TS1**, **TS3** (oppakken wanneer je die code toch aanraakt)
 - Fase 2 en 3
 - Bewust niet: zie "Persona-test 3 → Niet overgenomen"
 
@@ -70,7 +70,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | ~~**WP15**~~ | Typografie: Playfair Display + Inter zelf meegeleverd (klaar) | HS4 | 1.46.0 |
 | ~~**WP16**~~ | Logo en app-icoon (klaar) | HS5 | 1.47.0 |
 | ~~**WP17**~~ | Componenten, lijn-iconen, spelersscherm in huisstijl (klaar) | HS6, HS7, HS8 | 1.48.0 |
-| Backlog | Niet ingepland | RE4, RE5, RE6, TS1, fase 2 en 3 | |
+| Backlog | Niet ingepland | RE4, RE5, RE6, TS1, TS3, fase 2 en 3 | |
 
 ### Werkpakketten meertaligheid (besloten 24-10-2026)
 Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (geen cookie), Engelse padsegmenten, `/` opent de app, Engels live als 2.0.0, Engelse tekst nagelezen door een aparte vertaalagent met D&D-kennis (zie `docs/i18n.md` §0). Plan en details per pakket (doel, scope, bestanden, acceptatie, risico's, operationele acties): `docs/i18n.md`. Volgorde = uitvoervolgorde; kritiek pad WP19 → WP21 → WP27 → WP28 → WP32 → WP33. Tot WP33 blijft alleen Nederlands zichtbaar (`LIVE = ["nl"]`), zodat er nooit een half vertaalde app live staat.
@@ -86,7 +86,7 @@ Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (g
 | ~~**WP24**~~ | DM-app 1: Voorbereiden, + Speler, Party, + Monster, moeilijkheid (klaar) | TA8 | WP20, WP23 | 1.49.3 |
 | ~~**WP25**~~ | DM-app 2: Gevecht (kaarten, beurtbalk, panelen) (klaar) | TA9 | WP24 | 1.49.4 |
 | ~~**WP26**~~ | DM-app 3: Encounters, afronden, kamer, rondleiding, instellingen, import (klaar) | TA10 | WP25 | 1.49.5 |
-| **WP27** | Regelmeldingen en logboek als descriptoren (sleutel + waarden) | TA11 | WP20, WP26 | 1.50.0 |
+| ~~**WP27**~~ | Regelmeldingen en logboek als descriptoren (sleutel + waarden) (klaar) | TA11 | WP20, WP26 | 1.50.0 |
 | **WP28** | Spelersscherm in de eigen taal: snapshot met codes, overgang v1/v2 | TA12 | WP21, WP27 | 1.51.0 |
 | **WP29** | D&D-termen: id's vs labels, conditie-uitleg EN, zoekwoorden per taal, getal/datum-formattering | TA13 | WP27 | 1.51.1 |
 | **WP30** | Publieke homepage `/en/`, `/nl/`: meta, Open Graph, hreflang, canonical, robots, sitemap | TA14 | WP21, WP29 | 1.52.0 |
@@ -157,6 +157,7 @@ Afgerond in WP13–WP17 (1.44.1–1.48.0); keuzes in CLAUDE.md, overzicht in pro
 
 ## Technische schuld
 - [ ] **TS1** pdf.js zelf hosten (nu via CDN, zonder SRI)
+- [ ] **TS3** Logboek buiten de undo-snapshots houden (sinds WP27 is een logregel ± 2,5× groter door `m`/`w` naast `msg`/`why`; elke undo-stap bewaart de hele stand incl. max 600 regels, worst case ± 20 MB in IndexedDB bij 80 stappen en ± 300 KB stringify per tik). Simpele tussenstap uit de dev-review WP27: in `S.log` geen `msg`/`why` als er `m`/`w` is en die pas in `buildExport` aanvullen (± 25–30 % per regel; `stepEntries` dan op `msg ?? JSON van m`).
 
 ## Fase 2: sync
 - [ ] Login en sync tussen apparaten (bijv. Supabase), local-first blijft de basis. Eerste collectie: `encounters` (heeft al `id` + `updatedAt`, nieuwste wint); tot dan wisselen via Delen/Importeren per encounter

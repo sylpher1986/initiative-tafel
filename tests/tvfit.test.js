@@ -1,3 +1,4 @@
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fitFont, tvPlan, tvMax, TV_LO } from "../js/tvfit.js";

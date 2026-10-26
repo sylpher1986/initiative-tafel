@@ -1,3 +1,4 @@
+import { nl } from "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { addEnc, encName, cleanEnc, tidy, startFight, endSummary, endCalc, endText, toggleFlip } from "../js/rules/fight.js";
@@ -76,7 +77,7 @@ test("endSummary/endCalc: verslagen = 0 HP, gevlucht meetellen, delen zonder dod
   k = endCalc(es);
   assert.equal(k.xp, 150); assert.equal(k.per, 50);
   toggleFlip(es, "Goblin 3"); assert.equal(endCalc(es).xp, 100);
-  const t = endText(es);
+  const t = nl(endText(es));
   assert.match(t, /^Brug: 4 rondes \(± 23 min\)\. Verslagen: 2× Goblin, Thing\. 100 XP, 33 per speler \(Ayla, Brom, Cas\)\. Zonder CR of statblock niet geteld: Thing\. Neer geweest: Cas \(stond weer op\)\. Gestorven: Brom\.$/);
 });
 
@@ -84,7 +85,7 @@ test("endText: niets verslagen, niemand deelt, geen duur", () => {
   const S = { round: 1, list: [mon("o", "Ogre", 7)] };
   const es = endSummary(S, find, 5);
   assert.equal(es.min, 0);
-  assert.equal(endText(es), "Gevecht afgerond: 1 ronde. Niets verslagen. 0 XP, niemand deelt.");
+  assert.equal(nl(endText(es)), "Gevecht afgerond: 1 ronde. Niets verslagen. 0 XP, niemand deelt.");
 });
 
 test("logAs met key + relog: samenvatting in het logboek, bij te werken; undo van het afronden haalt hem weg", () => {
@@ -129,7 +130,7 @@ test("XP-randgevallen: verborgen monster op 0 HP telt, eigen xp zonder CR, CR 0 
   const k = endCalc(endSummary(S, (r) => lib[r], 0));
   assert.equal(k.xp, 85); assert.deepEqual(k.noXp, ["Verdwenen"]);
   assert.deepEqual(k.share.map((p) => p.id), ["p"]); assert.deepEqual(k.down, []);
-  assert.match(endText(endSummary(S, (r) => lib[r], 0)), /Zonder CR of statblock niet geteld: Verdwenen/);
+  assert.match(nl(endText(endSummary(S, (r) => lib[r], 0))), /Zonder CR of statblock niet geteld: Verdwenen/);
 });
 
 test("dezelfde encounter tweemaal inladen: naam één keer", () => {

@@ -7,6 +7,7 @@ import { setMax } from "./rules/combat.js";
 import { baseMax } from "./rules/effects.js";
 import { cleanDr, drDiff, DTYPES } from "./rules/aoe.js";
 import { pactSlots } from "./rules/slots.js";
+import { t as tt } from "./i18n/boot.js"; // tt: mergeSheet heeft een parameter t (tekst in de taal van het moment van ophalen)
 
 const AB = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
 const SHORT = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
@@ -187,22 +188,22 @@ export function parseDdbJson(json) {
       const v = start + (noDex ? 0 : M[1]) + (m.statId >= 1 && m.statId <= 6 ? M[m.statId - 1] : 0);
       if (v > base) { base = v; natural = m.value >= 10; }
     }
-    if (natural) check.ac.push("natuurlijk harnas (vaste basis-AC)");
+    if (natural) check.ac.push(tt("rules.ddb.natural"));
     // Mage Armor is een spell, geen modifier: als de character het kent en geen harnas draagt, even nagaan
     const spellNames = lists.flat().map((x) => (obj(x) && obj(x.definition) ? str(x.definition.name) : ""));
-    if (spellNames.some((n) => /^mage armor$/i.test(n))) check.ac.push("Mage Armor niet meegeteld");
+    if (spellNames.some((n) => /^mage armor$/i.test(n))) check.ac.push(tt("rules.ddb.mageArmor"));
   }
   let ac = base + (shield ? int(shield.definition.armorClass) ?? 2 : 0) + sum("bonus", "armor-class") + (body.length ? sum("bonus", "armored-armor-class") : shield ? 0 : sum("bonus", "unarmored-armor-class")); // bv. Bracers of Defense: geen harnas én geen schild
   if (mods.some((m) => /armor-class|natural-armor/.test(m.sub) && !["bonus", "set"].includes(m.type)) || mods.some((m) => m.type === "set" && m.sub === "armor-class"))
-    check.ac.push("natuurlijk harnas of een vaste AC uit een feature");
-  if (orphans.some((m) => /armor-class/.test(m.sub))) check.ac.push("AC-bonus van een item dat niet te koppelen is");
+    check.ac.push(tt("rules.ddb.feature"));
+  if (orphans.some((m) => /armor-class/.test(m.sub))) check.ac.push(tt("rules.ddb.orphan"));
   // handmatige AC in D&D Beyond (characterValues, niet aan een item gekoppeld): 1 = vaste AC, 2/3 = magische/overige bonus
   const cv = (t) => arr(d.characterValues).filter((v) => obj(v) && int(v.typeId) === t && int(v.value) != null && v.valueId == null).map((v) => int(v.value));
   const acSet = cv(1), acPlus = [...cv(2), ...cv(3)];
-  if (acSet.length) { ac = acSet[acSet.length - 1]; check.ac.push("vaste AC handmatig ingesteld in D&D Beyond"); }
-  else if (acPlus.length) { ac += acPlus.reduce((a, b) => a + b, 0); check.ac.push("handmatige AC-bonus in D&D Beyond meegeteld"); }
+  if (acSet.length) { ac = acSet[acSet.length - 1]; check.ac.push(tt("rules.ddb.acSet")); }
+  else if (acPlus.length) { ac += acPlus.reduce((a, b) => a + b, 0); check.ac.push(tt("rules.ddb.acPlus")); }
   if (cv(4).length || arr(d.characterValues).some((v) => obj(v) && [1, 2, 3, 4].includes(int(v.typeId)) && v.valueId != null))
-    check.ac.push("handmatige AC-aanpassing op een item in D&D Beyond");
+    check.ac.push(tt("rules.ddb.acItem"));
 
   // ---------- HP ----------
   const hpPer = of("bonus", "hit-points-per-level");
@@ -214,12 +215,12 @@ export function parseDdbJson(json) {
     if (b == null) {
       const hd = (c) => int(c.definition.hitDice) || 8;
       b = classes.reduce((a, c, i) => a + (i === 0 ? hd(c) + (int(c.level) - 1) * (hd(c) / 2 + 1) : int(c.level) * (hd(c) / 2 + 1)), 0);
-      check.hp.push("geen basis-HP in de data, gemiddelde per level gebruikt");
+      check.hp.push(tt("rules.ddb.noBase"));
     }
     max = b + (int(d.bonusHitPoints) || 0) + M[2] * L + hpPer.reduce((a, m) => a + val(m), 0) * L + sum("bonus", "hit-points");
-    if (classes.length > 1 && hpPer.some((m) => m.cat === "class")) check.hp.push("HP per level uit een klasse bij multiclass");
+    if (classes.length > 1 && hpPer.some((m) => m.cat === "class")) check.hp.push(tt("rules.ddb.hpMulti"));
   }
-  if (!(max > 0)) { check.hp.push("HP kon niet berekend worden"); max = 0; }
+  if (!(max > 0)) { check.hp.push(tt("rules.ddb.hpNone")); max = 0; }
 
   // ---------- spell slots ----------
   const casters = [];
@@ -317,7 +318,7 @@ export function parseDdbJson(json) {
     passive: { per: 10 + skillVal.Perception + sum("bonus", "passive-perception"), ins: 10 + skillVal.Insight + sum("bonus", "passive-insight"), inv: 10 + skillVal.Investigation + sum("bonus", "passive-investigation") }, // SP5 (Observant e.d.)
     senses: [...sense.map(([s, v]) => `${s} ${v} ft.`), `passive Perception ${10 + skillVal.Perception + sum("bonus", "passive-perception")}`].join(", "),
     attacks, levels, spellDC: spellMod == null ? "" : String(8 + prof + spellMod + dcPlus), spellAtk: spellMod == null ? "" : sg(prof + spellMod + atkPlus), spellAbility: castAb ? SHORT[castAb - 1] : "",
-    features: [sub.length ? `Subclass: ${sub.join(", ")}` : "", feats, pact ? "Pact Magic: slots komen terug na een short rest." : ""].filter(Boolean).join("\n"),
+    features: [sub.length ? `Subclass: ${sub.join(", ")}` : "", feats, pact ? tt("rules.ddb.pact") : ""].filter(Boolean).join("\n"),
     casting: slots.length || pactObj ? { slots, daily: [], ...(pactObj ? { pact: pactObj } : {}) } : null, res,
     dr: drOf(mods), // SP2: altijd aanwezig bij een link-sheet ({} = geen), een PDF-sheet heeft het niet
   };
@@ -333,7 +334,7 @@ export function parseDdbJson(json) {
 export function mergeSheet(t, f) {
   const ch = [];
   const keep = (oMax, oLeft, nMax) => clamp(nMax - Math.max(0, (oMax || 0) - (oLeft ?? oMax ?? 0)), 0, nMax);
-  if (f.name && t.name && f.name !== t.name) ch.push(`naam ${t.name} → ${f.name}`); // anders stil hernoemd (SP1)
+  if (f.name && t.name && f.name !== t.name) ch.push(tt("rules.ddb.name", { from: t.name, to: f.name })); // anders stil hernoemd (SP1)
   const oc = t.sheet && t.sheet.cls, nc = f.sheet && f.sheet.cls;
   if (oc && nc && oc !== nc) ch.push(`${oc} → ${nc}`);
   if (f.ac && t.ac !== f.ac) ch.push(`AC ${t.ac || "?"} → ${f.ac}`);
@@ -380,7 +381,7 @@ export function partyUpdate(m, got) {
   const old = { ac: int(m.ac) || 0, max: baseMax(m) || 0 };
   for (const [k, ckk, lbl] of [["ac", "ac", "AC"], ["max", "hp", "max HP"]]) {
     if (!f[k] || !arr(ck[ckk]).length || !old[k]) continue; // zeker, of nog geen waarde: gewoon overnemen
-    if (f[k] !== old[k]) kept.push(`${lbl} onzeker (sheet: ${f[k]}), blijft ${old[k]}`);
+    if (f[k] !== old[k]) kept.push(tt("rules.ddb.kept", { what: lbl, sheet: String(f[k]), old: String(old[k]) }));
     f[k] = 0; // mergeSheet slaat 0 over
   }
   return { f, kept };

@@ -1,4 +1,5 @@
 // Meertaligheid WP19 (TA3): vertaalfunctie t, meervoud, formatters, terugval op Engels, descriptoren.
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createI18n, MAX_DEPTH } from "../js/i18n/core.js";

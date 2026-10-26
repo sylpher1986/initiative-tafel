@@ -1,7 +1,7 @@
 // Legendary actions (5e 2014): opties uit het statblock en het gebruik ervan. Puur: geen DOM.
 // Regels: alleen aan het einde van de beurt van een ander wezen, één optie tegelijk, kosten 1–3,
 // herstel bij de start van de eigen beurt (turns.js), niet als incapacitated. Wanneer precies bepaalt de DM.
-import { fx } from "./combat.js";
+import { fx, say } from "./combat.js";
 import { parseAction, useful } from "./attacks.js";
 import { isOut, isSurprised } from "./turns.js";
 
@@ -58,9 +58,9 @@ export function useLA(c, opt, S) {
   const out = fx();
   const st = laStatus(c, S);
   const cost = Math.max(1, +opt.cost || 1);
-  if (st !== "ok") { out.msgs.push(`${c.name} kan nu geen legendary action nemen.`); return out; }
-  if (cost > c.la.left) { out.msgs.push(`${opt.n} kost ${cost} LA, ${c.name} heeft er nog ${c.la.left}.`); return out; }
+  if (st !== "ok") { out.msgs.push(say("rules.la.cant", { name: c.name })); return out; }
+  if (cost > c.la.left) { out.msgs.push(say("rules.la.cost", { what: opt.n, cost: String(cost), name: c.name, left: String(c.la.left) })); return out; }
   c.la.left -= cost;
-  out.why.push({ t: `legendary action: ${opt.n}${cost > 1 ? ` (${cost} LA)` : ""}`, id: c.id });
+  out.why.push({ t: cost > 1 ? `legendary action: ${opt.n} (${cost} LA)` : `legendary action: ${opt.n}`, id: c.id });
   return out;
 }

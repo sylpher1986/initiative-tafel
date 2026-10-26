@@ -1,4 +1,5 @@
 // WP4 (1.37.0): speler zonder initiative tot Start (SP4), restanten na Gevecht afronden (GV7), effectwaarde met teken (AF15)
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { sortOrder, startCombat, setInits, initPcs } from "../js/rules/turns.js";

@@ -2,6 +2,7 @@
 // per taal (locales/<taal>.js, tools/i18n-build.mjs). Elke taal heeft dezelfde sleutels en placeholders als Engels (de
 // terugval), elke sleutel hoort bij zijn namespace, elke sleutel in de code bestaat, en de gebouwde bestanden zijn
 // actueel. Plan: docs/i18n.md §3.2–§3.3.
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";

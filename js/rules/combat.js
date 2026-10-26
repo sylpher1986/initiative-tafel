@@ -1,11 +1,17 @@
 // Gevechtsregels (5e 2014). Elke functie past de deelnemer aan en geeft een Fx terug:
-//   msgs: korte meldingen voor de gebruiker (platte tekst)
-//   why:  oorzaken voor het logboek, [{t, id}]
+//   msgs: korte meldingen voor de gebruiker (tekst in de actieve taal, meteen getoond: say())
+//   why:  oorzaken voor het logboek, [{t, id}]; t is een descriptor M(sleutel, waarden) (WP27), zodat het logboek
+//         in een andere taal opnieuw te lezen is. Oude aanroepers mogen nog tekst geven.
 import { pactRest } from "./slots.js";
+import { M, J } from "../i18n/msg.js";
+import { tr } from "../i18n/boot.js";
 import { d } from "./dice.js";
 import { EXH, EXH_NAME, isExh, exhLevel } from "./conditions.js";
 
 export const fx = () => ({ msgs: [], why: [] });
+/** Melding: descriptor meteen als tekst in de actieve taal (meldingen worden direct getoond, niet bewaard) */
+export const say = (k, p) => tr(M(k, p));
+const s = (n) => String(n); // getal als tekst: zoals vroeger, zonder duizendtalscheiding
 //   saves: (optioneel) nieuwe concentration saves, [{ id, kind: "conc", ab, dc }]; de UI zet ze in S.saves
 export const merge = (a, b) => { a.msgs.push(...b.msgs); a.why.push(...b.why); if (b.saves) (a.saves = a.saves || []).push(...b.saves); return a; };
 
@@ -25,8 +31,8 @@ function restartDs(c) { if (c.ds.stable) { c.ds.s = 0; c.ds.f = 0; } c.ds.stable
 /** Drie successen = stabiel, drie failures = dood */
 export function checkDs(c) {
   const out = fx(), ds = c.ds;
-  if (ds.f >= 3) { ds.dead = true; ds.stable = false; out.msgs.push(`${c.name} is gestorven.`); }
-  else if (ds.s >= 3) { ds.stable = true; ds.dead = false; out.msgs.push(`${c.name} is stabiel (bewusteloos, 0 HP).`); }
+  if (ds.f >= 3) { ds.dead = true; ds.stable = false; out.msgs.push(say("rules.dsDead", { name: c.name })); }
+  else if (ds.s >= 3) { ds.stable = true; ds.dead = false; out.msgs.push(say("rules.dsStable", { name: c.name })); }
   else { ds.dead = false; ds.stable = false; }
   return out;
 }
@@ -36,17 +42,18 @@ export function startConc(c, name) {
   const prev = c.cond.includes("Concentrating") ? c.concSpell : null;
   if (!c.cond.includes("Concentrating")) c.cond.push("Concentrating");
   c.concSpell = name;
-  out.msgs.push(prev && prev !== name ? `${c.name}: concentratie op ${prev} verbroken, nu op ${name}.` : `${c.name} concentreert op ${name}.`);
+  out.msgs.push(prev && prev !== name ? say("rules.concSwap", { name: c.name, old: prev, spell: name }) : say("rules.concStart", { name: c.name, spell: name }));
   return out;
 }
 
 export function dropConc(c, why) {
   const out = fx();
   if (c.cond.includes("Concentrating")) {
-    out.why.push({ t: why || "handmatig", id: c.id });
+    out.why.push({ t: why || M("rules.manual"), id: c.id });
     c.cond = c.cond.filter((x) => x !== "Concentrating");
     if (c.cd) delete c.cd.Concentrating;
-    out.msgs.push(`${c.name}: concentratie${c.concSpell ? ` op ${c.concSpell}` : ""} verbroken${why ? ` (${why})` : ""}.`);
+    const k = c.concSpell ? (why ? "rules.concDropOnWhy" : "rules.concDropOn") : why ? "rules.concDropWhy" : "rules.concDrop";
+    out.msgs.push(say(k, { name: c.name, spell: c.concSpell || "", why: why || "" }));
   }
   c.concSpell = null;
   return out;
@@ -56,10 +63,10 @@ export function dropConc(c, why) {
 export function applyPcHp(c, delta) {
   const out = fx();
   if (delta > 0) {
-    if (c.ds && c.ds.dead) { out.msgs.push(`${c.name} is dood; genezen werkt niet zonder revivify of iets vergelijkbaars.`); return out; }
+    if (c.ds && c.ds.dead) { out.msgs.push(say("rules.healDead", { name: c.name })); return out; }
     const was0 = c.hp <= 0;
     c.hp = Math.min(c.max, Math.max(0, c.hp) + delta);
-    if (was0) { c.ds = null; setUncon(c, false); out.msgs.push(`${c.name} komt weer bij met ${c.hp} HP.`); }
+    if (was0) { c.ds = null; setUncon(c, false); out.msgs.push(say("rules.wakes", { name: c.name, hp: s(c.hp) })); }
     return out;
   }
   const v = -delta;
@@ -68,21 +75,21 @@ export function applyPcHp(c, delta) {
     c.hp = Math.max(0, c.hp - v);
     if (c.hp === 0) {
       c.ds = newDs(); setUncon(c, true);
-      merge(out, dropConc(c, "0 HP"));
+      merge(out, dropConc(c, M("rules.hp0")));
       if (overflow >= c.max) {
-        out.why.push({ t: `instant death: restschade ${overflow} ≥ max HP ${c.max}`, id: c.id });
+        out.why.push({ t: M("rules.instantWhy", { n: s(overflow), max: s(c.max) }), id: c.id });
         c.ds.dead = true; c.ds.f = 3;
-        out.msgs.push(`${c.name} sterft direct: restschade ${overflow} ≥ max HP ${c.max}.`);
-      } else out.msgs.push(`${c.name} valt op 0 HP en is bewusteloos. Death saves vanaf de volgende beurt.`);
+        out.msgs.push(say("rules.instant", { name: c.name, n: s(overflow), max: s(c.max) }));
+      } else out.msgs.push(say("rules.drops", { name: c.name }));
     }
     return out;
   }
   c.ds = c.ds || newDs();
   if (c.ds.dead) return out;
-  if (v >= c.max) { c.ds.f = 3; c.ds.dead = true; out.msgs.push(`${c.name} sterft: ${v} schade ≥ max HP op 0 HP.`); return out; }
-  out.why.push({ t: "schade op 0 HP", id: c.id });
+  if (v >= c.max) { c.ds.f = 3; c.ds.dead = true; out.msgs.push(say("rules.dies0", { name: c.name, n: s(v) })); return out; }
+  out.why.push({ t: M("rules.dmg0Why"), id: c.id });
   restartDs(c); c.ds.f = Math.min(3, c.ds.f + 1);
-  out.msgs.push(`${c.name} krijgt schade op 0 HP: één failure. Was het een kritieke treffer, tik dan op "Kritiek".`);
+  out.msgs.push(say("rules.dmg0", { name: c.name }));
   return merge(out, checkDs(c));
 }
 
@@ -96,19 +103,19 @@ export function dsResult(c, r, byApp = false) {
   const out = fx();
   if (!Number.isInteger(r) || r < 1 || r > 20 || c.hp > 0 || c.ds?.dead || c.ds?.stable) return out;
   c.ds = c.ds || newDs();
-  out.why.push({ t: `death save ${byApp ? "d20 " : ""}[${r}]${byApp ? "" : ", door speler gerold"}${r === 1 ? ", telt dubbel" : r === 20 ? ", natuurlijke 20" : ""}`, id: c.id });
-  if (r === 20) { c.hp = 1; c.ds = null; setUncon(c, false); out.msgs.push(`Death save ${c.name}: 20! Staat op met 1 HP.`); return out; }
-  if (r === 1) { c.ds.f = Math.min(3, c.ds.f + 2); out.msgs.push(`Death save ${c.name}: 1, twee failures.`); }
-  else if (r >= 10) { c.ds.s++; out.msgs.push(`Death save ${c.name}: ${r}, success.`); }
-  else { c.ds.f++; out.msgs.push(`Death save ${c.name}: ${r}, failure.`); }
+  out.why.push({ t: J([`death save ${byApp ? "d20 " : ""}[${r}]`, !byApp && M("rules.dsByPc"), r === 1 && M("rules.dsDouble"), r === 20 && M("rules.dsNat20")].filter(Boolean), ", "), id: c.id });
+  if (r === 20) { c.hp = 1; c.ds = null; setUncon(c, false); out.msgs.push(say("rules.ds20", { name: c.name })); return out; }
+  if (r === 1) { c.ds.f = Math.min(3, c.ds.f + 2); out.msgs.push(say("rules.ds1", { name: c.name })); }
+  else if (r >= 10) { c.ds.s++; out.msgs.push(say("rules.dsOk", { name: c.name, r: s(r) })); }
+  else { c.ds.f++; out.msgs.push(say("rules.dsFail", { name: c.name, r: s(r) })); }
   return merge(out, checkDs(c));
 }
 
 export function critAtZero(c) {
   const out = fx();
-  out.why.push({ t: "kritieke treffer op 0 HP", id: c.id });
+  out.why.push({ t: M("rules.crit0Why"), id: c.id });
   c.ds = c.ds || newDs(); restartDs(c); c.ds.f = Math.min(3, c.ds.f + 2);
-  out.msgs.push(`${c.name}: kritieke treffer op 0 HP, twee failures.`);
+  out.msgs.push(say("rules.crit0", { name: c.name }));
   return merge(out, checkDs(c));
 }
 
@@ -116,7 +123,7 @@ export function critAtZero(c) {
 export function giveTemp(c, raw) {
   const out = fx(), old = c.temp || 0;
   c.temp = Math.max(old, raw);
-  out.msgs.push(old > raw ? `${c.name} houdt ${old} temp HP (temp HP stapelt niet).` : `${c.name} krijgt ${c.temp} temp HP.`);
+  out.msgs.push(old > raw ? say("rules.tempKeep", { name: c.name, n: s(old) }) : say("rules.tempGet", { name: c.name, n: s(c.temp) }));
   return out;
 }
 
@@ -133,17 +140,17 @@ export function heal(c, raw) {
 export function wakeByDamage(c) {
   const out = fx(), all = Object.keys(c.cd || {}).filter((k) => c.cd[k] && c.cd[k].brk && c.cond.includes(k));
   if (!all.length) return out;
-  const sp = [...new Set(all.map((k) => c.cd[k].spell).filter(Boolean))].join(", ");
+  const sp = [...new Set(all.map((k) => c.cd[k].spell).filter(Boolean))].join(", "); // spellnamen: inhoud
   for (const k of all) delete c.cd[k]; // koppeling weg; Unconscious van een speler op 0 HP blijft (hoort bij de 0 HP)
   const K = all.filter((k) => !(k === "Unconscious" && downPc(c)));
   c.cond = c.cond.filter((x) => !K.includes(x));
   if (!K.length) return out;
-  out.why.push({ t: `${K.join(" + ")} weg door schade${sp ? ` (${sp})` : ""}`, id: c.id });
-  out.msgs.push(`${c.name}: ${K.join(" + ")} weg door schade${sp ? ` (${sp})` : ""}.`);
+  out.why.push({ t: M(sp ? "rules.wakeWhySp" : "rules.wakeWhy", { what: K.join(" + "), sp }), id: c.id });
+  out.msgs.push(say(sp ? "rules.wakeSp" : "rules.wake", { name: c.name, what: K.join(" + "), sp }));
   return out;
 }
 
-const MODE_TXT = { 0.5: ["×½", "resistance"], 2: ["×2", "vulnerability"], 0: ["×0", "immuun"] };
+const MODE_TXT = { 0.5: ["×½", "rules.mResist"], 2: ["×2", "rules.mVuln"], 0: ["×0", "rules.mImm"] }; // [teken, sleutel]
 
 /**
  * Schade met resistance (×½, naar beneden afgerond), vulnerability (×2) of immunity (×0), eerst van temp HP af.
@@ -158,16 +165,16 @@ export function applyDamage(c, raw, mode = 1, quiet = false) {
   if (absorb) c.temp -= absorb;
   const rest = v - absorb;
   const mt = MODE_TXT[mode];
-  if (!quiet || absorb) out.why.push({ t: `${quiet ? "" : `${raw} schade${mt ? ` ${mt[0]} (${mt[1]}) = ${v}` : ""}`}${absorb ? `${quiet ? "" : ", "}${absorb} opgevangen door temp HP` : ""}`, id: c.id });
+  if (!quiet || absorb) out.why.push({ t: J([!quiet && (mt ? M("rules.dmgMode", { n: s(raw), x: mt[0], mode: M(mt[1]), v: s(v) }) : M("rules.dmg", { n: s(raw) })), absorb && M("rules.absorbWhy", { n: s(absorb) })].filter(Boolean), ", "), id: c.id });
   const parts = [];
   if (mt && !quiet) parts.push(`${raw} ${mt[0]} = ${v}`);
-  if (absorb && !quiet) parts.push(`${absorb} door temp HP, ${rest} op HP`);
+  if (absorb && !quiet) parts.push(say("rules.absorb", { n: s(absorb), rest: s(rest) }));
   if (parts.length) out.msgs.push(`${c.name}: ${parts.join(", ")}`);
   if (rest > 0) {
     if (c.kind === "pc") merge(out, applyPcHp(c, -rest));
     else {
       c.hp = Math.max(0, c.hp - rest);
-      if (c.hp === 0) { out.msgs.push(`${c.name} is neer.`); merge(out, dropConc(c, "0 HP")); }
+      if (c.hp === 0) { out.msgs.push(say("rules.down", { name: c.name })); merge(out, dropConc(c, M("rules.hp0"))); }
     }
   }
   if (v > 0 && c.hp > 0 && c.cond.includes("Concentrating")) out.saves = [{ id: c.id, kind: "conc", n: c.concSpell || "", ab: "CON", dc: Math.max(10, Math.floor(v / 2)) }];
@@ -198,7 +205,7 @@ export function setHp(c, v) {
     return merge(out, applyPcHp(c, v - Math.max(0, c.hp)));
   }
   c.hp = v;
-  if (v === 0) { out.msgs.push(`${c.name} is neer.`); merge(out, dropConc(c, "0 HP")); }
+  if (v === 0) { out.msgs.push(say("rules.down", { name: c.name })); merge(out, dropConc(c, M("rules.hp0"))); }
   return out;
 }
 

@@ -1,4 +1,5 @@
 // WP10: monsterregels (RE13) en de multiattack-volgorde (GV11)
+import { nl, nlw } from "./_nl.js"; // WP27: Nederlandse catalogus; nlw = oorzaken als tekst
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -34,7 +35,7 @@ test("RE13: Undead Fortitude geslaagd = 1 HP, gefaald = neer; logoorzaak", () =>
   let r = ufApply(c, { dc: 12 }, { tot: 14 }, "d20 [11] +3 = 14");
   assert.equal(c.hp, 1); assert.equal(r.ok, true);
   assert.equal(r.txt, "Undead Fortitude CON 12: d20 [11] +3 = 14, blijft op 1 HP");
-  assert.equal(r.why[0].id, "m");
+  assert.equal(nlw(r.why)[0].id, "m");
   const d = mon({ hp: 0 });
   r = ufApply(d, { dc: 19 }, { tot: 8 }, "d20 [5] +3 = 8");
   assert.equal(d.hp, 0); assert.match(r.txt, /, neer$/);
@@ -70,7 +71,7 @@ test("RE13: rider toepassen: Prone, Paralyzed met duur en herhaalsave, schade (h
   let f = applyRider(p, { ...parseRider(act("Wolf", "Bite")), n: "Bite" }, false, "w");
   assert.deepEqual(p.cond, ["Concentrating", "Prone"]);
   assert.ok(!p.cd || !p.cd.Prone, "Prone zonder duur");
-  assert.match(f.why[0].t, /Bite STR 11: save gefaald/);
+  assert.match(nlw(f.why)[0].t, /Bite STR 11: save gefaald/);
   const g = pc({ cond: ["Concentrating"], concSpell: "Bless" });
   f = applyRider(g, { ...parseRider(act("Ghoul", "Claws")), n: "Claws" }, false, "gh");
   assert.ok(g.cond.includes("Paralyzed") && !g.cond.includes("Concentrating"), "Paralyzed breekt concentratie");
@@ -99,7 +100,7 @@ test("RE13: rider als open save in de beurtbalk", () => {
   const rd = { ...parseRider(act("Ghoul", "Claws")), by: "w" };
   addSave(S, { id: "p", kind: "rider", n: "Claws", ab: "CON", dc: 10, rd });
   const s = openSaves(S)[0];
-  assert.equal(label(s), "CON-save DC 10 (Claws)");
+  assert.equal(nl(label(s)), "CON-save DC 10 (Claws)");
   resolveSave(S, s.sid, false);
   assert.ok(S.list[0].cond.includes("Paralyzed"));
   assert.equal(S.list[0].cd.Paralyzed.save.dc, 10);
@@ -123,7 +124,7 @@ test("RE13: Parry uit de reactions; niet met gebruikte reaction, verrast of inca
   assert.ok(!canParry({ ...k, hp: 0 }, 2));
   const f = useParry(k, 2);
   assert.equal(k.reaction, true);
-  assert.match(f.why[0].t, /Parry \(\+2 AC\)/);
+  assert.match(nlw(f.why)[0].t, /Parry \(\+2 AC\)/);
 });
 
 test("GV11: volgorde uit de Multiattack", () => {

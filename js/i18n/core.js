@@ -12,7 +12,7 @@
 // Placeholders lezen alleen eigen sleutels van params ({toString} wordt nooit een functie); een punt in de naam is
 // gewoon deel van de sleutel (params["a.b"]), geen pad. Geneste descriptoren/arrays stoppen na MAX_DEPTH niveaus
 // (vanaf WP27 komen descriptoren uit opgeslagen en geïmporteerde data: een lus mag nooit de stack opblazen).
-import { isMsg } from "./msg.js";
+import { isMsg, isJoin } from "./msg.js";
 
 const PH = /\{([A-Za-z_][\w.]*)\}/g;
 const own_ = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
@@ -87,7 +87,8 @@ export function createI18n({ lang, catalogs = {}, fallback = "en", locale, debug
   };
   const value = (x, depth) => {
     if (depth > MAX_DEPTH) return isMsg(x) ? x.k : "…";
-    return isMsg(x) ? look(x.k, x.p, depth + 1) : Array.isArray(x) ? list(x.map((y) => value(y, depth + 1))) : typeof x === "number" ? num(x) : String(x);
+    return isMsg(x) ? look(x.k, x.p, depth + 1) : isJoin(x) ? x.j.map((y) => value(y, depth + 1)).join(String(x.s ?? ", "))
+      : Array.isArray(x) ? list(x.map((y) => value(y, depth + 1))) : typeof x === "number" ? num(x) : String(x);
   };
   const fill = (s, params, depth) => (params && typeof params === "object"
     ? String(s).replace(PH, (m, name) => (own_(params, name) && params[name] != null ? value(params[name], depth) : m))
@@ -106,7 +107,7 @@ export function createI18n({ lang, catalogs = {}, fallback = "en", locale, debug
   }
   const t = (key, params) => look(key, params, 0);
   /** Descriptor { k, p } vertalen (geen descriptor: als tekst) */
-  const tr = (d) => (isMsg(d) ? t(d.k, d.p) : d == null ? "" : String(d));
+  const tr = (d) => (isMsg(d) ? t(d.k, d.p) : isJoin(d) ? value(d, 0) : d == null ? "" : String(d));
   /** Bestaat de sleutel in de actieve taal of de terugval? */
   const has = (key) => own_(own, key) || own_(back, key);
 

@@ -1,3 +1,4 @@
+import { nlw } from "./_nl.js"; // WP27: Nederlandse catalogus; nlw = oorzaken als tekst
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { clearMonsters, stopCombat, setInits, initPcs } from "../js/rules/turns.js";
@@ -19,7 +20,7 @@ test("volgende encounter: monsters, verborgen monsters en lair weg; spelers houd
   assert.deepEqual(S.log, [{ msg: "oud" }], "logboek blijft");
   assert.equal(S.list[0].hp, 0); assert.deepEqual(S.list[0].cond, ["Unconscious"]); assert.equal(S.list[0].ds, ds);
   assert.equal(S.list[1].temp, 5); assert.deepEqual(S.list[1].cond, ["Poisoned"]);
-  assert.ok(r.why.some((w) => /volgende encounter/.test(w.t)));
+  assert.ok(nlw(r.why).some((w) => /volgende encounter/.test(w.t)));
 });
 
 test("volgende encounter: ronde-effecten weg, effect tot long rest blijft; Bless van een weggehaald monster vervalt", () => {

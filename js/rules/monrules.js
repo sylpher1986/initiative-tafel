@@ -2,7 +2,9 @@
 //   Undead Fortitude: op 0 HP gebracht → CON-save DC 5 + schade, geslaagd = 1 HP (niet bij radiant of een crit).
 //   Save-riders: "Hit: … DC 11 Strength saving throw or be knocked prone" na een treffer.
 //   Parry: reaction, +N AC tegen één melee-aanval die zou raken.
-import { fx, merge, applyDamage, dropConc } from "./combat.js";
+import { fx, merge, applyDamage, dropConc, say } from "./combat.js";
+import { M } from "../i18n/msg.js";
+import { t as tt } from "../i18n/boot.js"; // tt: parseRider heeft een lokale t
 import { makeDur } from "./turns.js";
 import { NO_ACT } from "./legendary.js";
 import { saveAdv, rollSave, saveBonus } from "./aoe.js";
@@ -32,7 +34,7 @@ export const ufDc = (dealt) => 5 + Math.max(0, dealt | 0);
 export function ufNeed(c, m, was, dealt, info = {}) {
   if (!c || c.kind !== "monster" || !hasUF(m) || !(was > 0) || c.hp > 0 || !(dealt > 0)) return null;
   if (info.radiant) return { skip: info.why || "radiant" };
-  if (info.crit) return { skip: "kritiek" };
+  if (info.crit) return { skip: tt("rules.atk.crit") };
   return { dc: ufDc(dealt) };
 }
 
@@ -44,14 +46,14 @@ export function ufApply(c, need, x, rollTxt) {
   const out = fx();
   if (!need) return Object.assign(out, { txt: "" });
   if (need.skip) {
-    out.why.push({ t: `geen Undead Fortitude (${need.skip})`, id: c.id });
-    return Object.assign(out, { txt: `geen Undead Fortitude (${need.skip})` });
+    out.why.push({ t: M("rules.uf.none", { why: need.skip }), id: c.id });
+    return Object.assign(out, { txt: say("rules.uf.none", { why: need.skip }) });
   }
   const ok = x.tot >= need.dc;
   if (ok) c.hp = 1;
-  const txt = `Undead Fortitude CON ${need.dc}: ${rollTxt}, ${ok ? "blijft op 1 HP" : "neer"}`;
-  out.why.push({ t: txt, id: c.id });
-  return Object.assign(out, { txt, ok });
+  const m = M("rules.uf.roll", { dc: String(need.dc), roll: rollTxt, res: M(ok ? "rules.uf.stays" : "rules.aoeRes.down") });
+  out.why.push({ t: m, id: c.id });
+  return Object.assign(out, { txt: say(m.k, m.p), ok });
 }
 
 /* ---------- save-riders na een treffer ---------- */
@@ -63,15 +65,16 @@ const DMG_RE = /(?:taking|take)\s+(?:\d+\s*)?\((\d+d\d+(?:\s*[+−-]\s*\d+)?)\)\
 
 /** Herinnering bij een rider die de app niet zelf toepast */
 function riderNote(s) {
-  if (/hit point maximum (?:is )?reduced by an amount equal to the damage/i.test(s)) return "max HP daalt met de schade (tot een long rest)";
-  if (/hit point maximum reduced by an amount equal to the damage/i.test(s)) return "max HP daalt met de schade";
-  if (/swallowed/i.test(s)) return "ingeslikt: zie statblock";
-  if (/disease|cursed|lycanthropy|mummy rot/i.test(s)) return "ziekte of vloek: zie statblock";
-  if (/infernal wound|lose \d+ \(\d+d\d+\) hit points at the start/i.test(s)) return "wond: HP-verlies aan het begin van elke beurt";
-  if (/\bdie\b|drops to 0 hit points/i.test(s)) return "kan sterven: zie statblock";
-  if (/pulled|pushed/i.test(s)) return "verplaatst: zie statblock";
-  if (/unconscious/i.test(s)) return "kan bewusteloos raken: zie statblock";
-  return "zie statblock";
+  const n = (k) => tt(`rules.rd.n.${k}`); // tekst in de taal van nu (rider staat hooguit twee beurten open)
+  if (/hit point maximum (?:is )?reduced by an amount equal to the damage/i.test(s)) return n("maxLr");
+  if (/hit point maximum reduced by an amount equal to the damage/i.test(s)) return n("max");
+  if (/swallowed/i.test(s)) return n("swallow");
+  if (/disease|cursed|lycanthropy|mummy rot/i.test(s)) return n("curse");
+  if (/infernal wound|lose \d+ \(\d+d\d+\) hit points at the start/i.test(s)) return n("wound");
+  if (/\bdie\b|drops to 0 hit points/i.test(s)) return n("die");
+  if (/pulled|pushed/i.test(s)) return n("moved");
+  if (/unconscious/i.test(s)) return n("uncon");
+  return n("see");
 }
 
 /**
@@ -103,9 +106,9 @@ export function parseRider(text) {
   const rep = /repeat the saving throw at the end of each of its turns/i.test(rest.slice(0, 400));
   const out = { ab: ABIL[dm[2].toLowerCase()], dc: +dm[1], conds: noteOnly ? [] : conds, dur, rep: rep && !noteOnly && conds.length > 0, dmg: noteOnly ? null : dmg, note: "", only };
   if (!out.conds.length && !out.dmg) out.note = riderNote(rest.slice(0, 400));
-  else if (/fails by 5 or more|saving throw result is 5 or lower/i.test(rest.slice(0, 300))) out.note = "bij ruim falen ook bewusteloos: zie statblock";
-  else if (/unconscious/i.test(sent)) out.note = "ook bewusteloos: zie statblock";
-  else if (/damage at the start of each of its turns/i.test(rest.slice(0, 300))) out.note = "ook schade aan het begin van elke beurt: zie statblock";
+  else if (/fails by 5 or more|saving throw result is 5 or lower/i.test(rest.slice(0, 300))) out.note = tt("rules.rd.n.bigFail");
+  else if (/unconscious/i.test(sent)) out.note = tt("rules.rd.n.alsoUncon");
+  else if (/damage at the start of each of its turns/i.test(rest.slice(0, 300))) out.note = tt("rules.rd.n.alsoDmg");
   return out;
 }
 
@@ -113,8 +116,8 @@ export function parseRider(text) {
 export function riderWhat(r) {
   if (!r) return "";
   const p = [];
-  if (r.dmg) p.push(`${r.dmg.e} ${r.dmg.type}${r.dmg.half ? ", half bij geslaagd" : ""}`);
-  if (r.conds.length) p.push(`of ${r.conds.join(" + ")}${r.dur === "r10" ? " 1 min" : ""}`);
+  if (r.dmg) p.push(r.dmg.half ? tt("rules.rd.halfOk", { e: r.dmg.e, type: r.dmg.type }) : `${r.dmg.e} ${r.dmg.type}`);
+  if (r.conds.length) p.push(tt(r.dur === "r10" ? "rules.rd.or1m" : "rules.rd.or", { what: r.conds.join(" + ") }));
   if (r.note) p.push(r.note);
   return p.join(" · ");
 }
@@ -136,9 +139,9 @@ export function applyRider(c, rd, ok, active) {
   const lbl = `${rd.n || "Rider"} ${rd.ab} ${rd.dc}`;
   if (rd.dmg && rd.roll) {
     const raw = ok ? (rd.dmg.half ? Math.floor(rd.roll.total / 2) : 0) : rd.roll.total;
-    out.why.push({ t: `${lbl}: save ${ok ? "geslaagd" : "gefaald"}; ${rd.roll.txt}${ok ? (rd.dmg.half ? `, half = ${raw}` : ", geen schade") : ""}`, id: c.id });
+    out.why.push({ t: M(!ok ? "rules.rd.dmg" : rd.dmg.half ? "rules.rd.dmgHalf" : "rules.rd.dmgNone", { lbl, res: M(ok ? "rules.rd.ok" : "rules.rd.fail"), roll: rd.roll.txt, n: String(raw) }), id: c.id });
     if (raw > 0) merge(out, applyDamage(c, raw, rd.mode ?? 1, true));
-  } else out.why.push({ t: `${lbl}: save ${ok ? "geslaagd" : "gefaald"}${!ok && rd.note ? ` (${rd.note})` : ""}`, id: c.id });
+  } else out.why.push({ t: M(!ok && rd.note ? "rules.rd.resNote" : "rules.rd.res", { lbl, res: M(ok ? "rules.rd.ok" : "rules.rd.fail"), note: rd.note || "" }), id: c.id });
   if (!ok && rd.conds.length) {
     c.cd = c.cd || {};
     rd.conds.forEach((k, i) => {
@@ -148,8 +151,8 @@ export function applyRider(c, rd, ok, active) {
       if (d) c.cd[k] = d; else delete c.cd[k];
     });
     const na = rd.conds.find((k) => NO_ACT.includes(k));
-    if (na) merge(out, dropConc(c, `${na} door ${rd.n || "rider"}`));
-    out.msgs.push(`${c.name}: ${rd.conds.join(" + ")}${rd.dur === "r10" ? " (1 minuut)" : ""}.`);
+    if (na) merge(out, dropConc(c, M("rules.condBy", { cond: na, name: rd.n || "rider" })));
+    out.msgs.push(say(rd.dur === "r10" ? "rules.rd.got1m" : "rules.rd.got", { name: c.name, what: rd.conds.join(" + ") }));
   }
   return out;
 }
@@ -178,9 +181,9 @@ export function riderFor(rd, c, m, sim, choice = null) {
 export function riderOutcome(rd, ok, lost) {
   const p = [];
   if (!ok && rd.conds.length) p.push(rd.conds.join(" + "));
-  if (lost > 0) p.push(`${ok && rd.dmg && rd.dmg.half ? "half: " : ""}−${lost} ${rd.dmg ? rd.dmg.type : "HP"}`);
+  if (lost > 0) { const x = `−${lost} ${rd.dmg ? rd.dmg.type : "HP"}`; p.push(ok && rd.dmg && rd.dmg.half ? tt("rules.rd.half", { what: x }) : x); }
   if (!ok && !rd.conds.length && !rd.dmg && rd.note) p.push(rd.note);
-  return p.join(", ") || "geen gevolg";
+  return p.join(", ") || tt("rules.rd.nothing");
 }
 
 /* ---------- Parry ---------- */
@@ -203,6 +206,6 @@ export const canParry = (c, round = 0) => !!c && c.kind === "monster" && c.hp > 
 export function useParry(c, n) {
   const out = fx();
   c.reaction = true;
-  out.why.push({ t: `Parry (+${n} AC): aanval mist, reaction gebruikt`, id: c.id });
+  out.why.push({ t: M("rules.parry", { n: String(n) }), id: c.id });
   return out;
 }

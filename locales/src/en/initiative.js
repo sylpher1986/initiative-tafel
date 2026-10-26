@@ -967,4 +967,6 @@ export default {
   "init.imp.done": "Import done.",
   "init.enc.copyWord": "copy", // achter de naam bij dupliceren: 'Grot (kopie 2)'; wordt opgeslagen
   "init.end.clear": "Clear monsters", // knop in de samenvatting; spelers blijven
+  "init.saveFail": "Can't save in this browser (storage full or blocked). Export your data to keep it.",
+  "init.uf.radOrCrit": "radiant or critical",
 };

@@ -1,5 +1,6 @@
 // WP15: lettertypes zelf meegeleverd. Elk @font-face-bestand bestaat, de preload wijst naar een gebruikt bestand,
 // en Playfair Display blijft beperkt tot merk en grote koppen (via --brand).
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";

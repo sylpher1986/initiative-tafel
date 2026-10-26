@@ -2,6 +2,7 @@
 // (js/ui/*, kamer.js, speler.js, sw.js). Zo valt een tikfout daar op vóór de browsercheck.
 // package.json heeft "type": "module", dus elk .js-bestand wordt als ES-module gecontroleerd; sw.js is een gewoon
 // worker-script en wordt apart als script geparst (een import of top-level await is daar een fout).
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, statSync, readFileSync } from "node:fs";

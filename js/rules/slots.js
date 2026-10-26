@@ -2,6 +2,8 @@
 // casting = { slots: [{ lvl, max, left, spells }], daily: [{ label, items: [{ n, max, left }] }], pact?: { lvl, max, left } }
 // Keuze-sleutels: "s3" = 3rd-level slot, "p" = Pact Magic-slot, "d1.0" = x/day-regel (groep 1, item 0), "self" = zelf bijhouden.
 import { ORD, keys, splitSpells } from "./spells.js";
+import { say } from "./combat.js";
+import { M } from "../i18n/msg.js";
 
 /** Pact Magic (PHB 2014): slot-level en aantal per warlock-level → { lvl, max } of null */
 export function pactSlots(lv) {
@@ -92,12 +94,12 @@ export function spendSlot(c, k, spell, lv, explicit = false) {
   if (!o) return out;
   const nm = slotName(c, k);
   if (!(o.left > 0)) {
-    out.txt = `geen ${nm} meer over`;
-    out.why.push({ t: `${spell}: ${out.txt}, niets afgeschreven`, id: c.id });
+    out.txt = say("rules.slot.none", { slot: nm });
+    out.why.push({ t: M("rules.slot.noneWhy", { spell, slot: nm }), id: c.id });
     return out;
   }
   o.left--;
-  out.txt = `${nm} (${o.left} over)`;
+  out.txt = say("rules.slot.left", { slot: nm, n: String(o.left) });
   return out;
 }
 

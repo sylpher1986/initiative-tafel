@@ -1,3 +1,4 @@
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { stillMine, claimTab, TAB_KEY } from "../js/tablock.js";

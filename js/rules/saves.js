@@ -1,7 +1,8 @@
 // Open saves (5e 2014): herhaal-saves tegen condities aan het einde van de beurt en concentration saves na schade.
 // Staan in de encounter (S.saves), zodat undo ook de vraag terugdraait. Puur: geen DOM.
 // Een open save vervalt na twee beurtwissels (de DM tikte te snel op Volgende: hij blijft nog één beurt staan).
-import { fx, merge, dropConc } from "./combat.js";
+import { fx, merge, dropConc, say } from "./combat.js";
+import { M } from "../i18n/msg.js";
 import { uid } from "./dice.js";
 import { isOut } from "./turns.js";
 import { applyRider } from "./monrules.js";
@@ -37,8 +38,8 @@ export function tickSaves(S) {
     if (s.ttl > 0) return true;
     const c = isValid(S, s) && S.list.find((x) => x.id === s.id);
     if (c) {
-      out.why.push({ t: `${label(s)} niet afgehandeld, vervallen zonder gevolg`, id: s.id });
-      out.msgs.push(`Save vervallen zonder uitslag: ${c.name} ${s.ab} ${s.dc} · ${s.kind === "conc" ? "concentratie blijft" : s.kind === "rider" ? `${s.n}: geen gevolg` : `${s.n} blijft`}`);
+      out.why.push({ t: M("rules.sv.lapsedWhy", { what: label(s) }), id: s.id });
+      out.msgs.push(say("rules.sv.lapsed", { name: c.name, ab: s.ab, dc: String(s.dc), rest: s.kind === "conc" ? M("rules.sv.restConc") : M(s.kind === "rider" ? "rules.sv.restRider" : "rules.sv.restCond", { n: s.n }) }));
     }
     return false;
   });
@@ -68,7 +69,8 @@ export function isValid(S, s) {
 /** Open saves die er nog toe doen, in volgorde van ontstaan */
 export const openSaves = (S) => (S.saves || []).filter((s) => isValid(S, s));
 
-export const label = (s) => `${s.ab}-save DC ${s.dc} ${s.kind === "conc" ? "(concentratie)" : s.kind === "rider" ? `(${s.n})` : `tegen ${s.n}`}`;
+/** Descriptor: "WIS-save DC 13 tegen Paralyzed" */
+export const label = (s) => M(s.kind === "conc" ? "rules.sv.labelConc" : s.kind === "rider" ? "rules.sv.labelRider" : "rules.sv.label", { ab: s.ab, dc: String(s.dc), n: s.n });
 
 /**
  * Gefaalde herhaalsave met een vervolg (Sleep 2024: Incapacitated → Unconscious voor de duur van de spell): de eerste conditie
@@ -82,7 +84,7 @@ function nextPhase(c, n) {
   if (!c.cond.includes(k)) c.cond = [...c.cond, k];
   c.cd[k] = { kind: "inf", who: c.id, at: "start", count: 0, ...(e.brk ? { brk: 1 } : {}), ...(e.by ? { by: e.by, spell: e.spell, cast: e.cast } : {}) };
   out.why.push({ t: `${n} → ${k}${e.spell ? ` (${e.spell})` : ""}`, id: c.id });
-  out.msgs.push(`${c.name}: ${k}${e.spell ? ` door ${e.spell}` : ""}.`);
+  out.msgs.push(e.spell ? say("rules.sv.phaseBy", { name: c.name, cond: k, spell: e.spell }) : `${c.name}: ${k}.`);
   return out;
 }
 
@@ -99,14 +101,14 @@ export function resolveSave(S, sid, ok, note = "") {
   const c = S.list.find((x) => x.id === s.id);
   if (!c || !isValid(S, s)) return out;
   if (s.kind === "rider") return merge(out, applyRider(c, { ...s.rd, n: s.n }, ok, S.active));
-  out.why.push({ t: `${label(s)}: ${note ? note + ", " : ""}${ok ? "geslaagd" : "gefaald"}`, id: c.id });
+  out.why.push({ t: M(`rules.sv.${ok ? "ok" : "fail"}${note ? "Note" : ""}`, { what: label(s), note }), id: c.id });
   if (s.kind === "cond" && ok) {
     c.cond = c.cond.filter((x) => x !== s.n);
     if (c.cd) delete c.cd[s.n];
     if (s.n === "Concentrating") c.concSpell = null;
-    out.msgs.push(`${c.name}: ${s.n} is voorbij.`);
+    out.msgs.push(say("rules.over", { name: c.name, what: s.n }));
   }
   if (s.kind === "cond" && !ok && c.cd && c.cd[s.n] && c.cd[s.n].then) merge(out, nextPhase(c, s.n));
-  if (s.kind === "conc" && !ok) merge(out, dropConc(c, "concentration save gefaald"));
+  if (s.kind === "conc" && !ok) merge(out, dropConc(c, M("rules.sv.concFail")));
   return out;
 }

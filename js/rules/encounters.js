@@ -3,6 +3,7 @@
 // id + updatedAt maken de collectie sync-klaar (fase 2). Hp-modus en initiative worden bewust niet bewaard.
 
 import { APP } from "../version.js";
+import { t } from "../i18n/boot.js";
 export const ENC_FORMAT = "initiative-tafel-encounter";
 export const ENC_VERSION = 1;
 export const MAX_N = 50, MAX_ROWS = 40, MAX_TOTAL = 100, MAX_ENCS = 500;
@@ -145,7 +146,7 @@ export function clampCount(enc, i, raw) {
   const m = enc.monsters[i], v = Math.trunc(Number(String(raw).trim()));
   if (!m || !(v >= 1)) return { n: null, msg: "" };
   const room = MAX_TOTAL - (total(enc) - m.n), n = Math.min(MAX_N, v, room);
-  return { n, msg: n >= v ? "" : n === room && room < MAX_N ? `Maximaal ${MAX_TOTAL} monsters per encounter.` : `Maximaal ${MAX_N} per regel.` };
+  return { n, msg: n >= v ? "" : n === room && room < MAX_N ? t("rules.enc.maxTotal", { n: MAX_TOTAL }) : t("rules.enc.maxRow", { n: MAX_N }) };
 }
 
 /**
@@ -249,10 +250,10 @@ export function buildEncFile(enc, { own = [], lairs = {} } = {}) {
  * Accepteert ook een losse encounter (zonder omhulsel) niet: alleen het eigen formaat.
  */
 export function parseEncFile(json, now = Date.now()) {
-  if (!json || typeof json !== "object" || json.format !== ENC_FORMAT) throw new Error(`Geen encounter-bestand van ${APP}.`);
-  if (Number(json.version) > ENC_VERSION) throw new Error("Dit encounter-bestand komt uit een nieuwere versie van de app. Werk de app eerst bij.");
+  if (!json || typeof json !== "object" || json.format !== ENC_FORMAT) throw new Error(t("init.enc.notFile", { app: APP }));
+  if (Number(json.version) > ENC_VERSION) throw new Error(t("rules.enc.newer"));
   const enc = cleanEncounter(json.encounter, now);
-  if (!enc) throw new Error("Dit encounter-bestand is leeg of beschadigd.");
+  if (!enc) throw new Error(t("rules.enc.broken"));
   const refs = new Set(enc.monsters.map((m) => m.ref));
   const seen = new Set(); // elk statblock één keer (eerste wint)
   const monsters = (Array.isArray(json.monsters) ? json.monsters : []).filter((m) => m && typeof m === "object" && refs.has(String(m.n)) && !seen.has(String(m.n)) && seen.add(String(m.n))).slice(0, MAX_ROWS);

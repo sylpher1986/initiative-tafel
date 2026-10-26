@@ -1,3 +1,4 @@
+import { nlw } from "./_nl.js"; // WP27: Nederlandse catalogus; nlw = oorzaken als tekst
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { rerollMonsters, freshRoll, groupOf, startCombat } from "../js/rules/turns.js";
@@ -23,8 +24,8 @@ test("rerollMonsters: nieuwe worp + Dex, aangepast en ingevuld blijven, spelers 
   assert.deepEqual([L[3].roll, L[3].init], [9, 9], "verborgen monster doet mee");
   assert.equal(L[1].init, 18); assert.equal(L[2].init, 7); assert.equal(L[4].init, 12); assert.equal(L[5].init, 20);
   assert.match(r.msgs[0], /opnieuw gerold \(2\)/);
-  assert.deepEqual(r.why.map((w) => w.id), ["a", "h"]);
-  assert.match(r.why[0].t, /d20 \[17\] \+2, opnieuw bij Start/);
+  assert.deepEqual(nlw(r.why).map((w) => w.id), ["a", "h"]);
+  assert.match(nlw(r.why)[0].t, /d20 \[17\] \+2, opnieuw bij Start/);
   assert.ok(freshRoll(L[0]), "na de worp weer onaangeroerd (volgende Start kan opnieuw)");
 });
 

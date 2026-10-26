@@ -1,6 +1,7 @@
 // Meertaligheid (WP18, TA2): ratel op Nederlandse tekst die nog niet uit een vertaalcatalogus komt.
 // Het nulpunt staat in tests/i18n-baseline.json (node tools/i18n-audit.mjs --write). Per bestand mag het aantal alleen
 // gelijk blijven of dalen; een daling moet worden vastgelegd, zodat de winst niet terugsluipt. Plan: docs/i18n.md.
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

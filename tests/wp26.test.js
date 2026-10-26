@@ -1,4 +1,5 @@
 // WP26 (1.49.5): overige DM-schermen uit de catalogus; ratel ziet code en HTML-attributen niet meer als tekst
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { isCode, dutchIn } from "../tools/i18n-audit.mjs";

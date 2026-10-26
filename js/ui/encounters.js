@@ -1,5 +1,6 @@
 // Encounters klaarzetten (tab in het Monster-paneel) en XP-moeilijkheid. Regels puur in js/rules/encounters.js.
 // UI-toestand (concept, menu, uitleg) staat in `ui` (render.js); de encounters zelf in app.encounters (IndexedDB, niet in undo).
+import { M } from "../i18n/msg.js";
 import { APP } from "../version.js";
 import { ico, chev } from "./icons.js";
 import { $, esc, toast, toastHtml, closeToast, toastBad, undoBtn } from "./util.js";
@@ -214,7 +215,7 @@ function loadEnc(enc, mode) {
     const r = clearMonsters(S); addWhy(r.why); gone = r.n + r.lairs;
     Object.assign(ui, CLEAR_UI);
   }
-  if (S.round) because("tijdens het gevecht toegevoegd");
+  if (S.round) because(M("log.w.midFight"));
   // HP volgt de keuze bij monsters toevoegen (ui.addOpts); initiative volgt de encounter zelf: groep per regel, anders per monster
   const before = S.list.length, hpmode = ui.addOpts.hp;
   for (const a of plan.adds) addMonsters(a.ref, a.n, hpmode, a.init === "group" ? "group" : "each", true, null, a.hidden, a.anon);
@@ -223,8 +224,8 @@ function loadEnc(enc, mode) {
   addEnc(S, enc, mode === "replace"); // naam boven de lijst, notitie (tactiek) in Gevecht (VB2); zelfde undo-stap
   const added = S.list.slice(before), nMon = added.filter((c) => c.kind === "monster").length;
   const what = `${monsN(nMon)}${lairNew ? " + lair" : ""}`;
-  logAs(`Encounter "${enc.name}" ingeladen: ${nMon === 1 ? "1 monster" : `${nMon} monsters`}${lairNew ? " + lair" : ""}${gone ? ` (vervangt ${gone})` : ""}`); // logregel: WP27
-  because(`encounter "${enc.name}"`);
+  logAs(M(gone ? "log.encLoadedRepl" : "log.encLoaded", { name: enc.name, n: nMon, lair: lairNew ? " + lair" : "", gone: gone || "" }));
+  because(M("log.w.enc", { name: enc.name }));
   S.sample = false;
   const last = added.filter((c) => c.kind === "monster").at(-1) || added.at(-1);
   Object.assign(ui, { prep: null, prepLast: null, encAsk: null, encMenu: null, mode: null });

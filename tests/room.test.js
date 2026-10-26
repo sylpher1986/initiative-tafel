@@ -1,3 +1,4 @@
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import worker from "../worker/index.js";

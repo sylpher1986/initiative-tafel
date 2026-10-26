@@ -1,4 +1,5 @@
 // WP12: afwerking (AF11, RE15, …)
+import { nlw } from "./_nl.js"; // WP27: Nederlandse catalogus; nlw = oorzaken als tekst
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { exportName } from "../js/backup.js";
@@ -24,7 +25,7 @@ test("RE15: getypte worp telt als death save", () => {
   const c = pc(); dsResult(c, 10); assert.equal(c.ds.s, 1, "10 is een success");
   const d = pc(); dsResult(d, 1); assert.equal(d.ds.f, 2);
   const e = pc(); const fx = dsResult(e, 20); assert.equal(e.hp, 1); assert.equal(e.ds, null); assert.ok(!e.cond.includes("Unconscious"));
-  assert.match(fx.why[0].t, /death save \[20\], door speler gerold/);
+  assert.match(nlw(fx.why)[0].t, /death save \[20\], door speler gerold/);
   const f = pc({ ds: { s: 0, f: 2, stable: false, dead: false } }); dsResult(f, 1); assert.equal(f.ds.f, 3); assert.equal(f.ds.dead, true);
 });
 
@@ -37,7 +38,7 @@ test("RE15: ongeldige worp of niet op 0 HP doet niets", () => {
 
 test("RE15: Rol death save gebruikt dezelfde regels", () => {
   const c = pc(); const fx = rollDs(c, () => 0.6); // d20 = 13
-  assert.equal(c.ds.s, 1); assert.match(fx.why[0].t, /death save d20 \[13\]/);
+  assert.equal(c.ds.s, 1); assert.match(nlw(fx.why)[0].t, /death save d20 \[13\]/);
 });
 
 /* ---------- SC9: mini-log uit de snapshots ---------- */

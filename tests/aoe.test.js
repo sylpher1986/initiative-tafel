@@ -1,3 +1,4 @@
+import { nlw } from "./_nl.js"; // WP27: Nederlandse catalogus; nlw = oorzaken als tekst
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { aoeCalc, defMode, saveBonus, applyAoe, rollSave, rollText } from "../js/rules/aoe.js";
@@ -54,7 +55,7 @@ test("AoE op meerdere doelen: per doel eigen save en weerstand", () => {
   ], 28, "28 fire");
   assert.equal(g1.hp, 0); assert.equal(g2.hp, 0); assert.equal(hh.hp, 45); assert.equal(th.hp, 24);
   assert.deepEqual(r.hits.map((h) => h.dealt), [28, 14, 0, 7]);
-  assert.ok(r.why.some((w) => w.id === "p" && w.t.includes("½ 14 → resist 7")));
+  assert.ok(nlw(r.why).some((w) => w.id === "p" && w.t.includes("½ 14 → resist 7")));
   // geen rekenmeldingen per doel, wel "neer"
   assert.ok(!r.msgs.some((m) => m.includes("×½")));
   assert.equal(r.msgs.filter((m) => m.includes("neer")).length, 2);
@@ -87,7 +88,7 @@ test("enkel schade-paneel: immuun ×0 doet niets", () => {
   const m = mon({ temp: 3 });
   const r = applyDamage(m, 20, 0);
   assert.equal(m.hp, 7); assert.equal(m.temp, 3);
-  assert.ok(r.why[0].t.includes("immuun"));
+  assert.ok(nlw(r.why)[0].t.includes("immuun"));
 });
 
 test("AoE: instant death en dood op 0 HP, ook in de preview", async () => {

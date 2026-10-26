@@ -1,4 +1,5 @@
 // Meertaligheid WP19 (TA3): taalbepaling resolveLang, taalpaden en de opgeslagen voorkeur (docs/i18n.md §2.2).
+import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { resolveLang, parsePath, normLang, browserLang, pathFor, pageFor, switchPath, parsePref, prefValue, prefStore,
