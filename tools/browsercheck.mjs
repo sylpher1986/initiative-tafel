@@ -251,14 +251,14 @@ const SCEN = {
       const sec = ["#undo", "#prev", "#order .c.k.turn .acts button:not(.dmg2):not([aria-pressed=\"true\"])"].map((s) => document.querySelector(s)).filter(Boolean)
         .filter((b) => cs(b).backgroundColor !== tok("btn")).map((b) => b.id || b.textContent.trim());
       const kp = document.querySelector("#order .c.k.turn .kpanel.more");
-      const bars = [...document.querySelectorAll("#order .c.k:not(.lair):not(.turn) .khp .hpw .bar")].map((b) => Math.round(b.getBoundingClientRect().width));
+      const bars = [...document.querySelectorAll("#order .c.k:not(.lair):not(.turn) .khp.hpw .bar")].map((b) => Math.round(b.getBoundingClientRect().width));
       const t = document.querySelector("#toast .tmsg:last-child").getBoundingClientRect(), d = document.querySelector("#dock").getBoundingClientRect();
       return { gold, sec, kpBorder: cs(kp).borderTopWidth, kpBg: cs(kp).backgroundColor === tok("sunk"), bars, toastGap: Math.round(d.top - t.bottom), dockH: root.getPropertyValue("--dock-h").trim(), dh: Math.ceil(d.height) };
     });
     if (r.gold.length !== 1 || !/next/.test(r.gold[0])) throw new Error("gouden knoppen in Gevecht: " + JSON.stringify(r.gold));
     if (r.sec.length) throw new Error("secundaire knop niet op --btn: " + r.sec.join(", "));
     if (r.kpBorder !== "0px" || !r.kpBg) throw new Error("⋯-paneeltje met eigen rand of zonder verzonken vlak");
-    if (r.bars.length > 1 && Math.max(...r.bars) - Math.min(...r.bars) > 1) throw new Error("HP-balken ongelijk: " + r.bars.join(","));
+    if (r.bars.length < 2 || Math.max(...r.bars) - Math.min(...r.bars) > 1) throw new Error("HP-balken ongelijk: " + r.bars.join(","));
     if (r.toastGap < 0) throw new Error(`melding overlapt de dock (${r.toastGap}px)`);
     if (parseInt(r.dockH) !== r.dh) throw new Error(`--dock-h ${r.dockH} ≠ dock ${r.dh}px`);
     await snap(page, "redesign-components", "dock");

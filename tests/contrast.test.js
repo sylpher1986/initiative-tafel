@@ -54,7 +54,7 @@ const PAIRS = [
   // WP35: secundaire knop (--btn) en invoervelden (vlak --card, rand --line-strong)
   ["fg", "btn", TEXT, "tekst op secundaire knop"], ["muted", "btn", TEXT, "bijschrift op knop (Vorige, cijferpad)"], ["good", "btn", TEXT, "Heal-knop"],
   ["warn", "btn", TEXT, "save-knop, LA-chip"], ["bad", "btn", TEXT, "destructieve knop"], ["focus", "btn", UI, "focusring op knop"],
-  ["line-strong", "card", UI, "rand invoerveld"], ["line-strong", "sunk", UI, "rand invoerveld op verzonken paneeltje"],
+  ["focus", "sunk", UI, "focusring in verzonken paneeltje"], ["line-strong", "sunk", UI, "rand invoerveld op verzonken paneeltje"],
 ];
 
 for (const [name, T] of [["licht", light], ["donker", darkSys]]) {
