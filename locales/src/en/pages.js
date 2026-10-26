@@ -13,7 +13,7 @@ export default {
   // Public homepage /en/ (WP30, pages/home.html). title/desc also for Open Graph (tools/pages.mjs seoHead).
   "page.home.title": "Kev’s Inn · initiative tracker for D&D 5e", // <title> en og:title van de homepage
   "page.home.desc": "Free initiative tracker for D&D 5e (2014): players, SRD monsters, conditions and a player view on the TV. Works offline, no account.", // meta description en og:description
-  "page.home.ogAlt": "Kev’s Inn emblem with the text: Initiative tracker, D&D 5e", // og:image:alt
+  "page.home.ogAlt": "Kev’s Inn – Initiative tracker · D&D 5e – kevs-inn.com", // og:image:alt
   "page.home.tagline": "Tools for the DM, at the table.",
   "page.home.lead": "Track initiative, hit points and conditions for D&D 5e. On your phone or tablet.", // onder "Kev’s Inn itiative" op de walnoot-kaart
   "page.home.open": "Open Initiative", // gouden knop naar de app; ook op de niet-gevonden-pagina
@@ -21,20 +21,20 @@ export default {
   "page.home.factOffline": "Works offline",
   "page.home.factNoAccount": "No account",
   "page.home.featLabel": "What Initiative does", // aria-label van de lijst met kenmerken
-  "page.home.featMonsters": "All 322 SRD monsters",
+  "page.home.featMonsters": "All 322 SRD 5.1 monsters",
   "page.home.featMonstersText": "With stat blocks. Search, tap, done.",
-  "page.home.featParty": "Your players in one tap",
-  "page.home.featPartyText": "Manually or from a D&D Beyond link.",
+  "page.home.featParty": "Your party in one tap",
+  "page.home.featPartyText": "Enter them once, by hand or from a D&D Beyond link.",
   "page.home.featRules": "Rules at hand",
-  "page.home.featRulesText": "Conditions explained. Concentration saves straight from the damage.",
+  "page.home.featRulesText": "Conditions explained. Concentration save prompted on damage.",
   "page.home.featScreen": "Player view via QR code",
-  "page.home.featScreenText": "Put the turn order on the TV or on the phones at the table.",
-  "page.home.soon": "Coming later", // kopje: volgende tools van Kev’s Inn
-  "page.home.soonText": "Characters, campaigns and a companion for your players.",
+  "page.home.featScreenText": "Put the turn order on the TV or your players’ phones.",
+  "page.home.soon": "Still to come", // kopje: volgende tools van Kev’s Inn
+  "page.home.soonText": "Characters, campaigns and an app for your players.",
   "page.home.privacy": "Your data stays on your own device.",
-  "page.home.legalSrd": "Includes material from the System Reference Document 5.1 and 5.2 by Wizards of the Coast LLC, available under", // gevolgd door de link "CC-BY-4.0."
+  "page.home.legalSrd": "Includes material from the System Reference Documents 5.1 and 5.2 by Wizards of the Coast LLC, licensed under", // gevolgd door de link "CC-BY-4.0."
   "page.home.legalTm": "Dungeons & Dragons is a trademark of Wizards of the Coast LLC.",
-  "page.home.legalFan": "Kev’s Inn is unofficial Fan Content, not approved by or affiliated with Wizards of the Coast.",
+  "page.home.legalFan": "Kev’s Inn is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.",
   // Niet-gevonden-pagina (/404.html, /{taal}/404.html; WP30)
   "page.nf.title": "Page not found",
   "page.nf.text": "This address doesn’t exist (anymore).",
