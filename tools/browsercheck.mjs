@@ -305,9 +305,10 @@ const SCEN = {
       const L = app.S.list;
       if (!L.some((c) => c.ref === "Adult Black Dragon")) {
         a.addMonsters("Adult Black Dragon", 1, "avg", "each", true);
+        L.push(a.newLair("Lair: Adult Black Dragon")); // lair: derde, neutrale vorm (spelersscherm)
         const cv = document.createElement("canvas"); cv.width = cv.height = 48; const g = cv.getContext("2d");
         g.fillStyle = "#7a4a2a"; g.fillRect(0, 0, 48, 48); g.fillStyle = "#e9c9a0"; g.beginPath(); g.arc(24, 20, 11, 0, 7); g.fill();
-        const pcs = L.filter((c) => c.kind === "pc"); pcs[0].img = cv.toDataURL("image/jpeg", 0.8); pcs[1].hp = Math.floor(pcs[1].max * 0.2);
+        const pcs = L.filter((c) => c.kind === "pc"); pcs[0].img = cv.toDataURL("image/jpeg", 0.8); if (pcs[1]) pcs[1].hp = Math.floor(pcs[1].max * 0.2);
         const gob = L.filter((c) => c.ref === "Goblin"); if (gob[0]) gob[0].hp = Math.floor(gob[0].max * 0.4); if (gob[1]) gob[1].hp = 1;
       }
       const t = L.find((c) => (ak === "pc" ? c.kind === "pc" : c.ref === "Adult Black Dragon"));
@@ -354,9 +355,9 @@ const SCEN = {
     if (pips.length !== 2 || pips.some((h) => h > 46)) throw new Error("legendary-rijen niet op één regel: " + pips.join(","));
     await page.locator("#order .c.k.open").scrollIntoViewIfNeeded();
     await snap(page, "wp36", "open-monster");
-    await page.addStyleTag({ content: "html{filter:grayscale(1)}" });
+    const gs = await page.addStyleTag({ content: "html{filter:grayscale(1)}" });
     await snap(page, "wp36", "grijs");
-    await page.evaluate(() => document.querySelectorAll("style").forEach((s) => { if (s.textContent.includes("grayscale(1)}")) s.remove(); }));
+    await gs.evaluate((e) => e.remove());
     // spelersscherm (telefoon) en tv: zelfde vormen, rand op de tv ≥ 1,5 px
     for (const [w, h] of [[page.viewportSize().width, 780], [1280, 720]]) {
       const pv = await page.context().newPage();
@@ -367,8 +368,8 @@ const SCEN = {
         const av = c.querySelector(".av"), st = getComputedStyle(av);
         return { kind: ["pc", "monster", "lair"].find((k) => c.classList.contains(k)), r: st.borderTopLeftRadius, clip: st.clipPath, pad: parseFloat(st.paddingTop) };
       }));
-      const wrong = r.filter((x) => (x.kind === "pc" ? !(x.r === "50%" && x.clip === "none") : x.kind === "monster" ? !/polygon/.test(x.clip) : false) || x.pad < 1.5);
-      if (!r.some((x) => x.kind === "pc") || !r.some((x) => x.kind === "monster") || wrong.length) throw new Error(`spelersscherm ${w}px: ` + JSON.stringify(wrong.length ? wrong : r));
+      const wrong = r.filter((x) => (x.kind === "pc" ? !(x.r === "50%" && x.clip === "none") : x.kind === "monster" ? !/polygon/.test(x.clip) : !(x.r === "6px" && x.clip === "none")) || x.pad < 1.5);
+      if (!["pc", "monster", "lair"].every((k) => r.some((x) => x.kind === k)) || wrong.length) throw new Error(`spelersscherm ${w}px: ` + JSON.stringify(wrong.length ? wrong : r));
       if (w === 1280 && SHOTS.has("wp36") && page.viewportSize().width === 320) await pv.screenshot({ path: join(ROOT, "shots", `wp36-tv-${await pv.evaluate(() => document.documentElement.lang)}-${await pv.evaluate(() => matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")}.png`) });
       await pv.close();
     }

@@ -414,8 +414,8 @@ ol.order{gap:6px}
 .avi{display:grid;place-items:center;overflow:hidden;border-radius:inherit;clip-path:inherit;background:var(--pc-soft);color:var(--fg)}
 .av-mon,.av-mon .avi{border-radius:0;clip-path:polygon(25% 0,75% 0,100% 25%,100% 75%,75% 100%,25% 100%,0 75%,0 25%)}
 .av-mon .avi{background:var(--mon-soft)}
-.av-lair,.av-lair .avi{border-radius:6px}
-.av-lair .avi{background:var(--sunk)}
+.av-lair{border-radius:6px}
+.av-lair .avi{border-radius:calc(6px - var(--avb));background:var(--sunk)} /* concentrisch: rand in de hoek even dik */
 .av .ic{width:20px;height:20px}
 .av.img .avi{background:var(--sunk)}
 .av img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}
@@ -909,6 +909,7 @@ body.tv .pvlog{min-height:calc(3 * 1.35em)}
 .pvpick h2{font-size:1em;margin:0}
 .pvpickb{display:flex;align-items:center;gap:.5em;justify-content:flex-start;text-align:left;width:100%;min-height:44px}
 .pvpickb .av{width:1.6em;height:1.6em;flex:0 0 auto;--avb:max(1.5px,.07em)}
+.pvpickb .av .ic{width:1.1em;height:1.1em}
 .pvpickb .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .pvpickb[aria-pressed="true"]{border-color:var(--sel);box-shadow:0 0 0 2px var(--sel) inset;background:var(--act-soft)}
 .pvpick .chk{font-size:.8em}
@@ -950,6 +951,7 @@ body.stale .pvnow b,body.stale .pvnow .l,body.stale .pvnow .r{color:var(--muted)
   ol.pvlist{gap:.25em}
   .pvc{padding-block:.25em}
   .pvc .av{width:1.5em;height:1.5em}
+  .pvc .av .ic{width:1.05em;height:1.05em} /* WP36-review: icoon past in de achthoek */
   .pvc .bd{font-size:.58em}
 }
 /* liggend vanaf 900 px (ook een telefoon liggend): letter met de hoogte mee */
