@@ -96,15 +96,15 @@ Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (g
 
 
 ### Werkpakketten huisstijl 2.0 (besloten 26-10-2026)
-Plan: projectdoc `claude/werkpakketten-2.0.md`. Alles op branch `redesign` (niet live); WP38 voegt samen naar `main` als **2.0.0**. Volgorde: tokens → componenten → kaarten → homepage → QA.
+Plan: projectdoc `claude/werkpakketten-2.0.md`. Gebouwd op branch `redesign`; WP38 voegde samen naar `main`: **2.0.0 live** (26-10-2026). Volgorde: tokens → componenten → kaarten → homepage → QA.
 
 | WP | Inhoud | Codes | Afhankelijk van | Versie |
 |---|---|---|---|---|
 | ~~**WP34**~~ | Merkpalet en typografie als tokens (DM Sans, Newsreader) (klaar op `redesign`) | HS9, HS10 | – | branch |
 | ~~**WP35**~~ | Gedeelde componenten in de nieuwe stijl (klaar op `redesign`) | HS11 | WP34 | branch |
-| **WP36** | Deelnemerskaarten: speler/monster via vorm, open monsterkaart | HS12, HS13 | WP35 | branch |
-| **WP37** | Homepage in de nieuwe stijl, alleen Initiative, hero-illustratie | HS14 | WP34 | branch |
-| **WP38** | QA, persona-test, release | HS15 | WP34–WP37 | 2.0.0 |
+| ~~**WP36**~~ | Deelnemerskaarten: speler/monster via vorm, open monsterkaart (klaar) | HS12, HS13 | WP35 | branch |
+| ~~**WP37**~~ | Homepage in de nieuwe stijl, alleen Initiative, hero-illustratie (klaar) | HS14 | WP34 | branch |
+| ~~**WP38**~~ | QA, persona-test, release (klaar) | HS15 | WP34–WP37 | 2.0.0 |
 
 ---
 
@@ -166,7 +166,13 @@ Afgerond in WP13–WP17 (1.44.1–1.48.0); keuzes in CLAUDE.md, overzicht in pro
 - [x] **HS12** Speler rond portret, monster schildvorm (WP36: achthoek, schild botst met het AC-schildje; .hpn 7ch gedaan); identiteit los van HP-kleuren (meenemen: HP-getal op de DM-kaart `.hpn` van 5ch naar 7ch, zodat de HP-balken ook bij 100–999 HP even lang zijn; gemeten na WP35 op 320 px: 999/999 geeft 153 px balk tegen 162 px bij 7/999, kost elke balk ± 9 px; temp HP daarbij nog meten)
 - [x] **HS13** Open monsterkaart rustiger op mobiel (WP36: legendary-rijen op één regel)
 - [x] **HS14** Homepage volgens de screens, alleen bestaande tools, hero-illustratie (WP37: hero met uitgeveegde illustratie, één toolkaart, taalkiezer; illustratie AI-gegenereerd door Michiel, herkomst in brand/README.md)
-- [ ] **HS15** QA, persona-test, release 2.0.0
+- [x] **HS15** QA, persona-test, release 2.0.0 (WP38: volledige developer-review zonder blokkers; spelersscherm HP via `hpPct`/`hpCls`, `unicode-range` homepage; persona-test 0 P1, 5 P2 opgelost)
+
+## Persona-test huisstijl 2.0 (WP38, 26-10-2026)
+Rapport: projectdoc `claude/persona-test-2.0.md`. Geen P1; de vijf P2's zijn in 2.0.0 opgelost (multiattack-clamp, aanvalsnaam breekt, legendary-chip volle breedte, ability-modifier op eigen regel, taalkiezer tv). Vervolg:
+- [ ] **HS16 Donker thema in een schemerige kamer**: "− Damage" is een fel ivoren blok, feller dan Volgende; meldingen ivoor op walnoot verblinden (voorstel `--surface` + `--fg`); secundaire knoppen hebben in donker vrijwel geen rand (`--line` op `--btn` 1,01:1; `.condgrid`, `.drt` lezen als losse tekst; voorstel `--line-strong` als knoprand). Eerst UX-agent (raakt WP35-keuzes).
+- [ ] **HS17 Krap op 320 px**: statblock-titel in Newsreader over drie regels naast Groot/Sluit; "Condition"/"Statblock" raken de knoprand; + Speler-formulier: "AC (OPTIONAL)" breekt en de velden beginnen niet op één hoogte, select afgekapt tot "Other / unkno".
+- [ ] **HS18 Kleine afwerking**: na Gevecht afronden blijft het statblock open achter het paneel, met twee meldingen over de lijst; homepage-voet (nl, 320) begint een regel met "· Geen account nodig" (`li+li::before`); dock-kop "UP NOW" in kapitalen tegenover "next: …" klein, "‹" los boven "Prev".
 
 ## Taal
 - [x] **TA1 Taaloptie Nederlands / English** (Instellingen, keuze bewaard op het apparaat). **Klaar in 1.53.0 (WP33): Engels en Nederlands live.** Bij English alle Nederlandse tekst vervangen: knoppen, labels, meldingen, logboek, hints, formulieren, spelersscherm en foutmeldingen (ook van de Worker). D&D-termen zijn al Engels. Aanpak: teksten centraal in een vertaalbestand per taal (`js/i18n/nl.js`, `en.js`) met een `t("sleutel")`-functie; logboekregels als sleutel + waarden opslaan zodat ze na wisselen ook vertaald zijn; test die bewaakt dat elke sleutel in beide talen bestaat

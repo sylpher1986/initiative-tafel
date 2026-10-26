@@ -45,7 +45,7 @@ export function doRoll(expr, label, isHit) {
 const headBtns = () => `<div class="sbbtns"><button class="btn small sbpin" id="sbpin" aria-pressed="${sb.pin}" title="${esc(t("init.sb.pinTip"))}">${esc(t(sb.pin ? "init.sb.pinned" : "init.sb.pin"))}</button><button class="btn small sbbig" id="sbbig" aria-pressed="false">${esc(t("init.sb.big"))}</button><button class="btn small closebtn" id="sbclose">${esc(t("common.close"))}</button></div>`;
 
 const abilRow = (ab) => `<div class="abil">${["STR", "DEX", "CON", "INT", "WIS", "CHA"].map((k, i) =>
-  `<button data-roll="1d20${sgn(mod(n0(ab[i])))}" data-label="${k} check"><b>${k}</b>${n0(ab[i])} (${sgn(mod(n0(ab[i])))})</button>`).join("")}</div>`;
+  `<button data-roll="1d20${sgn(mod(n0(ab[i])))}" data-label="${k} check"><b>${k}</b>${n0(ab[i])} <i>(${sgn(mod(n0(ab[i])))})</i></button>`).join("")}</div>`;
 
 /** Damage-knop op de kaart: alle delen in één melding ("Bite: 2d10+6 [7, 3] = 16 piercing + 1d8 [5] = 5 acid → 21") */
 export function doDmgRoll(key, label) {
