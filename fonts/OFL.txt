@@ -1,10 +1,10 @@
-Lettertypes in deze map (latin-subset, variabel gewicht), ongewijzigd overgenomen van Fontsource 5.3.0 (@fontsource-variable/inter, @fontsource-variable/playfair-display); niet zelf gesubset:
-- inter-latin-wght.woff2, inter-latin-wght-italic.woff2: Inter
-- playfair-display-latin-wght.woff2: Playfair Display
+Lettertypes in deze map (latin-subset, variabel gewicht), ongewijzigd overgenomen van Fontsource 5.3.0 (@fontsource-variable/dm-sans, @fontsource-variable/newsreader); niet zelf gesubset:
+- dm-sans-latin-wght.woff2, dm-sans-latin-wght-italic.woff2: DM Sans
+- newsreader-latin-wght.woff2: Newsreader
 Beide onder de SIL Open Font License 1.1 (hieronder, per lettertype).
 
-===== Inter =====
-Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter) Inter-Italic[opsz,wght].ttf: Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
+===== DM Sans =====
+Copyright 2014 The DM Sans Project Authors (https://github.com/googlefonts/dm-fonts) DMSans-Italic[opsz,wght].ttf: Copyright 2014 The DM Sans Project Authors (https://github.com/googlefonts/dm-fonts)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
@@ -98,8 +98,8 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 
-===== Playfair Display =====
-Copyright 2017 The Playfair Display Project Authors (https://github.com/clauseggers/Playfair-Display), with Reserved Font Name "Playfair Display". PlayfairDisplay-Italic[wght].ttf: Copyright 2017 The Playfair Display Project Authors (https://github.com/clauseggers/Playfair-Display), with Reserved Font Name "Playfair Display".
+===== Newsreader =====
+Copyright 2020 The Newsreader Project Authors (http://github.com/productiontype/Newsreader) Newsreader-Italic[opsz,wght].ttf: Copyright 2020 The Newsreader Project Authors (http://github.com/productiontype/Newsreader)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

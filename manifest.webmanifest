@@ -7,8 +7,8 @@
   "start_url": "/initiative/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#151413",
-  "theme_color": "#3b2f26",
+  "background_color": "#1d130d",
+  "theme_color": "#241811",
   "icons": [
     {
       "src": "/icons/icon-192.png",

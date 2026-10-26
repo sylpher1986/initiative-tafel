@@ -1,12 +1,12 @@
 // WP16 (HS5): app-iconen uit het vereenvoudigde embleem (zeshoek + lantaarn, zonder d20; bron brand/kevs-inn-emblem.svg).
-// Goud #d4a44b op walnoot #3b2f26, vierkant zonder eigen afronding (iOS/launchers ronden zelf af).
+// Lantern #e3a83b op Walnut #241811 (WP34, huisstijl 2.0), vierkant zonder eigen afronding (iOS/launchers ronden zelf af).
 // "any"/apple-touch: embleem 62 % van de hoogte; maskable: 56 %, zodat de zeshoek binnen de veilige cirkel (80 %) valt.
 // Favicon (icons/icon.svg) is een eigen, gevulde variant (leesbaar op 16 px) en wordt niet door dit script gemaakt.
 //
 //   node tools/icons.mjs        schrijft icons/icon-180.png, -192, -512, -maskable-512.png en og.png
 //   node tools/icons.mjs og     alleen og.png
 // og.png (WP30): deelafbeelding 1200×630 voor Open Graph (homepage, tools/pages.mjs OG_IMAGE). Walnoot, embleem links,
-// rechts "Kev’s Inn" (Playfair) en een taalneutrale regel; alles binnen 60 px marge en midden-vierkant (WhatsApp knipt).
+// rechts "Kev’s Inn" (Newsreader) en een taalneutrale regel; alles binnen 60 px marge en midden-vierkant (WhatsApp knipt).
 //
 // Playwright zoals in tools/browsercheck.mjs (PW_MODULE of /opt/npm-tools).
 import { createRequire } from "node:module";
@@ -21,8 +21,8 @@ const VB = { x: 20, y: 2, w: 176, h: 196 }; // tekening loopt van y ±10 tot ±1
 
 export function iconSvg(share) {
   const s = (512 * share) / VB.h, cx = VB.x + VB.w / 2, cy = VB.y + VB.h / 2;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#3b2f26"/>` +
-    `<g color="#d4a44b" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(256 256) scale(${s.toFixed(4)}) translate(${-cx} ${-cy})">${EMBLEM}</g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#241811"/>` +
+    `<g color="#e3a83b" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(256 256) scale(${s.toFixed(4)}) translate(${-cx} ${-cy})">${EMBLEM}</g></svg>`;
 }
 
 async function loadPw() {
@@ -36,10 +36,10 @@ async function loadPw() {
 export function ogHtml(root = ROOT) {
   // als data-URL: een pagina uit setContent (about:blank) mag geen file://-fonts laden
   const font = (fam, file, w) => `@font-face{font-family:"${fam}";font-weight:${w};src:url(data:font/woff2;base64,${readFileSync(root + "fonts/" + file).toString("base64")}) format("woff2")}`;
-  return `<style>${font("Playfair Display", "playfair-display-latin-wght.woff2", "400 900")}${font("Inter", "inter-latin-wght.woff2", "100 900")}
-html,body{margin:0}body{width:1200px;height:630px;background:#3b2f26;display:flex;align-items:center;justify-content:center;gap:64px;font-family:Inter,sans-serif}
-svg{width:280px;height:312px;flex:none;color:#d4a44b}h1{margin:0;font:700 104px/1.05 "Playfair Display",Georgia,serif;color:#fff}
-p{margin:18px 0 0;font-weight:700;font-size:46px;color:#e0b565}small{display:block;margin-top:22px;font-size:34px;color:#d9cfc2}</style>
+  return `<style>${font("Newsreader", "newsreader-latin-wght.woff2", "200 800")}${font("DM Sans", "dm-sans-latin-wght.woff2", "100 1000")}
+html,body{margin:0}body{width:1200px;height:630px;background:#241811;display:flex;align-items:center;justify-content:center;gap:64px;font-family:"DM Sans",sans-serif}
+svg{width:280px;height:312px;flex:none;color:#e3a83b}h1{margin:0;font:600 108px/1.05 Newsreader,Georgia,serif;color:#faf6ec}
+p{margin:18px 0 0;font-weight:700;font-size:46px;color:#e3a83b}small{display:block;margin-top:22px;font-size:34px;color:#e9ddc4}</style>
 <svg viewBox="20 2 176 196" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${EMBLEM}</svg>
 <div><h1>Kev’s Inn</h1><p>Initiative tracker · D&amp;D 5e</p><small>kevs-inn.com</small></div>`;
 }

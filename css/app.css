@@ -4,55 +4,63 @@ body{margin:0}
 [hidden]{display:none!important}
 img{max-width:100%}
 
-/* Lettertypes (WP15, huisstijl): Inter voor alles, Playfair Display alleen voor merk en grote koppen (h1, statblock-naam).
-   Zelf meegeleverd: latin-subset, variabel gewicht (één bestand per stijl), werkt offline en zonder Google. Licentie: fonts/OFL.txt.
+/* Lettertypes (WP34, huisstijl 2.0): DM Sans voor alles (tekst, namen, knoppen, cijfers), Newsreader alleen voor merk en geselecteerde koppen (via --brand).
+   Zelf meegeleverd: latin-subset, variabel gewicht (één bestand per stijl), ongewijzigd van Fontsource 5.3.0; werkt offline en zonder Google. Licentie: fonts/OFL.txt.
    Buiten de unicode-range valt de browser terug op de systeemletter. */
-@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:swap;src:url("../fonts/inter-latin-wght.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
-@font-face{font-family:"Inter";font-style:italic;font-weight:100 900;font-display:swap;src:url("../fonts/inter-latin-wght-italic.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
-@font-face{font-family:"Playfair Display";font-style:normal;font-weight:400 900;font-display:swap;src:url("../fonts/playfair-display-latin-wght.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"DM Sans";font-style:normal;font-weight:100 1000;font-display:swap;src:url("../fonts/dm-sans-latin-wght.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"DM Sans";font-style:italic;font-weight:100 1000;font-display:swap;src:url("../fonts/dm-sans-latin-wght-italic.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Newsreader";font-style:normal;font-weight:200 800;font-display:swap;src:url("../fonts/newsreader-latin-wght.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 
 /* Layout: DM-scherm — links de initiative-volgorde als stapel kaarten, rechts (of als sheet op mobiel) het statblock in klassieke rode lijnvoering */
-/* Kleurtokens (WP14, huisstijl Kev's Inn). Componenten gebruiken alleen deze tokens, geen hex (tests/contrast.test.js).
+/* Kleurtokens (WP14, sinds WP34 het merkpalet van huisstijl 2.0). Componenten gebruiken alleen deze tokens, geen hex (tests/contrast.test.js).
+   Merk: Walnut #241811, Dark Oak #3a281e, Lantern #e3a83b, Parchment #e9ddc4, Warm Ivory #faf6ec, Charcoal #282725, Forest #4e6652, Copper #a86442;
+   Success #3f7651, Warning #b97624, Error #a7453e, Info #3e6e82.
    Eigenaarschap: --act* goud = primaire actie, focus (--focus), aan de beurt, geselecteerd (--sel); --good gelukt; --warn aandacht;
    --bad fout, destructief, kritiek; --info info en delen (kamer); neutralen voor vlakken, tekst, randen, secundaire knoppen.
-   Op goud altijd --act-fg (walnoot), nooit wit. Helder goud (--act) alleen als vlak; tekst/iconen/ringen in licht via --act-ink.
-   Monster/speler zonder kleur: zijstreep alleen bij monsters (--mon), avatar-vorm (AF12), neutrale vlakken. --sb-ink = statblock-inkt (koper, WP17) op --sb-bg (perkament); --card = deelnemerskaart (warm wit).
+   Op goud altijd --act-fg (Walnut), nooit wit. Lantern (--act) alleen als vlak: op Warm Ivory 2,0:1, dus tekst/iconen/ringen in licht via --act-ink (donker goud).
+   Licht (UX-agent WP34): pagina Warm Ivory, kaart (--card) en paneel (--surface) warm wit (vol perkament: beurtvlak te zwak, WP17), Parchment = speler-avatar
+   (--pc-soft), lichte perkamenttint = statblock (--sb-bg); tekst Walnut (Charcoal leest op ivoor vuil); Gevecht-kop Walnut, knoppen erin Dark Oak.
+   Afgeleide tinten licht (4,5:1 ook op --sunk): good #3a6e4b (Success), warn #8c5a1c (Warning 3,4:1 op ivoor: alleen als balk), sb-ink #8e5235 (Copper 4,3:1).
+   Donker (UX-agent WP34: volledig warm, geen Charcoal-panelen: twee temperaturen naast elkaar): pagina onder Walnut, kaart #2c1e16, paneel en Gevecht-kop
+   Dark Oak (lichter dan de kaart), tekst #f3ead8 (tussen Ivory en Parchment: Parchment valt met --muted weg, Ivory schittert); statuskleuren lichter
+   met dezelfde kleurtoon (Success/Error/Info halen op Walnut geen 3:1). Forest en Copper (bijna gelijk aan Success/Warning, 1,2:1) zijn geen tokens:
+   speler/monster blijft zonder kleur (WP14, WP36 beslist). --sb-ink = statblock-inkt (koper) op --sb-bg.
    Licht = :root; donker twee keer gelijk (systeem en vaste keuze), de test bewaakt dat. */
 :root{
-  --bg:#f7f6f2; --surface:#ffffff; --sunk:#eceae3; --line:#d6d5cd; --line-strong:#8a8a8a;
-  --fg:#1f1f1f; --muted:#5b5b5b;
-  --act:#d4a44b; --act-fg:#3b2f26; --act-ink:#7a5714; --act-soft:#f5ead0; --focus:#7a5714; --sel:#7a5714;
-  --good:#286b2c; --good-fg:#ffffff; --warn:#8f5a00; --warn-soft:#fbf3e4;
-  --bad:#c62828; --bad-soft:#fbe9e7; --info:#1f5fbf;
-  --mon:#5b5b5b; --mon-soft:#e2e0da; --pc-soft:#ebdcc6; --sb-ink:#7f4316; --sb-bg:#f6efe3; --card:#fbf7f0;
-  --now-ink:#e0b565; /* naam aan de beurt op de walnoot-kop van het spelersscherm (beide thema's) */
-  --fight-bg:#3b2f26; --fight-fg:#ffffff; --fight-muted:#d9cfc2; --fight-btn:#4a3c31; --fight-btn-line:#a08c78;
-  --t-link:#e0b565; --t-good:#7fe08f; --t-bad:#ff9a90; /* op de melding (achtergrond --fg) */
-  --brand:"Playfair Display", Georgia, "Times New Roman", serif; /* alleen merk, h1, statblock-naam */
-  --body:"Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --display:var(--body); /* koppen, namen en grote cijfers: Inter vet */
+  --bg:#faf6ec; --surface:#fffdf8; --sunk:#f2ebdc; --line:#e3d9c6; --line-strong:#8c7d6b;
+  --fg:#241811; --muted:#665647;
+  --act:#e3a83b; --act-fg:#241811; --act-ink:#7a5512; --act-soft:#f7eacb; --focus:#7a5512; --sel:#7a5512;
+  --good:#3a6e4b; --good-fg:#ffffff; --warn:#8c5a1c; --warn-soft:#f8eddb;
+  --bad:#a7453e; --bad-soft:#f8e5e1; --info:#3e6e82;
+  --mon:#665647; --mon-soft:#ebe2d1; --pc-soft:#e9ddc4; --sb-ink:#8e5235; --sb-bg:#f6efe0; --card:#fffbf3;
+  --now-ink:#e3a83b; /* aan de beurt op de walnoot-kop van het spelersscherm (Lantern, beide thema's) */
+  --fight-bg:#241811; --fight-fg:#faf6ec; --fight-muted:#d8c9ae; --fight-btn:#3a281e; --fight-btn-line:#9c8670;
+  --t-link:#e3a83b; --t-good:#8fd3a0; --t-bad:#ff9f94; /* op de melding (vlak --fg, dus omgekeerd: in donker donkere tinten) */
+  --brand:Newsreader, Georgia, "Times New Roman", serif; /* merk en enkele koppen (tests/fonts.test.js) */
+  --body:"DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --display:var(--body); /* koppen, namen en grote cijfers: DM Sans vet */
   --r:10px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#151413; --surface:#1f1f1f; --sunk:#2b2825; --line:#3d3934; --line-strong:#8a8278;
-  --fg:#ede8e0; --muted:#b5ada2;
-  --act:#d4a44b; --act-fg:#2a2019; --act-ink:#e0b565; --act-soft:#3a2f1c; --focus:#e0b565; --sel:#d4a44b;
-  --good:#6cc287; --good-fg:#0f2414; --warn:#e3a944; --warn-soft:#2e2614;
-  --bad:#f28b82; --bad-soft:#3a2321; --info:#8ab4f8;
-  --mon:#b5ada2; --mon-soft:#34312d; --pc-soft:#3b3226; --sb-ink:#d9956a; --sb-bg:#1f1f1f; --card:#231e1a;
-  --now-ink:#e0b565;
-  --fight-bg:#3a322b; --fight-fg:#ede8e0; --fight-muted:#c9c0b4; --fight-btn:#4a4038; --fight-btn-line:#9a8e80;
-  --t-link:#7a5714; --t-good:#276a3a; --t-bad:#b3261e; color-scheme:dark }}
+  --bg:#1d130d; --surface:#3a281e; --sunk:#33241a; --line:#4a382c; --line-strong:#9a8670;
+  --fg:#f3ead8; --muted:#c4b498;
+  --act:#e3a83b; --act-fg:#241811; --act-ink:#e3a83b; --act-soft:#45331a; --focus:#e3a83b; --sel:#e3a83b;
+  --good:#7fbf92; --good-fg:#241811; --warn:#e2a65a; --warn-soft:#3a2a17;
+  --bad:#ec8a80; --bad-soft:#43251f; --info:#89b9cc;
+  --mon:#c4b498; --mon-soft:#45352a; --pc-soft:#4a3a2b; --sb-ink:#dc9a74; --sb-bg:#2c1e16; --card:#2c1e16;
+  --now-ink:#e3a83b; /* aan de beurt op de walnoot-kop van het spelersscherm (Lantern, beide thema's) */
+  --fight-bg:#3a281e; --fight-fg:#f3ead8; --fight-muted:#d2c3a8; --fight-btn:#4b372a; --fight-btn-line:#a08b74;
+  --t-link:#7a5512; --t-good:#2f6a41; --t-bad:#a3352e; /* op de melding (vlak --fg, dus omgekeerd: in donker donkere tinten) */ color-scheme:dark }}
 :root[data-theme="dark"]{
-  --bg:#151413; --surface:#1f1f1f; --sunk:#2b2825; --line:#3d3934; --line-strong:#8a8278;
-  --fg:#ede8e0; --muted:#b5ada2;
-  --act:#d4a44b; --act-fg:#2a2019; --act-ink:#e0b565; --act-soft:#3a2f1c; --focus:#e0b565; --sel:#d4a44b;
-  --good:#6cc287; --good-fg:#0f2414; --warn:#e3a944; --warn-soft:#2e2614;
-  --bad:#f28b82; --bad-soft:#3a2321; --info:#8ab4f8;
-  --mon:#b5ada2; --mon-soft:#34312d; --pc-soft:#3b3226; --sb-ink:#d9956a; --sb-bg:#1f1f1f; --card:#231e1a;
-  --now-ink:#e0b565;
-  --fight-bg:#3a322b; --fight-fg:#ede8e0; --fight-muted:#c9c0b4; --fight-btn:#4a4038; --fight-btn-line:#9a8e80;
-  --t-link:#7a5714; --t-good:#276a3a; --t-bad:#b3261e; color-scheme:dark }
+  --bg:#1d130d; --surface:#3a281e; --sunk:#33241a; --line:#4a382c; --line-strong:#9a8670;
+  --fg:#f3ead8; --muted:#c4b498;
+  --act:#e3a83b; --act-fg:#241811; --act-ink:#e3a83b; --act-soft:#45331a; --focus:#e3a83b; --sel:#e3a83b;
+  --good:#7fbf92; --good-fg:#241811; --warn:#e2a65a; --warn-soft:#3a2a17;
+  --bad:#ec8a80; --bad-soft:#43251f; --info:#89b9cc;
+  --mon:#c4b498; --mon-soft:#45352a; --pc-soft:#4a3a2b; --sb-ink:#dc9a74; --sb-bg:#2c1e16; --card:#2c1e16;
+  --now-ink:#e3a83b; /* aan de beurt op de walnoot-kop van het spelersscherm (Lantern, beide thema's) */
+  --fight-bg:#3a281e; --fight-fg:#f3ead8; --fight-muted:#d2c3a8; --fight-btn:#4b372a; --fight-btn-line:#a08b74;
+  --t-link:#7a5512; --t-good:#2f6a41; --t-bad:#a3352e; /* op de melding (vlak --fg, dus omgekeerd: in donker donkere tinten) */ color-scheme:dark }
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.4;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:max(80px,env(safe-area-inset-bottom,0px))}
@@ -63,7 +71,7 @@ button{cursor:pointer}
 @media (min-width:900px){.wrap{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}}
 
 header.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;justify-content:space-between}
-h1{font-family:var(--brand);font-weight:800;font-size:1.6rem;margin:0;letter-spacing:0;line-height:1.15;text-wrap:balance}
+h1{font-family:var(--brand);font-weight:700;font-size:1.6rem;margin:0;letter-spacing:0;line-height:1.15;text-wrap:balance}
 h1 span{color:var(--act-ink)}
 /* WP16 (HS5): embleem vóór het woordmerk, merk en geen knop (geen vlak, rand of tikvlak); schaalt met de h1 (34 px bij 1.6rem) */
 h1 .emb{width:1.33em;height:1.33em;vertical-align:-.28em;margin-right:.3em;color:var(--act-ink)}
@@ -458,6 +466,7 @@ ol.order{gap:6px}
 .shead{display:flex;justify-content:space-between;align-items:center}
 .shead .link{min-width:44px;min-height:44px;margin:-10px -8px -10px 0;padding:0 8px;justify-content:center}
 .shead h3{margin:0;font-family:var(--display);font-size:1.2rem}
+.esheet .shead h3{font-family:var(--brand);font-weight:600;font-size:1.35rem} /* WP34: afsluitmoment in Newsreader; andere paneeltitels blijven DM Sans (krap naast Sluit) */
 .seg2{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .seg2 button{border:0;background:transparent;padding:10px 4px;font-weight:700;font-size:.9rem;color:var(--muted);min-height:44px}
 .seg2 button+button{border-left:1px solid var(--line)}
@@ -806,7 +815,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 
 /* Lege lijst: welkomstkaart, party-knop of hint; voorbeeld-banner boven de lijst */
 .order .welcome{list-style:none;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:10px}
-.welcome h2{margin:0;font-family:var(--display);font-size:1.4rem;color:var(--fg)}
+.welcome h2{margin:0;font-family:var(--brand);font-weight:600;font-size:1.5rem;color:var(--fg)}
 .welcome p{margin:0}
 .welcome .wimp{margin-top:6px}
 .welcome .wbtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
@@ -1095,7 +1104,7 @@ button.dchip{min-height:44px;cursor:pointer}
 /* DA3: tabblad gestopt, een ander tabblad werkt verder (js/main.js tabLost); boven alles, app eronder inert */
 .tabstop{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center;padding:16px;overflow:auto}
 .tabstop-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px 16px;max-width:420px;width:100%;display:grid;gap:12px}
-.tabstop h2{margin:0;font-family:var(--display);font-size:1.4rem;color:var(--fg)}
+.tabstop h2{margin:0;font-family:var(--brand);font-weight:600;font-size:1.5rem;color:var(--fg)}
 .tabstop p{margin:0}
 .tabstop .btn{min-height:48px;width:100%}
 

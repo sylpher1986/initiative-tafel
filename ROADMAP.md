@@ -94,6 +94,18 @@ Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (g
 | ~~**WP32**~~ | Verificatie: offline, import/export, spelersscherm gemengde talen, gevecht, persona-test EN (klaar) | TA16 | WP22–WP30 | 1.52.1 |
 | ~~**WP33**~~ | Engels live: standaard en terugval, kiezer zichtbaar, homepage indexeerbaar (klaar; operationeel: sitemap in Search Console zodra `HIDDEN` uit staat) | TA1 | WP32 | 1.53.0 |
 
+
+### Werkpakketten huisstijl 2.0 (besloten 26-10-2026)
+Plan: projectdoc `claude/werkpakketten-2.0.md`. Alles op branch `redesign` (niet live); WP38 voegt samen naar `main` als **2.0.0**. Volgorde: tokens → componenten → kaarten → homepage → QA.
+
+| WP | Inhoud | Codes | Afhankelijk van | Versie |
+|---|---|---|---|---|
+| ~~**WP34**~~ | Merkpalet en typografie als tokens (DM Sans, Newsreader) (klaar op `redesign`) | HS9, HS10 | – | branch |
+| **WP35** | Gedeelde componenten in de nieuwe stijl | HS11 | WP34 | branch |
+| **WP36** | Deelnemerskaarten: speler/monster via vorm, open monsterkaart | HS12, HS13 | WP35 | branch |
+| **WP37** | Homepage in de nieuwe stijl, alleen Initiative, hero-illustratie | HS14 | WP34 | branch |
+| **WP38** | QA, persona-test, release | HS15 | WP34–WP37 | 2.0.0 |
+
 ---
 
 ## Persona-test EN (WP32, 26-10-2026)
@@ -146,6 +158,15 @@ Afgerond in WP13–WP17 (1.44.1–1.48.0); keuzes in CLAUDE.md, overzicht in pro
 - [x] **HS6** Componenten: knoppen, perkament-kaarten, chips, meldingen met icoon, lege toestanden, statblock
 - [x] **HS7** Lijn-iconen in plaats van tekenglyphs (⚙ ✎ ⋯ ↶ ▸)
 - [x] **HS8** Spelersscherm en tv-stand in huisstijl
+
+## Huisstijl 2.0 (26-10-2026)
+- [x] **HS9** Merkpalet als tokens, licht/donker/tv/homepage, contrast opnieuw gemeten (WP34)
+- [x] **HS10** DM Sans + Newsreader in plaats van Inter + Playfair Display, zelf meegeleverd (WP34; DM Sans heeft geen tabular-nums)
+- [ ] **HS11** Knoppen, formulieren, dialogen, menu's, dock in de nieuwe stijl
+- [ ] **HS12** Speler rond portret, monster schildvorm; identiteit los van HP-kleuren
+- [ ] **HS13** Open monsterkaart rustiger op mobiel
+- [ ] **HS14** Homepage volgens de screens, alleen bestaande tools, hero-illustratie
+- [ ] **HS15** QA, persona-test, release 2.0.0
 
 ## Taal
 - [x] **TA1 Taaloptie Nederlands / English** (Instellingen, keuze bewaard op het apparaat). **Klaar in 1.53.0 (WP33): Engels en Nederlands live.** Bij English alle Nederlandse tekst vervangen: knoppen, labels, meldingen, logboek, hints, formulieren, spelersscherm en foutmeldingen (ook van de Worker). D&D-termen zijn al Engels. Aanpak: teksten centraal in een vertaalbestand per taal (`js/i18n/nl.js`, `en.js`) met een `t("sleutel")`-functie; logboekregels als sleutel + waarden opslaan zodat ze na wisselen ook vertaald zijn; test die bewaakt dat elke sleutel in beide talen bestaat

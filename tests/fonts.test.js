@@ -1,5 +1,5 @@
 // WP15: lettertypes zelf meegeleverd. Elk @font-face-bestand bestaat, de preload wijst naar een gebruikt bestand,
-// en Playfair Display blijft beperkt tot merk en grote koppen (via --brand).
+// en Newsreader (WP34) blijft beperkt tot merk en enkele koppen (via --brand); DM Sans voor de rest.
 import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -30,8 +30,19 @@ test("preload in de DM-pagina wijst naar een gebruikt lettertype", () => {
   }
 });
 
-test("geen oude lettertypes; Playfair alleen via --brand", () => {
-  assert.doesNotMatch(css, /Alegreya/);
+test("geen oude lettertypes; Newsreader alleen via --brand", () => {
+  assert.doesNotMatch(css, /Alegreya|Inter"|Playfair/);
+  assert.match(css, /--body:"DM Sans"/);
+  assert.match(css, /--brand:Newsreader,/);
   const uses = [...css.matchAll(/([^{}]+)\{[^}]*var\(--brand\)/g)].map((m) => m[1].trim().split("\n").pop());
-  assert.deepEqual(uses.sort(), [".sb h2", "h1"]);
+  assert.deepEqual(uses.sort(), [".esheet .shead h3", ".sb h2", ".tabstop h2", ".welcome h2", "h1"]);
+});
+
+test("oude letterbestanden zijn weg uit fonts/, sw.js en de pagina's (WP34)", () => {
+  const sw = readFileSync(new URL("sw.js", root), "utf8");
+  for (const u of urls) assert.ok(sw.includes("./" + u), u + " staat niet in sw.js");
+  for (const f of ["sw.js", "pages/initiative.html", "pages/player.html", "pages/home.html", "tools/icons.mjs"]) {
+    assert.doesNotMatch(readFileSync(new URL(f, root), "utf8"), /inter-latin|playfair/i, f);
+  }
+  for (const f of ["inter-latin-wght.woff2", "inter-latin-wght-italic.woff2", "playfair-display-latin-wght.woff2"]) assert.ok(!existsSync(new URL("fonts/" + f, root)), f);
 });

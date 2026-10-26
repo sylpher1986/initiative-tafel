@@ -123,18 +123,22 @@ const SCEN = {
     await SCEN.fight(page); await tap(page, "#order .c.k.turn .khp"); await page.waitForSelector("#sheet .pad");
     await page.locator("#sheet .pad button", { hasText: /^7$/ }).first().tap();
   },
-  // WP15: letters geladen, h1 op één regel, gevecht met open statblock (Playfair-naam, Inter-tekst)
+  // WP15/WP34: letters geladen, h1 op één regel, gevecht met open statblock (Newsreader-naam, DM Sans-tekst), tnum werkt
   async letters(page) {
     await SCEN.prep(page);
     const f = await page.evaluate(async () => { await document.fonts.ready; const h = document.querySelector("h1"), lh = parseFloat(getComputedStyle(h).lineHeight);
-      return { inter: document.fonts.check('16px "Inter"'), play: document.fonts.check('800 26px "Playfair Display"'), lines: Math.round(h.getBoundingClientRect().height / lh) }; });
-    if (!f.inter || !f.play) throw new Error("letters niet geladen: " + JSON.stringify(f));
+      return { sans: document.fonts.check('16px "DM Sans"'), brand: document.fonts.check('600 26px "Newsreader"'), lines: Math.round(h.getBoundingClientRect().height / lh) }; });
+    if (!f.sans || !f.brand) throw new Error("letters niet geladen: " + JSON.stringify(f));
     if (f.lines > 1) throw new Error(`h1 over ${f.lines} regels`);
     await tap(page, "#start");
     const n = await page.locator('[data-ia="roll"]').count();
     for (let i = 0; i < n; i++) await page.locator('[data-ia="roll"]').nth(i).tap();
     if (n) await tap(page, '[data-ia="go"]');
     await page.waitForSelector("#next");
+    // WP34: DM Sans heeft geen tabular-nums (geen tnum in het lettertype, ook upstream niet): de initiative-kolom moet dan
+    // zelf een vaste breedte hebben, anders verspringen naam en HP-balk per kaart ("1" is half zo breed als "0")
+    const iw = await page.$$eval("#order .c.k .i", (els) => els.map((e) => Math.round(e.getBoundingClientRect().width * 2) / 2));
+    if (new Set(iw).size > 1) throw new Error("initiative-kolom niet even breed: " + iw.join(","));
     const mon = page.locator("#order .c.k.mon").first();
     if (!(await mon.evaluate((el) => el.classList.contains("open")))) await mon.locator(".khead").tap();
     await mon.locator('[data-a="sb"]').tap();

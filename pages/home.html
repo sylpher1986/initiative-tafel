@@ -6,24 +6,24 @@
 <title>{{t:page.home.title}}</title>
 <meta name="description" content="{{t:page.home.desc}}">
 {{seo}}
-<meta name="theme-color" content="#3b2f26" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#151413" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#241811" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1d130d" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icons/icon-180.png">
-<link rel="preload" href="/fonts/playfair-display-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/newsreader-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <script src="/js/theme.js"></script>
 <!-- Publieke homepage (WP30). Eigen kleine CSS, geen app.css: snel op 3G, geen JavaScript nodig voor de inhoud.
      Kleuren = tokens van css/app.css (licht, donker via systeem of de Weergave-keuze in de app: data-theme). -->
 <style>
-@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:swap;src:url("/fonts/inter-latin-wght.woff2") format("woff2")}
-@font-face{font-family:"Playfair Display";font-style:normal;font-weight:400 900;font-display:swap;src:url("/fonts/playfair-display-latin-wght.woff2") format("woff2")}
-:root{--bg:#f7f6f2;--fg:#1f1f1f;--muted:#5b5b5b;--line:#d6d5cd;--act:#d4a44b;--act-fg:#3b2f26;--act-ink:#7a5714;--focus:#7a5714;
-  --fight-bg:#3b2f26;--fight-fg:#fff;--fight-muted:#d9cfc2;--now-ink:#e0b565;
-  --brand:"Playfair Display",Georgia,"Times New Roman",serif;--body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--r:10px;color-scheme:light}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151413;--fg:#ede8e0;--muted:#b5ada2;--line:#3d3934;--act-fg:#2a2019;--act-ink:#e0b565;--focus:#e0b565;
-  --fight-bg:#3a322b;--fight-fg:#ede8e0;--fight-muted:#c9c0b4;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#151413;--fg:#ede8e0;--muted:#b5ada2;--line:#3d3934;--act-fg:#2a2019;--act-ink:#e0b565;--focus:#e0b565;
-  --fight-bg:#3a322b;--fight-fg:#ede8e0;--fight-muted:#c9c0b4;color-scheme:dark}
+@font-face{font-family:"DM Sans";font-style:normal;font-weight:100 1000;font-display:swap;src:url("/fonts/dm-sans-latin-wght.woff2") format("woff2")}
+@font-face{font-family:"Newsreader";font-style:normal;font-weight:200 800;font-display:swap;src:url("/fonts/newsreader-latin-wght.woff2") format("woff2")}
+:root{--bg:#faf6ec;--fg:#241811;--muted:#665647;--line:#e3d9c6;--act:#e3a83b;--act-fg:#241811;--act-ink:#7a5512;--focus:#7a5512;
+  --fight-bg:#241811;--fight-fg:#faf6ec;--fight-muted:#d8c9ae;--now-ink:#e3a83b;
+  --brand:Newsreader,Georgia,"Times New Roman",serif;--body:"DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--r:10px;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1d130d;--fg:#f3ead8;--muted:#c4b498;--line:#4a382c;--act-fg:#241811;--act-ink:#e3a83b;--focus:#e3a83b;
+  --fight-bg:#3a281e;--fight-fg:#f3ead8;--fight-muted:#d2c3a8;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1d130d;--fg:#f3ead8;--muted:#c4b498;--line:#4a382c;--act-fg:#241811;--act-ink:#e3a83b;--focus:#e3a83b;
+  --fight-bg:#3a281e;--fight-fg:#f3ead8;--fight-muted:#d2c3a8;color-scheme:dark}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;background:var(--bg)}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 var(--body)}

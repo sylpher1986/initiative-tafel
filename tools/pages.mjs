@@ -59,8 +59,8 @@ export function manifest(lang, cat) {
     start_url: "/initiative/",
     scope: "/",
     display: "standalone",
-    background_color: "#151413",
-    theme_color: "#3b2f26",
+    background_color: "#1d130d",
+    theme_color: "#241811",
     icons: ICONS,
   }, null, 2) + "\n";
 }
@@ -99,10 +99,10 @@ export function redirectPage(addr, fb) {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kev’s Inn itiative</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#3b2f26" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#151413" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#241811" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1d130d" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
-<style>html{background:#f7f6f2;color:#1f1f1f;font:16px/1.4 system-ui,sans-serif}@media (prefers-color-scheme:dark){html{background:#151413;color:#ececec}}body{margin:0;padding:16px}a{color:inherit;opacity:0;animation:show 0s 2s forwards}@keyframes show{to{opacity:1}}</style>
+<style>html{background:#faf6ec;color:#241811;font:16px/1.4 system-ui,sans-serif}@media (prefers-color-scheme:dark){html{background:#1d130d;color:#f3ead8}}body{margin:0;padding:16px}a{color:inherit;opacity:0;animation:show 0s 2s forwards}@keyframes show{to{opacity:1}}</style>
 <script type="module" onerror="${back}">import { go } from "/js/i18n/redirect.js"; go();</script>
 <script nomodule>${back}</script>
 <noscript><meta http-equiv="refresh" content="0; url=${to}"></noscript>
@@ -166,10 +166,10 @@ export function notFoundPage(lang, cat) {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{{t:page.nf.title}} · Kev’s Inn</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#3b2f26" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#151413" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#241811" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1d130d" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
-<style>html{background:#f7f6f2;color:#1f1f1f;font:16px/1.5 system-ui,sans-serif}@media (prefers-color-scheme:dark){html{background:#151413;color:#ede8e0}a{color:#e0b565}}body{margin:0 auto;max-width:36rem;padding:24px 16px}a{color:#7a5714;display:inline-block;padding:10px 0;margin-right:16px}h1{font:600 1.5rem/1.25 Georgia,serif;margin:0 0 8px}</style>
+<style>html{background:#faf6ec;color:#241811;font:16px/1.5 system-ui,sans-serif}@media (prefers-color-scheme:dark){html{background:#1d130d;color:#f3ead8}a{color:#e3a83b}}body{margin:0 auto;max-width:36rem;padding:24px 16px}a{color:#7a5512;display:inline-block;padding:10px 0;margin-right:16px}h1{font:600 1.5rem/1.25 Georgia,serif;margin:0 0 8px}</style>
 <script type="module">import { go } from "/js/i18n/redirect.js"; go();</script>
 </head>
 <body>
