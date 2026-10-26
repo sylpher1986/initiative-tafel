@@ -14,6 +14,7 @@ test("mdLite: SRD-markdown als opmaak, verder niets", () => {
   assert.equal(mdLite(esc("12 (15 with _mage armor_)")), "12 (15 with <i>mage armor</i>)");
   assert.equal(mdLite(esc("weapons.\n**Fire Breath.** The dragon")), "weapons.\n<b>Fire Breath.</b> The dragon");
   assert.equal(mdLite(esc("snake_case_name en 2 * 3 * 4")), "snake_case_name en 2 * 3 * 4");
+  assert.equal(mdLite(esc("**Bite 1d6**")), "<b>Bite 1d6</b>", "dobbelstenen binnen vet blijven tekst voor diceify");
   assert.equal(mdLite(esc("**<img src=x>**")), "<b>&lt;img src=x&gt;</b>", "inhoud blijft ge-escapet: alleen <b>/<i> erbij");
   const s = JSON.stringify(monsters);
   assert.ok(/_mage armor_/.test(s) && /\*\*Fire Breath\.\*\*/.test(s), "de data heeft deze resten echt (anders kan mdLite weg)");
@@ -27,11 +28,15 @@ test("TA17: ander exhaustion-niveau is geen 'refreshed'; Bless opnieuw wel", asy
   assert.doesNotMatch(L.map((e) => e.msg).join(" | "), /refreshed/);
   const B = diffLog({ list: [c([{ id: "a", n: "Bless" }])], round: 1 }, { list: [c([{ id: "b", n: "Bless" }])], round: 1 });
   assert.match(B.map((e) => e.msg).join(" | "), /Bless refreshed/);
+  const add = diffLog({ list: [c([])], round: 1 }, { list: [c([{ id: "a", n: "Exhaustion", x: 1 }])], round: 1 }).map((e) => e.msg).join(" | ");
+  const del = diffLog({ list: [c([{ id: "a", n: "Exhaustion", x: 1 }])], round: 1 }, { list: [c([])], round: 1 }).map((e) => e.msg).join(" | ");
+  assert.doesNotMatch(add + del, /refreshed|→/, "erbij of weg: gets/ends, geen niveauwissel");
 });
 
 test("TA17: rondes op een chip in de taal ('10 rds' / '10r'), teksten", async () => {
   await lang("en");
   assert.equal(durLabel({ kind: "rounds", count: 10 }, []), "10 rds");
+  assert.equal(durLabel({ kind: "rounds", count: 1 }, []), "1 rd");
   assert.equal(tr({ k: "rules.drops", p: { name: "Thalia" } }), "Thalia drops to 0 HP and is unconscious. Death saves start on their next turn.");
   await lang("nl");
   assert.equal(durLabel({ kind: "rounds", count: 10 }, []), "10r");

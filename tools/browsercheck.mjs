@@ -250,6 +250,7 @@ const SCEN = {
       let n = 0;
       for (const c of app.S.list) if (c.kind === "monster") { c.anon = ++n; if (n === 1) c.hp = Math.ceil(c.max / 2); }
       const pc = app.S.list.find((c) => c.kind === "pc"); if (pc) { pc.hp = 0; pc.ds = { s: 1, f: 2 }; } // TA18: death saves op de tv
+      const p2 = app.S.list.filter((c) => c.kind === "pc")[1]; if (p2) { p2.cond = [...(p2.cond || []), "Concentrating"]; p2.concSpell = "Hypnotic Pattern of the Shimmering Long Name"; } // lange tag
       commit(); render();
     });
     // met --i18n=xx staat er testtaal: dan alleen wachten op de onbekende wezens (lengte op 320 px), niet op Engels
@@ -265,6 +266,8 @@ const SCEN = {
     const ds = await tv.evaluate(() => { const b = document.querySelector("#pv-list .bd.r"), v = b && b.querySelector("[aria-hidden]"); // zichtbare deel; .vh telt niet
       return v ? { cut: Math.round(v.getBoundingClientRect().right - b.getBoundingClientRect().right), icons: v.querySelectorAll("svg").length } : null; });
     if (!ds || ds.cut > 1 || ds.icons < 2) throw new Error("death saves op de tv afgekapt of zonder iconen: " + JSON.stringify(ds));
+    const wide = await tv.evaluate(() => [...document.querySelectorAll("#pv-list .pvc")].map((r) => r.scrollWidth - r.clientWidth).filter((d) => d > 1));
+    if (wide.length) throw new Error("tv-rij breder dan het scherm: " + wide.join(", ") + " px");
     await tv.close();
     await dm.close();
     if (xx) return;

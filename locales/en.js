@@ -1154,7 +1154,10 @@ export default {
   "rules.dl.tend": "to end of turn",
   "rules.dl.tend2": "to end of next turn",
   "rules.dl.tendS": "end of turn",
-  "rules.dl.rounds": "{n} rds",
+  "rules.dl.rounds": {
+    "one": "{n} rd",
+    "other": "{n} rds"
+  },
   "rules.dl.tstart": "to start of next turn",
   "rules.dl.tstartS": "start of turn",
   "rules.dl.sstart": "to {name}'s turn",

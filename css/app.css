@@ -943,6 +943,7 @@ body.pv.tv .pvc{padding-block:.2em}
    lange naam liep anders over de rand en de tagkolom werd 0 px */
 body.pv.tv:not(.cols) .pvc{grid-template-columns:1.8em minmax(0,auto) minmax(min-content,1fr) fit-content(40%)}
 body.pv.tv .pvc .badges{flex-wrap:wrap}
+body.pv.tv .pvc .bd{white-space:normal;max-width:100%} /* één lange tag ("Concentrating · Hypnotic Pattern") breekt af i.p.v. de rij te verbreden */
 body.pv.tv .pvhp{flex-wrap:wrap;justify-content:flex-end}
 body.pv.tv:not(.cols) .pvc .badges{grid-column:3;grid-row:1;justify-content:flex-start;margin:0}
 body.pv.tv:not(.cols) .pvhp{grid-column:4;grid-row:1}

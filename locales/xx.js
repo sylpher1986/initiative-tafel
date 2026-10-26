@@ -1154,7 +1154,10 @@ export default {
   "rules.dl.tend": "[tö éñd öf türñ ·····]",
   "rules.dl.tend2": "[tö éñd öf ñéxt türñ ·······]",
   "rules.dl.tendS": "[éñd öf türñ ····]",
-  "rules.dl.rounds": "[{n} rds ··]",
+  "rules.dl.rounds": {
+    "one": "[{n} rd ··]",
+    "other": "[{n} rds ··]"
+  },
   "rules.dl.tstart": "[tö stárt öf ñéxt türñ ········]",
   "rules.dl.tstartS": "[stárt öf türñ ·····]",
   "rules.dl.sstart": "[tö {name}'s türñ ····]",

@@ -531,8 +531,8 @@ function prepFields(c) {
   return `<div class="pfs${lv ? "" : " two"}">${hp}${(() => { const l = (c.eff || []).some((e) => e.st === "ac") ? t("init.prep.baseAc") : "AC"; return fld("ac", esc(l), c.ac || "", { ph: "?", aria: l }); })()}${lv}</div>${pt ? `<p class="hint ppas">Passive ${esc(pt)}</p>` : ""}`;
 }
 
-/** TA18 (UX-agent): korte tekst in de actierij (EN "Stats" past op 320 px), volle term als naam en tooltip */
-const sbBtn = () => `<button data-a="sb" title="${esc(t("init.prep.sb"))}" aria-label="${esc(t("init.prep.sb"))}">${esc(t("init.prep.sbShort"))}</button>`;
+/** TA18 (UX-agent): korte tekst in de actierij (EN "Stats" past op 320 px), volle term als tooltip */
+const sbBtn = () => `<button data-a="sb" title="${esc(t("init.prep.sb"))}">${esc(t("init.prep.sbShort"))}</button>`; // geen aria-label: de naam moet de zichtbare tekst bevatten (WCAG 2.5.3)
 function prepActions(c) {
   const b = c.kind === "monster"
     ? [`<button data-a="hide" aria-pressed="${!!c.hidden}" title="${esc(t("init.prep.hideTip"))}">${esc(t(c.hidden ? "init.prep.hidden" : "init.prep.hide"))}</button>`]
