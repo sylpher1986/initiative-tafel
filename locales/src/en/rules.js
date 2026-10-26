@@ -17,7 +17,7 @@ export default {
   "rules.hp0": "0 HP", // oorzaak
   "rules.instantWhy": "instant death: remaining damage {n} ≥ max HP {max}",
   "rules.instant": "{name} dies instantly: remaining damage {n} ≥ max HP {max}.",
-  "rules.drops": "{name} drops to 0 HP and is unconscious. Death saves start on its next turn.",
+  "rules.drops": "{name} drops to 0 HP and is unconscious. Death saves start on their next turn.",
   "rules.dies0": "{name} dies: {n} damage ≥ max HP at 0 HP.",
   "rules.dmg0Why": "damage at 0 HP",
   "rules.dmg0": "{name} takes damage at 0 HP: one failure. If it was a critical hit, tap \"Critical hit (+2)\".",
@@ -47,7 +47,7 @@ export default {
   "rules.dur.inf": "Unlimited",
   "rules.dur.tend": "Until end of next turn (target)",
   "rules.dur.tstart": "Until start of next turn (target)",
-  "rules.dur.sstart": "Until start of next turn (active creature)",
+  "rules.dur.sstart": "Until the start of the current creature's next turn",
   "rules.dur.r1": "1 round",
   "rules.dur.r2": "2 rounds",
   "rules.dur.r3": "3 rounds",
@@ -73,6 +73,7 @@ export default {
   "rules.dl.tend": "to end of turn", // duur op een chip
   "rules.dl.tend2": "to end of next turn",
   "rules.dl.tendS": "end of turn",
+  "rules.dl.rounds": "{n} rds", // rondes over op een chip ("Bless · 10 rds")
   "rules.dl.tstart": "to start of next turn",
   "rules.dl.tstartS": "start of turn",
   "rules.dl.sstart": "to {name}'s turn",

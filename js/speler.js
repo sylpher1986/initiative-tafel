@@ -33,7 +33,10 @@ function hp(c) {
     <span class="hpn">${h.hp}/${h.max}${h.temp ? ` <span class="thp">+${h.temp}</span>` : ""}</span></div>${h.hp <= 0 ? st : ""}`;
 }
 
-const dsB = (c) => (c.ds ? `<span class="bd r">${dsText(c.ds)}</span>` : "");
+// TA18 (UX-agent): op de tv zoals de DM-kaart (dsMini): "Death saves ✓1 ✗2" met iconen, woorden voor schermlezers; telefoon woorden
+const dsB = (c) => (!c.ds ? "" : TV_MQ.matches
+  ? `<span class="bd r"><span aria-hidden="true">Death saves ${ico("check")}${c.ds.s} ${ico("x")}${c.ds.f}</span><span class="vh">${esc(dsText(c.ds))}</span></span>`
+  : `<span class="bd r">${esc(dsText(c.ds))}</span>`);
 /** RE10: welke uitleg bij een tag hoort ("Exhaustion 3" → niveau 3, "Concentrating · Bless" → Concentrating); null = geen.
  *  Verrast (code sur) heeft zijn uitleg onder de id Surprised. */
 function tagKey(tag, code) {

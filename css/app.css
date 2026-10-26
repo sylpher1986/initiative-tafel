@@ -204,6 +204,7 @@ details.conds summary::-webkit-details-marker{display:none}
 .form{display:grid;gap:10px}
 .f2{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
 label{display:grid;gap:3px;font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.nocase{text-transform:none;letter-spacing:normal} /* TA18: hit dice in een label blijven "2d6" */
 label input,label select,label textarea{text-transform:none;letter-spacing:0;font-size:1rem;color:var(--fg);border:1px solid var(--line-strong);border-radius:6px;background:var(--bg);padding:8px;min-height:44px;width:100%}
 textarea{min-height:120px;resize:vertical}
 .mlist{max-height:min(240px,32vh);max-height:min(240px,32dvh);overflow:auto;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
@@ -938,7 +939,11 @@ body.pv.tv .pvnow{padding:.3em .8em}
 body.pv.tv .pvnow .l,body.pv.tv .pvnext{font-size:.75em}
 body.pv.tv ol.pvlist{gap:.25em}
 body.pv.tv .pvc{padding-block:.2em}
-body.pv.tv:not(.cols) .pvc{grid-template-columns:1.8em minmax(0,auto) minmax(0,1fr) auto}
+/* TA18: HP-kolom hooguit 40 % (balk + status breken af), tags minstens één tag breed en afbrekend: een speler op 0 HP met
+   lange naam liep anders over de rand en de tagkolom werd 0 px */
+body.pv.tv:not(.cols) .pvc{grid-template-columns:1.8em minmax(0,auto) minmax(min-content,1fr) fit-content(40%)}
+body.pv.tv .pvc .badges{flex-wrap:wrap}
+body.pv.tv .pvhp{flex-wrap:wrap;justify-content:flex-end}
 body.pv.tv:not(.cols) .pvc .badges{grid-column:3;grid-row:1;justify-content:flex-start;margin:0}
 body.pv.tv:not(.cols) .pvhp{grid-column:4;grid-row:1}
 body.pv.tv .pvc .bd{font-size:.85em;font-weight:700}

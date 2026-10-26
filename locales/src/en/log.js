@@ -21,6 +21,7 @@ export default {
   "log.init": "initiative {v}",
   "log.initCh": "initiative {a} → {b}",
   "log.renew": "{name} refreshed",
+  "log.exhCh": "Exhaustion {a} → {b}",
   "log.gets": "gets {name}", // effect of conditie
   "log.getsX": "gets {name} ({x})",
   "log.ends": "{name} ends",

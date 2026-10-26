@@ -126,6 +126,7 @@ export default {
   "init.prep.cond": "Condition",
   "init.prep.eff": "Effect",
   "init.prep.sb": "Stat block",
+  "init.prep.sbShort": "Stats", // knop in de actierij van een kaart (4 kolommen, 320 px); title/aria-label = init.prep.sb
   "init.prep.morePc": "More: name, max HP, party, remove",
   "init.prep.moreMon": "More: name, AC, name for players, remove",
   "init.prep.sample": "Sample encounter",
@@ -571,7 +572,7 @@ export default {
   "init.aoe.cantrip": "Cantrip · level {lvl} → {dice}",
   "init.aoe.cantrip0": "Cantrip · level unknown: {dice}",
   "init.aoe.otherSpell": "Choose another spell",
-  "init.aoe.lose": "{name} is now concentrating on {spell}: that ends.",
+  "init.aoe.lose": "{name} is concentrating on {spell}; casting this ends it.",
   "init.aoe.title": "AoE damage",
   "init.aoe.dice": "Dice",
   "init.aoe.dicePh": "8d6 or 2d6+3",
@@ -674,7 +675,7 @@ export default {
   "init.ini.rollAria": "Roll initiative for {name}",
   "init.ini.clear": "Clear",
   "init.ini.next": "Next", // volgende rij in het initiative-paneel
-  "init.log.turn": "turn {name}",
+  "init.log.turn": "{name}'s turn",
   "init.log.whyAria": "Reason for: {msg}",
   "init.log.whyPh": "Why? e.g. Fireball from Wolfim",
   "init.log.why": "Reason",

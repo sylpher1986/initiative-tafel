@@ -491,7 +491,7 @@ function rageBox(c) {
 
 function actionsBlock(c) {
   const more = `<button data-a="panel" data-p="more" aria-pressed="${ui.panel === "more"}" aria-label="${esc(t("init.card.more"))}">${ico("more")}</button>`;
-  const sideBtn = c.ref ? `<button data-a="sb">${esc(t("init.prep.sb"))}</button>` : c.sheet ? `<button data-a="sheet">Sheet</button>` : more;
+  const sideBtn = c.ref ? sbBtn() : c.sheet ? `<button data-a="sheet">Sheet</button>` : more;
   const gone = (c.ds && c.ds.dead) || (c.kind === "monster" && isOut(c));
   const react = c.kind !== "pc" || pcReact(); // GV4: spelers houden hun reaction zelf bij (instelling); Heal neemt de plek over
   return `<div class="acts">
@@ -522,7 +522,7 @@ function prepFields(c) {
   if (c.kind === "monster") {
     const hd = c.ref && findMon(c.ref)?.hd;
     const now = c.max && c.hp < c.max ? `<p class="hint pnow">${esc(t("init.prep.hpNow", { hp: n0(c.hp), max: n0(c.max) }))}</p>` : "";
-    return `<div class="pfs two">${fld("init", "Init", c.init, { aria: "Initiative" })}${fld("max", `Max HP${hd ? ` <small>${esc(hd)}</small>` : ""}${eff}`, c.max ? baseMax(c) : "", { ph: "?", aria: "Max HP" })}</div>${now}`;
+    return `<div class="pfs two">${fld("init", "Init", c.init, { aria: "Initiative" })}${fld("max", `Max HP${hd ? ` <small class="nocase">${esc(hd)}</small>` : ""}${eff}`, c.max ? baseMax(c) : "", { ph: "?", aria: "Max HP" })}</div>${now}`;
   }
   const m = c.pid && app.party.find((x) => x.pid === c.pid);
   const lv = sheetLvl(c, m) ? "" : fld("lvl", "Level", (m ? m.lvl : c.lvl) ?? "", { ph: "?" });
@@ -531,13 +531,15 @@ function prepFields(c) {
   return `<div class="pfs${lv ? "" : " two"}">${hp}${(() => { const l = (c.eff || []).some((e) => e.st === "ac") ? t("init.prep.baseAc") : "AC"; return fld("ac", esc(l), c.ac || "", { ph: "?", aria: l }); })()}${lv}</div>${pt ? `<p class="hint ppas">Passive ${esc(pt)}</p>` : ""}`;
 }
 
+/** TA18 (UX-agent): korte tekst in de actierij (EN "Stats" past op 320 px), volle term als naam en tooltip */
+const sbBtn = () => `<button data-a="sb" title="${esc(t("init.prep.sb"))}" aria-label="${esc(t("init.prep.sb"))}">${esc(t("init.prep.sbShort"))}</button>`;
 function prepActions(c) {
   const b = c.kind === "monster"
     ? [`<button data-a="hide" aria-pressed="${!!c.hidden}" title="${esc(t("init.prep.hideTip"))}">${esc(t(c.hidden ? "init.prep.hidden" : "init.prep.hide"))}</button>`]
     : [];
   b.push(`<button data-a="panel" data-p="conds" aria-pressed="${ui.panel === "conds"}">${esc(t("init.prep.cond"))}</button>`,
     `<button data-a="panel" data-p="eff" aria-pressed="${ui.panel === "eff"}">${esc(t("init.prep.eff"))}</button>`);
-  if (c.ref) b.push(`<button data-a="sb">${esc(t("init.prep.sb"))}</button>`); else if (c.sheet) b.push(`<button data-a="sheet">Sheet</button>`);
+  if (c.ref) b.push(sbBtn()); else if (c.sheet) b.push(`<button data-a="sheet">Sheet</button>`);
   b.push(`<button data-a="panel" data-p="more" aria-pressed="${ui.panel === "more"}" aria-label="${esc(t(c.kind === "pc" ? "init.prep.morePc" : "init.prep.moreMon"))}">${ico("more")}</button>`);
   return `<div class="acts pacts n${b.length}">${b.join("")}</div>${kPanels(c, true, false)}`;
 }

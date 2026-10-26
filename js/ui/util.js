@@ -1,6 +1,8 @@
 // Kleine DOM-hulpjes en meldingen.
 import { ico } from "./icons.js";
 import { t } from "../i18n/boot.js";
+/** TA18: markdown-resten uit de SRD-data (Open5e) als opmaak: **Fire Breath.** vet, _mage armor_ cursief; op ge-escapete tekst */
+export const mdLite = (h) => h.replace(/\*\*([^*<\n]{1,60})\*\*/g, "<b>$1</b>").replace(/(^|[\s(])_([^_<\n]{1,40})_(?=[\s).,;:]|$)/g, "$1<i>$2</i>");
 export const $ = (s) => document.querySelector(s);
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 /** Vertaalde tekst als HTML met één vet deel: {b} in de catalogus wordt <b>b</b> (geen HTML in een catalogus, WP24) */

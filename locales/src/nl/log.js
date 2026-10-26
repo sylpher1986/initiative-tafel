@@ -20,6 +20,7 @@ export default {
   "log.init": "initiative {v}",
   "log.initCh": "initiative {a} → {b}",
   "log.renew": "{name} vernieuwd",
+  "log.exhCh": "Exhaustion {a} → {b}",
   "log.gets": "krijgt {name}",
   "log.getsX": "krijgt {name} ({x})",
   "log.ends": "{name} voorbij",

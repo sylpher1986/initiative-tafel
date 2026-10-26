@@ -267,7 +267,7 @@ export function durLabel(e, list, short = false) {
   if (!e) return "";
   const who = list.find((x) => x.id === e.who);
   // tekst in de actieve taal (alleen weergave)
-  let x = e.kind === "rounds" ? `${e.count}r`
+  let x = e.kind === "rounds" ? t("rules.dl.rounds", { n: e.count })
     : e.kind === "tend" ? t(short ? "rules.dl.tendS" : e.count > 1 ? "rules.dl.tend2" : "rules.dl.tend")
     : e.kind === "tstart" ? t(short ? "rules.dl.tstartS" : "rules.dl.tstart")
     : e.kind === "sstart" ? t(short ? "rules.dl.sstartS" : "rules.dl.sstart", { name: who ? who.name : "?" }) : "";

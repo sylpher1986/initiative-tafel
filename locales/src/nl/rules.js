@@ -72,6 +72,7 @@ export default {
   "rules.dl.tend": "t/m einde beurt",
   "rules.dl.tend2": "t/m einde volgende beurt",
   "rules.dl.tendS": "einde beurt",
+  "rules.dl.rounds": "{n}r",
   "rules.dl.tstart": "t/m begin volgende beurt",
   "rules.dl.tstartS": "begin beurt",
   "rules.dl.sstart": "t/m beurt {name}",

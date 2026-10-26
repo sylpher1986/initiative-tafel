@@ -31,7 +31,12 @@ export function diffLog(prev, cur) {
     if ((o.max || 0) !== (c.max || 0)) m.push(M("log.maxHp", { a: String(o.max || 0), b: String(c.max || 0) }));
     if (o.init !== c.init) m.push(o.init == null ? M("log.init", { v: String(c.init) }) : M("log.initCh", { a: String(o.init), b: String(c.init ?? "–") }));
     const oe = o.eff || [], ce = c.eff || [], has = (L, e) => L.some((x) => x.id === e.id), same = (L, e) => L.some((x) => x.n === e.n);
-    ce.filter((e) => !has(oe, e)).forEach((e) => m.push(same(oe.filter((x) => !has(ce, x)), e) ? M("log.renew", { name: e.n }) : e.st ? M("log.getsX", { name: e.n, x: effText(e) }) : M("log.gets", { name: e.n })));
+    ce.filter((e) => !has(oe, e)).forEach((e) => {
+      const was = oe.find((x) => !has(ce, x) && x.n === e.n);
+      // TA17: een ander exhaustion-niveau is geen "vernieuwd"
+      m.push(was ? (e.n === "Exhaustion" && was.x !== e.x ? M("log.exhCh", { a: String(was.x || 0), b: String(e.x || 0) }) : M("log.renew", { name: e.n }))
+        : e.st ? M("log.getsX", { name: e.n, x: effText(e) }) : M("log.gets", { name: e.n }));
+    });
     oe.filter((e) => !has(ce, e) && !same(ce.filter((x) => !has(oe, x)), e)).forEach((e) => m.push(M("log.ends", { name: e.n })));
     if (c.max && o.hp !== c.hp) m.push(M("log.hp", { a: String(o.hp), b: String(c.hp), d: `${c.hp > o.hp ? "+" : "−"}${Math.abs(c.hp - o.hp)}` }));
     if ((o.temp || 0) !== (c.temp || 0)) m.push(M("log.temp", { a: String(o.temp || 0), b: String(c.temp || 0) }));

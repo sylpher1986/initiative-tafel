@@ -1,5 +1,5 @@
 // Statblocks (monsters) en character sheets (spelers) in het zijpaneel, met klikbare dobbelstenen.
-import { $, esc, n0, toastHtml, spellLink } from "./util.js";
+import { $, esc, n0, toastHtml, spellLink, mdLite } from "./util.js";
 import { chev, dsMini } from "./icons.js";
 import { findMon } from "../data/monsters.js";
 import { rollExpr, mod, sgn } from "../rules/dice.js";
@@ -23,7 +23,7 @@ const trName = (k) => (k === REST ? t("init.sb.other") : k);
  */
 export function diceify(txt, atk) {
   const hit = atk ? `data-atk="${esc(atk.n)}" data-cid="${esc(atk.cid)}"` : "", own = (b) => atk && +b === atk.hit;
-  return esc(txt)
+  return mdLite(esc(txt))
     .replace(/\((\d+d\d+(?:\s*[+−-]\s*\d+)?)\)/g, (m, e) => `(<button class="dice" data-roll="${e}">${e}</button>)`)
     .replace(/([+-]\d+) to hit/g, (m, b) => `<button class="dice" ${own(b) ? hit : `data-roll="1d20${b}" data-hit="1"`}>${b} to hit</button>`)
     .replace(/\b(\d+d\d+)\b(?![^<]*<\/button>)(?![^<]*")/g, (m, e) => `<button class="dice" data-roll="${e}">${e}</button>`);
@@ -250,7 +250,7 @@ const atkRef = (cid, k, v) => { const a = parseAction(k, v); return { cid, n: a.
  */
 export function sbBody(m, cid = null) {
   const ent = (arr, atk) => arr.map(([k, v]) => `<p class="entry"><b><i>${esc(trName(k))}.</i></b> ${(/spellcasting/i.test(k) ? linkSpells : diceify)(v, atk && cid && atkRef(cid, k, v))}</p>`).join("");
-  return `<p><span class="k">Armor Class</span> ${esc(m.ac)}</p>
+  return `<p><span class="k">Armor Class</span> ${mdLite(esc(m.ac))}</p>
     <p><span class="k">Hit Points</span> ${n0(m.hp)}${m.hd ? ` (<button class="dice" data-roll="${esc(m.hd)}">${esc(m.hd.replace(/([+-])/, " $1 "))}</button>)` : ""}</p>
     ${m.spd ? `<p><span class="k">Speed</span> ${esc(m.spd)}</p>` : ""}
     ${m.ab ? `<hr>${abilRow(m.ab)}` : ""}

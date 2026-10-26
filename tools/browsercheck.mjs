@@ -249,6 +249,7 @@ const SCEN = {
       const { app, commit } = await import("/js/state.js"), { render } = await import("/js/ui/render.js");
       let n = 0;
       for (const c of app.S.list) if (c.kind === "monster") { c.anon = ++n; if (n === 1) c.hp = Math.ceil(c.max / 2); }
+      const pc = app.S.list.find((c) => c.kind === "pc"); if (pc) { pc.hp = 0; pc.ds = { s: 1, f: 2 }; } // TA18: death saves op de tv
       commit(); render();
     });
     // met --i18n=xx staat er testtaal: dan alleen wachten op de onbekende wezens (lengte op 320 px), niet op Engels
@@ -261,6 +262,9 @@ const SCEN = {
     await tv.goto(base + "/en/initiative/player/");
     await tv.waitForFunction((x) => document.body.classList.contains("tv") && (x || /Unknown creature/.test(document.querySelector("#pv-list").innerText)), xx, { timeout: 5000 });
     const tvTxt = await tv.locator("main").innerText();
+    const ds = await tv.evaluate(() => { const b = document.querySelector("#pv-list .bd.r"), v = b && b.querySelector("[aria-hidden]"); // zichtbare deel; .vh telt niet
+      return v ? { cut: Math.round(v.getBoundingClientRect().right - b.getBoundingClientRect().right), icons: v.querySelectorAll("svg").length } : null; });
+    if (!ds || ds.cut > 1 || ds.icons < 2) throw new Error("death saves op de tv afgekapt of zonder iconen: " + JSON.stringify(ds));
     await tv.close();
     await dm.close();
     if (xx) return;
@@ -348,6 +352,23 @@ const SCEN = {
     if (!last.length) throw new Error("Volgende schreef geen logregel");
     if (last.some((m) => isDutch(m))) throw new Error("nieuwe logregel Nederlands: " + last.join(" | "));
     await tap(page, "#undo"); await page.waitForSelector("#toast .tmsg");
+  },
+  // TA18 (persona-test EN): statblock-knop in de actierij op één regel, hit dice niet in hoofdletters, SRD-markdown als opmaak
+  async ta18(page) {
+    await SCEN.prep(page);
+    const mon = page.locator("#order .c.k.mon").first();
+    if (!(await mon.evaluate((el) => el.classList.contains("open")))) await mon.locator(".khead").tap();
+    await mon.locator('[data-a="sb"]').waitFor();
+    const r = await mon.evaluate((el) => {
+      const b = el.querySelector('[data-a="sb"]'), rg = document.createRange(); rg.selectNodeContents(b);
+      const lines = new Set([...rg.getClientRects()].map((x) => Math.round(x.top))).size;
+      const hd = el.querySelector("small.nocase");
+      return { lines, hd: hd && getComputedStyle(hd).textTransform, hdTxt: hd && hd.textContent };
+    });
+    if (r.lines > 1) throw new Error(`statblock-knop over ${r.lines} regels`);
+    if (r.hd !== "none" || /D/.test(r.hdTxt || "")) throw new Error("hit dice in hoofdletters: " + JSON.stringify(r));
+    const md = await page.evaluate(async () => { const { diceify } = await import("/js/ui/statblock.js"); return diceify("12 (15 with _mage armor_) and **Fire Breath.**"); });
+    if (!/<i>mage armor<\/i>/.test(md) || !/<b>Fire Breath\.<\/b>/.test(md)) throw new Error("markdown niet omgezet: " + md);
   },
   async tagline(page) { if (!(await page.locator("#pv-tag").isVisible())) throw new Error("tagline niet zichtbaar in de wachtstand"); },
 };

@@ -98,8 +98,8 @@ Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (g
 
 ## Persona-test EN (WP32, 26-10-2026)
 Rapport: projectdoc `claude/persona-test-en.md`. P1's opgelost in 1.52.1. Vóór WP33 (Engels live) oppakken:
-- [ ] **TA17 Engelse tekst P2**: `rules.drops` "its next turn" bij spelers → "their"; `init.log.turn` → "{name}'s turn" (gelijk aan `log.turn`); `log.renew` "Exhaustion refreshed" bij een hoger niveau; `rules.dur.sstart` "(active creature)"; effectchip "10r" (vaste tekst in `js/ui/render.js`) → catalogus; `init.aoe.lose` loopt niet.
-- [ ] **TA18 Weergave P2**: "MAX HP 2D6" (uppercase-label raakt de hit dice); tv: death saves-tag afgekapt; "Stat block"-knop breekt op 320 px; `_mage armor_` zichtbaar in `data/monsters.json` (data, beide talen).
+- [x] **TA17 Engelse tekst P2** (klaar, 1.52.2): `rules.drops` "its next turn" bij spelers → "their"; `init.log.turn` → "{name}'s turn" (gelijk aan `log.turn`); `log.renew` "Exhaustion refreshed" bij een hoger niveau; `rules.dur.sstart` "(active creature)"; effectchip "10r" (vaste tekst in `js/ui/render.js`) → catalogus; `init.aoe.lose` loopt niet.
+- [x] **TA18 Weergave P2** (klaar, 1.52.2; tv: de rij liep over de rand, HP-kolom nu begrensd): "MAX HP 2D6" (uppercase-label raakt de hit dice); tv: death saves-tag afgekapt; "Stat block"-knop breekt op 320 px; `_mage armor_` zichtbaar in `data/monsters.json` (data, beide talen).
 - P3 (8): zie het rapport.
 
 ## Indeling en navigatie
