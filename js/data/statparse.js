@@ -3,6 +3,8 @@
 // de regels onder de kop (x: Saving Throws, Damage Resistances …). Puur: geen DOM. De tekst komt van de gebruiker
 // (onbetrouwbaar); alles blijft platte tekst, de UI escapet.
 // Herkent het klassieke formaat (SRD, D&D Beyond, 5etools) en de 2024-schrijfwijze van aanvallen en saves.
+import { M, J } from "../i18n/msg.js";
+import { t } from "../i18n/boot.js";
 
 const SECT = [
   [/^(?:bonus actions?)$/i, "ba"],
@@ -148,18 +150,17 @@ const cut = (v, n = 40) => (v.length > n ? v.slice(0, n - 1).trimEnd() + "…" :
  */
 export function foundText(p) {
   if (!p) return "";
-  const n = (v, one, many) => (v ? `${v} ${v === 1 ? one : many}` : "");
+  const n = (v, k) => (v ? M(`init.custom.f.${k}`, { n: v }) : "");
   const xv = (k) => (p.x.find(([n]) => n === k) || [])[1];
-  return [
+  return J([ // WP32: descriptor, de UI vertaalt (t vertaalt een descriptor als waarde zelf)
     parseInt(p.ac) ? `AC ${parseInt(p.ac)}` : "",
     p.hp ? `${p.hp} HP${p.hd ? ` (${p.hd})` : ""}` : "",
     p.cr ? `CR ${p.cr}` : "",
     p.ab ? `Dex ${p.ab[1]}` : "",
-    n(p.a.length + p.ba.length, "actie", "acties"), n(p.re.length, "reaction", "reactions"),
-    n(p.l.length, "legendary action", "legendary actions"), n(p.t.length, "trait", "traits"),
-    xv("Damage Resistances") ? `resist ${cut(xv("Damage Resistances"))}` : "",
-    xv("Damage Immunities") ? `immuun ${cut(xv("Damage Immunities"))}` : "",
-  ].filter(Boolean).join(" · ");
+    n(p.a.length + p.ba.length, "act"), n(p.re.length, "re"), n(p.l.length, "la"), n(p.t.length, "tr"),
+    xv("Damage Resistances") ? M("init.custom.f.resist", { list: cut(xv("Damage Resistances")) }) : "",
+    xv("Damage Immunities") ? M("init.custom.f.immune", { list: cut(xv("Damage Immunities")) }) : "",
+  ].filter(Boolean), " · ");
 }
 /** Is er iets herkend dat het monster structuur geeft (anders blijft het vrije tekst, zoals vroeger) */
 export const hasStructure = (p) => !!(p && (p.a.length || p.ba.length || p.re.length || p.l.length || p.t.length || p.ab || p.x.length));
@@ -175,7 +176,7 @@ export function withParsed(m) {
   if (cache.has(m)) return cache.get(m);
   const p = parseStatText(m.text);
   const r = !hasStructure(p) ? m : {
-    ...m, t: p.rest ? [...p.t, ["Overig", p.rest]] : p.t, a: p.a, ba: p.ba, re: p.re, l: p.l, ld: p.ld, // niet herkend: trait "Overig"
+    ...m, t: p.rest ? [...p.t, [t("init.sb.other"), p.rest]] : p.t, a: p.a, ba: p.ba, re: p.re, l: p.l, ld: p.ld, // niet herkend: trait "Overig"/"Other" (taal van de pagina, niet bewaard)
     x: [...(Array.isArray(m.x) ? m.x : []), ...p.x],
     // getypte Dex gaat voor (initiative leest ab[1]); 10 is de oude standaardwaarde van het formulier, die telt niet
     ...(p.ab && !m.ab ? { ab: m.dexScore && m.dexScore !== 10 ? [p.ab[0], +m.dexScore, ...p.ab.slice(2)] : p.ab } : {}),

@@ -99,6 +99,14 @@ export default {
   "init.custom.file": "Monsterbestand importeren (JSON)…",
   "init.custom.fileWith": "Werkt met", // daarna volgt de bestandsnaam vet
   "init.custom.fileRest": "uit de 5e-database van 5e-bits op GitHub (map src/2014/en) en met een Open5e-export. Je eigen JSON-lijst in hetzelfde formaat mag ook. Meerdere bestanden na elkaar importeren mag; ze worden samengevoegd.",
+  "init.custom.f.act": { one: "{n} actie", other: "{n} acties" },
+  "init.custom.f.re": { one: "{n} reaction", other: "{n} reactions" },
+  "init.custom.f.la": { one: "{n} legendary action", other: "{n} legendary actions" },
+  "init.custom.f.tr": { one: "{n} trait", other: "{n} traits" },
+  "init.custom.f.resist": "resist {list}",
+  "init.custom.f.immune": "immuun {list}",
+  "init.sb.other": "Overig",
+  "init.sb.aria": "Statblock",
   // WP24 (TA8): Voorbereiden, + Speler, Party, + Monster, welkomstkaart, moeilijkheid, exportherinnering
   "init.prep.phase": "Fase: Voorbereiden, daarna Gevecht",
   "init.prep.phase1": "Voorbereiden",

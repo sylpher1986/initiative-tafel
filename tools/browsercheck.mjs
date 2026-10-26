@@ -66,7 +66,7 @@ function startFor(name, lang) {
   return p.replace(/^\/nl\//, `/${lang}/`);
 }
 // Wat scenario's zelf intypen (gebruikersinhoud: wordt nooit vertaald)
-const OWN = ["Hinderlaag bij de oude brug", "Aurelianus Vandermeer", "Zonder Level"];
+const OWN = ["Hinderlaag bij de oude brug", "Aurelianus Vandermeer", "Zonder Level", "Vrije regel zonder punt"];
 const noPaths = (l) => l.replace(/\S*\/\S*/g, " "); // paden en URL's (src/2014/en, /speler?k=) zijn geen tekst, zoals in tests/pages.test.js
 const tap = (page, sel) => page.locator(sel).first().tap();
 
@@ -183,7 +183,16 @@ const SCEN = {
   },
   async einde(page) { await SCEN.fight(page); await tap(page, '#modes [data-setmode="prep"]'); await tap(page, "#stop"); await page.waitForSelector("#esheet .esheet"); },
   async tourf(page) { await SCEN.fight(page); await page.evaluate(async () => { localStorage.setItem("it-tour", "p"); (await import("/js/ui/tour.js")).restartTour(); (await import("/js/ui/render.js")).render(); }); await page.waitForSelector("#tour .tbox"); },
-  async eigen(page) { await SCEN.monster(page); await tap(page, '#p-montabs [data-prep="custom"]'); await page.waitForSelector("#f-custom", { state: "visible" }); },
+  async eigen(page) {
+    await SCEN.monster(page); await tap(page, '#p-montabs [data-prep="custom"]'); await page.waitForSelector("#f-custom", { state: "visible" });
+    // WP32 (persona-test EN): "Herkend: …" en de trait voor niet herkende tekst komen uit de catalogus
+    await page.fill("#cu-text", "Bog Ork\nArmor Class 14\nHit Points 22 (4d8 + 4)\nDamage Immunities poison\nVrije regel zonder punt\nBite. Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) piercing damage.");
+    await page.waitForSelector("#cu-parse .cuok");
+    await tap(page, "#cu-parse [data-cuprev]");
+    const r = await page.evaluate(() => ({ lang: localStorage.getItem("kevs-i18n-debug") === "xx" ? "xx" : document.documentElement.lang, txt: document.querySelector("#cu-parse").innerText })); // xx: pseudo-tekst, alleen lengte
+    if (r.lang === "en" && (!/1 action\b/.test(r.txt) || !/immune to poison/.test(r.txt) || !/Other/.test(r.txt))) throw new Error("herkend/voorbeeld niet Engels: " + r.txt.slice(0, 160));
+    if (r.lang === "nl" && (!/1 actie\b/.test(r.txt) || !/Overig/.test(r.txt))) throw new Error("herkend/voorbeeld niet Nederlands: " + r.txt.slice(0, 160));
+  },
   // WP22: taalkiezer in Weergave (alleen met --i18n=debug zichtbaar) met de lange statusregel ("Spelers zelf")
   async lang(page) {
     await SCEN.settings(page);

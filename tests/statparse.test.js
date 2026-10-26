@@ -1,4 +1,4 @@
-import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
+import { nl } from "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -81,7 +81,7 @@ On initiative count 20, the floor shakes.`);
   assert.match(p.a[0][1], /Hit: 15 \(1d12/);
   assert.equal(p.re[0][0], "Parry");
   assert.match(p.rest, /floor shakes/);
-  assert.equal(foundText(p), "AC 16 · 93 HP (11d8+44) · CR 4 · Dex 12 · 1 actie · 1 reaction · resist bludgeoning, piercing, and slashing fro…");
+  assert.equal(nl(foundText(p)), "AC 16 · 93 HP (11d8+44) · CR 4 · Dex 12 · 1 actie · 1 reaction · resist bludgeoning, piercing, and slashing fro…");
 });
 
 test("RE14: 2024-schrijfwijze wordt klassiek", () => {

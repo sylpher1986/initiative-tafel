@@ -91,10 +91,16 @@ Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (g
 | ~~**WP29**~~ | D&D-termen: id's vs labels, conditie-uitleg EN, zoekwoorden per taal, getal/datum-formattering (klaar) | TA13 | WP27 | 1.51.1 |
 | ~~**WP30**~~ | Publieke homepage `/en/`, `/nl/`: meta, Open Graph, hreflang, canonical, robots, sitemap, 404 (klaar; operationeel: workers.dev en Search Console door Michiel) | TA14 | WP21, WP29 | 1.52.0 |
 | ~~**WP31**~~ | Conventies voor alle tools (CLAUDE.md, `docs/i18n.md` §9) (klaar) | TA15 | WP27, WP28 | geen |
-| **WP32** | Verificatie: offline, import/export, spelersscherm gemengde talen, gevecht, persona-test EN | TA16 | WP22–WP30 | 1.52.1 |
+| ~~**WP32**~~ | Verificatie: offline, import/export, spelersscherm gemengde talen, gevecht, persona-test EN (klaar) | TA16 | WP22–WP30 | 1.52.1 |
 | **WP33** | Engels live: standaard en terugval, kiezer zichtbaar, homepage indexeerbaar | TA1 | WP32 | 2.0.0 |
 
 ---
+
+## Persona-test EN (WP32, 26-10-2026)
+Rapport: projectdoc `claude/persona-test-en.md`. P1's opgelost in 1.52.1. Vóór WP33 (Engels live) oppakken:
+- [ ] **TA17 Engelse tekst P2**: `rules.drops` "its next turn" bij spelers → "their"; `init.log.turn` → "{name}'s turn" (gelijk aan `log.turn`); `log.renew` "Exhaustion refreshed" bij een hoger niveau; `rules.dur.sstart` "(active creature)"; effectchip "10r" (vaste tekst in `js/ui/render.js`) → catalogus; `init.aoe.lose` loopt niet.
+- [ ] **TA18 Weergave P2**: "MAX HP 2D6" (uppercase-label raakt de hit dice); tv: death saves-tag afgekapt; "Stat block"-knop breekt op 320 px; `_mage armor_` zichtbaar in `data/monsters.json` (data, beide talen).
+- P3 (8): zie het rapport.
 
 ## Indeling en navigatie
 - Geen open punten (IN8 en IN9 klaar in 1.35.1, zie Klaar).

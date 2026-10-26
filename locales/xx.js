@@ -113,6 +113,26 @@ export default {
   "init.custom.file": "[Ímpört möñstér fílé (JSÖÑ)… ··········]",
   "init.custom.fileWith": "[Wörks wíth ····]",
   "init.custom.fileRest": "[fröm thé 5é-dátábásé bý 5é-bíts öñ GítHüb (földér srç/2014/éñ) áñd wíth áñ Öpéñ5é éxpört. Yöür öwñ JSÖÑ líst íñ thé sámé förmát wörks töö. Yöü çáñ ímpört sévérál fílés öñé áftér áñöthér; théý'ré mérgéd. ·······································································]",
+  "init.custom.f.act": {
+    "one": "[{n} áçtíöñ ···]",
+    "other": "[{n} áçtíöñs ···]"
+  },
+  "init.custom.f.re": {
+    "one": "[{n} réáçtíöñ ····]",
+    "other": "[{n} réáçtíöñs ····]"
+  },
+  "init.custom.f.la": {
+    "one": "[{n} légéñdárý áçtíöñ ······]",
+    "other": "[{n} légéñdárý áçtíöñs ·······]"
+  },
+  "init.custom.f.tr": {
+    "one": "[{n} tráít ···]",
+    "other": "[{n} tráíts ···]"
+  },
+  "init.custom.f.resist": "[résístáñt tö {list} ·····]",
+  "init.custom.f.immune": "[ímmüñé tö {list} ····]",
+  "init.sb.other": "[Öthér ··]",
+  "init.sb.aria": "[Stát blöçk ····]",
   "init.prep.phase": "[Phásé: Prép, théñ Çömbát ·········]",
   "init.prep.phase1": "[Prép ··]",
   "init.prep.phase2": "[Çömbát ···]",

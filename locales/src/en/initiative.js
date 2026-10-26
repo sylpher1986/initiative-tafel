@@ -100,6 +100,14 @@ export default {
   "init.custom.file": "Import monster file (JSON)…",
   "init.custom.fileWith": "Works with", // daarna volgt de bestandsnaam vet
   "init.custom.fileRest": "from the 5e-database by 5e-bits on GitHub (folder src/2014/en) and with an Open5e export. Your own JSON list in the same format works too. You can import several files one after another; they're merged.",
+  "init.custom.f.act": { one: "{n} action", other: "{n} actions" },
+  "init.custom.f.re": { one: "{n} reaction", other: "{n} reactions" },
+  "init.custom.f.la": { one: "{n} legendary action", other: "{n} legendary actions" },
+  "init.custom.f.tr": { one: "{n} trait", other: "{n} traits" },
+  "init.custom.f.resist": "resistant to {list}",
+  "init.custom.f.immune": "immune to {list}",
+  "init.sb.other": "Other", // niet herkende tekst van een eigen monster (trait-naam)
+  "init.sb.aria": "Stat block",
   // WP24 (TA8): Voorbereiden, + Speler, Party, + Monster, welkomstkaart, moeilijkheid, exportherinnering
   "init.prep.phase": "Phase: Prep, then Combat", // aria-label van de fase-aanduiding
   "init.prep.phase1": "Prep",
