@@ -284,6 +284,52 @@ const SCEN = {
     await snap(page, "wp41", "effect");
     await el.tap(); await page.waitForSelector("#rsheet .rsheet");
   },
+  // --shots=wp42: eigen notitie bij een niet-SRD-spell (Toll the Dead; Hex staat in SRD 5.2): toevoegen, bewaard na herladen, in de export, wissen + Undo.
+  async wp42(page) {
+    await SCEN.prep(page);
+    const openHex = async () => {
+      await page.evaluate(() => { const b = document.createElement("button"); b.type = "button"; b.dataset.spell = "Toll the Dead"; b.id = "wp42hex";
+        b.textContent = "Spell"; b.style.cssText = "position:fixed;top:0;left:0;width:44px;height:44px"; document.body.appendChild(b); });
+      await tap(page, "#wp42hex"); await page.waitForSelector("#rsheet .rsheet");
+    };
+    await openHex();
+    const add = page.locator('#rsheet [data-rnote="add"]');
+    await add.waitFor({ state: "visible" });
+    if ((await add.evaluate((el) => el.getBoundingClientRect().height)) < 44) throw new Error("Add note < 44px");
+    await add.tap();
+    if (!(await page.evaluate(() => document.activeElement?.id === "r-note"))) throw new Error("focus niet in het tekstveld");
+    await page.keyboard.press("Escape"); // alleen de bewerkstand dicht
+    if (!(await page.locator("#rsheet .rsheet").count()) || (await page.locator("#r-note").count())) throw new Error("Escape sloot niet alleen de bewerkstand");
+    await tap(page, '#rsheet [data-rnote="add"]');
+    await page.fill("#r-note", "Bonus action · 90 ft\n1d6 necrotic on hit");
+    await snap(page, "wp42", "edit");
+    await tap(page, '#rsheet [data-rnote="save"]');
+    await page.locator("#rsheet .rntxt").waitFor({ state: "visible" });
+    if (await page.locator('#rsheet [data-rnote="add"]').count()) throw new Error("Add note staat er nog na opslaan");
+    await snap(page, "wp42", "note");
+    const edit = page.locator('#rsheet [data-rnote="edit"]');
+    if ((await edit.evaluate((el) => el.getBoundingClientRect().height)) < 44) throw new Error("Edit < 44px");
+    // herladen: notitie blijft (IndexedDB), en staat in de export
+    await page.reload(); await page.waitForSelector("#start");
+    await openHex();
+    await page.locator("#rsheet .rntxt").waitFor({ state: "visible" });
+    const exp = await page.evaluate(async () => { const { app } = await import("/js/state.js"), { buildExport } = await import("/js/backup.js"); return buildExport(app); });
+    if (exp.version !== 3 || exp.spellNotes?.["toll the dead"]?.t !== "Bonus action · 90 ft\n1d6 necrotic on hit") throw new Error("notitie niet in de export (versie 3)");
+    // leeg opslaan = wissen, met Undo in de melding
+    await tap(page, '#rsheet [data-rnote="edit"]'); await page.fill("#r-note", "");
+    await tap(page, '#rsheet [data-rnote="save"]');
+    await page.waitForSelector("#toast-noteundo");
+    if (!(await page.locator('#rsheet [data-rnote="add"]').count())) throw new Error("na wissen geen Add note");
+    await tap(page, "#toast-noteundo");
+    await page.locator("#rsheet .rntxt").waitFor({ state: "visible" });
+    // SRD-spell: geen notitieknop
+    await tap(page, '#rsheet .shead [data-rsh="close"]'); await page.waitForSelector("#rsheet", { state: "hidden" });
+    await page.evaluate(() => { const b = document.getElementById("wp42hex"); b.dataset.spell = "Fireball"; });
+    await tap(page, "#wp42hex"); await page.waitForSelector("#rsheet .rtext");
+    if (await page.locator('#rsheet [data-rnote]').count()) throw new Error("notitieknop bij een SRD-spell");
+    await tap(page, '#rsheet .shead [data-rsh="close"]');
+    await page.evaluate(() => document.getElementById("wp42hex")?.remove());
+  },
   // WP23: formulieren met de statische tekst (met --i18n=debug de Engelse pagina)
   async pcform(page) { await SCEN.prep(page); await tap(page, '#dock [data-prep="pc"]'); await page.waitForSelector("#f-pc", { state: "visible" }); },
   // WP24: Party met een lid (Bijwerken/Uit party), moeilijkheid met uitleg en levelveld, snel toevoegen met het toevoegblok

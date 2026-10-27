@@ -6,6 +6,7 @@ import { setLibrary } from "./data/monsters.js";
 import { endConcEffects, endRage } from "./rules/effects.js";
 import { endConcConds } from "./rules/spellcast.js";
 import { cleanEncounters } from "./rules/encounters.js";
+import { cleanSpellNotes } from "./data/spellnotes.js";
 import { tidy } from "./rules/fight.js";
 import { markDirty } from "./exportnudge.js";
 import { VERSION } from "./version.js";
@@ -14,7 +15,7 @@ import { tr } from "./i18n/boot.js";
 import { isMsg, isJoin } from "./i18n/msg.js";
 
 /** Alle data van de app. S = de lopende encounter. */
-export const app = { S: null, party: [], lairs: {}, custom: [], imported: [], encounters: [] }; // encounters: klaargezet, niet in undo
+export const app = { S: null, party: [], lairs: {}, custom: [], imported: [], encounters: [], spellNotes: {} }; // encounters: klaargezet; spellNotes: eigen spell-notities (WP42); beide niet in undo
 
 /* Undo-geschiedenis (DA2): ook in IndexedDB, één sleutel per stap ("h:000000123"), zodat elke stap één snapshot
    schrijft. Stand en stap gaan samen in één transactie. Na herladen terug, behalve na een app-update, een
@@ -67,18 +68,20 @@ const keep = (key, value) => { if (!store.canWrite()) return; markDirty(); save(
 export const saveParty = () => keep("party", app.party);
 export const saveLairs = () => keep("lairs", app.lairs);
 export const saveEncounters = () => keep("encounters", app.encounters);
+export const saveSpellNotes = () => keep("spellNotes", app.spellNotes);
 export function saveLibrary() {
   keep("custom", app.custom); keep("imported", app.imported);
   setLibrary({ custom: app.custom, imported: app.imported });
 }
 
 export async function load() {
-  let encs;
-  [app.S, app.party, app.lairs, app.custom, app.imported, encs, stored, storedB] = await Promise.all([
-    store.get("state", null), store.get("party", []), store.get("lairs", {}), store.get("custom", []), store.get("imported", []), store.get("encounters", []),
+  let encs, notes;
+  [app.S, app.party, app.lairs, app.custom, app.imported, encs, notes, stored, storedB] = await Promise.all([
+    store.get("state", null), store.get("party", []), store.get("lairs", {}), store.get("custom", []), store.get("imported", []), store.get("encounters", []), store.get("spellNotes", {}),
     store.range(HLO, HHI), store.range(BLO, BHI),
   ]);
   app.encounters = cleanEncounters(encs);
+  app.spellNotes = cleanSpellNotes(notes);
   setLibrary({ custom: app.custom, imported: app.imported });
   store.persistStorage();
 }

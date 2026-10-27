@@ -11,9 +11,10 @@ import { cleanEnc } from "./rules/fight.js";
 import { cleanDr } from "./rules/aoe.js";
 import { cleanRs, cleanTk } from "./rules/effects.js";
 import { cleanPas } from "./rules/passives.js";
+import { cleanSpellNotes } from "./data/spellnotes.js";
 
 export const FORMAT = "initiative-tafel";
-export const VERSION = 2; // 2 (1.28.0): encounters erbij
+export const VERSION = 3; // 2 (1.28.0): encounters erbij; 3 (2.2.0, WP42): spellNotes erbij
 
 /** AF11: bestandsnaam in lokale tijd ("kevs-inn-itiative-2026-10-23-21-14.json"; het formaat heet nog "initiative-tafel"), niet UTC */
 export function exportName(t) {
@@ -24,7 +25,7 @@ export function exportName(t) {
 export function buildExport(app) {
   return {
     format: FORMAT, version: VERSION, exported: new Date().toISOString(),
-    state: app.S, party: app.party, lairs: app.lairs, custom: app.custom, imported: app.imported, encounters: app.encounters || [],
+    state: app.S, party: app.party, lairs: app.lairs, custom: app.custom, imported: app.imported, encounters: app.encounters || [], spellNotes: app.spellNotes || {},
   };
 }
 
@@ -153,12 +154,15 @@ export function cleanCombatant(c) {
 
 /** Versie 1 → 2: encounters bestonden nog niet */
 const migrate1to2 = (json) => ({ ...json, version: 2, encounters: [] });
+/** Versie 2 → 3: eigen spell-notities bestonden nog niet */
+const migrate2to3 = (json) => ({ ...json, version: 3, spellNotes: {} });
 
 /** Bestand → schone data, of een Error met een leesbare melding */
 export function parseImport(json) {
   if (!obj(json) || json.format !== FORMAT) throw new Error(t("init.imp.notExport", { app: APP })); // melding in de taal van de app (WP26)
   if (num(json.version) > VERSION) throw new Error(t("init.imp.newer"));
   if (!(num(json.version) >= 2)) json = migrate1to2(json);
+  if (!(num(json.version) >= 3)) json = migrate2to3(json);
   const S = obj(json.state) || { list: [], round: 0, active: null };
   const lairs = {};
   for (const [k, v] of Object.entries(obj(json.lairs) || {})) lairs[str(k, 120)] = arr(v).map((a) => ({ n: str(a.n, 120), t: str(a.t, 4000) }));
@@ -173,5 +177,6 @@ export function parseImport(json) {
     custom: arr(json.custom).filter((m) => obj(m) && m.n).map((m) => ({ ...sanitizeOwn(m), custom: true })),
     imported: arr(json.imported).filter((m) => obj(m) && m.n).map(sanitizeOwn),
     encounters: cleanEncounters(json.encounters),
+    spellNotes: cleanSpellNotes(json.spellNotes),
   };
 }

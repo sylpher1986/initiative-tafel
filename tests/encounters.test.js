@@ -155,13 +155,13 @@ test("import samenvoegen: nieuw, vervangen, als kopie; dupliceren nummert door",
   assert.equal(duplicate(cp[1], cp, NOW).name, "Grot (kopie 2)", "kopie van een kopie: geen (kopie) (kopie)");
 });
 
-test("backup versie 2: encounters erbij; versie 1 migreert naar een lege lijst", () => {
-  assert.equal(VERSION, 2);
+test("backup versie 2+: encounters erbij; versie 1 migreert naar een lege lijst", () => {
+  assert.equal(VERSION, 3);
   const v1 = parseImport({ format: "initiative-tafel", version: 1, state: { list: [] }, party: [] });
   assert.deepEqual(v1.encounters, []);
   const enc = cleanEncounter({ id: "a", name: "Grot", updatedAt: 5, monsters: [{ ref: "Goblin", n: 2 }] }, NOW);
   const exp = buildExport({ S: { list: [], round: 0, active: null }, party: [], lairs: {}, custom: [], imported: [], encounters: [enc] });
-  assert.equal(exp.version, 2);
+  assert.equal(exp.version, 3);
   const v2 = parseImport(JSON.parse(JSON.stringify(exp)));
   assert.deepEqual(v2.encounters, [enc]);
   const rare = parseImport({ format: "initiative-tafel", version: 2, state: {}, encounters: [{ name: "x" }, { id: "<", name: "Ok", monsters: [{ ref: "G", n: 1 }] }, "y"] });

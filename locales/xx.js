@@ -858,6 +858,14 @@ export default {
   "init.spell.ddb": "[Séárçh öñ D&D Béýöñd ↗ ········]",
   "init.spell.loading": "[Löádíñg… ···]",
   "init.spell.ed": "[Édítíöñ ···]",
+  "init.spell.note": "[Yöür ñöté ····]",
+  "init.spell.noteAdd": "[Ådd ñöté ···]",
+  "init.spell.noteEdit": "[Édít ··]",
+  "init.spell.noteDel": "[Délété ñöté ····]",
+  "init.spell.notePh": "[é.g. Böñüs áçtíöñ · 90 ft · 1 höür, çöñçéñtrátíöñ. 1d6 ñéçrötíç öñ hít. ·························]",
+  "init.spell.noteGone": "[Ñöté délétéd. ·····]",
+  "init.spell.noteBack": "[Ñöté réstöréd. ·····]",
+  "init.spell.noteFull": "[Töö máñý ñötés; délété öñé fírst. ············]",
   "init.aoe.tabsAria": "[Dámágé ör spéll ······]",
   "init.sp.go": {
     "one": "[{spell} öñ {n} tárgét ····]",
@@ -1079,6 +1087,10 @@ export default {
   "init.imp.encs": {
     "one": "[{n} prépáréd éñçöüñtér ·······]",
     "other": "[{n} prépáréd éñçöüñtérs ·······]"
+  },
+  "init.imp.notes": {
+    "one": "[{n} spéll ñöté ····]",
+    "other": "[{n} spéll ñötés ·····]"
   },
   "init.imp.has": "[Thís éxpört çöñtáíñs {what}. ········]",
   "init.imp.replaces": "[Ímpörtíñg {b} évérýthíñg çürréñtlý íñ thé ápp. ················]",

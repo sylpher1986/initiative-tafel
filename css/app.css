@@ -910,6 +910,17 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .rsheet .credit{margin-top:4px}
 .rsw{max-width:180px}
 .rcmp{margin:0;font-size:.85rem;border-left:3px solid var(--warn);padding:4px 0 4px 10px}
+/* WP42 (RE6b): eigen notitie bij een niet-SRD-spell; paneeltje-in-paneel op --sunk zonder rand (WP35), tekst = gebruikersinhoud */
+.rnote{background:var(--sunk);border-radius:var(--r);padding:4px 12px 10px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.rnhead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.rnhead .link{min-height:44px;min-width:44px}
+.rnlab{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding-top:8px}
+.rnhead .rnlab{padding-top:0}
+.rntxt{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+.rnote textarea{font-size:16px;min-height:96px;width:100%;resize:vertical;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--card);color:var(--fg);padding:8px}
+.rnbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.rncount{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.rnbar .rndel{margin-left:auto;min-height:44px}
 .effgrid .tag{white-space:nowrap;display:inline-block}
 
 /* surprise: keuze in het initiative-paneel, badge op de kaart */

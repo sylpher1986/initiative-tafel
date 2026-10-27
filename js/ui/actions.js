@@ -5,7 +5,7 @@ import { openSettings } from "./settings.js";
 import { $, esc, n0, toast, toastHtml, closeToast, clearToasts, show, toastBad, tb, undoBtn } from "./util.js";
 import { t } from "../i18n/boot.js";
 import { M, J } from "../i18n/msg.js";
-import { app, because, addWhy, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
+import { app, because, addWhy, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, saveSpellNotes, resetBaseline } from "../state.js";
 import { render, ui, openId, mode, atkAc, atkRider, atkTargets, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, hidHint, anonHint, paintAoe, paintDmgSugg, dmgSp, aoeCaster, dmgSlot, dmgDice, dmgLevel, spellSlot, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, edNow, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
 import { PAS, pasVal, cleanPas } from "../rules/passives.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
@@ -32,7 +32,7 @@ import { rulesEd, setRulesEd } from "./spellrules.js";
 import { initRoll, setInitRoll } from "./initroll.js";
 import { visNow, setVis } from "./playervis.js";
 import { nextAnon } from "../playerview.js";
-import { spellClick as spellInfoClick, spellOpen, closeSpell } from "./spellinfo.js";
+import { spellClick as spellInfoClick, spellOpen, closeSpell, spellEsc, resetNoteUndo } from "./spellinfo.js";
 import { logText, stepEntries, stepText } from "../log.js";
 import { readSheetPdf, fetchDdb, ddbMsg } from "../ddb.js";
 import { parseDdbLink, findMember, mergeSheet, partyUpdate, seatPlan } from "../ddbjson.js";
@@ -818,7 +818,7 @@ function prepField(c, inp) {
 
 export function onKey(e) {
   if (e.key === "Enter" && e.target.dataset && e.target.dataset.pf) { e.preventDefault(); e.target.blur(); return; } // veld op de kaart: klaar = opslaan
-  if (spellOpen()) { if (e.key === "Escape") { e.preventDefault(); closeSpell(); } return; } // ligt boven alle andere panelen: toetsen niet naar het cijferpad eronder
+  if (spellOpen()) { if (e.key === "Escape") { e.preventDefault(); if (!spellEsc()) closeSpell(); } return; } // ligt boven alle andere panelen: toetsen niet naar het cijferpad eronder
   if (condOpen()) { if (e.key === "Escape") { e.preventDefault(); closeCond(); } return; } // conditie-uitleg (RE10): idem
   if (keysOpen()) { if (e.key === "Escape" || e.key === "?") { e.preventDefault(); closeKeys(); } return; } // overzicht sneltoetsen (GV10)
   if (ui.end && e.key === "Escape") { e.preventDefault(); closeEnd(); return; }
@@ -2066,6 +2066,8 @@ export function bindBackup(afterImport) {
     pending = data;
     const nMon = data.custom.length + data.imported.length, nLair = Object.keys(data.lairs).length;
     const what = [t("init.imp.party", { n: data.party.length }), t("init.imp.table", { n: data.S.list.length }), t("init.imp.mons", { n: nMon }), t("init.imp.lairs", { n: nLair }), t("init.imp.encs", { n: data.encounters.length })];
+    const nNote = Object.keys(data.spellNotes).length;
+    if (nNote) what.push(t("init.imp.notes", { n: nNote })); // alleen als er notities zijn (WP42)
     $("#imp-confirm").innerHTML = `<div class="confirmbox"><p style="margin:0">${esc(t("init.imp.has", { what }))} ${tb("init.imp.replaces", {}, t("init.imp.replacesB"))}</p>
       <div class="bar"><button type="button" class="btn primary" id="imp-yes">${esc(t("init.imp.go"))}</button><button type="button" class="btn small" id="imp-no">${esc(t("common.cancel"))}</button></div></div>`;
     $("#imp-confirm").scrollIntoView({ block: "nearest" }); // ook vanaf de welkomstkaart in beeld (AF10)
@@ -2079,8 +2081,8 @@ export function bindBackup(afterImport) {
   $("#imp-confirm").addEventListener("click", (e) => {
     if (e.target.id === "imp-no") { pending = null; $("#imp-confirm").innerHTML = ""; }
     if (e.target.id === "imp-yes" && pending) {
-      Object.assign(app, { S: pending.S, party: pending.party, lairs: pending.lairs, custom: pending.custom, imported: pending.imported, encounters: pending.encounters });
-      saveParty(); saveLairs(); saveLibrary(); saveEncounters(); // ook opslaan (en de monsterbibliotheek bijwerken), niet alleen de lopende encounter
+      Object.assign(app, { S: pending.S, party: pending.party, lairs: pending.lairs, custom: pending.custom, imported: pending.imported, encounters: pending.encounters, spellNotes: pending.spellNotes });
+      saveParty(); saveLairs(); saveLibrary(); saveEncounters(); saveSpellNotes(); resetNoteUndo(); // ook opslaan (en de monsterbibliotheek bijwerken), niet alleen de lopende encounter
       markExported(); paintExpLast(); // de data komt uit een export: die bestaat dus al ergens
       pending = null; $("#imp-confirm").innerHTML = ""; $("#imp-text").value = "";
       afterImport();

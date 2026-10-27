@@ -858,6 +858,14 @@ export default {
   "init.spell.ddb": "Zoek op D&D Beyond ↗",
   "init.spell.loading": "Laden…",
   "init.spell.ed": "Editie",
+  "init.spell.note": "Jouw notitie",
+  "init.spell.noteAdd": "Notitie toevoegen",
+  "init.spell.noteEdit": "Bewerk",
+  "init.spell.noteDel": "Notitie wissen",
+  "init.spell.notePh": "bijv. Bonus action · 90 ft · 1 uur, concentratie. 1d6 necrotic bij een treffer.",
+  "init.spell.noteGone": "Notitie gewist.",
+  "init.spell.noteBack": "Notitie teruggezet.",
+  "init.spell.noteFull": "Te veel notities; wis er eerst een.",
   "init.aoe.tabsAria": "Schade of spell",
   "init.sp.go": {
     "one": "{spell} op {n} doel",
@@ -1079,6 +1087,10 @@ export default {
   "init.imp.encs": {
     "one": "{n} klaargezette encounter",
     "other": "{n} klaargezette encounters"
+  },
+  "init.imp.notes": {
+    "one": "{n} spell-notitie",
+    "other": "{n} spell-notities"
   },
   "init.imp.has": "Deze export bevat {what}.",
   "init.imp.replaces": "Importeren {b} alles wat nu in de app staat.",

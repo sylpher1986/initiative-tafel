@@ -858,6 +858,14 @@ export default {
   "init.spell.ddb": "Search on D&D Beyond ↗",
   "init.spell.loading": "Loading…",
   "init.spell.ed": "Edition",
+  "init.spell.note": "Your note",
+  "init.spell.noteAdd": "Add note",
+  "init.spell.noteEdit": "Edit",
+  "init.spell.noteDel": "Delete note",
+  "init.spell.notePh": "e.g. Bonus action · 90 ft · 1 hour, concentration. 1d6 necrotic on hit.",
+  "init.spell.noteGone": "Note deleted.",
+  "init.spell.noteBack": "Note restored.",
+  "init.spell.noteFull": "Too many notes; delete one first.",
   "init.aoe.tabsAria": "Damage or spell",
   "init.sp.go": {
     "one": "{spell} on {n} target",
@@ -1079,6 +1087,10 @@ export default {
   "init.imp.encs": {
     "one": "{n} prepared encounter",
     "other": "{n} prepared encounters"
+  },
+  "init.imp.notes": {
+    "one": "{n} spell note",
+    "other": "{n} spell notes"
   },
   "init.imp.has": "This export contains {what}.",
   "init.imp.replaces": "Importing {b} everything currently in the app.",

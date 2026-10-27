@@ -115,7 +115,7 @@ Plan: projectdoc `claude/werkpakketten-2.1.md`. Volgorde = uitvoervolgorde; WP43
 | ~~Nazorg~~ | Knoprand ook op seg-keuzes, aanvalsuitklap en doelrijen in donker (klaar) | HS16 | 2.0.2 |
 | ~~**WP40**~~ | Engelse tekst P3 (klaar) | TA19 | 2.0.3 |
 | ~~**WP41**~~ | Surprise zonder spelers, links naar de spell-uitleg, drie tekstpunten uit de WP40-vertaalcheck (klaar) | RE5, RE6a, TA20 | 2.1.0 |
-| **WP42** | Eigen notitie bij niet-SRD-spells, export versie 3 | RE6b | 2.2.0 |
+| ~~**WP42**~~ | Eigen notitie bij niet-SRD-spells, export versie 3 (klaar) | RE6b | 2.2.0 |
 | **WP43** | Technische schuld: logboek in undo, pdf.js zelf hosten | TS3, TS1 | 2.x.1 |
 | Backlog | 2024-regels (eigen traject, eerst inventaris), fase 2 en 3 | RE4 | |
 
@@ -141,7 +141,7 @@ Rapport: projectdoc `claude/persona-test-en.md`. P1's opgelost in 1.52.1. Vóór
 - [ ] **RE4 2024-regels buiten spells** (rust sinds 27-10: later een eigen traject, eerst een inventaris) (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen
 - [x] **RE5 Surprise:** keuze ook zonder spelers aan tafel (klaar, WP41, 2.1.0: schakelaar "Monsters verrast" naast Start)
 - [x] **RE15 Eigen death save-worp invoeren** (P3): getal typen (nat 20 = 1 HP, nat 1 = twee fails), zoals het cijferpad bij initiative.
-- [ ] **RE6 Spell-uitleg:** ~~**RE6a**~~ link vanuit AoE-Spell en Effect-presets (klaar, WP41, 2.1.0); **RE6b** eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie, WP42)
+- [x] **RE6 Spell-uitleg:** ~~**RE6a**~~ link vanuit AoE-Spell en Effect-presets (klaar, WP41, 2.1.0); ~~**RE6b**~~ eigen notitie voor niet-SRD-spells (klaar, WP42, 2.2.0: export versie 3)
 
 ## Spelers en D&D Beyond
 - Later, als het nodig blijkt: handmatige "Defenses" op de D&D Beyond-sheet (`customDefenseAdjustments`) inlezen; tijdelijke resistances (Rage, Absorb Elements, Protection from Energy) als effect-preset.

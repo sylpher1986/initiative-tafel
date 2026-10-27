@@ -3,8 +3,9 @@
 // js/ui/spellrules.js); staat de spell in beide, dan wisselt de schakelaar 2014 | 2024 alleen voor dit paneel. Rekent de app
 // voor die spell anders per editie (rulesDiffer), dan zegt een regel dat je ter vergelijking leest.
 // Alleen UI: niets hiervan zit in de encounter, undo of opslag. Data wordt bij de eerste tik geladen (js/data/spells.js).
-import { $, esc } from "./util.js";
-import { app } from "../state.js";
+import { $, esc, toast, toastBad, toastHtml, closeToast } from "./util.js";
+import { app, saveSpellNotes } from "../state.js";
+import { noteFor, setNote, NOTE_MAX } from "../data/spellnotes.js";
 import { diceify } from "./statblock.js";
 import { ORD } from "../rules/spells.js";
 import { loadSpells, findSpell, spellSrc, normSpell, EDS, pickEd, spellsLoaded } from "../data/spells.js";
@@ -13,13 +14,15 @@ import { rulesEd } from "./spellrules.js";
 import { edFor, sheetEd } from "../rules/spells.js";
 import { t } from "../i18n/boot.js";
 
-let cur = null;   // { n: naam zoals getikt, cid: speler (terugval uit de sheet), ed: gekozen editie (null = instelling Spells), busy, err } of null
+let cur = null;   // { n: naam zoals getikt, cid: speler (terugval uit de sheet), ed: gekozen editie (null = instelling Spells), busy, err, edit, draft } of null
 let from = null;  // knop die het paneel opende (focus terug bij sluiten)
+let lastDel = null; // WP42: laatst gewiste notitie { n, t } voor de knop Undo in de melding (notities zitten niet in undo)
+const NOTE_WARN = 400; // teller pas vanaf hier
 
 export const spellOpen = () => !!cur;
 
 export function openSpell(btn) {
-  cur = { n: btn.dataset.spell, cid: btn.dataset.cid || "", ed: null, busy: true, err: "" };
+  cur = { n: btn.dataset.spell, cid: btn.dataset.cid || "", ed: null, busy: true, err: "", edit: false, draft: "" };
   from = btn;
   paint();
   $("#rsheet .rsheet")?.focus();
@@ -78,6 +81,18 @@ function sheetSpell(cid, n) {
   return null;
 }
 
+/** WP42: notitie tonen (gebruikersinhoud: esc, regels via pre-wrap) */
+const noteShow = (note) => `<div class="rnote"><div class="rnhead"><span class="rnlab">${esc(t("init.spell.note"))}</span>
+  <button type="button" class="link" data-rnote="edit">${esc(t("init.spell.noteEdit"))}</button></div><div class="rntxt">${esc(note.t)}</div></div>`;
+const count = (n) => (n >= NOTE_WARN ? `${n}/${NOTE_MAX}` : "");
+/** WP42: bewerkstand; Delete alleen als er al een notitie is (leeg opslaan wist ook) */
+const noteEdit = (c, has) => `<div class="rnote"><label class="rnlab" for="r-note">${esc(t("init.spell.note"))}</label>
+  <textarea id="r-note" maxlength="${NOTE_MAX}" rows="4" placeholder="${esc(t("init.spell.notePh"))}">${esc(c.draft)}</textarea>
+  <div class="bar rnbar"><button type="button" class="btn primary small" data-rnote="save">${esc(t("common.save"))}</button>
+  <button type="button" class="btn small" data-rnote="cancel">${esc(t("common.cancel"))}</button>
+  <span class="rncount" aria-live="polite">${count(c.draft.length)}</span>
+  ${has ? `<button type="button" class="link rndel" data-rnote="del">${esc(t("init.spell.noteDel"))}</button>` : ""}</div></div>`;
+
 function body(c) {
   // de app rekent met de editie op de sheet van de speler (als hij de spell daar heeft), anders met de instelling Spells
   const who = c.cid && app.S.list.find((x) => x.id === c.cid), pref = edFor(who, c.n, rulesEd());
@@ -98,12 +113,16 @@ function body(c) {
   }
   const sh = sheetSpell(c.cid, c.n);
   const q = `https://www.dndbeyond.com/spells?filter-search=${encodeURIComponent(c.n)}`;
+  // WP42: eigen notitie. Bestaande altijd tonen (ook offline: staat los van de spelldata); toevoegen alleen als beide
+  // edities geladen zijn, want alleen dan staat vast dat de spell niet in de SRD staat.
+  const note = noteFor(app.spellNotes, c.n), all = !c.err && EDS.every((e) => spellsLoaded(e));
   const state = c.err ? `<p class="hint">${esc(t("init.spell.err", { reason: c.err }))}</p>`
-    : EDS.every((e) => spellsLoaded(e)) ? `<p class="hint">${esc(t("init.spell.noSrd"))}</p>`
+    : all ? (note || c.edit ? "" : `<p class="hint">${esc(t("init.spell.noSrd"))}</p>`)
     : `<p class="hint">${esc(t("init.spell.notFound", { a: EDS.filter((e) => spellsLoaded(e)).map((e) => SRD[e]), b: EDS.filter((e) => !spellsLoaded(e)).map((e) => SRD[e]) }))}</p>`;
+  const nb = c.edit ? noteEdit(c, !!note) : note ? noteShow(note) : all ? `<p><button type="button" class="btn small" data-rnote="add">${esc(t("init.spell.noteAdd"))}</button></p>` : "";
   return { title: sh ? sh.n : c.n, html: `${sh ? `<p class="rmeta">${sh.lvl ? `${ORD[sh.lvl]}-level spell` : "Cantrip"}${/concentration/i.test(sh.dur || "") ? ' <span class="tag m">Conc</span>' : ""}</p>
       ${grid([["Casting time", sh.time], ["Range", sh.range], ["Duration", sh.dur], ["To hit / DC", sh.hit && sh.hit !== "--" ? sh.hit : ""], [esc(t("init.eff.note")), sh.notes, true]])}` : ""}
-    ${state}<p><a class="btn small" href="${esc(q)}" target="_blank" rel="noopener noreferrer">${esc(t("init.spell.ddb"))}</a></p>` };
+    ${nb}${state}<p><a class="btn small" href="${esc(q)}" target="_blank" rel="noopener noreferrer">${esc(t("init.spell.ddb"))}</a></p>` };
 }
 
 function paint() {
@@ -122,12 +141,63 @@ function paint() {
       ${sw}${b.html}
     </div>`;
   el.hidden = false;
+  const ta = el.querySelector("#r-note");
+  if (ta) ta.addEventListener("input", () => { if (cur) { cur.draft = ta.value; el.querySelector(".rncount").textContent = count(ta.value.length); } });
   if (focused) ((onSw && el.querySelector(".rsw [aria-pressed=true]")) || el.querySelector(".rsheet")).focus();
+}
+
+/** Display-naam voor de notitie: zoals de sheet hem schrijft, anders zoals getikt */
+const noteName = (c) => sheetSpell(c.cid, c.n)?.n || c.n;
+
+/** WP42: knoppen van de notitie. Focus: textarea bij openen (in de tik zelf, anders geen toetsenbord op iOS), daarna terug. */
+function noteAct(a) {
+  const c = cur;
+  if (a === "add" || a === "edit") {
+    c.edit = true; c.draft = noteFor(app.spellNotes, c.n)?.t || ""; paint();
+    const ta = $("#r-note");
+    if (ta) { ta.focus({ preventScroll: true }); ta.setSelectionRange(ta.value.length, ta.value.length); ta.scrollIntoView({ block: "nearest" }); }
+    return;
+  }
+  const old = noteFor(app.spellNotes, c.n);
+  if (a === "save" || a === "del") {
+    const text = a === "del" ? "" : ($("#r-note")?.value ?? c.draft);
+    const next = setNote(app.spellNotes, noteName(c), text);
+    if (next === app.spellNotes && text.trim() && !old) { c.draft = text; toastBad(t("init.spell.noteFull")); return; } // maximum aantal: bewerkstand en tekst blijven
+    if (next !== app.spellNotes && old?.t !== text.trim()) { app.spellNotes = next; saveSpellNotes(); } // ongewijzigd: niet opslaan (exportherinnering)
+    c.edit = false; c.draft = ""; paint(); focusNote();
+    if (old && !noteFor(app.spellNotes, c.n)) { // gewist (ook leeg opslaan): eigen Undo, want Ongedaan in de beurtbalk zet een notitie niet terug
+      lastDel = { ...old };
+      toastHtml(`${esc(t("init.spell.noteGone"))} <button class="tundo" id="toast-noteundo">${esc(t("common.undo"))}</button>`);
+    }
+    return;
+  }
+  c.edit = false; c.draft = ""; paint(); focusNote(); // cancel
+}
+const focusNote = () => ($('#rsheet [data-rnote="edit"]') || $('#rsheet [data-rnote="add"]') || $("#rsheet .rsheet"))?.focus();
+
+/** Na een import: Undo van een eerder gewiste notitie mag niet in de nieuwe set terechtkomen */
+export const resetNoteUndo = () => { lastDel = null; };
+
+/** Escape tijdens bewerken: alleen de bewerkstand sluiten (true = afgehandeld) */
+export function spellEsc() {
+  if (!cur || !cur.edit) return false;
+  noteAct("cancel");
+  return true;
 }
 
 /** Klikken in het paneel en op tikbare namen; true = afgehandeld */
 export function spellClick(e) {
   if (e.target.closest('[data-rsh="close"]')) { closeSpell(); return true; }
+  const nt = e.target.closest("#rsheet [data-rnote]");
+  if (nt) { if (cur) noteAct(nt.dataset.rnote); return true; }
+  if (e.target.closest("#toast-noteundo")) {
+    const back = !!lastDel && !noteFor(app.spellNotes, lastDel.n);
+    if (back) { app.spellNotes = setNote(app.spellNotes, lastDel.n, lastDel.t); saveSpellNotes(); }
+    lastDel = null; closeToast();
+    if (back) toast(t("init.spell.noteBack"));
+    if (cur && !cur.edit) paint();
+    return true;
+  }
   const r = e.target.closest("#rsheet [data-red]");
   if (r) { if (cur) { cur.ed = r.dataset.red; paint(); $("#rsheet .rsheet").scrollTop = 0; } return true; }
   const b = e.target.closest("button[data-spell]");
