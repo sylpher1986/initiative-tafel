@@ -9,7 +9,7 @@ export default {
   "duivel|duivels": "devil", "demoon|demonen": "demon", "ridder|ridders": "knight", "wacht|wachter|wachters|bewaker|bewakers": "guard",
   "soldaat|soldaten": "guard|veteran|warrior", "priester|priesters": "priest|acolyte", "tovenaar|tovenaars|magiër": "mage", "heks|heksen": "hag",
   "dwerg|dwergen": "duergar", "kabouter|kabouters|gnoom": "gnome", "ork|orks": "orc", "trol|trollen": "troll", "aap|apen": "ape|baboon",
-  "paard|paarden": "horse|pony|warhorse|pegasus", "krokodil|krokodillen": "crocodile", "nijlpaard|nijlpaarden": "hippopotamus", "zeepaardje|zeepaardjes": "seahorse", "piraat|piraten": "pirate", // WP49: SRD 5.2-namen
+  "paard|paarden": "horse|pony|warhorse|pegasus", "krokodil|krokodillen": "crocodile", "nijlpaard|nijlpaarden": "hippopotamus", "zeepaardje|zeepaardjes": "seahorse", "piraat|piraten": "pirate|bandit", // WP49: SRD 5.2-namen
   "haai|haaien": "shark", "adelaar|arend": "eagle",
   "uil|uilen": "owl", "vleermuis|vleermuizen": "bat", "kat|katten": "cat", "hond|honden": "dog|mastiff|jackal|hound", "everzwijn|zwijn": "boar",
   "kever|kevers": "beetle", "zwerm": "swarm", "slijm": "ooze|pudding|jelly|cube", "raaf|raven|kraai": "raven", "kikker|kikkers": "frog",

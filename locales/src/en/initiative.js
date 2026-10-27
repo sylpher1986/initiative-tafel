@@ -228,7 +228,7 @@ export default {
   "init.mon.edGo": "Search {src} ▸", // WP49: regel onder de lijst; src = "SRD 5.2 (2024)", niet vertaald
   "init.mon.edBack": "Back to {src} ▸",
   "init.mon.edLoading": "Loading {src}…",
-  "init.mon.edFail": "{src} couldn't load. Try again when you're online.",
+  "init.mon.edFail": "{src} couldn't be loaded. Try again when you're online.",
   "init.mon.badCr": "CR not recognized. Use e.g. cr 5, cr 1/2 or cr 2-4.",
   "init.mon.found": { one: "{label} · {n} monster", other: "{label} · {n} monsters" },
   "init.mon.addBtn": "Add {what}", // knop: "Add 2× Goblin (hidden)"

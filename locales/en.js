@@ -258,7 +258,7 @@ export default {
   "init.mon.edGo": "Search {src} ▸",
   "init.mon.edBack": "Back to {src} ▸",
   "init.mon.edLoading": "Loading {src}…",
-  "init.mon.edFail": "{src} couldn't load. Try again when you're online.",
+  "init.mon.edFail": "{src} couldn't be loaded. Try again when you're online.",
   "init.mon.badCr": "CR not recognized. Use e.g. cr 5, cr 1/2 or cr 2-4.",
   "init.mon.found": {
     "one": "{label} · {n} monster",

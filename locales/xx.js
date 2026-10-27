@@ -258,7 +258,7 @@ export default {
   "init.mon.edGo": "[Séárçh {src} ▸ ····]",
   "init.mon.edBack": "[Báçk tö {src} ▸ ····]",
   "init.mon.edLoading": "[Löádíñg {src}… ····]",
-  "init.mon.edFail": "[{src} çöüldñ't löád. Trý ágáíñ whéñ ýöü'ré öñlíñé. ················]",
+  "init.mon.edFail": "[{src} çöüldñ't bé löádéd. Trý ágáíñ whéñ ýöü'ré öñlíñé. ··················]",
   "init.mon.badCr": "[ÇR ñöt réçögñízéd. Üsé é.g. çr 5, çr 1/2 ör çr 2-4. ··················]",
   "init.mon.found": {
     "one": "[{label} · {n} möñstér ····]",
