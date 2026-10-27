@@ -25,7 +25,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { SUPPORTED, LIVE, DEFAULT, fallbackIn, pathFor, langBase } from "../js/i18n/lang.js";
+import { SUPPORTED, LIVE, DEFAULT, fallbackIn, pathFor, langBase, PREF_KEY, TAB_KEY } from "../js/i18n/lang.js";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
@@ -87,9 +87,24 @@ export function fillText(tpl, cat, src = "") {
   });
 }
 
-/** App-pagina in een taal: banner na de doctype, {{lang}} (taalcode), {{base}} (voorvoegsel: "" of "/nl", WP44) en de teksten ingevuld */
+/** WP44: inline script voor de Engelse app-pagina (/initiative/ = start_url van elk manifest). Zelfde regel als
+ *  launchRedirect in js/i18n/lang.js, maar vóór de eerste paint, zodat een Nederlandse geïnstalleerde app niet eerst
+ *  het Engelse scherm toont. Alleen standalone, alleen zonder voorvoegsel; nooit een fout. tests/wp44.test.js voert het
+ *  uit tegen launchRedirect. Andere talen krijgen niets (een voorvoegsel wint altijd). */
+export function launchScript(live = LIVE) {
+  const others = JSON.stringify(live.filter((l) => l !== DEFAULT));
+  return `<script>(function(){try{var w=window,n=navigator,L=${others},q=function(m){try{return w.matchMedia("(display-mode: "+m+")").matches}catch(e){return false}};`
+    + `if(!(n.standalone===true||q("standalone")||q("fullscreen")||q("minimal-ui")))return;`
+    + `var b=function(t){t=String(t||"").toLowerCase().split(/[-_]/)[0];return t==="${DEFAULT}"||L.indexOf(t)>=0?t:null},x=null,p=null;`
+    + `try{x=b(sessionStorage.getItem("${TAB_KEY}"))}catch(e){}try{p=b((JSON.parse(localStorage.getItem("${PREF_KEY}"))||{}).lang)}catch(e){}`
+    + `var g=x||p;if(!g){var a=n.languages&&n.languages.length?n.languages:[n.language];for(var i=0;i<a.length&&!g;i++)g=b(a[i])}`
+    + `if(g&&g!=="${DEFAULT}")location.replace("/"+g+location.pathname+location.search+location.hash)}catch(e){}})()</script>`;
+}
+
+/** App-pagina in een taal: banner na de doctype, {{lang}} (taalcode), {{base}} (voorvoegsel: "" of "/nl", WP44),
+ *  {{launch}} (launchScript, alleen Engels) en de teksten ingevuld */
 export function appPage(tpl, src, lang, cat = {}) {
-  const out = fillText(tpl.replaceAll("{{lang}}", lang).replaceAll("{{base}}", langBase(lang)), cat, src);
+  const out = fillText(tpl.replaceAll("{{lang}}", lang).replaceAll("{{base}}", langBase(lang)).replaceAll("{{launch}}", lang === DEFAULT ? launchScript() : ""), cat, src);
   if (out.includes("{{")) throw new Error(`${src}: onbekende plaatshouder ${out.slice(out.indexOf("{{"), out.indexOf("{{") + 30)}`);
   return out.replace(/^(<!doctype html>\n)/i, `$1${banner(src)}`);
 }

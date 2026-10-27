@@ -158,18 +158,11 @@ test("geen open redirect: elke doorverwijzing blijft op dezelfde host", () => {
   }
 });
 
-test("WP22: offered en debugStored: kiezer en automatische keuze uit LIVE, in de debugstand alle talen", async () => {
-  const { offered, debugStored, DEBUG_KEY, DEBUG_MODES } = await import("../js/i18n/lang.js");
+test("WP22: offered: kiezer en automatische keuze uit LIVE, in de debugstand alle talen", async () => {
+  const { offered, DEBUG_KEY, DEBUG_MODES } = await import("../js/i18n/lang.js");
   assert.deepEqual(offered(false), LIVE);
   assert.deepEqual(offered(true), SUPPORTED);
-  const st = (v) => ({ getItem: (k) => (k === DEBUG_KEY ? v : null) });
   assert.deepEqual(DEBUG_MODES, ["debug", "xx"]);
-  assert.equal(debugStored(st("debug")), true);
-  assert.equal(debugStored(st("xx")), true);
-  assert.equal(debugStored(st("off")), false);
-  assert.equal(debugStored(st(null)), false);
-  assert.equal(debugStored(null), false, "geen opslag = uit");
-  assert.equal(debugStored({ getItem() { throw new Error("geblokkeerd"); } }), false, "nooit een fout");
   const boot = await import("../js/i18n/boot.js");
   assert.equal(boot.DEBUG_KEY, DEBUG_KEY, "één sleutel voor boot en lang.js");
 });

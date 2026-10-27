@@ -355,7 +355,7 @@ const SCEN = {
     await ctx.addInitScript(() => { try { localStorage.setItem("it-tour", "pf"); } catch { /* geen opslag */ } });
     const p = await ctx.newPage();
     try {
-      await p.goto(base + "/en/initiative/"); await p.waitForSelector("#dock");
+      await p.goto(base + "/initiative/"); await p.waitForSelector("#dock");
       const ready = await p.evaluate(async () => {
         await navigator.serviceWorker.register("/sw.js", { scope: "/" });
         await navigator.serviceWorker.ready;
@@ -935,7 +935,7 @@ async function main() {
       const m = await page.evaluate(measure).catch((e) => ({ hscroll: NaN, small: [], err: e.message }));
       if (m.unt && m.unt.length) errs.push("niet vertaald: " + m.unt.join(" "));
       // WP32: in en geen Nederlandse tekst op het scherm (behalve wat het scenario zelf intypt; de oude export is inhoud)
-      if (m.lang === "en" && mode !== "xx" && name !== "i18n-legacy" && m.lines) { // taal van de pagina (i18n-switch eindigt op /en/)
+      if (m.lang === "en" && mode !== "xx" && name !== "i18n-legacy" && m.lines) { // taal van de pagina (i18n-switch eindigt op de Engelse app)
         const nl = m.lines.filter((l) => isDutch(noPaths(OWN.reduce((x, o) => x.split(o).join(" "), l))));
         if (nl.length) errs.push("Nederlandse tekst: " + nl.slice(0, 3).map((l) => JSON.stringify(l.slice(0, 60))).join(" | "));
       }

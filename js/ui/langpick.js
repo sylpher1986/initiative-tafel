@@ -3,7 +3,7 @@
 // apparaat) + location.replace naar dezelfde pagina met de andere prefix (query en hash blijven, ook ?k=). De pagina
 // herlaadt: stand en undo uit IndexedDB (DA2), de kamer verbindt opnieuw (it-room), het tabblad claimt opnieuw (DA3).
 // Alleen zichtbaar bij meer dan één taal in offered() (sinds WP33 altijd: Engels en Nederlands live).
-import { offered, normLang, prefStore, switchPath, DEFAULT } from "../i18n/lang.js";
+import { offered, normLang, prefStore, switchPath, DEFAULT, TAB_KEY } from "../i18n/lang.js";
 import { t, i18nDebug } from "../i18n/boot.js";
 import { esc } from "./util.js";
 
@@ -22,6 +22,7 @@ export function switchLang(lang, { loc = location, store = prefStore(), cur = pa
   const l = normLang(lang);
   if (!l) return false;
   store.set(l); // lukt dit niet (privémodus), dan wisselt alleen deze pagina; een /nl/-link blijft Nederlands
+  try { sessionStorage.setItem(TAB_KEY, l); } catch { /* geen sessionStorage: dan alleen de voorkeur */ } // WP44: geïnstalleerde app (launchRedirect)
   if (l === cur) return false;
   loc.replace(switchPath(loc.pathname, l) + (loc.search || "") + (loc.hash || ""));
   return true;

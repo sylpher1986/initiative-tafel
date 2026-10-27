@@ -4,7 +4,7 @@ import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { build, urlOf, dirOf, APP_PAGES, REDIRECTS, fillText, HOME_PAGE, SITE, OG_IMAGE, NOT_CACHED, HIDDEN, seoHead, langNav, sitemap, robots } from "../tools/pages.mjs";
+import { build, urlOf, dirOf, launchScript, APP_PAGES, REDIRECTS, fillText, HOME_PAGE, SITE, OG_IMAGE, NOT_CACHED, HIDDEN, seoHead, langNav, sitemap, robots } from "../tools/pages.mjs";
 import { htmlStrings, isDutch } from "../tools/i18n-audit.mjs";
 import { target } from "../js/i18n/redirect.js";
 import { SUPPORTED, LIVE, pathFor, langBase } from "../js/i18n/lang.js";
@@ -120,7 +120,7 @@ const skeleton = (h) => [...h.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "<sc
   .map((m) => m[0].replace(/\s(aria-label|placeholder|title|alt|content|data-label|on[a-z]+|lang)="[^"]*"/g, " $1"));
 test("elke taal heeft hetzelfde skelet als het sjabloon (alleen tekst verschilt)", () => {
   for (const [rest, src] of Object.entries(APP_PAGES)) {
-    for (const lang of SUPPORTED) assert.deepEqual(skeleton(files[`${dirOf(lang, rest)}index.html`]), skeleton(read(src).replaceAll("{{lang}}", lang).replaceAll("{{base}}", langBase(lang))), `${lang}/${rest}`);
+    for (const lang of SUPPORTED) assert.deepEqual(skeleton(files[`${dirOf(lang, rest)}index.html`]), skeleton(read(src).replaceAll("{{lang}}", lang).replaceAll("{{base}}", langBase(lang)).replaceAll("{{launch}}", lang === "en" ? launchScript() : "")), `${lang}/${rest}`);
   }
 });
 

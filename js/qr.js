@@ -1,5 +1,5 @@
 // QR-code (ISO 18004), eigen kleine encoder: alleen byte-modus, foutcorrectie M, versie 1–10 (tot 213 bytes).
-// Genoeg voor de spelerslink (`…/speler?k=K7M3QX`, ± 63 tekens → versie 5, 37 × 37 modules). Puur, geen DOM.
+// Genoeg voor de spelerslink (`…/nl/initiative/player/?k=K7M3QX`, ± 78 tekens → versie 5, 37 × 37 modules). Puur, geen DOM.
 // Opzet volgt de bekende referentie-implementatie (Nayuki, MIT): functiepatronen, data + Reed-Solomon, maskers met strafpunten.
 
 // per versie 1–10, foutcorrectie M: ECC-codewoorden per blok en aantal blokken

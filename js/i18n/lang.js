@@ -18,6 +18,9 @@ export const DEFAULT = "en";
 export const LOCALES = { en: "en-GB", nl: "nl-NL" }; // en-GB: "12 Oct 2026" en 24-uursklok (vertaalagent WP20); spelling blijft Amerikaans (PHB)
 /** localStorage-sleutel van de voorkeur (platformbreed voorvoegsel kevs-) */
 export const PREF_KEY = "kevs-lang";
+/** sessionStorage-sleutel: taal die in dit venster met de taalkiezer gekozen is (WP44). Gaat in een geïnstalleerde
+ *  app voor de voorkeur (launchRedirect), zodat kiezen ook werkt als localStorage niet schrijft. */
+export const TAB_KEY = "kevs-lang-tab";
 /** localStorage-sleutel: eenmalige overgang bij Engels live (WP33) is gedaan op dit apparaat (adoptExisting) */
 export const ADOPT_KEY = "kevs-lang-adopt";
 /** localStorage-sleutel van de i18n-debugstand (?i18n=debug|xx|off, zie boot.js) */
@@ -28,10 +31,6 @@ export const DEBUG_MODES = ["debug", "xx"];
 /** Talen in de taalkiezer en voor de automatische keuze: LIVE, in de debugstand alle ondersteunde (WP22; voor een
  *  toekomstige taal die nog niet live is). De kiezer is er alleen bij meer dan één taal. */
 export const offered = (debug) => (debug ? SUPPORTED : LIVE);
-/** Staat de debugstand aan volgens de opslag? Nooit een fout (geen opslag = uit). */
-export function debugStored(storage) {
-  try { const s = storage === undefined ? globalThis.localStorage : storage; return DEBUG_MODES.includes(s ? s.getItem(DEBUG_KEY) : null); } catch { return false; }
-}
 
 // Eerste padsegment dat op een taalcode lijkt ("nl", "en-gb"); mappen van de app tellen nooit als taal.
 // Een nieuwe map of pagina van twee letters (/qr/, /tv/) moet in RESERVED, anders telt hij als ongeldig taalprefix.
@@ -119,13 +118,14 @@ export function resolveLang({ path = "/", search = "", hash = "" } = {}) {
  * Taal waarin een beginscherm-app opent (WP44). Alle manifesten hebben start_url "/initiative/" (id "/" ongewijzigd,
  * zodat bestaande installaties één app blijven). Vóór 2.3.0 was dat een doorverwijzer naar de taal van voorkeur of
  * browser; nu is het de Engelse app. Alleen in een geïnstalleerde app (standalone) en alleen op een adres zonder
- * voorvoegsel kiest de app daarom nog: voorkeur (taalkiezer, adoptExisting) → browsertaal → Engels. De website zelf
- * verwijst nooit automatisch door.
+ * voorvoegsel kiest de app daarom nog: keuze in dit venster (tab, TAB_KEY) → voorkeur (taalkiezer, adoptExisting) →
+ * browsertaal → Engels. De website zelf verwijst nooit automatisch door. Zelfde regel als het inline script in de
+ * Engelse app-pagina (launchScript in tools/pages.mjs, vóór de eerste paint; tests/wp44.test.js vergelijkt ze).
  * @returns {string|null} adres in de andere taal (met search en hash), of null
  */
-export function launchRedirect({ path = "/", search = "", hash = "", standalone = false, pref = null, languages = [], live = LIVE } = {}) {
+export function launchRedirect({ path = "/", search = "", hash = "", standalone = false, tab = null, pref = null, languages = [], live = LIVE } = {}) {
   if (!standalone || parsePath(path).prefix) return null;
-  const lang = normLang(pref, live) || browserLang(languages, live) || fallbackIn(live);
+  const lang = normLang(tab, live) || normLang(pref, live) || browserLang(languages, live) || fallbackIn(live);
   return lang === DEFAULT ? null : pathFor(lang, path) + (search || "") + (hash || "");
 }
 

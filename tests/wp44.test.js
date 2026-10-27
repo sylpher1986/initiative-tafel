@@ -7,7 +7,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import vm from "node:vm";
 import { langFromPath, pathFor, joinUrl, launchRedirect, SUPPORTED, LIVE } from "../js/i18n/lang.js";
 import { enRedirect } from "../worker/index.js";
-import { build } from "../tools/pages.mjs";
+import { build, launchScript } from "../tools/pages.mjs";
 
 const ROOT = new URL("../", import.meta.url).pathname;
 const read = (p) => readFileSync(ROOT + p, "utf8");
@@ -58,6 +58,8 @@ test("beginscherm-app: alleen standalone en zonder voorvoegsel kiest de app voor
   assert.equal(launchRedirect({ path: "/nl/initiative/", standalone: true, pref: "en" }), null, "voorvoegsel wint altijd");
   assert.equal(launchRedirect({ path: "/nl/initiative/", standalone: true, pref: "nl" }), null, "geen lus");
   assert.equal(launchRedirect(), null);
+  assert.equal(go({ tab: "en", pref: "nl", languages: ["nl"] }), null, "keuze in dit venster wint (opslag schrijft niet)");
+  assert.equal(go({ tab: "nl", pref: "en" }), "/nl/initiative/");
   assert.match(read("js/main.js"), /if \(launchGo\(\)\) return;/, "main.js roept het aan vóór het laden");
   for (const f of ["manifest.webmanifest", "nl/manifest.webmanifest"]) {
     const m = JSON.parse(files[f]);
@@ -160,4 +162,32 @@ test("homepage-thema: zelfde sleutel en kleuren als js/theme.js; script in <head
     assert.match(h, /:root\[data-theme="dark"\]\{/, l);
   }
   assert.ok(LIVE.every((l) => homes.some(([x]) => x === l)));
+});
+
+test("inline launch-script (Engelse app-pagina, vóór de eerste paint) doet hetzelfde als launchRedirect; nooit een fout", () => {
+  const en = files["initiative/index.html"], nl = files["nl/initiative/index.html"];
+  const src = /<script>(\(function\(\)\{try\{var w=window[\s\S]*?)<\/script>/.exec(en)?.[1];
+  assert.ok(src && en.indexOf(src) < en.indexOf('<link rel="stylesheet"'), "in <head>, vóór de CSS");
+  assert.ok(!nl.includes("var w=window,n=navigator"), "alleen op de Engelse pagina");
+  assert.equal(launchScript(), "<script>" + src + "</script>");
+  const cases = [];
+  for (const standalone of [true, false]) for (const tab of [null, "en", "nl", "de"]) for (const pref of [null, "en", "nl", "kapot"])
+    for (const languages of [[], ["nl-NL"], ["de", "en-US"], ["fr"]]) cases.push({ standalone, tab, pref, languages });
+  for (const c of cases) {
+    let to = null;
+    const store = (v) => ({ getItem: () => v });
+    const ctx = {
+      window: { matchMedia: (q) => ({ matches: c.standalone && /standalone/.test(q) }) },
+      navigator: { languages: c.languages, language: c.languages[0] },
+      sessionStorage: store(c.tab),
+      localStorage: store(c.pref === "kapot" ? "{" : c.pref ? JSON.stringify({ lang: c.pref, t: 1 }) : null),
+      location: { pathname: "/initiative/", search: "?a=1", hash: "", replace: (u) => { to = u; } },
+      JSON, String,
+    };
+    vm.runInNewContext(src, ctx);
+    const want = launchRedirect({ path: "/initiative/", search: "?a=1", standalone: c.standalone, tab: c.tab, pref: c.pref === "kapot" ? null : c.pref, languages: c.languages });
+    assert.equal(to, want, JSON.stringify(c));
+  }
+  const boom = { window: { get matchMedia() { throw new Error("x"); } }, navigator: { standalone: true }, get sessionStorage() { throw new Error("blocked"); }, get localStorage() { throw new Error("blocked"); }, location: { pathname: "/initiative/" }, JSON, String };
+  assert.doesNotThrow(() => vm.runInNewContext(src, boom));
 });
