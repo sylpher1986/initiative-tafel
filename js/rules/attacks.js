@@ -181,13 +181,15 @@ const ADV_TGT = ["Blinded", "Paralyzed", "Petrified", "Restrained", "Stunned", "
  * Advantage en disadvantage samen heffen elkaar op (v = 0), ongeacht het aantal bronnen.
  * Geeft { v: 1|0|-1, adv: [reden], dis: [reden], hint: [reden] }; hint = hangt af van wat de app niet weet.
  */
-export function atkAdv(by, tgt, kind = "") {
+/** ed = regelset van de tafel: 2024 (WP51) geeft een Grappled-aanvaller een hint (doelwit ≠ grappler weet de app niet) */
+export function atkAdv(by, tgt, kind = "", ed = "2014") {
   const adv = [], dis = [], hint = [];
   const bc = (by && by.cond) || [], tc = (tgt && tgt.cond) || [];
   for (const k of DIS_BY) if (bc.includes(k)) dis.push(`${by.name} ${k}`);
   if (exhLevel(by) >= 3 && exhEd(by) !== "2024") dis.push(`${by.name} Exhaustion ${exhLevel(by)}`); // RE11: niveau 3+ disadvantage op aanvallen (2024: vaste straf, atkMods)
   if (bc.includes("Invisible")) adv.push(`${by.name} Invisible`);
   if (bc.includes("Frightened")) hint.push(t("rules.adv.fright", { name: by.name }));
+  if (ed === "2024" && bc.includes("Grappled")) hint.push(t("rules.adv.grap24", { name: by.name }));
   for (const k of ADV_TGT) if (tc.includes(k)) adv.push(`${tgt.name} ${k}`);
   if (tc.includes("Invisible")) dis.push(`${tgt.name} Invisible`);
   if (tc.includes("Prone")) {
@@ -257,11 +259,11 @@ export function atkWhy(label, atk, ac, parts, res) {
  * concentration save op het totaal. Crit op een speler op 0 HP = twee death save failures (tenzij de schade
  * ≥ max HP is: dan dood via applyDamage).
  */
-export function atkDamage(c, res) {
-  if (!(c.kind === "pc" && c.hp <= 0 && res.crit && !(c.ds && c.ds.dead))) return applyDamage(c, res.dealt, 1, true);
+export function atkDamage(c, res, ed = "2014") {
+  if (!(c.kind === "pc" && c.hp <= 0 && res.crit && !(c.ds && c.ds.dead))) return applyDamage(c, res.dealt, 1, true, ed);
   const temp = Math.min(c.temp || 0, res.dealt), rest = res.dealt - temp; // temp HP vangt eerst op, ook op 0 HP
-  if (rest <= 0 || rest >= c.max) return applyDamage(c, res.dealt, 1, true);
-  return merge(merge(wakeByDamage(c), temp ? applyDamage(c, temp, 1, true) : { msgs: [], why: [] }), critAtZero(c)); // schade = Sleep/Hypnotic Pattern weg
+  if (rest <= 0 || rest >= c.max) return applyDamage(c, res.dealt, 1, true, ed);
+  return merge(merge(wakeByDamage(c), temp ? applyDamage(c, temp, 1, true, ed) : { msgs: [], why: [] }), critAtZero(c)); // schade = Sleep/Hypnotic Pattern weg
 }
 
 /* ---------- GV11: volgorde van een multiattack ---------- */

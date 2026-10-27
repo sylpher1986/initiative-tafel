@@ -43,7 +43,6 @@ Plan met inventaris, besluiten (B1–B10) en per pakket scope en acceptatiecrite
 
 | Code | Wat | Na | Omvang |
 |---|---|---|---|
-| **WP51** | Conc-DC max 30 (`concDc`), surprise 2024, Grappled-hint | WP46, WP48 | M |
 | **WP52** | Condities-uitleg 2024, `ed` in de spelerssnapshot | WP46 | M |
 | **WP53** | Moeilijkheid 2024 (XP-budget SRD 5.2.1) en XP-label | WP46 | M |
 | **WP54** | Instellingen → Regels 2014 \| 2024 zichtbaar, Spells als subinstelling bij 2014 (UX-agent) | WP46–WP53 | M |

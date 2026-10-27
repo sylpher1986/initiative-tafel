@@ -165,17 +165,10 @@ Zie CLAUDE.md ("Gevecht: kaarten en panelen", "Exhaustion en Rage per editie"). 
 - WP52: `exhRows(x, ed)`/`exhSummary(lvl, ed)` en de sleutels `dnd.exh24.d20`/`dnd.exh24.speed` bestaan; `condInfo` krijgt `ed` nog niet mee.
 - WP51: `exhMod`/`initModText` zijn het patroon voor een vaste modifier op een worp; surprise 2024 (disadvantage op initiative) kan naast de Exhaustion-straf.
 
-### WP51 — Concentration-DC, surprise en Grappled volgens 2024
-1. **Doel**: R2–R4 rekenen met `ed`; 2014 onveranderd.
-2. **Huidige stand**: §1.5 R2–R4.
-3. **Scope**: één pure `concDc(dmg, ed)` in `js/rules/combat.js` (2024: `min(30, max(10, ½))`), gebruikt in `applyDamage` én het schadepaneel (`render.js` r. 912); surprise 2024: geen `skipsTurn`/reaction-blokkade/LA-blokkade/Parry-blokkade (`turns.js` r. 159–166, `legendary.js` r. 47, `monrules.js` r. 201), wel disadvantage op de initiativeworp in het initiative-paneel (`render.js` r. 248/508/641, `actions.js` r. 463/467/1825, `rerollMonsters`); Grappled-hint in `atkAdv` bij 2024.
-4. **Buiten scope**: Exhaustion (WP50), UI-keuze.
-5. **Aanpak**: zoals WP50; de surprise-keuze in het paneel blijft "Niemand | Monsters | Spelers", alleen de uitwerking verschilt.
-6. **Afhankelijk van**: WP46, WP48 (beide raken `turns.js`).
-7. **Acceptatie**: 70 schade op een concentrerende caster → DC 35 (2014) en 30 (2024), in regel én paneel gelijk; 2024: verraste monsters rollen 2 d20's (laagste telt, zichtbaar in de worptekst), krijgen hun beurt in ronde 1, reaction/legendary/Parry beschikbaar; 2014-surprise ongewijzigd (`surprise.test.js`); Grappled-aanvaller in 2024 krijgt de hint.
-8. **Tests**: `surprise.test.js`, `rules.test.js`, `legendary.test.js`, `initround.test.js`, `reroll.test.js`, `attacks.test.js`.
-9. **Klaar als**: tests groen, developer-review, versie, push.
-11. **Omvang**: M.
+### WP51 — Concentration-DC, surprise en Grappled: klaar in 2.8.0
+Zie CLAUDE.md ("Gevecht: kaarten en panelen", "Concentration-DC, surprise en Grappled per editie"). Voor latere pakketten:
+- WP54: alles leest al `rulesOf(app.S)`; de paneelhint (`SUR_HINT`) volgt vanzelf. Bij een regelwissel midden in ronde 1 blijft een 2014-`sur` staan tot `startCombat`/ronde 2 (geen omrekening nodig: de wissel hoort vóór het gevecht).
+- WP52: de conditie-uitleg van Grappled 2024 kan de hint `rules.adv.grap24` aanvullen; surprise heeft geen conditie-uitleg.
 
 ### WP52 — Condities-uitleg 2024 en spelersscherm
 1. **Doel**: uitleg van condities en Exhaustion volgt de tafelregels, ook op het spelersscherm.

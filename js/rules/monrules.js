@@ -165,13 +165,13 @@ export function riderImmune(r, m) {
  * (vooraf gerolde rider-schade), mode (resistance van het doel tegen dat type) }. active = wie aan de beurt is (duur).
  * Gefaald: condities (met duur en herhaalsave) en volle schade; geslaagd: halve schade of niets. Geeft Fx (+ saves).
  */
-export function applyRider(c, rd, ok, active) {
+export function applyRider(c, rd, ok, active, ed = "2014") {
   const out = fx();
   const lbl = `${rd.n || "Rider"} ${rd.ab} ${rd.dc}`;
   if (rd.dmg && rd.roll) {
     const raw = ok ? (rd.dmg.half ? Math.floor(rd.roll.total / 2) : 0) : rd.roll.total;
     out.why.push({ t: M(!ok ? "rules.rd.dmg" : rd.dmg.half ? "rules.rd.dmgHalf" : "rules.rd.dmgNone", { lbl, res: M(ok ? "rules.rd.ok" : "rules.rd.fail"), roll: rd.roll.txt, n: String(raw) }), id: c.id });
-    if (raw > 0) merge(out, applyDamage(c, raw, rd.mode ?? 1, true));
+    if (raw > 0) merge(out, applyDamage(c, raw, rd.mode ?? 1, true, ed));
   } else out.why.push({ t: M(!ok && rd.note ? "rules.rd.resNote" : "rules.rd.res", { lbl, res: M(ok ? "rules.rd.ok" : "rules.rd.fail"), note: rd.note || "" }), id: c.id });
   if (!ok && rd.conds.length) {
     c.cd = c.cd || {};

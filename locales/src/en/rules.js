@@ -98,6 +98,8 @@ export default {
   "rules.rerollWhy": "rerolled at Start",
   "rules.grpRoll": "group roll",
   "rules.reroll": "Monster initiative rerolled ({n}).",
+  "rules.surDis": "Surprised monsters: initiative with disadvantage ({n}).", // WP51 (2024): initiative kept, second d20 added
+  "rules.surDisWhy": "surprised: disadvantage",
   "rules.eff": "{name}: {what}.", // effect erbij; what = naam (+ uitleg)
   "rules.max0Why": "max HP to 0 from {what}",
   "rules.max0": "{name} dies: max HP 0 ({what}).",
@@ -162,6 +164,7 @@ export default {
   "rules.adv.fright": "{name} Frightened: disadvantage while the source is in sight",
   "rules.adv.proneFar": "{name} Prone (ranged)", // keep the part in parentheses: the UI drops it in short tags
   "rules.adv.prone": "{name} Prone: advantage within 5 ft, disadvantage from farther away",
+  "rules.adv.grap24": "{name} Grappled: disadvantage on attacks against anyone other than the grappler", // WP51 (2024)
   "rules.sp.tagImmune": "immune {what}", // short tag on a target row
   "rules.sp.tagHuman": "not humanoid",
   "rules.sp.tagHidden": "hidden",

@@ -93,14 +93,14 @@ function nextPhase(c, n) {
  * concentration save gefaald → concentratie weg (effecten volgen via commit); rider (RE13): conditie/schade zoals in
  * het aanvalspaneel. Geeft Fx terug (met saves: een concentration save door rider-schade).
  */
-export function resolveSave(S, sid, ok, note = "") {
+export function resolveSave(S, sid, ok, note = "", ed = "2014") {
   const out = fx();
   const s = (S.saves || []).find((x) => x.sid === sid);
   if (!s) return out;
   S.saves = S.saves.filter((x) => x !== s);
   const c = S.list.find((x) => x.id === s.id);
   if (!c || !isValid(S, s)) return out;
-  if (s.kind === "rider") return merge(out, applyRider(c, { ...s.rd, n: s.n }, ok, S.active));
+  if (s.kind === "rider") return merge(out, applyRider(c, { ...s.rd, n: s.n }, ok, S.active, ed));
   out.why.push({ t: M(`rules.sv.${ok ? "ok" : "fail"}${note ? "Note" : ""}`, { what: label(s), note }), id: c.id });
   if (s.kind === "cond" && ok) {
     c.cond = c.cond.filter((x) => x !== s.n);

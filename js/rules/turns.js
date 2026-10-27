@@ -168,15 +168,20 @@ export const reactUsed = (c, S, pcr = true) => !!c.reaction && !(c.max && c.hp <
 const clearSur = (list) => { for (const c of list) delete c.sur; };
 const clearSkip = (list) => { for (const c of list) { delete c.skipR; delete c.nextR; delete c.atR; } };
 
+/** Hoort c bij de verraste kant (who: "none" | "mon" | "pc")? Lair en wie al neer of dood is, niet. */
+export const surWho = (c, who) => c.kind !== "lair" && !isOut(c) && ((who === "mon" && c.kind === "monster") || (who === "pc" && c.kind === "pc"));
+
 /**
  * Bij Start gevecht (initiative-paneel): wie is verrast. who: "none" | "mon" | "pc".
  * Wie al neer of dood is, telt niet. startCombat zet daarna reaction en het overslaan.
+ * 2024 (WP51): verrast = alleen disadvantage op de initiativeworp (surDis); er wordt geen `sur` gezet, dus geen
+ * overgeslagen beurt en geen blokkade van reaction, legendary actions of Parry.
  */
-export function setSurprise(list, who) {
+export function setSurprise(list, who, ed = "2014") {
   const out = fx();
   for (const c of list) {
     delete c.sur;
-    if (c.kind !== "lair" && !isOut(c) && ((who === "mon" && c.kind === "monster") || (who === "pc" && c.kind === "pc"))) c.sur = true;
+    if (ed !== "2024" && surWho(c, who)) c.sur = true;
   }
   return out;
 }
@@ -185,15 +190,15 @@ export function setSurprise(list, who) {
  * Verrast aan/uit voor één deelnemer in ronde 1 (⋯): alleen zolang zijn beurt nog moet komen.
  * Uit: reaction weer beschikbaar. Geeft null als het nu niet kan.
  */
-export function canToggleSurprise(c, S) {
-  if (S.round !== 1 || c.kind === "lair" || isOut(c) || c.id === S.active) return false;
+export function canToggleSurprise(c, S, ed = "2014") {
+  if (ed === "2024" || S.round !== 1 || c.kind === "lair" || isOut(c) || c.id === S.active) return false;
   if (c.sur === true) return true;
   if (c.sur) return false; // beurt al overgeslagen
   const L = turnOrder(S, sortOrder(S.list));
   return L.findIndex((x) => x.id === c.id) > L.findIndex((x) => x.id === S.active);
 }
-export function toggleSurprise(c, S) {
-  if (!canToggleSurprise(c, S)) return null;
+export function toggleSurprise(c, S, ed = "2014") {
+  if (!canToggleSurprise(c, S, ed)) return null;
   const out = fx();
   if (c.sur === true) { delete c.sur; c.reaction = false; out.why.push({ t: M("rules.surNot"), id: c.id }); }
   else { c.sur = true; c.reaction = true; out.why.push({ t: M("rules.sur"), id: c.id }); }
@@ -416,11 +421,11 @@ export function removeCombatant(state, id, rng = Math.random) {
   return out;
 }
 
-/** Gevecht starten: ronde 1, eerste deelnemer die niet neer is, met start-van-beurt-effecten */
-export function startCombat(state, rng = Math.random) {
+/** Gevecht starten: ronde 1, eerste deelnemer die niet neer is, met start-van-beurt-effecten. ed: 2024 kent geen `sur`. */
+export function startCombat(state, rng = Math.random, ed = "2014") {
   for (const c of state.list) {
     if (c.la) c.la.left = c.la.max; // nieuw gevecht: legendary actions vol, ook vóór de eigen beurt
-    if (c.sur && !isOut(c)) { c.sur = true; c.reaction = true; } else delete c.sur; // verrast: geen reaction tot de eigen beurt voorbij is
+    if (c.sur && !isOut(c) && ed !== "2024") { c.sur = true; c.reaction = true; } else delete c.sur; // verrast: geen reaction tot de eigen beurt voorbij is (2024: vangnet tegen rare data)
   }
   state.round = 1;
   state.active = null;
@@ -465,6 +470,14 @@ export function dropIds(state, gone) {
 /** WP50: " − 4 Exhaustion 2" achter een initiativeworp, of "" (em = exhMod) */
 export const initModText = (em) => (em ? ` − ${-em.b} ${em.n}` : "");
 /**
+ * Initiativeworp uit één of twee d20's (twee = disadvantage, WP51 surprise 2024: de laagste telt), bonus bo en
+ * Exhaustion-straf em. → { r (de d20 die telt), v (totaal), txt: "d20 [14, 6] dis +2 − 4 Exhaustion 2" }
+ */
+export function initThrow(dd, bo, em = null) {
+  const r = Math.min(...dd);
+  return { r, v: r + bo + (em ? em.b : 0), txt: `d20 [${dd.join(", ")}]${dd.length > 1 ? " dis" : ""} ${sgn(bo)}${initModText(em)}` };
+}
+/**
  * Initiative-bonus van een deelnemer: c.initBonus als die er is (speler uit de sheet; 2024-monster uit het statblock,
  * WP48), anders Dex. De tiebreak blijft c.dex (sortOrder).
  */
@@ -488,19 +501,26 @@ export const freshRoll = (c) => c.kind === "monster" && !isOut(c) && Number.isFi
  * GV5: initiative van monsters opnieuw rollen bij Start gevecht. Alleen onaangeroerde worpen (freshRoll), ook verborgen
  * monsters; ingevuld of aangepast blijft. Groep (zelfde grp én init) krijgt één worp, zodat groupOf blijft kloppen.
  * Lair en spelers niet. Geeft { msgs, why, n }.
+ * WP51 (surprise 2024): dis(c) = deze deelnemer rolt met disadvantage (twee d20's, laagste telt). keep = niet opnieuw
+ * rollen ("Houden"): alleen wie disadvantage heeft krijgt een tweede d20 naast zijn bestaande worp (zelfde kans).
+ * Bewust: na Houden + disadvantage telt de worp nog als onaangeroerd; opnieuw starten met dezelfde monsters en weer
+ * verrast stapelt dan (zeldzaam). Monsters met Exhaustion-straf zijn niet fresh en krijgen dus geen disadvantage.
  */
-export function rerollMonsters(list, rng = Math.random) {
+export function rerollMonsters(list, rng = Math.random, { dis = null, keep = false } = {}) {
   const out = Object.assign(fx(), { n: 0 }), groups = new Map();
   for (const c of list) {
     if (!freshRoll(c)) continue;
+    const sd = !!(dis && dis(c));
+    if (keep && !sd) continue;
     const k = c.grp ? `${c.grp}|${c.init}` : null;
-    let r = k ? groups.get(k) : undefined;
-    if (r === undefined) { r = d(20, rng); if (k) groups.set(k, r); }
+    let dd = k ? groups.get(k) : undefined;
+    if (dd === undefined) { const a = keep ? c.roll : d(20, rng); dd = sd ? [a, d(20, rng)] : [a]; if (k) groups.set(k, dd); }
     const bo = initBo(c), em = exhMod(c); // WP50: Exhaustion 2024 −2 × niveau (de worp telt daarna niet meer als onaangeroerd)
-    c.roll = r; c.init = r + bo + (em ? em.b : 0); out.n++;
-    out.why.push({ t: J([`d20 [${r}] ${sgn(bo)}${initModText(em)}`, M("rules.rerollWhy"), k && M("rules.grpRoll")].filter(Boolean), ", "), id: c.id });
+    const ir = initThrow(dd, bo, em);
+    c.roll = ir.r; c.init = ir.v; out.n++;
+    out.why.push({ t: J([ir.txt, !keep && M("rules.rerollWhy"), sd && M("rules.surDisWhy"), k && M("rules.grpRoll")].filter(Boolean), ", "), id: c.id });
   }
-  if (out.n) out.msgs.push(say("rules.reroll", { n: String(out.n) }));
+  if (out.n) out.msgs.push(say(keep ? "rules.surDis" : "rules.reroll", { n: String(out.n) }));
   return out;
 }
 

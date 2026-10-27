@@ -22,7 +22,7 @@ import { showSB, showSheet, monCard, doRoll, doDmgRoll, closeSB, phone, toggleBi
 import { findMon, parseMonsterFile, findKey, keyRef, withEdWord } from "../data/monsters.js";
 import { parseStatText, foundText, hasStructure, withParsed } from "../data/statparse.js";
 import { d, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
-import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant, setInit, durWords, saveWords, initBo, monInit, initModText } from "../rules/turns.js";
+import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant, setInit, durWords, saveWords, initBo, monInit, initModText, initThrow, surWho } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, saveAdv, DTYPES, targetMode, drToggle, drKind, DR_LBL, cleanDr } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage, multiSeq, seqAfter } from "../rules/attacks.js";
@@ -286,7 +286,7 @@ const row = {
     because(was === k ? M("log.w.drOff", { kind: M(DR_LBL[k]), type: ty }) : was ? M("log.w.drWas", { kind: M(DR_LBL[k]), type: ty, was: M(DR_LBL[was]) }) : M("log.w.dr", { kind: M(DR_LBL[k]), type: ty }), c.id);
   },
   anon(c) { if (c.anon) delete c.anon; else c.anon = nextAnon(app.S.list); },
-  sur(c) { const r = toggleSurprise(c, app.S); if (!r) return false; apply(r); },
+  sur(c) { const r = toggleSurprise(c, app.S, rulesOf(app.S)); if (!r) return false; apply(r); },
   dropconc(c) { apply(R.dropConc(c, M("log.w.ended"))); },
   topty(c) { const ex = app.party.find((m) => m.name.toLowerCase() === c.name.toLowerCase()); c.pid = ex ? ex.pid : uid(); toast(t("init.msg.toParty", { name: c.name })); },
   "ds-roll": (c) => dsDone(c, d(20), true),
@@ -366,7 +366,7 @@ function sheetKey(k, v) {
     const c = app.S.list.find((x) => x.id === s.id), n = parseInt(s.val) || 0;
     if (!c || !n) return;
     const was = c.hp;
-    const f = s.kind === "dmg" ? R.applyDamage(c, n, s.mode) : s.kind === "heal" ? R.heal(c, n) : R.giveTemp(c, n);
+    const f = s.kind === "dmg" ? R.applyDamage(c, n, s.mode, false, rulesOf(app.S)) : s.kind === "heal" ? R.heal(c, n) : R.giveTemp(c, n);
     apply(f);
     const uf = s.kind === "dmg" ? ufRoll(c, was, Math.floor(n * s.mode), s.ufx ? { radiant: true, why: t("init.uf.radOrCrit") } : {}) : "";
     const before = { dmg: `−${Math.floor(n * s.mode)}`, heal: `+${n}`, thp: `+${n} temp` }[s.kind];
@@ -463,16 +463,19 @@ const global = {
     // spelers eerst hun initiative (paneel); vanuit het paneel komt start terug met initSkip
     if (!ui.initSkip && !app.S.round && initPcs(app.S.list).length) { ui.startAsk = false; openInit(); return false; }
     ui.initSkip = false; ui.startAsk = false;
-    const sur = ui.surMon && !initPcs(app.S.list).length; ui.surMon = false; // RE5: met spelers beslist het paneel (dat zette setSurprise al)
+    const pcs = initPcs(app.S.list).length, sur = ui.surMon && !pcs; ui.surMon = false; // RE5: met spelers beslist het paneel (dat zette setSurprise al)
+    const ed = rulesOf(app.S), who = pcs ? ui.surWho || "none" : sur ? "mon" : "none"; ui.surWho = null; // WP51: 2024 zet geen sur, de keuze gaat zo mee
     const drop = ui.oldGo === "drop"; ui.oldGo = null;
     const gone = drop ? dropOld(app.S) : 0; // zelfde undo-stap als de start
     if (gone) because(M("log.w.oldGone", { n: gone }));
-    if (sur) apply(setSurprise(app.S.list, "mon")); // vóór startCombat: die zet de reaction van verrasten op gebruikt
+    if (sur) apply(setSurprise(app.S.list, "mon", ed)); // vóór startCombat: die zet de reaction van verrasten op gebruikt
     startFight(app.S, Date.now()); // GV2: duur en wie neer ging; oude samenvatting weg
     // GV5: onaangeroerde monsterworpen opnieuw (keuze in het paneel; zonder spelers de onthouden keuze), zelfde undo-stap;
     // !round is een vangnet (#start bestaat alleen vóór het gevecht)
-    const rr = !app.S.round && initRoll() === "roll" ? rerollMonsters(app.S.list) : null;
-    apply(rr ? R.merge(rr, startCombat(app.S)) : startCombat(app.S)); ui.mode = null; rekeyEdit();
+    // WP51 (2024): verraste monsters rollen met disadvantage; bij Houden krijgt alleen hun bestaande worp een tweede d20
+    const dis = ed === "2024" && who === "mon" ? (c) => surWho(c, who) : null, roll = initRoll() === "roll";
+    const rr = !app.S.round && (roll || dis) ? rerollMonsters(app.S.list, Math.random, { dis, keep: !roll }) : null;
+    apply(rr ? R.merge(rr, startCombat(app.S, Math.random, ed)) : startCombat(app.S, Math.random, ed)); ui.mode = null; rekeyEdit();
     armTour("f"); // OB1: tweede deel van de rondleiding bij de eerste keer Gevecht (alleen als deel f nog niet gezien is)
   },
   /** GV7: antwoorden op "Nog N monsters uit het vorige gevecht" boven Start */
@@ -1326,7 +1329,7 @@ function svRoll(sid, adv = false, quiet = false) {
 function svDone(c, sid, ok, note, shown, quiet = false, adv = false) {
   const s = (app.S.saves || []).find((x) => x.sid === sid);
   if (!s || !isValid(app.S, s)) return ""; // bijv. tweede concentration save nadat de eerste al faalde
-  const was = c.hp, f = resolveSave(app.S, sid, ok, note); // was vóór de rider-schade
+  const was = c.hp, f = resolveSave(app.S, sid, ok, note, rulesOf(app.S)); // was vóór de rider-schade
   addWhy(f.why); // de melding hieronder zegt al wat er gebeurde
   if (f.saves) f.saves.forEach((x) => addSave(app.S, x)); // rider-schade: concentration save
   if (!quiet) render(); // "Rol alle monsters" rendert één keer: één undo-stap
@@ -1611,7 +1614,7 @@ function aoeGo() {
   const lv = sp ? (c ? dmgLevel(a, c, sp) : sp.lv) : 0;
   const name = sp ? `${sp.n}${sp.lv ? ` (${ORD[lv]})` : ""}${c ? ` · ${c.name}` : ""}: ` : "";
   const label = `${a.act ? `${a.srcName}: ${a.act} ` : name}${n}${a.type ? " " + a.type : ""}${dc > 0 ? ` (${a.ab} DC ${dc})` : ""}`;
-  const r = applyAoe(picks, n, label);
+  const r = applyAoe(picks, n, label, rulesOf(app.S));
   apply(r);
   // RE13: Undead Fortitude per monster dat hierdoor op 0 kwam (type bekend: radiant = geen worp)
   const ufs = r.hits.map((h) => { const t = picks.find((x) => x.c.id === h.id); return t && t.up ? [t.c, ufRoll(t.c, 1, h.dealt, { radiant: a.type === "radiant" })] : null; })
@@ -1725,7 +1728,7 @@ function atkGo() {
   if (!res.dealt && !rOn) return;
   const before = c.hp;
   because(atkWhy(`${x.label} (${by.name})`, r, ac || null, x.parts, res), c.id);
-  const f = res.dealt ? atkDamage(c, res) : R.fx();
+  const f = res.dealt ? atkDamage(c, res, rulesOf(app.S)) : R.fx();
   apply(f);
   const uf = res.dealt ? ufRoll(c, before, res.dealt, ufInfo(res)) : "";
   const rt = rOn ? atkRiderGo(x, c, ri) : "";
@@ -1749,7 +1752,7 @@ function atkRiderGo(x, c, ri) {
     addSave(app.S, { id: c.id, kind: "rider", n: x.n, ab: rd.ab, dc: rd.dc, rd: full });
     return ` · ${t("init.msg.riderBar", { ab: rd.ab, dc: rd.dc })}`;
   }
-  const hp = c.hp, f = applyRider(c, full, ri.choice === "ok", app.S.active);
+  const hp = c.hp, f = applyRider(c, full, ri.choice === "ok", app.S.active, rulesOf(app.S));
   addWhy(f.why);
   if (f.saves) f.saves.forEach((s) => addSave(app.S, s));
   return ` · ${rd.ab} ${rd.dc} ${t(ri.choice === "ok" ? "init.msg.ok" : "init.msg.fail")}: ${riderOutcome(rd, ri.choice === "ok", hp - c.hp)}${concNote(f)}`;
@@ -1813,7 +1816,7 @@ function openInit() {
   render();
   $("#isheet .isheet")?.focus();
 }
-function closeInit() { ui.initDraft = null; ui.oldGo = null; paintInit(); $("#start")?.focus(); } // GV7: volgende Start vraagt het opnieuw
+function closeInit() { ui.initDraft = null; ui.oldGo = null; ui.surWho = null; paintInit(); $("#start")?.focus(); } // GV7: volgende Start vraagt het opnieuw
 
 /** Volgende speler in het paneel (op de laatste blijft hij staan) */
 function initNext(x) {
@@ -1833,7 +1836,8 @@ function initGo() {
     return;
   }
   apply(r);
-  apply(setSurprise(app.S.list, x.sur || "none")); // zelfde undo-stap als de start
+  apply(setSurprise(app.S.list, x.sur || "none", rulesOf(app.S))); // zelfde undo-stap als de start
+  ui.surWho = x.sur || "none"; // WP51: start() heeft de keuze nodig (2024 zet geen sur)
   ui.initDraft = null; ui.initSkip = true;
   paintInit();
   $("#start")?.click(); // zelfde afhandeling als de knop: gevecht starten, kaart van wie begint, één undo-stap
@@ -1851,13 +1855,18 @@ function initKey(k, v) {
   if (k === "back") { x.v[x.act] = x.fresh ? "" : cur.slice(0, -1); x.fresh = false; delete x.rolls[x.act]; }
   if (k === "clear") { x.v[x.act] = ""; x.fresh = false; delete x.rolls[x.act]; }
   if (k === "sel") { x.act = v; x.fresh = true; }
-  if (k === "sur") x.sur = v;
+  if (k === "sur") {
+    // WP51 (2024): wie door de wissel wel/geen disadvantage krijgt, rolt opnieuw (alleen gerolde, geen ingetikte waarden)
+    if (rulesOf(app.S) === "2024") for (const c of initPcs(app.S.list)) if (x.rolls[c.id] && surWho(c, x.sur || "none") !== surWho(c, v)) { x.v[c.id] = ""; delete x.rolls[c.id]; }
+    x.sur = v;
+  }
   if (k === "mroll") setInitRoll(v);
   if (k === "next") initNext(x);
   if (k === "roll") {
     const c = app.S.list.find((t) => t.id === v); if (!c) return;
-    const r = d(20), bo = initBo(c), em = exhMod(c); // WP50: Exhaustion 2024 op de initiativeworp
-    x.v[c.id] = String(r + bo + (em ? em.b : 0)); x.rolls[c.id] = `d20 [${r}] ${sgn(bo)}${initModText(em)}`;
+    // WP50: Exhaustion 2024 op de initiativeworp; WP51: verraste speler in 2024 = disadvantage (twee d20's)
+    const sd = rulesOf(app.S) === "2024" && surWho(c, x.sur || "none"), ir = initThrow(sd ? [d(20), d(20)] : [d(20)], initBo(c), exhMod(c));
+    x.v[c.id] = String(ir.v); x.rolls[c.id] = ir.txt;
     x.act = c.id; initNext(x);
   }
   paintInit();

@@ -954,6 +954,25 @@ const SCEN = {
     if (!ok) throw new Error("WP50: geen Rage-regel in de beurtbalk");
     await snap(page, "wp50", "rage");
   },
+  // WP51: surprise 2024 in het initiative-paneel: eigen hint, Rol = twee d20's voor verraste spelers, Start zonder overgeslagen beurt
+  async wp51(page) {
+    await SCEN.prep(page);
+    await page.evaluate(async () => { (await import("/js/state.js")).app.S.rules = "2024"; });
+    await tap(page, "#start"); await page.waitForSelector("#isheet .isheet");
+    await page.locator('[data-ia="roll"]').first().tap(); // eerst gerold, daarna Verrast: die worp moet opnieuw
+    await tap(page, '#isheet [data-ia="sur"][data-v="pc"]');
+    if ((await page.locator("#isheet").textContent()).includes("d20 [")) throw new Error("WP51: worp zonder disadvantage bleef staan na Verrast");
+    const hint = await page.locator("#isheet #i-surh").textContent();
+    if (!/d20/.test(hint)) throw new Error("WP51: geen 2024-hint bij Verrast: " + hint);
+    await page.locator('[data-ia="roll"]').first().tap();
+    if (!(await page.locator("#isheet").textContent()).includes(" dis ")) throw new Error("WP51: verraste speler rolde zonder disadvantage");
+    await snap(page, "wp51", "initp");
+    const n = await page.locator('[data-ia="roll"]').count();
+    for (let i = 0; i < n; i++) await page.locator('[data-ia="roll"]').nth(i).tap();
+    await tap(page, '[data-ia="go"]'); await page.waitForSelector("#next");
+    const sur = await page.evaluate(async () => (await import("/js/state.js")).app.S.list.some((c) => "sur" in c));
+    if (sur) throw new Error("WP51: 2024 zette toch sur");
+  },
   // WP46: export versie 4 (regelset 2024, monster met ed "2024" zonder SRD 5.2-data): laden zonder JS-fout, zonder terugval op 2014, regelset overleeft reset
   async wp46(page) {
     await page.route("**/data/monsters-2024.json", (r) => r.abort()); // zonder SRD 5.2-data (regelset 2024 laadt hem sinds WP49 bij de eerste behoefte)

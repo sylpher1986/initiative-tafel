@@ -156,7 +156,11 @@ const MODE_TXT = { 0.5: ["×½", "rules.mResist"], 2: ["×2", "rules.mVuln"], 0:
  * Schade met resistance (×½, naar beneden afgerond), vulnerability (×2) of immunity (×0), eerst van temp HP af.
  * mode: 1, 0.5, 2 of 0. quiet: geen rekenmelding en geen rekenregel in het logboek (de AoE geeft die zelf).
  */
-export function applyDamage(c, raw, mode = 1, quiet = false) {
+/** Concentration-DC na schade: max(10, ½ schade); 2024 (WP51) maximaal 30 */
+export const concDc = (dmg, ed = "2014") => { const v = Math.max(10, Math.floor(dmg / 2)); return ed === "2024" ? Math.min(30, v) : v; };
+
+/** ed = regelset van de tafel (alleen de concentration-DC hangt ervan af) */
+export function applyDamage(c, raw, mode = 1, quiet = false, ed = "2014") {
   const out = fx();
   const v = Math.floor(raw * mode);
   if (v > 0) merge(out, wakeByDamage(c)); // vóór de HP: wie op 0 valt is daarna gewoon bewusteloos
@@ -177,7 +181,7 @@ export function applyDamage(c, raw, mode = 1, quiet = false) {
       if (c.hp === 0) { out.msgs.push(say("rules.down", { name: c.name })); merge(out, dropConc(c, M("rules.hp0"))); }
     }
   }
-  if (v > 0 && c.hp > 0 && c.cond.includes("Concentrating")) out.saves = [{ id: c.id, kind: "conc", n: c.concSpell || "", ab: "CON", dc: Math.max(10, Math.floor(v / 2)) }];
+  if (v > 0 && c.hp > 0 && c.cond.includes("Concentrating")) out.saves = [{ id: c.id, kind: "conc", n: c.concSpell || "", ab: "CON", dc: concDc(v, ed) }];
   return out;
 }
 

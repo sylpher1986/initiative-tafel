@@ -184,7 +184,7 @@ export function saveBonus(m, ab) {
  * note = bijv. de gerolde save voor het logboek.
  * label: bijv. "28 fire (DEX DC 15)". Geeft Fx plus hits [{ id, dealt }] terug.
  */
-export function applyAoe(picks, raw, label) {
+export function applyAoe(picks, raw, label, ed = "2014") {
   const out = Object.assign(fx(), { hits: [] });
   for (const p of picks) {
     const c = p.c;
@@ -192,7 +192,7 @@ export function applyAoe(picks, raw, label) {
     const r = aoeCalc(raw, p.save, p.mode);
     const sv = M(p.save === "half" ? "rules.aoe.half" : p.save === "none" ? "rules.aoe.none" : "rules.aoe.fail");
     out.why.push({ t: M("rules.aoe.why", { label, what: J([p.note, sv, p.mode === 0 ? M("rules.aoe.immune") : null]), steps: r.steps.join(" → ") }), id: c.id });
-    if (r.base > 0 && p.mode !== 0) merge(out, applyDamage(c, r.base, p.mode, true));
+    if (r.base > 0 && p.mode !== 0) merge(out, applyDamage(c, r.base, p.mode, true, ed));
     out.hits.push({ id: c.id, dealt: r.dealt });
   }
   return out;

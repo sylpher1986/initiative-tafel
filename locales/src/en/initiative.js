@@ -683,6 +683,8 @@ export default {
   "init.ini.added": "Rolled when added.",
   "init.ini.surNone": "Surprised: anyone who didn't notice the other side when combat started (Stealth vs passive Perception). Single creatures: ⋯ → Surprised.",
   "init.ini.surSome": "Surprised creatures skip their first turn and have no reaction until it's over.",
+  "init.ini.surNone24": "Surprised: anyone who didn't notice the other side when combat started (Stealth vs passive Perception).", // WP51 (2024 rules)
+  "init.ini.surSome24": "Surprised creatures roll initiative with disadvantage (two d20s, the lower counts). They still take their first turn.",
   "init.ini.rowAria": "{name}: initiative {v}",
   "init.ini.empty": "empty",
   "init.ini.rollAria": "Roll initiative for {name}",

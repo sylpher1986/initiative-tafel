@@ -52,6 +52,7 @@ export const ui = {
   rage: null,          // RE16: bevestigstap { id, bear, frz } in het Effect-paneel
   logOpen: false, editLog: null, partyInit: {},
   surMon: false,       // RE5: "Monsters verrast" in de dock (geen spelers aan tafel); geldt bij de volgende Start, niet in undo/opslag
+  surWho: null,        // WP51: Verrast-keuze uit het initiative-paneel voor start() ("none" | "mon" | "pc"); 2024 zet geen sur
   startAsk: false,     // GV7: vraag "Nog N monsters uit het vorige gevecht" boven Start
   oldGo: null,         // GV7: antwoord daarop tot het gevecht echt start: "drop" (oude wissen) | "keep" (toch starten)
   endPick: {},         // GV7: condities in de samenvatting die de DM aan/uit zette ({ "id|cond": bool })
@@ -408,7 +409,7 @@ function morePanel(c, prep) {
       <div class="bar"><button class="btn tap" data-a="ed-cancel">${esc(t("common.cancel"))}</button><button class="btn primary tap" data-a="ed-save">${esc(t("common.save"))}</button></div>
     </div>${c.kind === "pc" ? drBox(c) : ""}
     <div class="bar">${c.kind === "pc" && !c.pid ? `<button class="btn small" data-a="topty">${esc(t("init.card.toParty"))}</button>` : ""}
-    ${canToggleSurprise(c, app.S) ? `<button class="btn small" data-a="sur" aria-pressed="${c.sur === true}">${esc(t("init.card.sur"))}${c.sur === true ? " " + ico("check") : ""}</button>` : ""}
+    ${canToggleSurprise(c, app.S, rulesOf(app.S)) ? `<button class="btn small" data-a="sur" aria-pressed="${c.sur === true}">${esc(t("init.card.sur"))}${c.sur === true ? " " + ico("check") : ""}</button>` : ""}
     ${c.kind === "monster" ? `${prep ? "" : `<button class="btn small" data-a="hide" aria-pressed="${!!c.hidden}">${esc(t(c.hidden ? "init.card.show" : "init.card.hide"))}</button>`}
       <button class="btn small" data-a="anon" aria-pressed="${!!c.anon}">${esc(t(c.anon ? "init.card.nameShow" : "init.card.nameHide"))}</button>` : ""}
     <button class="btn small danger" data-a="del">${esc(t(app.S.round ? "init.card.delFight" : "init.card.del"))}</button></div></div>`;
@@ -912,7 +913,7 @@ function paintSheet() {
         ufBtn = `<div class="xrow"><button type="button" class="btn small" data-sk="ufx" aria-pressed="${!!s.ufx}">${esc(t("init.dmg.ufx"))}</button><span class="hint">${esc(t("init.dmg.ufxHint"))}</span></div>`;
       }
       else if (sim.hp === 0 && c.hp > 0) preview += ` · <b class="bad">${esc(t(c.kind === "pc" ? "init.dmg.unc" : "init.card.down"))}</b>`;
-      else if (c.cond.includes("Concentrating") && sim.hp > 0 && dealt > 0) preview += ` · concentration save <b>DC ${Math.max(10, Math.floor(dealt / 2))}</b>`;
+      else if (c.cond.includes("Concentrating") && sim.hp > 0 && dealt > 0) preview += ` · concentration save <b>DC ${R.concDc(dealt, rulesOf(app.S))}</b>`;
     }
   } else preview = esc(t(c.temp ? "init.dmg.nowT" : "init.dmg.now", { hp: n0(c.hp), max: n0(c.max), temp: n0(c.temp) }));
   // RE13: Parry (reaction) van een monster: de aanval van de speler mist als hij met +N niet zou raken
@@ -1396,7 +1397,7 @@ function riderRow(x, c, ri) {
 
 /** Effectieve worp tegen dit doel: Auto = advantage/disadvantage uit condities (atkAdv), anders de handmatige stand */
 export function atkRoll(x, by, c) {
-  const au = atkAdv(by, c, x.kind);
+  const au = atkAdv(by, c, x.kind, rulesOf(app.S));
   return { au, r: withAdv(x.r, x.adv === "a" ? au.v : x.adv, atkMods(by)) }; // WP50: Exhaustion 2024 als vaste straf
 }
 /** Reden als korte tag: "adv Prone", "dis Invisible", "adv/dis heffen op" */
@@ -1414,7 +1415,7 @@ function laToggle(x, by) {
 }
 
 function atkTgtRow(c, prev, x, by) {
-  const ac = effAc(c), tag = advTag(atkAdv(by, c, x.kind));
+  const ac = effAc(c), tag = advTag(atkAdv(by, c, x.kind, rulesOf(app.S)));
   return `<button type="button" class="xt" data-xa="tgt" data-id="${esc(c.id)}">${avatar(c, c.ref ? findMon(c.ref, c.ed)?.meta : "")}
     <span class="xn">${esc(c.name)}${prev ? ` <span class="tag">${esc(t("init.atk.prev"))}</span>` : ""}</span>
     <span class="xi">${ac ? `AC ${n0(ac)}` : "AC ?"}${c.max ? ` · ${n0(c.hp)}/${n0(c.max)} HP` : ""}${tag ? `<b class="xadvt">${esc(tag)}</b>` : ""}</span></button>`;
@@ -1515,6 +1516,8 @@ function monRollHtml(mons) {
   return `<div class="isur"><span id="i-mon">${esc(t("init.aoe.selMons"))}</span><div class="seg2" role="group" aria-labelledby="i-mon">${[["keep", "init.ini.keep"], ["roll", "init.ini.reroll"]].map(([k, l]) => `<button type="button" data-ia="mroll" data-v="${k}" aria-pressed="${v === k}">${esc(t(l))}</button>`).join("")}</div></div>
       <p class="hint">${esc(v === "roll" ? [t("init.ini.atStart"), fixed ? t("init.ini.kept", { n: fixed }) : ""].filter(Boolean).join(" ") : t("init.ini.added"))}</p>`;
 }
+/** WP51: hint onder de Verrast-keuze, per regelset [geen, wel verrasten] */
+const SUR_HINT = [["init.ini.surNone", "init.ini.surSome"], ["init.ini.surNone24", "init.ini.surSome24"]];
 export function paintInit() {
   const el = $("#isheet"), x = ui.initDraft;
   if (!x) { el.hidden = true; el.innerHTML = ""; return; }
@@ -1526,7 +1529,7 @@ export function paintInit() {
       <div class="shead"><h3 id="i-title">Initiative</h3><button type="button" class="link" data-ia="close">${esc(t("common.cancel"))}</button></div>
       ${monRollHtml(mons)}
       <div class="isur"><span id="i-sur">${esc(t("init.card.sur"))}</span><div class="seg2" role="group" aria-labelledby="i-sur">${[["none", "init.aoe.selNone"], ["mon", "init.aoe.selMons"], ["pc", "init.aoe.selPcs"]].map(([k, l]) => `<button type="button" data-ia="sur" data-v="${k}" aria-pressed="${(x.sur || "none") === k}" ${k === "mon" && !mons ? "disabled" : ""}>${esc(t(l))}</button>`).join("")}</div></div>
-      <p class="hint isurh" id="i-surh">${esc(t((x.sur || "none") === "none" ? "init.ini.surNone" : "init.ini.surSome"))}</p>${percLine()}
+      <p class="hint isurh" id="i-surh">${esc(t(SUR_HINT[rulesOf(app.S) === "2024" ? 1 : 0][(x.sur || "none") === "none" ? 0 : 1]))}</p>${percLine()}
       <div class="ilist">${L.map((c) => `<div class="ir ${c.id === x.act ? "act" : ""}">
         <button type="button" class="irn" data-ia="sel" data-id="${esc(c.id)}" aria-pressed="${c.id === x.act}" aria-label="${esc(t("init.ini.rowAria", { name: c.name, v: x.v[c.id] || t("init.ini.empty") }))}"><span>${esc(c.name)}</span>${x.rolls[c.id] ? `<small>${esc(x.rolls[c.id])}</small>` : ""}</button>
         <b class="iv" aria-hidden="true">${x.v[c.id] !== "" && x.v[c.id] != null ? esc(x.v[c.id]) : "—"}</b>

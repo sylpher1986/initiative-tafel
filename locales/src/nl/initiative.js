@@ -682,6 +682,8 @@ export default {
   "init.ini.added": "Gerold bij toevoegen.",
   "init.ini.surNone": "Verrast is wie de tegenpartij niet opmerkte toen het gevecht begon (Stealth tegen passive Perception). Losse wezens: ⋯ → Verrast.",
   "init.ini.surSome": "Verrasten slaan hun eerste beurt over en hebben tot die voorbij is geen reaction.",
+  "init.ini.surNone24": "Verrast is wie de tegenpartij niet opmerkte toen het gevecht begon (Stealth tegen passive Perception).",
+  "init.ini.surSome24": "Verrasten rollen initiative met disadvantage (twee d20's, de laagste telt). Hun eerste beurt krijgen ze gewoon.",
   "init.ini.rowAria": "{name}: initiative {v}",
   "init.ini.empty": "leeg",
   "init.ini.rollAria": "Initiative rollen voor {name}",
