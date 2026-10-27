@@ -60,9 +60,9 @@ function cleanLog(e) {
   const m = e.m && typeof e.m === "object" ? cleanDesc(e.m) : null;
   // TS3: in de stand m óf msg; de export vult msg weer aan. TS5: kent deze app een sleutel niet (export van een nieuwere
   // app), dan blijft de meegeleverde tekst staan als terugval voor logMsg.
-  if (m) { out.m = m; if (known(m) || !out.msg) delete out.msg; }
+  if (m) { out.m = m; if (!out.msg || known(m)) delete out.msg; }
   const w = Array.isArray(e.w) ? cleanDesc(e.w.slice(0, 12)) : null;
-  if (w && w.length) { out.w = w; if (known(w) || !out.why) delete out.why; }
+  if (w && w.length) { out.w = w; if (!out.why || known(w)) delete out.why; }
   if (typeof e.key === "string" && /^\w{1,20}$/.test(e.key)) out.key = e.key;
   return out;
 }

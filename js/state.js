@@ -1,6 +1,6 @@
 // Centrale toestand, vastleggen van wijzigingen (logboek + undo), opslag en party-sync.
 import * as store from "./storage.js";
-import { diffLog, slimLog } from "./log.js";
+import { diffLog } from "./log.js";
 import { uid } from "./rules/dice.js";
 import { setLibrary } from "./data/monsters.js";
 import { endConcEffects, endRage } from "./rules/effects.js";
@@ -80,7 +80,6 @@ export async function load() {
     store.get("state", null), store.get("party", []), store.get("lairs", {}), store.get("custom", []), store.get("imported", []), store.get("encounters", []), store.get("spellNotes", {}),
     store.range(HLO, HHI), store.range(BLO, BHI),
   ]);
-  slimLog(app.S && app.S.log); // TS3: regels van vóór 2.2.1 hebben msg/why naast m/w
   app.encounters = cleanEncounters(encs);
   app.spellNotes = cleanSpellNotes(notes);
   setLibrary({ custom: app.custom, imported: app.imported });

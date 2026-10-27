@@ -1,5 +1,6 @@
 // Opstarten: data laden, events koppelen, eerste render, service worker.
 import { app, load, resetBaseline, setWarn } from "./state.js";
+import { slimLog } from "./log.js";
 import { loadSrd, findMon } from "./data/monsters.js";
 import { render, ui, setAfterRender, mode } from "./ui/render.js";
 import { initTour, tourTick, tourKey, killTour } from "./ui/tour.js";
@@ -88,6 +89,7 @@ async function boot() {
   i18nP = initI18n(); // vertalingen vóór de eerste render (WP20; gooit nooit, wacht max. 3 s)
   try {
     await Promise.all([load(), loadSrd(), i18nP]);
+    slimLog(app.S && app.S.log); // TS3: regels van vóór 2.2.1 hebben msg/why naast m/w; TS5: pas na de catalogus (known)
     version();
   } catch (e) {
     await i18nP; version();

@@ -98,14 +98,14 @@ export function logRound(r) {
  *  TS5: kent de catalogus een sleutel niet (nieuwere app, catalogus niet geladen), dan wint een bewaarde msg. */
 export const logMsg = (e) => {
   if (!e) return "";
-  if (e.m && (known(e.m) || !e.msg)) return tr(e.m);
+  if (e.m && (!e.msg || known(e.m))) return tr(e.m);
   return e.msg || "";
 };
 const whyD = (e) => Array.isArray(e.w) && e.w.length > 0;
 /** Oorzaak van een logregel: descriptoren (w) als die er zijn, anders de bewaarde tekst (TS5: ook bij onbekende sleutels) */
 export const logWhy = (e) => {
   if (!e) return "";
-  if (whyD(e) && (known(e.w) || !e.why)) return e.w.map(tr).filter(Boolean).join("; ");
+  if (whyD(e) && (!e.why || known(e.w))) return e.w.map(tr).filter(Boolean).join("; ");
   return e.why || "";
 };
 

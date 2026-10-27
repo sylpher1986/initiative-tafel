@@ -118,7 +118,7 @@ Plan: projectdoc `claude/werkpakketten-2.1.md`. Volgorde = uitvoervolgorde; WP45
 | ~~**WP42**~~ | Eigen notitie bij niet-SRD-spells, export versie 3 (klaar) | RE6b | 2.2.0 |
 | ~~**WP43**~~ | Technische schuld: logboek in undo kleiner, pdf.js zelf hosten (klaar) | TS3, TS1 | 2.2.1 |
 | ~~**WP44**~~ | Engels zonder taalcode (`/`), andere talen met voorvoegsel (`/nl/`), `/en/*` → 301; homepage-thema volgt de app-keuze, anders het systeem (klaar) | WB1, WB2 | 2.3.0 |
-| **WP45** | Technische schuld: exporttekst zonder geladen catalogus, browsercheck `wp42` soms rood | TS5, TS6 | 2.3.1 |
+| ~~**WP45**~~ | Technische schuld: exporttekst zonder geladen catalogus, browsercheck `wp42` soms rood (klaar) | TS5, TS6 | 2.3.1 |
 | Backlog | 2024-regels (eigen traject, eerst inventaris), fase 2 en 3 | RE4 | |
 
 Pagina's en vindbaarheid (vervolg op WP30):
@@ -209,8 +209,8 @@ Rapport: projectdoc `claude/persona-test-2.0.md`. Geen P1; de vijf P2's zijn in 
   - **Afhankelijkheden buiten dit plan**: accounts/sync (Fase 2) alleen voor het bewaren van de voorkeur in een account; `kevs-inn.com` is in het Cloudflare-dashboard gekoppeld (V1, bevestigd 24-10-2026), niet in `wrangler.jsonc`.
 
 ## Technische schuld
-- [ ] **TS5** (uit de dev-review WP43) Export-tekst hangt sinds TS3 af van de geladen catalogus: laadt die niet (na 3 s), dan krijgt `msg` de kale sleutel; en `cleanLog` gooit een bruikbare `msg` weg bij een onbekende `log.*`-sleutel uit een nieuwere app. Voorstel: `msg` houden als de sleutel onbekend is en `logMsg` daarop laten terugvallen.
-- [ ] **TS6** Browsercheck `wp42` is af en toe rood (± 1 van 12 combinaties, `locator.waitFor`-timeout; ook op 2.2.0 gezien): oorzaak zoeken (laden van beide spell-edities?).
+- [x] **TS5** (uit de dev-review WP43) Export-tekst hangt sinds TS3 af van de geladen catalogus: laadt die niet (na 3 s), dan krijgt `msg` de kale sleutel; en `cleanLog` gooit een bruikbare `msg` weg bij een onbekende `log.*`-sleutel uit een nieuwere app. Voorstel: `msg` houden als de sleutel onbekend is en `logMsg` daarop laten terugvallen. → 2.3.1 (WP45): `descKnown`/`known` (alle sleutels, ook genest); `logMsg`/`logWhy`, `slimLog`, `cleanLog` en `exportLog` houden de bewaarde tekst als een sleutel onbekend is; `slimLog` pas na de catalogus (`main.js`).
+- [x] **TS6** Browsercheck `wp42` is af en toe rood (± 1 van 12 combinaties, `locator.waitFor`-timeout; ook op 2.2.0 gezien): oorzaak zoeken (laden van beide spell-edities?). → 2.3.1 (WP45): oorzaak was herladen direct na Opslaan (IndexedDB-transactie afgebroken, oude notitie bleef); het scenario wacht nu op de waarde in IndexedDB (`idbHas`), geen langere timeout. De spell-edities waren het niet.
 - [x] **TS1** pdf.js zelf hosten (nu via CDN, zonder SRI) → 2.2.1 (WP43): `vendor/pdfjs/`, eigen sw-cache
 - [x] **TS3** (tussenstap gedaan in 2.2.1, WP43: −23 % per regel; helemaal buiten de snapshots = apart besluit) Logboek buiten de undo-snapshots houden (sinds WP27 is een logregel ± 2,5× groter door `m`/`w` naast `msg`/`why`; elke undo-stap bewaart de hele stand incl. max 600 regels, worst case ± 20 MB in IndexedDB bij 80 stappen en ± 300 KB stringify per tik). Simpele tussenstap uit de dev-review WP27: in `S.log` geen `msg`/`why` als er `m`/`w` is en die pas in `buildExport` aanvullen (± 25–30 % per regel; `stepEntries` dan op `msg ?? JSON van m`).
 

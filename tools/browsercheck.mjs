@@ -30,12 +30,13 @@ const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const WIDTHS = [320, 360, 390], SCHEMES = ["light", "dark"];
 
 /** TS6: wacht tot sleutel key in de IndexedDB van de app (js/storage.js: db "initiative-tafel", store "kv") ok(waarde) geeft.
- *  Leest de opslag zelf, niet app-geheugen: zo is een herladen daarna zeker van de nieuwe waarde. */
+ *  Leest de opslag zelf, niet app-geheugen: zo is een herladen daarna zeker van de nieuwe waarde. Alleen na het opstarten
+ *  van de app gebruiken: open zonder versie maakt anders een lege database aan. */
 async function idbHas(page, key, ok, ms = 5000) {
   const read = () => page.evaluate((k) => new Promise((res) => {
     const r = indexedDB.open("initiative-tafel");
     r.onerror = () => res(undefined);
-    r.onsuccess = () => { try { const g = r.result.transaction("kv").objectStore("kv").get(k); g.onsuccess = () => { r.result.close(); res(g.result); }; g.onerror = () => res(undefined); } catch { res(undefined); } };
+    r.onsuccess = () => { try { const g = r.result.transaction("kv").objectStore("kv").get(k); g.onsuccess = () => { r.result.close(); res(g.result); }; g.onerror = () => { r.result.close(); res(undefined); }; } catch { r.result.close(); res(undefined); } };
   }), key);
   const end = Date.now() + ms;
   for (;;) {
