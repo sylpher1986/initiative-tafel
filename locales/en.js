@@ -492,7 +492,7 @@ export default {
   "init.rage.noRes": "No Rage counter on the sheet: track it yourself.",
   "init.rage.conc": "Concentration ends.",
   "init.rage.concOn": "Concentration on {spell} ends.",
-  "init.rage.sum": "{b} rage damage (melee, STR) · resistance {res} · advantage on STR checks and STR saves · no spells, no concentration · 10 rounds",
+  "init.rage.sum": "{b} rage damage (melee, STR) · resistance {res} · advantage on STR checks and STR saves · no spells, no concentration · {dur}",
   "init.rage.allBut": "to all but psychic",
   "init.rage.frenzy": "Frenzy: one level of exhaustion afterwards.",
   "init.rage.on": "Rage is already running. To end it: tap the Rage chip.",

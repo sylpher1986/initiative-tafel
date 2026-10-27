@@ -18,7 +18,7 @@ import { ORD, pickList, splitSpells, edFor, sheetEd } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus, saveKnown, targetMode, drText, drKind, DR_LBL, saveAdv } from "../rules/aoe.js";
 import { spellItem } from "../data/spells.js";
 import { diceify, syncSB, monCard, isPhone, edTag as monEdTag } from "./statblock.js";
-import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv, atkMods } from "../rules/attacks.js";
+import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv, atkMods, modTail } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
 import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
 import { defRows } from "../rules/statform.js";
@@ -492,7 +492,7 @@ function rageBox(c) {
   const tg = (k, l) => `<button type="button" class="btn tap" data-a="rage-opt" data-k="${k}" aria-pressed="${!!o[k]}">${l}</button>`;
   return `<div class="kpanel rgbox">
     <p class="rghead"><b>Rage · ${esc(c.name)}</b>${lvl ? ` <span class="hint">(${c.sheet && c.sheet.cls ? "barbarian" : "level"} ${n0(lvl)})</span>` : ""}</p>
-    <p class="hint">${esc(t("init.rage.sum", { b: b ? `+${b}` : "+2/+3/+4", res: o.bear ? t("init.rage.allBut") : "B/P/S" }))}</p>
+    <p class="hint">${esc(t("init.rage.sum", { b: b ? `+${b}` : "+2/+3/+4", res: o.bear ? t("init.rage.allBut") : "B/P/S", dur: t(rulesOf(app.S) === "2024" ? "rules.dur.r100" : "rules.dur.r10") }))}</p>
     <p class="hint">${esc(res)}</p>${conc}
     <div class="effgrid rgopt">${tg("bear", "Bear Totem")}${tg("frz", "Frenzy")}</div>
     ${o.frz && rulesOf(app.S) !== "2024" ? `<p class="hint">${esc(t("init.rage.frenzy"))}</p>` : ""}
@@ -1435,7 +1435,7 @@ function atkPick(x, by) {
 function atkHtml(r, ac) {
   const used = r.d.length > 1 ? r.d.indexOf(r.nat) : 0;
   const dice = r.d.map((v, i) => (i === used ? String(v) : `<s>${v}</s>`)).join(", ");
-  return `d20 [${dice}] ${r.bo >= 0 ? "+" : "−"}${Math.abs(r.bo)}${(r.m || []).map((x) => ` ${x.b >= 0 ? "+" : "−"} ${Math.abs(x.b)} ${esc(x.n)}`).join("")} = ${r.tot}${ac ? ` vs AC ${ac}` : ""}`;
+  return `d20 [${dice}] ${r.bo >= 0 ? "+" : "−"}${Math.abs(r.bo)}${esc(modTail(r.m))} = ${r.tot}${ac ? ` vs AC ${ac}` : ""}`;
 }
 
 /** Welke modus en waarom: "Advantage (Ayla Prone)", "Handmatig: Advantage · auto: dis (Invisible)" */

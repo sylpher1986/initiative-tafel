@@ -115,7 +115,7 @@ export default {
   "rules.exh6": "{name} dies: Exhaustion 6.",
   "rules.exhLvl": "{name}: Exhaustion {n}.",
   "rules.exhEd": "Exhaustion {n} under the {ed} rules: max HP {from} → {to}",
-  "rules.exhUp": "{name}: Exhaustion {n} ({what}).", // what = dnd.exh.s<n>
+  "rules.exhUp": "{name}: Exhaustion {n} ({what}).", // what = dnd.exh.s<n>, or dnd.exh24.d20 + dnd.exh24.speed (2024)
   "rules.rage0": "{name} is at 0 HP and can't rage.",
   "rules.rageInc": "{name} is {cond} and can't rage.",
   "rules.resLeft": "{name}: {n} of {max} left.",

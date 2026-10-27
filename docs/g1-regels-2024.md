@@ -161,7 +161,7 @@ Zie CLAUDE.md ("Voorbereiden: monsters en encounters", "Editie in de keuze"). Vo
 
 ### WP50 — Exhaustion en Rage volgens 2024: klaar in 2.7.0
 Zie CLAUDE.md ("Gevecht: kaarten en panelen", "Exhaustion en Rage per editie"). Voor latere pakketten:
-- WP54: bij de regelwissel `reExhAll(app.S.list, ed)` in dezelfde undo-stap (geeft de logregels); partyleden volgen bij aan tafel zetten (`seatMember`).
+- WP54: bij de regelwissel `reExhAll(app.S.list, ed)` in dezelfde undo-stap (geeft de logregels); partyleden volgen bij aan tafel zetten (`seatMember`); bij de party-sync zelf is geen `reExh` nodig (die kopieert de tafel).
 - WP52: `exhRows(x, ed)`/`exhSummary(lvl, ed)` en de sleutels `dnd.exh24.d20`/`dnd.exh24.speed` bestaan; `condInfo` krijgt `ed` nog niet mee.
 - WP51: `exhMod`/`initModText` zijn het patroon voor een vaste modifier op een worp; surprise 2024 (disadvantage op initiative) kan naast de Exhaustion-straf.
 

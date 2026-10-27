@@ -18,6 +18,8 @@ export const condName = (k) => (k === SUR ? M("dnd.cond.Surprised.name") : term(
 
 export const EXH_NAME = "Exhaustion";
 export const isExh = (e) => !!e && e.n === EXH_NAME;
+/** WP50: wat Exhaustion 2024 op niveau x doet: "−4 on d20 tests" + "speed −10 ft" (descriptor) */
+export const exh24 = (x, sep) => J([M("dnd.exh24.d20", { n: 2 * x }), M("dnd.exh24.speed", { n: 5 * x })], sep);
 /**
  * Kort, voor de rij in het Conditie-paneel; speed 0 (5) vervangt speed ½ (2). ed "2024" (WP50, SRD 5.2.1): geen
  * opgetelde lijst maar −2 × niveau op d20-tests en speed −5 ft × niveau; niveau 6 blijft de dood.
@@ -25,7 +27,7 @@ export const isExh = (e) => !!e && e.n === EXH_NAME;
 export const exhSummary = (lvl, ed = "2014") => {
   const x = Math.max(0, Math.min(6, lvl | 0));
   if (!x) return M("dnd.exh.none");
-  if (ed === "2024") return M("dnd.exh.sum", { n: x, list: x === 6 ? M("dnd.exh.s6") : J([M("dnd.exh24.d20", { n: 2 * x }), M("dnd.exh24.speed", { n: 5 * x })], " · ") });
+  if (ed === "2024") return M("dnd.exh.sum", { n: x, list: x === 6 ? M("dnd.exh.s6") : exh24(x, " · ") });
   return M("dnd.exh.sum", { n: x, list: J([1, 2, 3, 4, 5, 6].slice(0, x).filter((i) => !(x >= 5 && i === 2)).map((i) => M(`dnd.exh.s${i}`)), " · ") });
 };
 /** Niveau 0–6 uit de effecten */
@@ -36,7 +38,7 @@ export const exhLevel = (c) => { const e = (c && c.eff || []).find(isExh); retur
  */
 export const exhRows = (x, ed = "2014") => {
   const n = Math.max(0, Math.min(6, x | 0));
-  if (ed === "2024") return n ? [J([String(n), n === 6 ? M("dnd.exh.6") : J([M("dnd.exh24.d20", { n: 2 * n }), M("dnd.exh24.speed", { n: 5 * n })], ", ")], " ")] : [];
+  if (ed === "2024") return n ? [J([String(n), n === 6 ? M("dnd.exh.6") : exh24(n, ", ")], " ")] : [];
   return Array.from({ length: n }, (_, i) => J([String(i + 1), M(`dnd.exh.${i + 1}`)], " "));
 };
 /** Regels van het Exhaustion-effect zelf (WP50): "2024" als het zo is vastgelegd, anders "2014" */

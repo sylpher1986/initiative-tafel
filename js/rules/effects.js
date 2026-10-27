@@ -6,7 +6,7 @@ import { M, J } from "../i18n/msg.js";
 import { tr } from "../i18n/boot.js";
 /** Reden "handmatig" (descriptor, of de oude tekst): dan geen "(reden)" in de melding */
 import { DTYPES } from "./aoe.js";
-import { isExh, exhLevel, exhMod, exhEd } from "./conditions.js";
+import { isExh, exhLevel, exhMod, exhEd, exh24 } from "./conditions.js";
 const manual = (w) => w === "handmatig" || (!!w && w.k === "rules.manual");
 
 /**
@@ -278,7 +278,7 @@ export function setExh(c, x, why = M("rules.manual"), ed) {
     out.msgs.push(say("rules.exh6", { name: c.name }));
     return out;
   }
-  out.msgs.push(x > was ? say("rules.exhUp", { name: c.name, n: x, what: ed === "2024" ? J([M("dnd.exh24.d20", { n: 2 * x }), M("dnd.exh24.speed", { n: 5 * x })], ", ") : M(`dnd.exh.s${x}`) }) : say("rules.exhLvl", { name: c.name, n: x }));
+  out.msgs.push(x > was ? say("rules.exhUp", { name: c.name, n: x, what: ed === "2024" ? exh24(x, ", ") : M(`dnd.exh.s${x}`) }) : say("rules.exhLvl", { name: c.name, n: x }));
   return out;
 }
 

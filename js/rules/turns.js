@@ -462,12 +462,12 @@ export function dropIds(state, gone) {
   }
 }
 
+/** WP50: " − 4 Exhaustion 2" achter een initiativeworp, of "" (em = exhMod) */
+export const initModText = (em) => (em ? ` − ${-em.b} ${em.n}` : "");
 /**
  * Initiative-bonus van een deelnemer: c.initBonus als die er is (speler uit de sheet; 2024-monster uit het statblock,
  * WP48), anders Dex. De tiebreak blijft c.dex (sortOrder).
  */
-/** WP50: " − 4 Exhaustion 2" achter een initiativeworp, of "" (em = exhMod) */
-export const initModText = (em) => (em ? ` − ${-em.b} ${em.n}` : "");
 export const initBo = (c) => (Number.isFinite(c && c.initBonus) ? c.initBonus : c && Number.isFinite(c.dex) ? c.dex : 0);
 /** WP48: initiative-bonus uit een statblock (SRD 5.2 "Initiative +12" = m.init), of null (2014: dan Dex) */
 export const statInit = (m) => (m && Number.isFinite(m.init) ? m.init : null);

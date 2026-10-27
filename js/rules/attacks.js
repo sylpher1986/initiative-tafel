@@ -160,6 +160,8 @@ export function withAdv(r, adv, m = r.m || []) {
   const nat = !v ? a : v > 0 ? Math.max(a, b) : Math.min(a, b);
   return { dd: r.dd, d: v ? [a, b] : [a], adv: v, nat, bo: r.bo, ...(m.length ? { m } : {}), tot: nat + r.bo + m.reduce((s, x) => s + x.b, 0) };
 }
+/** WP50: vaste modifiers als staart van een worptekst: " − 6 Exhaustion 3" (geen HTML: escapen bij tonen) */
+export const modTail = (m) => (m || []).map((x) => ` ${x.b >= 0 ? "+" : "−"} ${Math.abs(x.b)} ${x.n}`).join("");
 /** WP50: vaste modifiers op de aanvalsworp van deze aanvaller (Exhaustion 2024: −2 × niveau) */
 export const atkMods = (by) => { const x = exhMod(by); return x ? [x] : []; };
 
@@ -240,7 +242,7 @@ export function atkResult(atk, ac, parts, modes = {}, force = {}) {
 }
 
 /** Tekst van de to-hit-worp: "d20 [14, 7] adv +11 = 25 vs AC 16" */
-export const atkText = (atk, ac) => `d20 [${atk.d.join(", ")}]${atk.adv ? (atk.adv > 0 ? " adv" : " dis") : ""} ${atk.bo >= 0 ? "+" : "−"}${Math.abs(atk.bo)}${(atk.m || []).map((x) => ` ${x.b >= 0 ? "+" : "−"} ${Math.abs(x.b)} ${x.n}`).join("")} = ${atk.tot}${ac != null ? ` vs AC ${ac}` : ""}`;
+export const atkText = (atk, ac) => `d20 [${atk.d.join(", ")}]${atk.adv ? (atk.adv > 0 ? " adv" : " dis") : ""} ${atk.bo >= 0 ? "+" : "−"}${Math.abs(atk.bo)}${modTail(atk.m)} = ${atk.tot}${ac != null ? ` vs AC ${ac}` : ""}`;
 
 const MODE_STEP = { 0.5: "×½", 2: "×2" };
 /** Logboek-oorzaak (descriptor): "Bite (Dragon): d20 [14] +11 = 25 vs AC 16, raak; 2d10+6 [7, 3] +6 = 16 piercing + … → 21" */

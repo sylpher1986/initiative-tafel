@@ -492,7 +492,7 @@ export default {
   "init.rage.noRes": "[Ñö Rágé çöüñtér öñ thé shéét: tráçk ít ýöürsélf. ·················]",
   "init.rage.conc": "[Çöñçéñtrátíöñ éñds. ·······]",
   "init.rage.concOn": "[Çöñçéñtrátíöñ öñ {spell} éñds. ·········]",
-  "init.rage.sum": "[{b} rágé dámágé (méléé, STR) · résístáñçé {res} · ádváñtágé öñ STR çhéçks áñd STR sávés · ñö spélls, ñö çöñçéñtrátíöñ · 10 röüñds ···········································]",
+  "init.rage.sum": "[{b} rágé dámágé (méléé, STR) · résístáñçé {res} · ádváñtágé öñ STR çhéçks áñd STR sávés · ñö spélls, ñö çöñçéñtrátíöñ · {dur} ········································]",
   "init.rage.allBut": "[tö áll büt psýçhíç ·······]",
   "init.rage.frenzy": "[Fréñzý: öñé lévél öf éxháüstíöñ áftérwárds. ················]",
   "init.rage.on": "[Rágé ís álréádý rüññíñg. Tö éñd ít: táp thé Rágé çhíp. ···················]",
