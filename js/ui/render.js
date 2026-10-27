@@ -6,7 +6,8 @@ import { paintSetStat } from "./settings.js";
 import { $, esc, n0, spellLink, tb } from "./util.js";
 import { t, tr } from "../i18n/boot.js";
 import { app, commit, canUndo } from "../state.js";
-import { findMon, allMonsters, filterMonsters } from "../data/monsters.js";
+import { findMon, filterMonsters, parseQuery, monKey, findKey, srd24Status, loadSrd24, searchList } from "../data/monsters.js";
+import { rulesOf } from "../rules/edition.js";
 import { SYN } from "../data/syn.js";
 import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf, isSurprised, reactUsed, reactTag, canToggleSurprise, nextUp, freshRoll, initPlan, initText, durShort } from "../rules/turns.js";
 import { PRESETS as PRESETS_14, presetsFor, effAc, effText, effNote, acBreakdown, baseMax, saveMods, modsText, isWarn, effName, isRage, rageOf, rageRes, barbLevel, rageDmg } from "../rules/effects.js";
@@ -16,7 +17,7 @@ import * as R from "../rules/combat.js";
 import { ORD, pickList, splitSpells, edFor, sheetEd } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus, saveKnown, targetMode, drText, drKind, DR_LBL, saveAdv } from "../rules/aoe.js";
 import { spellItem } from "../data/spells.js";
-import { diceify, syncSB, monCard, isPhone } from "./statblock.js";
+import { diceify, syncSB, monCard, isPhone, edTag as monEdTag } from "./statblock.js";
 import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
 import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
@@ -932,12 +933,37 @@ function paintSheet() {
     </div>`;
 }
 
-/* ---------- monsterlijst (Monster-paneel en snel toevoegen) ---------- */
-/** Lijst + kopregel + lege/foutmelding. attr = data-attribuut van de rijknoppen; none = tekst als er zonder filter niets is */
-export function monListHtml(f, sel, attr, none) {
-  const rows = f.L.map((m) => `<button type="button" ${attr}="${esc(m.n)}" aria-pressed="${m.n === sel}"><span>${icon("m-" + monType(m.meta), "mi")}${esc(m.n)}${m.custom ? ` · ${esc(t("init.mon.own"))}` : ""}</span><span class="cr">CR ${esc(m.cr || "?")} · AC ${parseInt(m.ac) || "?"} · ${n0(m.hp) || "?"} HP</span></button>`).join("");
+/* ---------- monsterlijst (Monster-paneel, snel toevoegen, encounter bewerken) ---------- */
+export const SRC = { 2014: "SRD 5.1 (2014)", 2024: "SRD 5.2 (2024)" }; // bronnaam, niet vertaald
+/**
+ * WP49 (V4): wat er gezocht wordt. Zonder zoekwoord de editie van de tafel (+ eigen), met 2014/2024 alleen die SRD.
+ * SRD 5.2 wordt pas bij de eerste behoefte geladen (B9); daarna tekent again() opnieuw. Geeft { f, st } terug:
+ * st = "loading" | "fail" als de lijst op SRD 5.2 wacht of die niet kon laden (B4: nooit stil leeg), anders "".
+ */
+let fail24 = 0;
+export function monSearch(q, sel, typed, again) {
+  const table = rulesOf(app.S), want = parseQuery(q).ed, ed = want || table;
+  let st = "";
+  if (ed === "2024" && srd24Status() !== "ok") {
+    const s0 = srd24Status();
+    if (s0 === "loading") st = "loading";
+    else if (s0 === "fail" && Date.now() - fail24 < 10000) st = "fail"; // net mislukt: tonen, niet in een lus opnieuw proberen
+    else { st = "loading"; loadSrd24().then((r) => { if (r === "fail") fail24 = Date.now(); again(); }); } // later opnieuw (bijv. weer online)
+  }
+  return { f: filterMonsters(searchList(table, want), q, sel, typed, SYN), st };
+}
+/** Lijst + kopregel + lege/foutmelding. attr = data-attribuut van de rijknoppen (waarde = monKey); none = tekst als er zonder filter niets is */
+export function monListHtml(f, sel, attr, none, st = "") {
+  if (st) return `<p class="hint" style="padding:10px">${esc(t(st === "fail" ? "init.mon.edFail" : "init.mon.edLoading", { src: SRC[2024] }))}</p>`;
+  const rows = f.L.map((m) => { const k = monKey(m); return `<button type="button" ${attr}="${esc(k)}" aria-pressed="${k === sel}"><span>${icon("m-" + monType(m.meta), "mi")}<span>${esc(m.n)}${m.custom ? ` · ${esc(t("init.mon.own"))}` : ""}${monEdTag(m)}</span></span><span class="cr">CR ${esc(m.cr || "?")} · AC ${parseInt(m.ac) || "?"} · ${n0(m.hp) || "?"} HP</span></button>`; }).join("");
   const empty = f.label ? esc(t("init.mon.none", { q: f.label })) : esc(none);
   return rows || `<p class="hint" style="padding:10px">${empty}</p>`;
+}
+/** Regel onder de lijst (V4): "Zoek in SRD 5.2 (2024) ▸" of, met het zoekwoord van de andere editie, "Terug naar SRD 5.1 (2014) ▸"; alleen bij een zoektekst */
+export function edLineHtml(q) {
+  if (!String(q || "").trim()) return "";
+  const table = rulesOf(app.S), want = parseQuery(q).ed, back = want && want !== table, to = back ? table : table === "2024" ? "2014" : "2024";
+  return `<button type="button" class="link edgo" data-edq="${to}">${esc(t(back ? "init.mon.edBack" : "init.mon.edGo", { src: SRC[to] }))}</button>`;
 }
 /** Kopregel boven de lijst: "Undead · CR 2–4 · 6 monsters", of uitleg bij een onleesbaar CR-woord; "" = verbergen */
 export const monLabel = (f) => (f.bad ? t("init.mon.badCr")
@@ -1005,6 +1031,7 @@ export function paintQadd() {
       <label>${esc(t("init.mon.search"))}<input id="q-q" placeholder="${esc(t("init.mon.searchPh"))}" autocomplete="off" enterkeyhint="search"></label>
       <p class="mlbl" id="q-lbl" aria-live="polite" hidden></p>
       <div class="mlist qlist" id="q-list"></div>
+      <div id="q-ed"></div>
       <div id="q-prev"></div>
       <div class="addblk" id="q-blk"></div>
       <label class="chk"><input type="checkbox" data-q="hid" id="q-hid"> ${esc(t("init.mon.hidden"))}</label>
@@ -1015,18 +1042,19 @@ export function paintQadd() {
     </div>`;
     el.hidden = false;
   }
-  const f = filterMonsters(allMonsters(), q.q, q.sel, !!q.typed, SYN);
+  const { f, st } = monSearch(q.q, q.sel, !!q.typed, () => { if (ui.qadd === q) paintQadd(); });
   if (f.sel !== q.sel) q.full = false; // andere keuze: preview weer kort
-  q.sel = f.sel; // UI-toestand: de selectie volgt wat zichtbaar is (zoals in de Monster-tab)
-  const lbl = monLabel(f);
+  q.sel = f.sel; // UI-toestand: de selectie (monKey) volgt wat zichtbaar is (zoals in de Monster-tab)
+  const lbl = st ? "" : monLabel(f), m = q.sel ? findKey(q.sel) : null;
   $("#q-lbl").hidden = !lbl; $("#q-lbl").textContent = lbl;
-  $("#q-list").innerHTML = monListHtml(f, q.sel, "data-qpick", t("init.qadd.none"));
-  $("#q-prev").innerHTML = monPrev(q.sel && findMon(q.sel), q.full, false); // snel toevoegen: geen zijkolom (die volgt de beurt)
-  if (!q.typing) $("#q-blk").innerHTML = addBlockHtml("q", q, q.sel && findMon(q.sel)); // tijdens typen in het getalveld niet vervangen (focus)
-  else $("#q-addh").textContent = addHint(q, q.sel && findMon(q.sel));
+  $("#q-list").innerHTML = monListHtml(f, q.sel, "data-qpick", t("init.qadd.none"), st);
+  $("#q-ed").innerHTML = edLineHtml(q.q);
+  $("#q-prev").innerHTML = monPrev(m, q.full, false); // snel toevoegen: geen zijkolom (die volgt de beurt)
+  if (!q.typing) $("#q-blk").innerHTML = addBlockHtml("q", q, m); // tijdens typen in het getalveld niet vervangen (focus)
+  else $("#q-addh").textContent = addHint(q, m);
   const go = el.querySelector(".qgo");
-  go.disabled = !q.sel || (q.fixOn && parseInit(q.fix) === null);
-  go.textContent = q.sel ? addLabel(q.n, q.sel, q.hid, q.anon) : t("init.mon.pick");
+  go.disabled = !m || (q.fixOn && parseInit(q.fix) === null);
+  go.textContent = m ? addLabel(q.n, m.n, q.hid, q.anon) : t("init.mon.pick");
   $("#q-anon").checked = q.anon; $("#q-anonh").hidden = !q.anon;
   $("#q-hid").checked = q.hid; $("#q-hidh").hidden = !q.hid;
 }

@@ -1,8 +1,9 @@
 // Statblocks (monsters) en character sheets (spelers) in het zijpaneel, met klikbare dobbelstenen.
 import { $, esc, n0, toastHtml, spellLink, mdLite } from "./util.js";
 import { chev, dsMini } from "./icons.js";
-import { findMon } from "../data/monsters.js";
-import { cleanEd } from "../rules/edition.js";
+import { findMon, edTagOf, monEd } from "../data/monsters.js";
+import { cleanEd, rulesOf } from "../rules/edition.js";
+import { app } from "../state.js";
 import { rollExpr, mod, sgn } from "../rules/dice.js";
 import { ORD, legInfo, castInfo } from "../rules/spells.js";
 import { rollDmg, parseAction, monsterActions } from "../rules/attacks.js";
@@ -14,6 +15,8 @@ import { spellParts } from "../data/spells.js";
 import { REST } from "../data/statparse.js";
 import { passives, pasText } from "../rules/passives.js";
 import { t, i18n } from "../i18n/boot.js";
+/** WP49: tag "2024"/"2014" na de naam als het statblock uit de andere SRD komt dan de tafel (lijst, preview, statblock-kop) */
+export const edTag = (m) => { const e = edTagOf(m, rulesOf(app.S)); return e ? ` <span class="tag">${e}</span>` : ""; };
 /** Trait-naam voor weergave: niet herkende tekst van een eigen monster (REST) in de taal van de pagina */
 const trName = (k) => (k === REST ? t("init.sb.other") : k);
 
@@ -128,10 +131,10 @@ export const wantSB = (id) => { sb.want = id; };
 /** Tablet/desktop: gekozen monster in het Monster-paneel als preview in de zijkolom (niet op de telefoon, niet vastgezet) */
 export function previewSB(m) {
   if (!m) { if (sb.prev && sb.args) { sb.drop = true; syncSB(...sb.args); } return; } // geen keuze meer: terug naar wat er stond
-  if (phone() || sb.pin || sb.prev === m.n) return;
+  if (phone() || sb.pin || sb.prev === m) return; // het statblock zelf: Zombie 2014 en 2024 hebben dezelfde naam
   if (!sb.prev) sb.back = sb.cid;
-  sb.prev = m.n; sb.cid = null; sb.ref = null; sb.pc = false; sb.live = "";
-  $("#sb").innerHTML = `<div class="sbhead"><div><h2>${esc(m.n)}</h2><div class="meta">${esc(m.meta || (m.custom ? t("init.sb.custom") : ""))}</div></div></div>
+  sb.prev = m; sb.cid = null; sb.ref = null; sb.pc = false; sb.live = "";
+  $("#sb").innerHTML = `<div class="sbhead"><div><h2>${esc(m.n)}${edTag(m)}</h2><div class="meta">${esc(m.meta || (m.custom ? t("init.sb.custom") : ""))}</div></div></div>
     <p class="sbprev">${esc(t("init.sb.preview"))}</p><hr>${sbBody(m)}`;
   $("#sb").scrollTop = 0;
   paintTurn(null);
@@ -223,7 +226,7 @@ function paintNext(S) {
   sb.nk = key; sb.nid = m ? r.c.id : null;
   const sub = r && r.n === 1 && r.c.name !== m.n ? ` · ${esc(r.c.name)}` : "";
   el.innerHTML = m ? `<hr><p class="sbprev">${esc(t(r.now ? "init.sb.now" : "init.sb.next"))}</p>
-    <div class="sbhead"><div><h2>${esc(m.n)}${r.n > 1 ? ` ×${r.n}` : ""}</h2><div class="meta">${esc(m.meta || (m.custom ? t("init.sb.custom") : ""))}${sub}</div></div></div>
+    <div class="sbhead"><div><h2>${esc(m.n)}${r.n > 1 ? ` ×${r.n}` : ""}${edTag(m)}</h2><div class="meta">${esc(m.meta || (m.custom ? t("init.sb.custom") : ""))}${sub}</div></div></div>
     <hr><div class="sbnb">${sbBody(m, r.c.id)}</div>` : "";
 }
 
@@ -252,19 +255,20 @@ const atkRef = (cid, k, v) => { const a = parseAction(k, v); return { cid, n: a.
  */
 export function sbBody(m, cid = null) {
   const ent = (arr, atk) => arr.map(([k, v]) => `<p class="entry"><b><i>${esc(trName(k))}.</i></b> ${(/spellcasting/i.test(k) ? linkSpells : diceify)(v, atk && cid && atkRef(cid, k, v))}</p>`).join("");
-  return `<p><span class="k">Armor Class</span> ${mdLite(esc(m.ac))}</p>
+  const ini = Number.isFinite(m.init) ? ` &nbsp; <span class="k">Initiative</span> ${esc(sgn(m.init))} (${10 + m.init})` : ""; // WP49: 2024-statblock "AC 8 Initiative −2 (8)"
+  return `<p><span class="k">Armor Class</span> ${mdLite(esc(m.ac))}${ini}</p>
     <p><span class="k">Hit Points</span> ${n0(m.hp)}${m.hd ? ` (<button class="dice" data-roll="${esc(m.hd)}">${esc(m.hd.replace(/([+-])/, " $1 "))}</button>)` : ""}</p>
     ${m.spd ? `<p><span class="k">Speed</span> ${esc(m.spd)}</p>` : ""}
     ${m.ab ? `<hr>${abilRow(m.ab)}` : ""}
     <hr>${(m.x || []).map(([k, v]) => `<p><span class="k">${esc(k)}</span> ${diceify(v)}</p>`).join("")}
-    ${m.cr ? `<p><span class="k">Challenge</span> ${esc(m.cr)}${m.xp ? ` (${esc(i18n().num(n0(m.xp)))} XP)` : ""}</p>` : ""}
+    ${m.cr ? `<p><span class="k">Challenge</span> ${esc(m.cr)}${m.xp || m.pb ? ` (${[m.xp && `${esc(i18n().num(n0(m.xp)))} XP`, m.pb && `PB ${esc(sgn(+m.pb))}`].filter(Boolean).join("; ")})` : ""}</p>` : ""}
     ${m.t && m.t.length ? `<hr>${ent(m.t)}` : ""}
     ${m.a && m.a.length ? `<h3>Actions</h3>${ent(m.a, true)}` : ""}
     ${m.ba && m.ba.length ? `<h3>Bonus Actions</h3>${ent(m.ba, true)}` : ""}
     ${m.re && m.re.length ? `<h3>Reactions</h3>${ent(m.re, true)}` : ""}
     ${m.l && m.l.length ? `<h3>Legendary Actions</h3>${m.ld ? `<p>${diceify(m.ld)}</p>` : ""}${ent(m.l, true)}` : ""}
     ${m.text ? `<hr><div class="pre">${diceify(m.text)}</div>` : ""}
-    ${m.custom ? "" : `<p class="credit">${esc(t("init.sb.credit"))}</p>`}`;
+    ${m.custom ? "" : `<p class="credit">${esc(t(monEd(m) === "2024" ? "init.sb.credit24" : "init.sb.credit"))}</p>`}`;
 }
 
 export function showSB(c, follow = false) {
@@ -279,7 +283,7 @@ export function showSB(c, follow = false) {
     return open();
   }
   sb.ref = m.n; sb.ed = cleanEd(c.ed);
-  $("#sb").innerHTML = `<div class="sbhead"><div><h2>${esc(m.n)}</h2><div class="meta">${esc(m.meta || (m.custom ? t("init.sb.custom") : ""))}<span id="sbcname">${cname && cname !== m.n ? ` · ${esc(cname)}` : ""}</span></div></div>
+  $("#sb").innerHTML = `<div class="sbhead"><div><h2>${esc(m.n)}${edTag(m)}</h2><div class="meta">${esc(m.meta || (m.custom ? t("init.sb.custom") : ""))}<span id="sbcname">${cname && cname !== m.n ? ` · ${esc(cname)}` : ""}</span></div></div>
     ${headBtns()}</div><hr><div class="sbnb">${sbBody(m, c.id)}</div>`;
   $("#sb").scrollTop = 0;
   open();
@@ -367,7 +371,7 @@ export function monCard(m, full = false, toggle = true) {
   const tags = [lg.la ? `Legendary (${lg.la.max})` : "", castInfo(m) || (m.t || []).some(([k]) => /spellcasting/i.test(k)) ? "Spellcasting" : ""].filter(Boolean);
   const stats = [`AC ${parseInt(m.ac) || "?"}`, `HP ${n0(m.hp) || "?"}${m.hd ? ` (${m.hd})` : ""}`, m.spd, m.cr ? `CR ${m.cr}${m.xp ? ` (${i18n().num(n0(m.xp))} XP)` : ""}` : ""].filter(Boolean);
   return `<div class="mprev" aria-live="polite">
-    <div class="mphead"><b>${esc(m.n)}</b><span>${esc(m.meta || (m.custom ? t("init.sb.custom") : ""))}</span></div>
+    <div class="mphead"><b>${esc(m.n)}${edTag(m)}</b><span>${esc(m.meta || (m.custom ? t("init.sb.custom") : ""))}</span></div>
     <p class="mpstat">${esc(stats.join(" · "))}</p>
     ${def.length ? `<p class="mpdef">${esc(def.join(" · "))}</p>` : ""}
     ${A && A.multi ? `<p class="mpmulti">${esc(A.multi.text)}</p>` : ""}

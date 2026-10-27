@@ -46,7 +46,7 @@ test("WP46 findMon: zonder ed exact het oude resultaat; 2024 zonder data geeft n
   assert.equal(findMon("Zombie"), z);
 });
 
-// Bewust editieloos (nog): de keuzelijst-aanroepers findMon(selMon) / findMon(q.sel) in actions.js en render.js; WP49 geeft daar de editie mee.
+// Keuzelijsten: zie tests/wp49.test.js (sleutel met editie via findKey).
 test("WP46 geen findMon(c.ref) zonder editie meer in js/", () => {
   const files = [];
   const walk = (d) => { for (const f of readdirSync(d)) { const p = join(d, f); statSync(p).isDirectory() ? walk(p) : p.endsWith(".js") && files.push(p); } };

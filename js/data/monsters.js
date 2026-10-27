@@ -5,12 +5,14 @@ import { M, J } from "../i18n/msg.js";
 import { cleanEd } from "../rules/edition.js";
 
 let srd = [], custom = [], imported = [], srd24 = [];
-let list = null, index = null, list24 = null, index24 = null;
+let list = null, index = null, list24 = null, index24 = null, list14 = null, listOwn = null;
+const ED14 = new WeakSet(), ED24 = new WeakSet(); // WP49: welke statblocks uit SRD 5.1 resp. SRD 5.2 komen (eigen/geïmporteerd: geen)
 
 export async function loadSrd(url = "/data/monsters.json") {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`); // taalneutraal: de UI zet er init.boot.srdFail omheen
   srd = srdList(await res.json());
+  for (const m of srd) ED14.add(m);
   invalidate();
 }
 export function setLibrary({ custom: c, imported: i }) {
@@ -21,7 +23,7 @@ export function setLibrary({ custom: c, imported: i }) {
 /** SRD-bestand: kale array (data/monsters.json) of omhulsel { ed, src, monsters } (data/monsters-2024.json, WP47) */
 export const srdList = (j) => (Array.isArray(j) ? j : Array.isArray(j?.monsters) ? j.monsters : []);
 /** G1: SRD 5.2-bibliotheek (data/monsters-2024.json); los van eigen/geïmporteerd, geen ontdubbeling */
-export function setSrd24(l) { srd24 = srdList(l); list24 = index24 = null; }
+export function setSrd24(l) { srd24 = srdList(l); for (const m of srd24) ED24.add(m); list24 = index24 = null; listOwn = null; }
 
 let st24 = "none", p24 = null;
 /** Stand van de SRD 5.2-data: "none" (niet gevraagd), "loading", "ok", "fail" (B4/B9: ontbrekend is expliciet, nooit stil leeg) */
@@ -51,7 +53,8 @@ export function loadSrd24(url = "/data/monsters-2024.json") {
 export const getCustom = () => custom;
 export const getImported = () => imported;
 
-function invalidate() { list = null; index = null; }
+function invalidate() { list = null; index = null; list14 = null; listOwn = null; }
+const byName = (a, b) => a.n.localeCompare(b.n);
 function build() {
   const seen = new Map();
   // RE14: eigen (en geïmporteerde eigen-formaat) monsters met plaktekst krijgen dezelfde structuur als SRD
@@ -62,11 +65,42 @@ function build() {
   list = [...seen.values()].sort((a, b) => a.n.localeCompare(b.n));
   index = new Map(list.map((m) => [m.n, m]));
 }
-function build24() { list24 = [...srd24].sort((a, b) => a.n.localeCompare(b.n)); index24 = new Map(list24.map((m) => [m.n, m])); }
+function build24() { list24 = [...srd24].sort(byName); index24 = new Map(list24.map((m) => [m.n, m])); }
 /** Zonder editie: eigen > geïmporteerd > SRD 5.1 (ongewijzigd); ed "2024": alleen SRD 5.2 */
 export const allMonsters = (ed) => { if (cleanEd(ed)) { if (!list24) build24(); return list24; } if (!list) build(); return list; };
 /** B3/B4: ed "2024" zoekt alleen in SRD 5.2, zonder terugval op 2014 en zonder schaduw door eigen monsters */
 export const findMon = (n, ed) => { if (cleanEd(ed)) { if (!index24) build24(); return index24.get(n); } if (!index) build(); return index.get(n); };
+
+/* ---------- WP49: editie in de keuzelijsten ---------- */
+/** Editie van een statblock: "2014" (SRD 5.1), "2024" (SRD 5.2) of "" (eigen/geïmporteerd: editie-neutraal) */
+export const monEd = (m) => (!m ? "" : ED24.has(m) ? "2024" : ED14.has(m) ? "2014" : "");
+/** Editietag in een lijst of kop: alleen als het statblock uit de andere SRD komt dan de tafel; anders "" */
+export const edTagOf = (m, table) => { const e = monEd(m); return e && e !== table ? e : ""; };
+const SEP = "\u2063"; // onzichtbaar scheidingsteken: kan niet in een getypte naam staan
+/** Sleutel van een keuze in de lijst: de naam, bij SRD 5.2 met de editie erachter (Zombie 2014 en 2024 zijn twee keuzes) */
+export const monKey = (m) => (monEd(m) === "2024" ? m.n + SEP + "2024" : m.n);
+/** Sleutel → { n, ed? } (ed alleen "2024", zoals op de deelnemer) */
+export const keyRef = (k) => { const s = String(k ?? ""), i = s.indexOf(SEP); return i < 0 ? { n: s } : { n: s.slice(0, i), ...(s.slice(i + 1) === "2024" ? { ed: "2024" } : {}) }; };
+/** Statblock bij een sleutel */
+export const findKey = (k) => { const r = keyRef(k); return findMon(r.n, r.ed); };
+/**
+ * Lijst om in te zoeken (V4, WP49). table = regelset van de tafel, want = zoekwoord 2014/2024 (of null).
+ * Zonder zoekwoord: de editie van de tafel plus eigen/geïmporteerde monsters (2014 precies als vroeger: allMonsters()).
+ * Met zoekwoord: alleen de SRD van die editie, zonder eigen monsters (voorspelbaar, ook als het de tafeleditie is).
+ */
+export function searchList(table, want) {
+  if (want === "2024") return allMonsters("2024");
+  if (want === "2014") { if (!list14) list14 = [...srd].sort(byName); return list14; }
+  if (table !== "2024") return allMonsters();
+  if (!listOwn) {
+    if (!list) build();
+    if (!list24) build24();
+    listOwn = [...list.filter((m) => !ED14.has(m)), ...list24].sort(byName); // eigen + geïmporteerd (zonder SRD 5.1) + SRD 5.2
+  }
+  return listOwn;
+}
+/** Zoekwoord vervangen: losse 2014/2024 eruit, ed erachter (behalve als ed de tafeleditie is: dan alleen eruit) */
+export const withEdWord = (q, ed, table) => [...String(q || "").split(/\s+/).filter((w) => w && !/^20[12]4$/.test(w)), ...(ed && ed !== table ? [ed] : [])].join(" ");
 
 /* ---------- zoeken op naam, type en CR ---------- */
 export const TYPES = ["aberration", "beast", "celestial", "construct", "dragon", "elemental", "fey", "fiend", "giant", "humanoid", "monstrosity", "ooze", "plant", "undead"];
@@ -109,6 +143,7 @@ export function parseQuery(q) {
   const T = String(q || "").toLowerCase().replace(/[–—]/g, "-").split(/[\s,]+/).filter(Boolean);
   const out = { words: [], cr: null, type: "", bad: false };
   for (let i = 0; i < T.length; i++) {
+    if (T[i] === "2014" || T[i] === "2024") { out.ed = T[i]; continue; } // WP49 (V4): editie als los zoekwoord (ed alleen als het er staat); het laatste wint
     const m = T[i].match(/^cr:?(?=$|\d)(.*)$/); // "cr", "cr5", "cr:1/2"; niet "crab"
     if (!m) { out.words.push(T[i]); out.type ||= typeWord(T[i]); continue; }
     let v = m[1];
@@ -118,11 +153,11 @@ export function parseQuery(q) {
   }
   return out;
 }
-/** Kop boven de lijst bij een filter: "Undead · CR 2–4"; zonder filter "" */
+/** Kop boven de lijst bij een filter: "2024 · Undead · CR 2–4"; zonder filter "" */
 export function queryLabel(p) {
   const cr = p.cr && (p.cr.max === Infinity ? `CR ${crLbl(p.cr.min)}+` : p.cr.min === p.cr.max ? `CR ${crLbl(p.cr.min)}` : `CR ${crLbl(p.cr.min)}–${crLbl(p.cr.max)}`);
   const type = p.words.length === 1 && p.type; // "giant spider" is een naam, geen filter
-  return [type && type[0].toUpperCase() + type.slice(1), cr].filter(Boolean).join(" · ");
+  return [p.ed, type && type[0].toUpperCase() + type.slice(1), cr].filter(Boolean).join(" · ");
 }
 
 /* ---------- VB4: woorden in andere talen en typfouten ---------- */
@@ -254,11 +289,14 @@ export function filterMonsters(list, q, sel, typed = false, SY = NO_SYN) {
     if (p.cr || p.type) L = L0.slice().sort((a, b) => (crNum(a.cr) || 0) - (crNum(b.cr) || 0) || a.n.localeCompare(b.n));
     else L = L0.slice().sort((a, b) => sc.get(b) - sc.get(a)); // stabiel: verder de bestaande (alfabetische) volgorde
   }
-  const tgt = SY.get(t), ex = L.filter((m) => { const n = m.n.toLowerCase(); return n === t || (tgt && tgt.includes(n)); });
-  const exact = ex.length === 1 ? ex[0] : L.find((m) => m.n.toLowerCase() === t) || null;
+  const tx = p.ed ? t.split(/\s+/).filter((w) => w !== p.ed && !/^20[12]4$/.test(w)).join(" ") : t; // "zombie 2024": exacte naam zonder het editiewoord
+  const tgt = SY.get(tx), ex = L.filter((m) => { const n = m.n.toLowerCase(); return n === tx || (tgt && tgt.includes(n)); });
+  const same = ex.length === 1 ? ex : L.filter((m) => m.n.toLowerCase() === tx);
+  const exact = same.length === 1 ? same[0] : null; // WP49: twee keer dezelfde naam (eigen + SRD 5.2) = geen automatische keuze
   if (exact && L[0] !== exact) L = [exact, ...L.filter((m) => m !== exact)]; // exacte naam bovenaan ("giant spider")
-  const vis = L.some((m) => m.n === sel);
-  const pick = typed && ex.length === 1 ? ex[0].n : vis ? sel : exact ? exact.n : L.length === 1 ? L[0].n : null;
+  // WP49: selectie = monKey (naam, bij SRD 5.2 met editie), zodat Zombie 2014 en 2024 aparte keuzes zijn
+  const vis = L.some((m) => monKey(m) === sel);
+  const pick = typed && ex.length === 1 ? monKey(ex[0]) : vis ? sel : exact ? monKey(exact) : L.length === 1 ? monKey(L[0]) : null;
   const head = queryLabel(viaType ? { ...p, type: "" } : p), extra = fix ? M("dnd.search.fix", { words: fix.join(" ") }) : syn.size ? [...syn].map((k) => `"${k}" = ${SY.get(k).join(", ")}`).join(" · ") : "";
   return { L, sel: pick, label: head || extra ? J([head, extra], " · ") : "", bad: p.bad }; // label: tekst of descriptor ("" = geen kop); tonen met t/tr
 }
@@ -286,6 +324,7 @@ export function sanitizeOwn(o) {
     x: pairs(o.x), cr: str(o.cr), xp: +o.xp || null,
     t: pairs(o.t), a: pairs(o.a), ba: pairs(o.ba), re: pairs(o.re), l: pairs(o.l), ld: str(o.ld),
     ...(o.text != null ? { text: str(o.text) } : {}), ...(o.dexScore != null ? { dexScore: +o.dexScore || 10 } : {}),
+    ...(Number.isInteger(+o.init) && o.init !== "" && o.init != null && Math.abs(+o.init) <= 30 ? { init: +o.init } : {}), // WP49: Initiative-bonus (2024-statblock)
   };
 }
 

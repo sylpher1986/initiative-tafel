@@ -98,7 +98,9 @@ export function parseStatText(text) {
     const e0 = splitEntry(line), kv = !(e0 && e0[1] && !/\d/.test(e0[0])) && line.match(KEY_RE); // "Speed Burst. The …" is een trait
     if (kv && !ents && (sec === null || sec === "t0")) {
       const k = ALIAS[kv[1].toLowerCase()] || KEYS.find((x) => x.toLowerCase() === kv[1].toLowerCase()) || kv[1], v = kv[2].trim();
-      if (k === "Armor Class") out.ac = v;
+      const ini = (w) => { const m = w.match(/^([+-]\d{1,2})\b/); if (m) out.init = +m[1]; }; // WP49: 2024 "Initiative +2 (12)" → init
+      if (k === "Armor Class") { const m = v.match(/^(.*?)\s+Initiative\s+(.+)$/i); out.ac = m ? m[1] : v; if (m) ini(m[2]); } // 2024: "AC 17 Initiative +2 (12)" op één regel
+      else if (k === "Initiative") ini(v);
       else if (k === "Hit Points") { const m = v.match(/^(\d+)\s*(?:\(([^)]*)\))?/); if (m) { out.hp = m[1]; out.hd = (m[2] || "").replace(/\s/g, "").replace(/−/g, "-"); } }
       else if (k === "Speed") out.spd = v;
       else if (k === "Challenge") out.cr = (v.match(/^(\d+\/\d+|\d+)/) || [""])[0];
@@ -176,6 +178,7 @@ export function withParsed(m) {
     ...(p.ab && !m.ab ? { ab: m.dexScore && m.dexScore !== 10 ? [p.ab[0], +m.dexScore, ...p.ab.slice(2)] : p.ab } : {}),
     ...(p.meta && !m.meta ? { meta: p.meta } : {}),
     ...(p.spd && !m.spd ? { spd: p.spd } : {}),
+    ...(Number.isFinite(p.init) && !Number.isFinite(m.init) ? { init: p.init } : {}), // WP49: Initiative uit de plaktekst → initBonus (monInit)
     text: "",
   };
   cache.set(m, r);

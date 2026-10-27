@@ -255,12 +255,13 @@ textarea{min-height:120px;resize:vertical}
 .mlist button[aria-pressed="true"] .mi{color:var(--fg)}
 .mlist .cr{color:var(--muted);font-size:.85rem;font-variant-numeric:tabular-nums;white-space:nowrap}
 .mlbl{font-size:.85rem;font-weight:700;color:var(--fg);margin:0}
+button.link.edgo{display:flex;width:100%;text-align:left} /* WP49: andere SRD-editie zoeken (V4) */
 /* Preview vóór toevoegen: compacte kaart onder de lijst */
 .mprev{display:grid;gap:3px;padding:10px 12px;border:1px solid var(--line);border-left:4px solid var(--mon);border-radius:var(--r);background:var(--surface);font-size:.9rem;min-width:0;overflow-wrap:anywhere}
 .mprev p{margin:0}
 .mphead{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}
 .mphead b{font-family:var(--display);color:var(--fg);font-size:1.1rem}
-.mphead span{font-style:italic;color:var(--muted);font-size:.85rem}
+.mphead>span{font-style:italic;color:var(--muted);font-size:.85rem}
 .mpstat{font-variant-numeric:tabular-nums}
 .mpdef{color:var(--muted);font-size:.85rem}
 .mpmulti,.mptext{color:var(--muted);font-size:.85rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}

@@ -1,6 +1,6 @@
 # G1 — D&D 5e 2024-regels naast 2014
 
-Plan van 27-10-2026 (stand 2.3.1, commit `4622436`). Status: **WP46 klaar (2.4.0), WP47 klaar (2.4.1)**, rest gepland. Werkpakketten WP46–WP55; samenvatting in `ROADMAP.md`. Na elk pakket: keuze naar CLAUDE.md ("Gemaakte keuzes"), regel uit dit plan en de roadmap halen. Dit document vervalt als G1 klaar is.
+Plan van 27-10-2026 (stand 2.3.1, commit `4622436`). Status: **WP46 klaar (2.4.0), WP47 klaar (2.4.1), WP48 klaar (2.5.0), WP49 klaar (2.6.0)**, rest gepland. Werkpakketten WP46–WP55; samenvatting in `ROADMAP.md`. Na elk pakket: keuze naar CLAUDE.md ("Gemaakte keuzes"), regel uit dit plan en de roadmap halen. Dit document vervalt als G1 klaar is.
 
 Legenda: **[B]** = bevestigd in de code, **[A]** = aanname, **[?]** = onbekend, eerst controleren.
 
@@ -96,7 +96,7 @@ Legenda: **[B]** = bevestigd in de code, **[A]** = aanname, **[?]** = onbekend, 
 | V1 | Standaard regelset voor een nieuwe installatie | **Besloten 27-10: 2014** | — |
 | V2 | Release: stapsgewijs in 2.x of één 3.0.0 | **Besloten 27-10: stapsgewijs in 2.x** (WP46–WP53 onzichtbaar, keuze zichtbaar in WP54 als 2.x.0) | — |
 | V3 | Bestaande "Spells 2024 onder regels 2014" behouden (B2) | **Besloten 27-10: ja** | — |
-| V4 | Andere-editie-monsters in de zoeklijst: zoekwoord `2014`/`2024` (zoals `cr 5`) of een andere vorm | UX-agent kiest in WP49 binnen "geen filterchips" | WP49 |
+| V4 | Andere-editie-monsters in de zoeklijst | **Besloten in WP49**: zoekwoord `2014`/`2024` (zoals `cr 5`) plus de regel "Zoek in SRD 5.2 (2024) ▸" onder de lijst | — |
 | V5 | Rage 2024 / "4 in Lair" | **Besloten 27-10: Rage 2024 mee in WP50**; "4 in Lair" op signaal | — |
 
 Geen open vraag blokkeert **WP46**.
@@ -153,18 +153,11 @@ Zie CLAUDE.md ("Opslag en data", "Parsers editiebestendig"). Voor latere pakkett
 - Eén DC per actie: Sphinx of Valor "Roar" (drie brullen) geeft de eerste.
 - Lair-waarden ("4 in Lair", "4/Day in Lair") worden gelezen maar niet gebruikt (V5, op signaal).
 
-### WP49 — Monsterkeuze, dubbele namen, statblock en encounters in de UI
-1. **Doel**: de DM kiest bewust een 2014- of 2024-monster; editie is zichtbaar waar het ertoe doet; ontbrekende 2024-data is expliciet.
-2. **Huidige stand**: `filterMonsters`/`parseQuery`, `monList`/`addBlockHtml`/`monPrev` (`render.js` r. 937–1028), `js/ui/statblock.js`, `js/ui/encounters.js` (inladen, missing), `init.sb.credit`.
-3. **Scope**: zoeken standaard in de editie van de tafel + eigen monsters; andere editie bereikbaar volgens V4 (UX-agent); resultaatregel met editietag als die afwijkt van de tafel; `c.ed` bij toevoegen; statblock toont Initiative/PB en bronvermelding per editie (`init.sb.credit` → twee sleutels); encounterlijst/inladen toont "· 2024" bij afwijkende regels en ontbrekende 2024-statblocks; Nederlandse zoeksynoniemen voor nieuwe 2024-namen waar nodig (`locales/nl/search.js`).
-4. **Buiten scope**: regelset-keuze, mechaniek.
-5. **Aanpak**: **senior UX-agent vóór het bouwen** (minstens twee opties voor de editietag en de zoekvorm; geen filterchips; tikdoelen ≥ 44 px; 320 px). Tags met bestaande `.tag`-stijl, geen nieuwe kleuren.
-6. **Afhankelijk van**: WP46, WP47, WP48.
-7. **Acceptatie**: aan een 2014-tafel geeft "zombie" alleen de SRD 5.1-Zombie (+ eigen); de 2024-Zombie is via de gekozen vorm vindbaar en krijgt tag "2024"; toegevoegd heeft hij `ed: "2024"` en het juiste statblock; opgeslagen en ingeladen blijft hij 2024; zonder 2024-data (fetch faalt) toont inladen "Zombie · 2024 ontbreekt" en voegt hem niet als 2014 toe; browsercheck 320/360/390 licht/donker zonder horizontaal scrollen; `⟦` nergens bij `--i18n=xx`.
-8. **Tests**: `monsters.test.js` (filter per editie), `encounters.test.js` (missing met editie), i18n-tests, nieuw browsercheck-scenario `g1-mon`.
-9. **Klaar als**: tests en browsercheck groen, UX- en developer-review gemeld, Engelse tekst door de vertaalagent, versie, CLAUDE.md "Voorbereiden: monsters en encounters" bijgewerkt, push.
-10. **Risico's**: zoeklijst wordt drukker; prestaties bij twee bibliotheken (index per editie, één keer bouwen).
-11. **Omvang**: M.
+### WP49 — Monsterkeuze, dubbele namen, statblock en encounters: klaar in 2.6.0
+Zie CLAUDE.md ("Voorbereiden: monsters en encounters", "Editie in de keuze"). Voor latere pakketten:
+- `searchList(table, want)`, `monSearch` (laadt SRD 5.2 bij de eerste behoefte) en `edTagOf(m, table)` lezen de regelset al via `rulesOf(app.S)`: in WP54 volgt alles vanzelf als `S.rules` "2024" wordt. Voor WP54 nog: voorbeeld (`loadSample`) bij 2024 met Goblin Warrior.
+- De melding bij een ontbrekend 2024-statblock is de bestaande zin met "Zombie · 2024" (`init.enc.missing`); de bewerkregel toont "2024 · ontbreekt".
+- Nederlandse zoeksynoniemen: aangevuld voor SRD 5.2-namen (Tough, Warrior …, Pirate, Hippopotamus, Seahorse); demon/duergar/gnome/orc bestaan in SRD 5.2 niet. Verder op signaal.
 
 ### WP50 — Exhaustion en Rage volgens 2024
 1. **Doel**: Exhaustion en Rage rekenen met `ed`; 2014 onveranderd.

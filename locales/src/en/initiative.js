@@ -225,6 +225,10 @@ export default {
   "init.mon.own": "custom", // achter een eigen monster in de lijst
   "init.mon.none": "Nothing found for {q}. Try a wider range (e.g. cr 1-6) or another type.",
   "init.mon.noneTab": "Nothing found. Add it under \"Custom\".",
+  "init.mon.edGo": "Search {src} ▸", // WP49: regel onder de lijst; src = "SRD 5.2 (2024)", niet vertaald
+  "init.mon.edBack": "Back to {src} ▸",
+  "init.mon.edLoading": "Loading {src}…",
+  "init.mon.edFail": "{src} couldn't load. Try again when you're online.",
   "init.mon.badCr": "CR not recognized. Use e.g. cr 5, cr 1/2 or cr 2-4.",
   "init.mon.found": { one: "{label} · {n} monster", other: "{label} · {n} monsters" },
   "init.mon.addBtn": "Add {what}", // knop: "Add 2× Goblin (hidden)"
@@ -773,6 +777,7 @@ export default {
   "init.sb.next": "Up next",
   "init.sb.turn": "Turn:", // balkje met de naam van wie aan de beurt is (vastgezet)
   "init.sb.credit": "Source: System Reference Document 5.1 (2014), Wizards of the Coast, CC-BY-4.0, via Open5e.",
+  "init.sb.credit24": "Source: System Reference Document 5.2.1 (2024), Wizards of the Coast, CC-BY-4.0, via Open5e.",
   "init.sb.pc": "Player",
   "init.sb.showAll": "Show all",
   "init.sb.ddb": "Imported from a D&D Beyond character sheet.",
@@ -858,6 +863,8 @@ export default {
   "init.enc.moreAria": "More actions for {name}",
   "init.enc.grp": "group",
   "init.enc.notHere": "not on this device",
+  "init.enc.gone": "missing", // WP49: 2024-statblock niet geladen ("2024 · missing")
+  "init.enc.loading": "Loading…", // inladen wacht op SRD 5.2
   "init.enc.rm": "Remove {name}",
   "init.enc.less": "One {name} less",
   "init.enc.count": "{name} count",

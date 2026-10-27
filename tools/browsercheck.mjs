@@ -437,6 +437,54 @@ const SCEN = {
     const txt = await page.locator("#xsheet .xrider").first().innerText();
     if (!/Grappled|Gegrepen/.test(txt) || !/14/.test(txt)) throw new Error("rider-hint ontbreekt: " + txt);
   },
+  // WP49 (V4): aan een 2014-tafel geeft "zombie" alleen SRD 5.1; "Zoek in SRD 5.2 (2024) ▸" (≥ 44 px) zet het zoekwoord 2024 in het veld,
+  // de 2024-Zombie heeft de tag en wordt met ed "2024" en zijn eigen statblock toegevoegd; opgeslagen encounter houdt hem 2024 (marker in de lijst).
+  // --shots=g1-mon: lijst 2014, lijst 2024, encounters.
+  async "g1-mon"(page) {
+    await SCEN.monster(page);
+    await page.locator("#mon-q").fill("zombie");
+    await page.waitForSelector('#mon-list [data-pick="Zombie"]');
+    if (await page.locator("#mon-list .tag").count()) throw new Error("2014-tafel toont al een editietag");
+    const go = page.locator("#mon-ed .edgo");
+    const h = await go.evaluate((el) => el.getBoundingClientRect().height);
+    if (h < 44) throw new Error(`editieregel is ${h}px hoog (< 44)`);
+    await snap(page, "g1-mon", "2014");
+    await go.tap();
+    if ((await page.locator("#mon-q").inputValue()) !== "zombie 2024") throw new Error("zoekwoord 2024 niet in het veld");
+    const k24 = "Zombie\u20632024";
+    await page.waitForSelector(`#mon-list [data-pick="${k24}"] .tag`);
+    if (await page.locator('#mon-list [data-pick="Zombie"]').count()) throw new Error("met 2024 nog SRD 5.1 in de lijst");
+    await page.locator(`#mon-list [data-pick="${k24}"]`).tap();
+    await page.waitForSelector("#mon-prev .mprev .tag");
+    await snap(page, "g1-mon", "2024");
+    await tap(page, "#mon-add");
+    const st = await page.evaluate(async () => { const { app } = await import("/js/state.js"), z = app.S.list.at(-1); return { ed: z.ed, ref: z.ref, hp: z.max, ib: z.initBonus }; });
+    if (st.ed !== "2024" || st.ref !== "Zombie" || st.hp !== 15 || st.ib !== -2) throw new Error("toegevoegd: " + JSON.stringify(st));
+    await page.evaluate(async () => { const { app, saveEncounters } = await import("/js/state.js"), E = await import("/js/rules/encounters.js");
+      app.encounters = [E.fromList(app.S.list, { id: "g1", name: "Graf", now: Date.now() })]; saveEncounters(); });
+    await page.locator('#p-montabs [data-prep="enc"]').tap();
+    await page.waitForSelector("#enc-panel .encrow");
+    const sm = await page.locator("#enc-panel .encrow .einfo small").first().innerText();
+    if (!/· 2024 ·/.test(sm)) throw new Error("encountermarker ontbreekt: " + sm);
+    await snap(page, "g1-mon", "enc");
+  },
+  // WP49 (B4): SRD 5.2 kan niet laden → inladen meldt "Zombie · 2024" en voegt hem niet als 2014 toe; de editieregel toont de fout
+  async "g1-mon-fail"(page) {
+    await page.route("**/data/monsters-2024.json", (r) => r.abort());
+    await SCEN.monster(page);
+    await page.evaluate(async () => { const { app, saveEncounters } = await import("/js/state.js");
+      app.encounters = [{ id: "g2", name: "Graf", updatedAt: Date.now(), notes: "", monsters: [{ ref: "Zombie", n: 2, ed: "2024" }, { ref: "Goblin", n: 1 }] }]; saveEncounters(); });
+    await page.locator('#p-montabs [data-prep="enc"]').tap();
+    await page.waitForSelector('#enc-panel [data-enc="load"]');
+    const n0 = await page.evaluate(async () => (await import("/js/state.js")).app.S.list.length);
+    await page.locator('#enc-panel [data-enc="load"]').first().tap();
+    const rep = page.locator('#enc-panel [data-enc="load-add"]'); // voorbeeld staat aan tafel: Toevoegen
+    if (await rep.count()) await rep.first().tap();
+    await page.waitForFunction(() => /Zombie · 2024/.test(document.querySelector("#toast")?.innerText || ""));
+    const st = await page.evaluate(async () => { const { app } = await import("/js/state.js"); return app.S.list.map((c) => [c.ref, c.ed || ""]); });
+    if (st.some(([r]) => r === "Zombie")) throw new Error("Zombie toch toegevoegd: " + JSON.stringify(st));
+    if (st.length !== n0 + 1) throw new Error("Goblin niet ingeladen: " + JSON.stringify(st));
+  },
   async initp(page) { await SCEN.prep(page); await tap(page, "#start"); await page.waitForSelector("#isheet .isheet"); },
   async logp(page) { await SCEN.fight(page); await tap(page, "#logopen"); await page.waitForSelector("#gsheet .gsheet"); },
   async keyhelp(page) { await SCEN.fight(page); await page.evaluate(async () => (await import("/js/ui/keys.js")).openKeys()); await page.waitForSelector("#hsheet .hsheet"); },
@@ -895,6 +943,7 @@ const SCEN = {
   },
   // WP46: export versie 4 (regelset 2024, monster met ed "2024" zonder SRD 5.2-data): laden zonder JS-fout, zonder terugval op 2014, regelset overleeft reset
   async wp46(page) {
+    await page.route("**/data/monsters-2024.json", (r) => r.abort()); // zonder SRD 5.2-data (regelset 2024 laadt hem sinds WP49 bij de eerste behoefte)
     const v4 = { format: "initiative-tafel", version: 4, state: { round: 0, active: null, rules: "2024", list: [
       { id: "g", name: "Goblin", kind: "monster", ref: "Goblin", init: 12, dex: 2, ac: 15, hp: 7, max: 7, cond: [] },
       { id: "z", name: "Zombie", kind: "monster", ref: "Zombie", ed: "2024", init: 6, dex: -2, ac: 8, hp: 15, max: 15, cond: [] } ] },

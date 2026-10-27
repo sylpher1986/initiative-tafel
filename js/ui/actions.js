@@ -6,9 +6,9 @@ import { $, esc, n0, toast, toastHtml, closeToast, clearToasts, show, toastBad, 
 import { t } from "../i18n/boot.js";
 import { M, J } from "../i18n/msg.js";
 import { app, because, addWhy, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, saveSpellNotes, resetBaseline } from "../state.js";
-import { render, ui, openId, mode, atkAc, atkRider, atkTargets, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, hidHint, anonHint, paintAoe, paintDmgSugg, dmgSp, aoeCaster, dmgSlot, dmgDice, dmgLevel, spellSlot, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, edNow, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
+import { render, ui, openId, mode, atkAc, atkRider, atkTargets, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, hidHint, anonHint, paintAoe, paintDmgSugg, dmgSp, aoeCaster, dmgSlot, dmgDice, dmgLevel, spellSlot, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, edNow, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast, monSearch, edLineHtml } from "./render.js";
 import { PAS, pasVal, cleanPas } from "../rules/passives.js";
-import { cleanEd, edField, rulesField } from "../rules/edition.js";
+import { cleanEd, edField, rulesField, rulesOf } from "../rules/edition.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { DMG_SPELLS } from "../rules/dmgtable.js";
 import { rollDice, diceText, normDice } from "../rules/dmgspells.js";
@@ -19,8 +19,7 @@ import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax,
 import { exhLevel } from "../rules/conditions.js";
 import { openCond, closeCond, condOpen, condSheetClick } from "./condinfo.js";
 import { showSB, showSheet, monCard, doRoll, doDmgRoll, closeSB, phone, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
-import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
-import { SYN } from "../data/syn.js";
+import { findMon, parseMonsterFile, findKey, keyRef, withEdWord } from "../data/monsters.js";
 import { parseStatText, foundText, hasStructure, withParsed } from "../data/statparse.js";
 import { d, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
 import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant, setInit, durWords, saveWords, initBo, monInit } from "../rules/turns.js";
@@ -1138,21 +1137,22 @@ export function bindForms() {
 
   // bedieningsblok (IN4, zelfde als snel toevoegen): opnieuw tekenen, behalve tijdens typen in het getalveld (focus)
   const monBtn = (typing) => {
-    const btn = $("#mon-add"), st = ui.monAdd, m = selMon && findMon(selMon);
+    const btn = $("#mon-add"), st = ui.monAdd, m = selMon ? findKey(selMon) : null; // selMon = monKey (WP49)
     if (typing) $("#mon-addh").textContent = addHint(st, m); else $("#mon-blk").innerHTML = addBlockHtml("mon", st, m);
-    btn.disabled = !selMon || (st.fixOn && parseInit(st.fix) === null);
-    btn.textContent = selMon ? addLabel(st.n, selMon, $("#mon-hid").checked, $("#mon-anon").checked) : t("init.mon.pick");
+    btn.disabled = !m || (st.fixOn && parseInit(st.fix) === null);
+    btn.textContent = m ? addLabel(st.n, m.n, $("#mon-hid").checked, $("#mon-anon").checked) : t("init.mon.pick");
     $("#mon-hidh").hidden = !$("#mon-hid").checked;
     $("#mon-anonh").hidden = !$("#mon-anon").checked;
   };
   const renderMonList = (typed) => {
-    const f = filterMonsters(allMonsters(), $("#mon-q").value, selMon, typed === true, SYN); // VB5: tijdens typen wint een exacte naam
+    const q = $("#mon-q").value, { f, st } = monSearch(q, selMon, typed === true, () => { if (ui.prep === "mon") renderMonList(); }); // VB5: tijdens typen wint een exacte naam
     if (f.sel !== selMon) ui.monFull = false; // andere keuze: preview weer kort
     selMon = f.sel; // UI-toestand, geen data: de selectie volgt wat zichtbaar is
     monBtn();
-    const lbl = monLabel(f), m = selMon && findMon(selMon);
+    const lbl = st ? "" : monLabel(f), m = selMon ? findKey(selMon) : null;
     $("#mon-lbl").hidden = !lbl; $("#mon-lbl").textContent = lbl;
-    $("#mon-list").innerHTML = monListHtml(f, selMon, "data-pick", t("init.mon.noneTab"));
+    $("#mon-list").innerHTML = monListHtml(f, selMon, "data-pick", t("init.mon.noneTab"), st);
+    $("#mon-ed").innerHTML = edLineHtml(q);
     $("#mon-prev").innerHTML = monPrev(m, ui.monFull, true);
     if (ui.prep === "mon") previewSB(m || null); // tablet/desktop: volledig statblock in de zijkolom (geen keuze: terug)
   };
@@ -1169,14 +1169,17 @@ export function bindForms() {
   $("#mon-hid").addEventListener("change", () => monBtn());
   $("#mon-anon").addEventListener("change", () => monBtn());
   $("#mon-list").addEventListener("click", (e) => { const b = e.target.closest("[data-pick]"); if (!b) return; if (selMon !== b.dataset.pick) ui.monFull = false; selMon = b.dataset.pick; renderMonList(); });
+  // WP49 (V4): zoekwoord 2014/2024 toevoegen of weghalen; de toestand blijft zichtbaar in het veld
+  $("#mon-ed").addEventListener("click", (e) => { const b = e.target.closest("[data-edq]"); if (!b) return; $("#mon-q").value = withEdWord($("#mon-q").value, b.dataset.edq, rulesOf(app.S)); renderMonList(true); });
   $("#mon-prev").addEventListener("click", (e) => { if (!e.target.closest("[data-mpfull]")) return; ui.monFull = !ui.monFull; renderMonList(); });
   $("#f-mon").addEventListener("submit", (e) => {
     e.preventDefault();
-    if (!selMon) { toastBad(t("init.mon.errPick")); return; }
+    if (!selMon || !findKey(selMon)) { toastBad(t("init.mon.errPick")); return; }
     const st = ui.monAdd, fix = parseInit(st.fix);
     if (st.fixOn && fix === null) { toastBad(t("init.mon.errInit")); $("#mon-fix")?.focus(); return; }
     $("#mon-q").blur();
-    addMonsters(selMon, st.n, addHp(findMon(selMon)), addInit(st), false, fix, $("#mon-hid").checked, $("#mon-anon").checked);
+    const r = keyRef(selMon);
+    addMonsters(r.n, st.n, addHp(findKey(selMon)), addInit(st), false, fix, $("#mon-hid").checked, $("#mon-anon").checked, r.ed);
     Object.assign(st, { n: 1, fixOn: false, fix: "" }); // aantal en ingevulde initiative gelden één keer; HP en Per monster/Groep blijven
     $("#mon-hid").checked = $("#mon-anon").checked = false; monBtn(); // elke keer opnieuw kiezen: nooit per ongeluk verborgen toevoegen
     ui.prepLast = app.S.list.at(-1)?.id ?? null;
@@ -1275,6 +1278,8 @@ export function bindQadd() {
     const q = ui.qadd; if (!q) return;
     const p = e.target.closest("[data-qpick]");
     if (p) { if (q.sel !== p.dataset.qpick) q.full = false; q.sel = p.dataset.qpick; paintQadd(); return; }
+    const eq = e.target.closest("[data-edq]");
+    if (eq) { q.q = withEdWord(q.q, eq.dataset.edq, rulesOf(app.S)); $("#q-q").value = q.q; q.typed = true; paintQadd(); q.typed = false; return; }
     if (e.target.closest("[data-mpfull]")) { q.full = !q.full; paintQadd(); return; }
     const ab = e.target.closest("button[data-ab]");
     if (ab) { const f = addBlockTap(q, ab), had = document.activeElement === ab; paintQadd(); if (f) $("#q-fix")?.focus(); else if (had) refocusAb($("#q-blk"), ab); return; }
@@ -1293,11 +1298,12 @@ export function bindQadd() {
 }
 
 function qGo() {
-  const q = ui.qadd; if (!q || !q.sel) return;
+  const q = ui.qadd; if (!q || !q.sel || !findKey(q.sel)) return;
   const fix = parseInit(q.fix);
   if (q.fixOn && fix === null) { $("#q-fix")?.focus(); return; }
   because(M("log.w.midFight"));
-  addMonsters(q.sel, q.n, addHp(findMon(q.sel)), addInit(q), false, fix, q.hid, q.anon);
+  const r = keyRef(q.sel);
+  addMonsters(r.n, q.n, addHp(findKey(q.sel)), addInit(q), false, fix, q.hid, q.anon, r.ed);
   ui.qadd = null;
   render();
   $("#qadd")?.focus();

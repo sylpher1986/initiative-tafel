@@ -6,12 +6,12 @@ import { ico, chev } from "./icons.js";
 import { $, esc, toast, toastHtml, closeToast, toastBad, undoBtn } from "./util.js";
 import { t, i18n } from "../i18n/boot.js";
 import { app, because, addWhy, logAs, commit, saveEncounters, saveLairs, saveLibrary } from "../state.js";
-import { render, ui, monListHtml } from "./render.js";
+import { render, ui, monListHtml, monSearch, edLineHtml } from "./render.js";
 import { addMonsters, scrollToCard, newLair, CLEAR_UI } from "./actions.js";
 import { wantSB } from "./statblock.js";
 import { clearMonsters } from "../rules/turns.js";
-import { findMon, allMonsters, filterMonsters, sanitizeOwn } from "../data/monsters.js";
-import { SYN } from "../data/syn.js";
+import { findMon, sanitizeOwn, keyRef, monEd, withEdWord, loadSrd24, srd24Status } from "../data/monsters.js";
+import { rulesOf, cleanEd, edField, sameEd } from "../rules/edition.js";
 import * as E from "../rules/encounters.js";
 import { addEnc, encName } from "../rules/fight.js";
 
@@ -119,10 +119,20 @@ export function encStrip(S, prep) {
 
 /* ---------- paneel ---------- */
 const encSummary = (e) => `${e.monsters.length ? monsN(E.total(e)) : t("init.enc.noMons")}${e.lair ? " + lair" : ""}`;
+/** WP49: editie van een encounterregel ("2024", "2014" voor SRD 5.1, "" voor eigen/onbekend); s = gevonden statblock */
+const rowEd = (m, s) => (cleanEd(m.ed) ? "2024" : monEd(s));
+/** Editiemarker in de lijst ("· 2024"): één keer als een regel uit de andere SRD komt dan de tafel */
+const edMark = (e) => { const tb = rulesOf(app.S); return [...new Set(e.monsters.map((m) => rowEd(m, findMon(m.ref, m.ed))).filter((x) => x && x !== tb))].join(" · "); };
+/** SRD 5.2 nodig voor wat er getoond wordt (B9): één keer laden, daarna opnieuw tekenen; na een fout niet in een lus */
+const need24 = (encs) => {
+  if (srd24Status() !== "none" || !encs.some((e) => e && E.encHas2024(e))) return;
+  loadSrd24().then(() => { if (ui.prep === "enc") repaint(); });
+};
 
 export function paintEnc() {
   const el = $("#enc-panel");
   if (ui.prep !== "enc") return;
+  need24(ui.encEdit ? [ui.encEdit] : app.encounters);
   el.innerHTML = ui.encEdit ? editHtml() : listHtml();
   if (ui.encEdit) paintEditList();
 }
@@ -157,7 +167,7 @@ function rowHtml(e) {
   const menu = ui.encMenu === e.id
     ? `<div class="encmenu"><button type="button" class="btn small" data-enc="edit" data-id="${id}">${esc(t("init.enc.edit"))}</button><button type="button" class="btn small" data-enc="dup" data-id="${id}">${esc(t("init.enc.dup"))}</button><button type="button" class="btn small" data-enc="share" data-id="${id}">${esc(t("init.enc.share"))}</button><button type="button" class="btn small ghost" data-enc="del" data-id="${id}">${esc(t("init.enc.del"))}</button></div>` : "";
   return `<div class="encrow">
-    <div class="ehead"><div class="einfo"><b>${esc(e.name)}</b><small>${esc(encSummary(e))} · ${esc(dateTxt(e.updatedAt))}</small>${e.notes ? `<small class="enote">${esc(e.notes)}</small>` : ""}</div>
+    <div class="ehead"><div class="einfo"><b>${esc(e.name)}</b><small>${esc([encSummary(e), edMark(e), dateTxt(e.updatedAt)].filter(Boolean).join(" · "))}</small>${e.notes ? `<small class="enote">${esc(e.notes)}</small>` : ""}</div>
       ${e.monsters.length ? `<button type="button" class="dchip ${chipCls(r)}" data-enc="why" data-id="${id}" aria-expanded="${ui.encWhy === e.id}" aria-label="${esc(t("init.enc.whyAria", { rating: chipLbl(r), xp: fmt(r.adj) }))}">${esc(chipLbl(r))}</button>` : ""}</div>
     ${ui.encWhy === e.id ? diffWhy(r, !!e.lair, `data-enc="encall" data-id="${id}"`, E.encMons(e, findMon)) : ""}${ask}
     <div class="ebtns"><button type="button" class="btn primary" data-enc="load" data-id="${id}">${esc(t("init.enc.load"))}</button><button type="button" class="btn emore" data-enc="menu" data-id="${id}" aria-expanded="${ui.encMenu === e.id}" aria-label="${esc(t("init.enc.moreAria", { name: e.name }))}">${ico("more")}</button></div>
@@ -175,8 +185,9 @@ function editHtml() {
   const x = ui.encEdit, lk = lairKeyOf(x);
   const r = E.difficulty(E.encMons(x, findMon), partyNow().who, !!x.all);
   const rows = x.monsters.map((m, i) => {
-    const s = findMon(m.ref, m.ed);
-    const tags = [m.hidden && t("init.card.hidden"), m.anon && t("init.card.anon"), m.grp && t("init.enc.grp"), !s && t("init.enc.notHere")].filter(Boolean).join(" · ");
+    const s = findMon(m.ref, m.ed), re = rowEd(m, s), wait = !s && cleanEd(m.ed) && srd24Status() === "loading";
+    const ed = re && (re !== rulesOf(app.S) || (!s && !wait)) ? re : ""; // editie als die afwijkt, of bij een ontbrekend 2024-statblock
+    const tags = [ed, m.hidden && t("init.card.hidden"), m.anon && t("init.card.anon"), m.grp && t("init.enc.grp"), !s && !wait && t(cleanEd(m.ed) ? "init.enc.gone" : "init.enc.notHere")].filter(Boolean).join(" · ");
     return `<div class="erow"><span class="en"><b>${esc(m.ref)}</b><small>${s ? `CR ${esc(s.cr || "?")}` : ""}${tags ? `${s ? " · " : ""}${esc(tags)}` : ""}</small></span>
       <span class="step"><button type="button" class="btn" data-enc="n" data-i="${i}" data-v="-1" aria-label="${esc(t(m.n === 1 ? "init.enc.rm" : "init.enc.less", { name: m.ref }))}">−</button><input class="encnum" data-encn="${i}" type="number" inputmode="numeric" min="1" max="${E.MAX_N}" enterkeyhint="done" value="${m.n}" aria-label="${esc(t("init.enc.count", { name: m.ref }))}"><button type="button" class="btn" data-enc="n" data-i="${i}" data-v="1" aria-label="${esc(t("init.enc.more", { name: m.ref }))}" ${E.total(x) >= E.MAX_TOTAL || m.n >= E.MAX_N ? "disabled" : ""}>+</button></span></div>`;
   }).join("");
@@ -188,15 +199,17 @@ function editHtml() {
     ${lk ? `<label class="chk"><input type="checkbox" id="ee-lair" ${x.lair ? "checked" : ""}> Lair actions (${esc(lk.replace(/^Lair: /, ""))})</label>` : ""}
     <label>+ Monster<input id="ee-q" placeholder="${esc(t("init.enc.qPh"))}" autocomplete="off" enterkeyhint="search" value="${esc(x.q)}"></label>
     <div class="mlist" id="ee-list"></div>
+    <div id="ee-ed"></div>
     <div class="bar"><button type="button" class="btn small" data-enc="edit-no">${esc(t("common.cancel"))}</button><button type="button" class="btn primary" data-enc="edit-go">${esc(t("common.save"))}</button></div>`;
 }
 /** Alleen de zoekresultaten (zoekveld houdt focus) */
 function paintEditList() {
   const x = ui.encEdit, box = $("#ee-list");
   if (!x || !box) return;
-  const f = filterMonsters(allMonsters(), x.q, null, false, SYN);
+  const { f, st } = monSearch(x.q, null, false, () => { if (ui.encEdit === x) paintEditList(); });
   box.hidden = !x.q.trim();
-  box.innerHTML = x.q.trim() ? monListHtml({ ...f, L: f.L.slice(0, 40) }, null, "data-eepick", t("init.enc.noneFound")) : "";
+  box.innerHTML = x.q.trim() ? monListHtml({ ...f, L: f.L.slice(0, 40) }, null, "data-eepick", t("init.enc.noneFound"), st) : "";
+  $("#ee-ed").innerHTML = edLineHtml(x.q);
 }
 
 /* ---------- acties ---------- */
@@ -204,7 +217,12 @@ const findEnc = (id) => app.encounters.find((e) => e.id === id);
 const repaint = () => paintEnc();
 
 /** Inladen: monsters via addMonsters (HP-keuze uit ui.addOpts, initiative uit de encounter: groep per regel, anders per monster), lair erbij; één undo-stap en één logregel */
-function loadEnc(enc, mode) {
+async function loadEnc(enc, mode, btn) {
+  if (E.encHas2024(enc) && srd24Status() !== "ok") { // B4/B9: eerst SRD 5.2 laden; lukt dat niet, dan ontbreekt hij (nooit als 2014)
+    if (btn) { btn.disabled = true; btn.textContent = t("init.enc.loading"); }
+    await loadSrd24();
+    if (ui.prep !== "enc" || !findEnc(enc.id)) { repaint(); return; } // intussen weg of verwijderd
+  }
   const S = app.S, plan = E.loadPlan(enc, (r, ed) => !!findMon(r, ed));
   const lairNew = plan.lair && (mode === "replace" || !hasLair(S.list));
   if (!plan.adds.length && !lairNew) {
@@ -314,6 +332,7 @@ async function importFile(file) {
   let p;
   try { p = E.parseEncFile(JSON.parse(await file.text())); }
   catch (err) { toastBad(err instanceof SyntaxError ? t("init.enc.notFile", { app: APP }) : err.message); return; }
+  if (E.encHas2024(p.enc) && srd24Status() !== "ok") await loadSrd24(); // melding "ontbreekt" klopt pas met SRD 5.2 geladen
   if (findEnc(p.enc.id)) { ui.encImp = p; ui.encEdit = null; repaint(); return; } // nooit stil overschrijven
   importDone(p, "new");
 }
@@ -333,14 +352,14 @@ const ACT = {
   "save-no"() { ui.encDraft = null; repaint(); },
   "save-go": saveNew,
   new: startNew,
-  load(id) {
+  load(id, b) {
     const e = findEnc(id); if (!e) return;
     // alleen vragen als er iets te vervangen valt
     if (monCount(app.S.list) || (hasLair(app.S.list) && e.lair)) { ui.encAsk = e.id; ui.encMenu = null; repaint(); return; }
-    loadEnc(e, "add");
+    loadEnc(e, "add", b);
   },
-  "load-replace"(id) { const e = findEnc(id); if (e) loadEnc(e, "replace"); },
-  "load-add"(id) { const e = findEnc(id); if (e) loadEnc(e, "add"); },
+  "load-replace"(id, b) { const e = findEnc(id); if (e) loadEnc(e, "replace", b); },
+  "load-add"(id, b) { const e = findEnc(id); if (e) loadEnc(e, "add", b); },
   "ask-no"() { ui.encAsk = null; repaint(); },
   menu(id) { ui.encMenu = ui.encMenu === id ? null : id; ui.encAsk = null; repaint(); },
   why(id) {
@@ -385,15 +404,17 @@ export function bindEnc() {
     if (a && a.dataset && "dlvl" in a.dataset && !a.contains(e.target)) a.blur();
     const p = e.target.closest("[data-eepick]");
     if (p && ui.encEdit) {
-      const x = ui.encEdit, ref = p.dataset.eepick;
+      const x = ui.encEdit, { n: ref, ed } = keyRef(p.dataset.eepick); // WP49: sleutel met editie (Zombie 2014 ≠ 2024)
       if (E.total(x) >= E.MAX_TOTAL) { toastBad(t("init.enc.max", { n: E.MAX_TOTAL })); return; }
-      const m = x.monsters.find((y) => y.ref === ref && !y.hidden && !y.anon && !y.ed); // G1: kiezen geeft (nog) geen 2024-monster
+      const m = x.monsters.find((y) => y.ref === ref && !y.hidden && !y.anon && sameEd(y.ed, ed));
       if (m && m.n < E.MAX_N) m.n++;
-      else if (x.monsters.length < E.MAX_ROWS) x.monsters.push({ ref, n: 1 });
+      else if (x.monsters.length < E.MAX_ROWS) x.monsters.push({ ref, n: 1, ...edField(ed) });
       x.q = ""; repaint(); $("#ee-q")?.focus();
       toast(t("init.enc.added", { name: ref }));
       return;
     }
+    const eq = e.target.closest("[data-edq]");
+    if (eq && ui.encEdit) { const x = ui.encEdit; x.q = withEdWord(x.q, eq.dataset.edq, rulesOf(app.S)); $("#ee-q").value = x.q; paintEditList(); return; } // V4
     const b = e.target.closest("[data-enc]");
     if (b && ACT[b.dataset.enc]) ACT[b.dataset.enc](b.dataset.id, b);
   });
