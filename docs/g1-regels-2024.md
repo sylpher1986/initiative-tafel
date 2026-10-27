@@ -170,18 +170,11 @@ Zie CLAUDE.md ("Gevecht: kaarten en panelen", "Concentration-DC, surprise en Gra
 - WP54: alles leest al `rulesOf(app.S)`; de paneelhint (`SUR_HINT`) volgt vanzelf. Bij een regelwissel midden in ronde 1 blijft een 2014-`sur` staan tot `startCombat`/ronde 2 (geen omrekening nodig: de wissel hoort vóór het gevecht).
 - WP52: de conditie-uitleg van Grappled 2024 kan de hint `rules.adv.grap24` aanvullen; surprise heeft geen conditie-uitleg.
 
-### WP52 — Condities-uitleg 2024 en spelersscherm
-1. **Doel**: uitleg van condities en Exhaustion volgt de tafelregels, ook op het spelersscherm.
-2. **Huidige stand**: R5; `condInfo`, `CINFO`, `exhRows` (`conditions.js`), `js/ui/condinfo.js`, `toPlayerView`/`cleanView` (`playerview.js`).
-3. **Scope**: catalogus `dnd.cond24.<id>.*` en `dnd.exh24.*` (eigen samenvatting van SRD 5.2.1, Engels eerst, dan Nederlands, D&D-termen Engels); `condInfo(name, lvl, ed)` met `CINFO24`; snapshot optioneel `ed: "2024"` (B8), `cleanView` neemt het over; DM- en spelerskant geven `ed` door.
-4. **Buiten scope**: regelkeuze-UI.
-5. **Aanpak**: alleen afwijkende condities krijgen eigen 2024-tekst [A: Exhaustion, Grappled, Incapacitated, Invisible, Petrified?]; de rest verwijst naar dezelfde sleutels (één sleutel = één betekenis).
-6. **Afhankelijk van**: WP46.
-7. **Acceptatie**: met `ed: "2024"` toont het paneel de 2024-tekst, anders de oude; spelersscherm met een snapshot zonder `ed` = 2014; i18n-pariteit, ongebruikte sleutels en ratel groen; Engelse tekst nagelezen door de vertaalagent.
-8. **Tests**: `i18n*.test.js`, `playerview.test.js`, test op `CINFO24` ↔ catalogus.
-9. **Klaar als**: tests groen, checklist `docs/i18n.md` §9.5, developer-review, versie, push.
-10. **Risico's**: geen kopie van SRD-zinnen langer dan nodig; eigen samenvatting zoals bij 2014.
-11. **Omvang**: M.
+### WP52 — Condities-uitleg 2024 en spelersscherm: klaar in 2.9.0
+Zie CLAUDE.md ("Gevecht: kaarten en panelen", "Spelersscherm"). Voor latere pakketten:
+- WP54: niets extra; DM-kant leest `rulesOf(app.S)`, het spelersscherm krijgt `ed` vanzelf zodra `S.rules` "2024" is.
+- Afwijkend in 2024 (SRD 5.2.1 vergeleken): Charmed, Grappled, Incapacitated, Invisible, Petrified, Stunned, Concentrating (max 30), Exhaustion. Gelijk: Blinded, Deafened, Frightened, Paralyzed, Poisoned, Prone, Restrained, Unconscious.
+- Op signaal: Incapacitated (disadvantage) en Invisible (advantage) op initiative 2024 staan alleen in de uitleg.
 
 ### WP53 — Moeilijkheid en XP volgens 2024
 1. **Doel**: de moeilijkheidsuitleg in Voorbereiden rekent met de regels van de tafel.
