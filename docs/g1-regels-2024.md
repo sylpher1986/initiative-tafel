@@ -138,7 +138,8 @@ Zie CLAUDE.md ("Opslag en data") en de kop van `tools/monsters_srd2024.py`. Voor
 - Attacktekst 2024-vorm: "Melee or Ranged Attack Roll: +9 (with Advantage if …), reach 5 ft. or range 150 ft. Hit: 27 (4d10 + 5) Force damage." (geen "to hit", geen "one target"). Saves: "Dexterity Saving Throw: DC 18, … Failure: … Success: Half damage." Riders: "has the Grappled condition (escape DC 14)". Spellcasting is een **actie** met regels "• At Will: …", "• 2/Day Each: …", "• 1/Day: …" en "(level N version)".
 - Gebruik en vorm in de naam: "(Recharge 5–6)" (en-dash), "(Recharge after a Short or Long Rest)", "(3/Day)", "(Bear or Hybrid Form Only)", "(1/Day; Requires Soul Bag)". Nooit "(Costs N Actions)".
 - Statregels: "Resistances", "Immunities" (schade; condities), "Vulnerabilities", "Gear", "Senses" ("…; Passive Perception N"), "Saving Throws" alleen waar de save afwijkt van de modifier.
-- Ontbreekt (niet in Open5e): subtypes en "Swarm of Tiny Beasts" in `meta`. Speed-notities alleen bij de weerdieren en Swarm of Insects.
+- Ontbreekt (niet in Open5e): subtypes en "Swarm of Tiny Beasts" in `meta`. Grootte wel compleet (Tiny, "Medium or Small"). Speed-notities alleen bij de weerdieren en Swarm of Insects.
+- **Voor WP48**: bestaande code leest de 2014-rijnamen ("Condition Immunities" in `monrules.js` r. 128 voor riders, "Damage Immunities/Resistances" in `render.js` r. 283 en `statblock.js` r. 351); 2024 heeft "Immunities" (schade; condities na `;`), "Resistances", "Vulnerabilities". `legInfo` leest nog geen "Legendary Action Uses: N" en geen "(3/Day, or 4/Day in Lair)". `loadSrd` (2014) controleert `ed` niet: bij het laden van 2024 via `setSrd24` het omhulsel op `ed: "2024"` controleren.
 
 ---
 

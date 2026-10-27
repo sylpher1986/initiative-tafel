@@ -33,7 +33,7 @@ test("monsters 2024: zelfde velden als data/monsters.json, plus init en pb", () 
     assert.match(m.hd, HD_RE, m.n);
     assert.ok(m.ab.length === 6 && m.ab.every((s) => Number.isInteger(s) && s >= 1 && s <= 30), m.n);
     assert.ok(m.cr in XP, `${m.n}: cr ${m.cr}`);
-    assert.equal(m.xp, ["Seahorse", "Shrieker Fungus"].includes(m.n) ? 0 : XP[m.cr], m.n);
+    assert.equal(m.xp, ["Giant Fly", "Seahorse", "Shrieker Fungus"].includes(m.n) ? 0 : XP[m.cr], m.n);
     assert.ok(Number.isInteger(m.init), m.n);
     const c = Number.isInteger(+m.cr) ? +m.cr : 0; // 1/8, 1/4, 1/2 → 0
     assert.equal(m.pb, 2 + Math.floor(Math.max(0, c - 1) / 4), m.n);
@@ -116,6 +116,14 @@ test("monsters 2024: statregels die Open5e mist (B/P/S, vulnerabilities, Gear, n
   assert.match(x("Bone Devil", "Senses"), /Darkvision 120 ft\. \(unimpeded by magical Darkness\)/);
   assert.equal(by.get("Werewolf").spd, "30 ft., 40 ft. (wolf form only)");
   assert.deepEqual(by.get("Octopus").ab, [4, 15, 11, 3, 10, 4]);
+  // grootte: Open5e zet Tiny en "Medium or Small" op small
+  assert.match(by.get("Imp").meta, /^Tiny Fiend, /);
+  assert.match(by.get("Guard").meta, /^Medium or Small Humanoid, /);
+  assert.match(by.get("Werewolf").meta, /^Medium or Small Monstrosity, /);
+  assert.match(by.get("Badger").meta, /^Small Beast, /);
+  assert.match(by.get("Goblin Warrior").meta, /^Small Fey, /);
+  assert.equal(L.filter((m) => /^Tiny /.test(m.meta)).length, 24);
+  assert.equal(L.filter((m) => /^Medium or Small /.test(m.meta)).length, 36);
   assert.equal(x("Octopus", "Saving Throws"), undefined);
 });
 

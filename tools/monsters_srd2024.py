@@ -12,12 +12,15 @@ Herstel ten opzichte van Open5e (gecontroleerd tegen de officiële SRD 5.2.1-pdf
 - aanvallen missen "Hit:" ("Melee Attack Roll: +9, reach 15 ft. 12 (2d6 + 5) …"): ingevoegd na reach/range;
 - het aantal legendary actions ontbreekt: altijd 3, "(4 in Lair)" als de Legendary Resistance "in Lair" noemt;
 - recharge, uses en vormbeperking staan in een veld, niet in de naam: "(Recharge 5–6)", "(2/Day)", "(Bear Form Only)";
-- XP ontbreekt bijna altijd: uit de CR-tabel (Seahorse en Shrieker Fungus: 0); PB idem;
+- XP ontbreekt bijna altijd: uit de CR-tabel (Giant Fly, Seahorse en Shrieker Fungus: 0; alleen de basis-XP, niet
+  "or 62,000 in lair"); PB idem;
+- grootte: Open5e zet Tiny en "Medium or Small" op small; afgeleid uit de hit die (SIZE voor uitzonderingen);
 - tekstfouten, spell-lijsten zonder "(level N version)" en de scores van de Octopus: tabellen FIX, LISTS, ABFIX;
 - 5etools-restjes ("Sphere [Area of Effect]|XPHB|Sphere", "Cover|XPHB|Total Cover") en markdown (**, _) weg;
 - "DM" → "GM", "Hitom" → "Hit or Miss:", "First Failure" zonder dubbele punt, lege of losse spell-lijsten (Imp, Ghost);
 - Open5e laat B/P/S-resistances en alle vulnerabilities weg en kent geen Gear of speed-notities: DEF, GEAR, SPEED.
-Niet in Open5e en dus niet in de data: subtypes ("(Goblinoid)"), "Medium or Small" en "Swarm of Tiny Beasts" in de metaregel.
+Niet in Open5e en dus niet in de data: subtypes ("(Goblinoid)") en "Swarm of Tiny Beasts" in de metaregel.
+Controle tegen de pdf: tools/check_srd2024_pdf.py. Elke correctietabel stopt de tool als hij niet (meer) nodig is.
 """
 import json, os, re, sys
 
@@ -164,7 +167,18 @@ XSET = {  # losse statregels die in Open5e afwijken van de pdf
     "Mage": {"Languages": "Common plus three other languages"},
     "Panther": {"Skills": "Perception +4, Stealth +7"},
 }
-XP0 = {"Seahorse", "Shrieker Fungus"}  # CR 0 met XP 0 in de SRD (de andere CR 0-monsters: XP 10)
+XP0 = {"Giant Fly", "Seahorse", "Shrieker Fungus"}  # CR 0 met XP 0 in de SRD (de andere CR 0-monsters: XP 10)
+# Grootte: Open5e zet Tiny en "Medium or Small" op small. De hit die beslist (pdf-controle): d4 = Tiny, d6 = Small,
+# d8 = Medium or Small; uitzonderingen hier.
+SIZE = {"Badger": "Small"}
+
+
+def size(f):
+    if f["size"] != "small":
+        return title(f["size"])
+    if f["name"] in SIZE:
+        return SIZE.pop(f["name"])
+    return {"4": "Tiny", "6": "Small", "8": "Medium or Small"}[re.match(r"\d+d(\d+)", f["hit_dice"])[1]]
 RENAME = {("Black Pudding", "Parry"): "Split"}  # reaction heet in Open5e "Parry", tekst is Split
 KIND = {"ACTION": "a", "BONUS_ACTION": "ba", "REACTION": "re", "LEGENDARY_ACTION": "l"}
 U = r"(?:ft|feet)\.?"  # Open5e: soms "feet" of "ft" zonder punt
@@ -237,6 +251,16 @@ for a in load(d, "CreatureAction"):
 for t in load(d, "CreatureTrait"):
     traits.setdefault(t["fields"]["parent"], []).append(t["fields"])
 
+seen = set()  # namen die een correctietabel gebruikten
+
+
+def used(tbl, name):
+    if name in tbl:
+        seen.add(name)
+        return True
+    return False
+
+
 def fix(mn, en, txt):
     for old, new in FIX.pop((mn, en), []):
         if old not in txt:
@@ -251,10 +275,15 @@ for c in sorted(creatures, key=lambda c: c["fields"]["name"]):
     if f["document"] != "srd-2024":
         raise SystemExit(f"ander document: {pk}")
     cr = CR.get(f["challenge_rating"]) or str(int(float(f["challenge_rating"])))
-    ab = ABFIX.get(f["name"]) or [f["ability_score_" + a] for a in ABIL]
+    ab = [f["ability_score_" + a] for a in ABIL]
+    if f["name"] in ABFIX:
+        if ab == ABFIX[f["name"]]:
+            raise SystemExit(f"ABFIX niet meer nodig: {f['name']}")
+        ab = ABFIX[f["name"]]
+        seen.add(f["name"])
     mod = [(s - 10) // 2 for s in ab]
     x = []
-    saves = [f"{SHORT[i]} {num(f['saving_throw_' + a])}" for i, a in enumerate(ABIL) if f["name"] not in ABFIX
+    saves = [f"{SHORT[i]} {num(f['saving_throw_' + a])}" for i, a in enumerate(ABIL) if f["name"] not in ABFIX  # Octopus: saves ook verschoven
              and f["saving_throw_" + a] is not None and f["saving_throw_" + a] != mod[i]]
     if saves: x.append(["Saving Throws", ", ".join(saves)])
     sk = [f"{title(s.replace('_', ' '))} {num(f['skill_bonus_' + s])}" for s in SKILLS if f["skill_bonus_" + s] is not None]
@@ -269,7 +298,7 @@ for c in sorted(creatures, key=lambda c: c["fields"]["name"]):
             raise SystemExit(f"DEF klopt niet meer met Open5e: {f['name']} {k}: {v} / {o5}")
         if v: x.append([k, v])
     if f["name"] in GEAR: x.append(["Gear", GEAR.pop(f["name"])])
-    sen = [f"{title(s)} {f[s + '_range']} ft." + (" (unimpeded by magical Darkness)" if s == "darkvision" and f["name"] in UNIMPEDED else "")
+    sen = [f"{title(s)} {f[s + '_range']} ft." + (" (unimpeded by magical Darkness)" if s == "darkvision" and used(UNIMPEDED, f["name"]) else "")
            for s in SENSES if f[s + "_range"]]
     x.append(["Senses", "; ".join([", ".join(sen)] if sen else []) + ("; " if sen else "") + f"Passive Perception {f['passive_perception']}"])
     x.append(["Languages", (f["languages_desc"].strip() or "None").replace("Thieves' cant", "Thieves' Cant").replace(", And ", ", and ")])
@@ -279,9 +308,9 @@ for c in sorted(creatures, key=lambda c: c["fields"]["name"]):
             raise SystemExit(f"XSET klopt niet meer: {f['name']} {k}")
         row[1] = v
     spd = [f"{f['walk'] or 0} ft."] + [f"{title(m)} {f[m]} ft." + (" (hover)" if m == "fly" and f["hover"] else "") for m in MOVES if f[m]]
-    m = {"n": f["name"], "meta": f"{title(f['size'])} {title(f['type'])}, {title(f['alignment'])}",
+    m = {"n": f["name"], "meta": f"{size(f)} {title(f['type'])}, {title(f['alignment'])}",
          "ac": str(f["armor_class"]), "hp": f["hit_points"], "hd": f["hit_dice"].replace(" ", ""), "spd": SPEED.pop(f["name"], ", ".join(spd)),
-         "ab": ab, "x": x, "cr": cr, "xp": 0 if f["name"] in XP0 else XP[cr], "init": f["initiative_bonus"], "pb": 2 + max(0, int(float(f["challenge_rating"])) - 1) // 4,
+         "ab": ab, "x": x, "cr": cr, "xp": 0 if used(XP0, f["name"]) else XP[cr], "init": f["initiative_bonus"], "pb": 2 + max(0, int(float(f["challenge_rating"])) - 1) // 4,
          "t": [[clean(t["name"]), fix(f["name"], t["name"], clean(t["desc"]))] for t in sorted(traits.get(pk, []), key=lambda t: t["name"])],
          "a": [], "ba": [], "re": [], "l": [], "ld": ""}
     for apk, a in sorted(acts.get(pk, []), key=lambda p: (p[1]["order_in_statblock"], p[1]["name"])):
@@ -295,7 +324,7 @@ for c in sorted(creatures, key=lambda c: c["fields"]["name"]):
             txt, n = HIT.subn(r"\1 Hit: ", txt)
             if (not n and "Hit:" not in txt) or "Hit: or " in txt:
                 bad.append(f"geen Hit: in {apk}: {txt[:90]}")
-        m[KIND[a["action_type"]]].append([RENAME.get((f["name"], a["name"]), clean(a["name"])) + suffix(a), txt])
+        m[KIND[a["action_type"]]].append([RENAME.pop((f["name"], a["name"]), clean(a["name"])) + suffix(a), txt])
     if m["l"]:
         lair = any("in Lair" in t[0] for t in m["t"])
         who = "the " + NOUN.get(f["name"], f["name"].split()[-1].lower())
@@ -304,10 +333,10 @@ for c in sorted(creatures, key=lambda c: c["fields"]["name"]):
                    "expended uses at the start of each of its turns.")
     out.append(m)
 
-if FIX or LISTS or DEF or GEAR or SPEED or XSET:
-    raise SystemExit(f"tabel niet gebruikt: {list(FIX)} {list(LISTS)} {list(DEF)} {list(GEAR)} {list(SPEED)} {list(XSET)}")
-if False:
-    raise SystemExit(f"FIX niet gebruikt: {list(FIX)}")
+left = {k: v for k, v in dict(FIX=FIX, LISTS=LISTS, DEF=DEF, GEAR=GEAR, SPEED=SPEED, XSET=XSET, RENAME=RENAME, SIZE=SIZE,
+                                ABFIX=set(ABFIX) - seen, XP0=set(XP0) - seen, UNIMPEDED=set(UNIMPEDED) - seen).items() if v}
+if left:
+    raise SystemExit(f"tabel niet (meer) gebruikt: {left}")
 if bad:
     raise SystemExit("\n".join(bad))
 doc = {"ed": "2024", "src": "System Reference Document 5.2.1 (2024), Wizards of the Coast, CC-BY-4.0, via Open5e, checked against the "
