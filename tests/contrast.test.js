@@ -88,6 +88,14 @@ test("WP39: in donker is geen knop- of meldingsvlak lichter dan Lantern (schemer
   assert.equal(light["btn-line"], light.line, "licht: knoprand blijft --line (WP17)");
 });
 
+test("nazorg 2.0.2: knopachtige vlakken hebben de knoprand --btn-line (in donker ≥ 3:1)", () => {
+  for (const sel of [".seg", ".seg button", ".seg2", ".seg2 button+button", ".atkfold", ".xt", ".ir", ".dbtn", ".encnb", ".downbtn", ".btn", ".acts button", ".condgrid button", ".drt"]) {
+    const m = css.match(new RegExp("(?:^|\\n)" + sel.replace(/[.+*?^$()[\]{}|\\]/g, "\\$&") + "\\{([^}]*)\\}"));
+    assert.ok(m, "regel niet gevonden: " + sel);
+    assert.match(m[1], /border[a-z-]*:[^;]*var\(--btn-line\)/, sel + " zonder --btn-line");
+  }
+});
+
 test("donker thema staat twee keer gelijk (systeem en vaste keuze)", () => {
   assert.deepEqual(darkFix, darkSys);
   assert.deepEqual(Object.keys(darkSys).sort(), Object.keys(light).sort());

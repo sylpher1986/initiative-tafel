@@ -112,7 +112,8 @@ Plan: projectdoc `claude/werkpakketten-2.1.md`. Volgorde = uitvoervolgorde; WP43
 | WP | Inhoud | Codes | Versie |
 |---|---|---|---|
 | ~~**WP39**~~ | Afwerking huisstijl 2.0: donker thema, krap op 320 px, kleine afwerking (klaar) | HS16, HS17, HS18 | 2.0.1 |
-| **WP40** | Engelse tekst P3 | TA19 | 2.0.2 |
+| ~~Nazorg~~ | Knoprand ook op seg-keuzes, aanvalsuitklap en doelrijen in donker (klaar) | HS16 | 2.0.2 |
+| **WP40** | Engelse tekst P3 | TA19 | 2.0.3 |
 | **WP41** | Surprise zonder spelers, links naar de spell-uitleg | RE5, RE6a | 2.1.0 |
 | **WP42** | Eigen notitie bij niet-SRD-spells, export versie 3 | RE6b | 2.2.0 |
 | **WP43** | Technische schuld: logboek in undo, pdf.js zelf hosten | TS3, TS1 | 2.x.1 |
