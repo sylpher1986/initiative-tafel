@@ -255,7 +255,7 @@ const atkRef = (cid, k, v) => { const a = parseAction(k, v); return { cid, n: a.
  */
 export function sbBody(m, cid = null) {
   const ent = (arr, atk) => arr.map(([k, v]) => `<p class="entry"><b><i>${esc(trName(k))}.</i></b> ${(/spellcasting/i.test(k) ? linkSpells : diceify)(v, atk && cid && atkRef(cid, k, v))}</p>`).join("");
-  const ini = Number.isFinite(m.init) ? ` &nbsp; <span class="k">Initiative</span> ${esc(sgn(m.init))} (${10 + m.init})` : ""; // WP49: 2024-statblock "AC 8 Initiative −2 (8)"
+  const ini = Number.isFinite(m.init) ? ` &nbsp; <span class="k">Initiative</span> ${m.init < 0 ? "−" + -m.init : "+" + m.init} (${10 + m.init})` : ""; // WP49: 2024-statblock "AC 8 Initiative −2 (8)"
   return `<p><span class="k">Armor Class</span> ${mdLite(esc(m.ac))}${ini}</p>
     <p><span class="k">Hit Points</span> ${n0(m.hp)}${m.hd ? ` (<button class="dice" data-roll="${esc(m.hd)}">${esc(m.hd.replace(/([+-])/, " $1 "))}</button>)` : ""}</p>
     ${m.spd ? `<p><span class="k">Speed</span> ${esc(m.spd)}</p>` : ""}

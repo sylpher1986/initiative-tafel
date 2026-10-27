@@ -47,6 +47,12 @@ test("WP49 searchList: 2014-tafel zonder zoekwoord = oude lijst; 2024 alleen SRD
   assert.ok(filterMonsters(searchList("2014"), "zombie", null).L.some((m) => m.custom));
   assert.ok(!filterMonsters(searchList("2014", "2014"), "zombie 2014", null).L.some((m) => m.custom));
   assert.equal(edTagOf(findMon("Zombie Lord"), "2014"), ""); assert.equal(edTagOf(findMon("Zombie Lord"), "2024"), "");
+  // review: een door een eigen monster overschaduwde SRD 5.1-naam staat niet in "2014" (ref zonder ed zou het eigen monster geven)
+  setLibrary({ custom: [{ n: "Zombie", ac: "9", hp: 99 }] });
+  const s14 = filterMonsters(searchList("2014", "2014"), "zombie 2014", null, true);
+  assert.ok(!s14.L.some((m) => m.n === "Zombie")); assert.ok(!s14.sel || !findKey(s14.sel).custom);
+  assert.equal(withEdWord("zombie,2024", "2014", "2014"), "zombie");
+  assert.equal(filterMonsters(searchList("2014", "2024"), "zombie,2024", null, true).sel, monKey(findMon("Zombie", "2024")));
   // 2024-tafel: SRD 5.2 + eigen, zonder SRD 5.1; eigen "Zombie" en SRD 5.2-Zombie zijn twee keuzes
   setLibrary({ custom: [{ n: "Zombie", ac: "9", hp: 99 }] });
   const h = filterMonsters(searchList("2024"), "zombie", null);
@@ -67,7 +73,7 @@ test("WP49 Initiative uit een geplakt statblock (eigen regel of 2024-AC-regel) e
   assert.equal(monInit(m, 10).initBonus, 2); assert.equal(monInit(m, 10).init, 12);
   assert.equal(sanitizeOwn({ n: "X", init: 3 }).init, 3);
   assert.equal(sanitizeOwn({ n: "X", init: "-1" }).init, -1);
-  for (const v of ["abc", 99, 1.5, "", null]) assert.equal("init" in sanitizeOwn({ n: "X", init: v }), false, String(v));
+  for (const v of ["abc", 99, 1.5, "", " ", true, null]) assert.equal("init" in sanitizeOwn({ n: "X", init: v }), false, String(v));
 });
 
 test("WP49 B4: SRD 5.2 laadt niet → status fail, encounter-regel 2024 ontbreekt (\"Zombie · 2024\"), 2014-regel blijft", async () => {

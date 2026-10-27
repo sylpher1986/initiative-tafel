@@ -217,11 +217,15 @@ const findEnc = (id) => app.encounters.find((e) => e.id === id);
 const repaint = () => paintEnc();
 
 /** Inladen: monsters via addMonsters (HP-keuze uit ui.addOpts, initiative uit de encounter: groep per regel, anders per monster), lair erbij; één undo-stap en één logregel */
+let loading = false; // inladen wacht op SRD 5.2: niet nog een keer (Vervangen én Toevoegen snel na elkaar)
 async function loadEnc(enc, mode, btn) {
+  if (loading) return;
   if (E.encHas2024(enc) && srd24Status() !== "ok") { // B4/B9: eerst SRD 5.2 laden; lukt dat niet, dan ontbreekt hij (nooit als 2014)
+    loading = true;
     if (btn) { btn.disabled = true; btn.textContent = t("init.enc.loading"); }
-    await loadSrd24();
-    if (ui.prep !== "enc" || !findEnc(enc.id)) { repaint(); return; } // intussen weg of verwijderd
+    try { await loadSrd24(); } finally { loading = false; }
+    enc = findEnc(enc.id); // kan intussen bewerkt of verwijderd zijn
+    if (ui.prep !== "enc" || !enc) { repaint(); return; }
   }
   const S = app.S, plan = E.loadPlan(enc, (r, ed) => !!findMon(r, ed));
   const lairNew = plan.lair && (mode === "replace" || !hasLair(S.list));
@@ -332,7 +336,7 @@ async function importFile(file) {
   let p;
   try { p = E.parseEncFile(JSON.parse(await file.text())); }
   catch (err) { toastBad(err instanceof SyntaxError ? t("init.enc.notFile", { app: APP }) : err.message); return; }
-  if (E.encHas2024(p.enc) && srd24Status() !== "ok") await loadSrd24(); // melding "ontbreekt" klopt pas met SRD 5.2 geladen
+  if (E.encHas2024(p.enc) && srd24Status() !== "ok") { await loadSrd24(); if (ui.prep !== "enc") return; } // melding "ontbreekt" klopt pas met SRD 5.2 geladen
   if (findEnc(p.enc.id)) { ui.encImp = p; ui.encEdit = null; repaint(); return; } // nooit stil overschrijven
   importDone(p, "new");
 }

@@ -90,7 +90,7 @@ export const findKey = (k) => { const r = keyRef(k); return findMon(r.n, r.ed); 
  */
 export function searchList(table, want) {
   if (want === "2024") return allMonsters("2024");
-  if (want === "2014") { if (!list14) list14 = [...srd].sort(byName); return list14; }
+  if (want === "2014") { if (!list14) list14 = allMonsters().filter((m) => ED14.has(m)); return list14; } // zonder door eigen monsters overschaduwde SRD 5.1-namen (ref zonder ed wijst naar het eigen monster)
   if (table !== "2024") return allMonsters();
   if (!listOwn) {
     if (!list) build();
@@ -100,7 +100,7 @@ export function searchList(table, want) {
   return listOwn;
 }
 /** Zoekwoord vervangen: losse 2014/2024 eruit, ed erachter (behalve als ed de tafeleditie is: dan alleen eruit) */
-export const withEdWord = (q, ed, table) => [...String(q || "").split(/\s+/).filter((w) => w && !/^20[12]4$/.test(w)), ...(ed && ed !== table ? [ed] : [])].join(" ");
+export const withEdWord = (q, ed, table) => [...String(q || "").split(/[\s,]+/).filter((w) => w && !/^20[12]4$/.test(w)), ...(ed && ed !== table ? [ed] : [])].join(" ");
 
 /* ---------- zoeken op naam, type en CR ---------- */
 export const TYPES = ["aberration", "beast", "celestial", "construct", "dragon", "elemental", "fey", "fiend", "giant", "humanoid", "monstrosity", "ooze", "plant", "undead"];
@@ -289,7 +289,7 @@ export function filterMonsters(list, q, sel, typed = false, SY = NO_SYN) {
     if (p.cr || p.type) L = L0.slice().sort((a, b) => (crNum(a.cr) || 0) - (crNum(b.cr) || 0) || a.n.localeCompare(b.n));
     else L = L0.slice().sort((a, b) => sc.get(b) - sc.get(a)); // stabiel: verder de bestaande (alfabetische) volgorde
   }
-  const tx = p.ed ? t.split(/\s+/).filter((w) => w !== p.ed && !/^20[12]4$/.test(w)).join(" ") : t; // "zombie 2024": exacte naam zonder het editiewoord
+  const tx = p.ed ? t.split(/[\s,]+/).filter((w) => w && !/^20[12]4$/.test(w)).join(" ") : t; // "zombie 2024": exacte naam zonder het editiewoord
   const tgt = SY.get(tx), ex = L.filter((m) => { const n = m.n.toLowerCase(); return n === tx || (tgt && tgt.includes(n)); });
   const same = ex.length === 1 ? ex : L.filter((m) => m.n.toLowerCase() === tx);
   const exact = same.length === 1 ? same[0] : null; // WP49: twee keer dezelfde naam (eigen + SRD 5.2) = geen automatische keuze
@@ -313,6 +313,8 @@ const named = (a) => (a || []).filter((i) => i && i.name).map((i) => [String(i.n
 const crStr = (v) => (typeof v === "string" ? v : v === 0.125 ? "1/8" : v === 0.25 ? "1/4" : v === 0.5 ? "1/2" : String(v ?? ""));
 const sgn = (n) => (n >= 0 ? "+" : "") + n;
 
+/** Initiative-bonus uit een bestand: geheel getal (of tekst daarvan), |n| ≤ 30; anders null */
+const initOf = (v) => { const n = typeof v === "number" || (typeof v === "string" && v.trim()) ? +v : NaN; return Number.isInteger(n) && Math.abs(n) <= 30 ? n : null; };
 /** Eigen formaat komt uit een bestand: terugbrengen naar strings en getallen (geen HTML of objecten erdoor) */
 export function sanitizeOwn(o) {
   const str = (v) => (v == null ? "" : String(v));
@@ -324,7 +326,7 @@ export function sanitizeOwn(o) {
     x: pairs(o.x), cr: str(o.cr), xp: +o.xp || null,
     t: pairs(o.t), a: pairs(o.a), ba: pairs(o.ba), re: pairs(o.re), l: pairs(o.l), ld: str(o.ld),
     ...(o.text != null ? { text: str(o.text) } : {}), ...(o.dexScore != null ? { dexScore: +o.dexScore || 10 } : {}),
-    ...(Number.isInteger(+o.init) && o.init !== "" && o.init != null && Math.abs(+o.init) <= 30 ? { init: +o.init } : {}), // WP49: Initiative-bonus (2024-statblock)
+    ...(initOf(o.init) !== null ? { init: initOf(o.init) } : {}), // WP49: Initiative-bonus (2024-statblock)
   };
 }
 

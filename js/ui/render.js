@@ -940,7 +940,7 @@ export const SRC = { 2014: "SRD 5.1 (2014)", 2024: "SRD 5.2 (2024)" }; // bronna
  * SRD 5.2 wordt pas bij de eerste behoefte geladen (B9); daarna tekent again() opnieuw. Geeft { f, st } terug:
  * st = "loading" | "fail" als de lijst op SRD 5.2 wacht of die niet kon laden (B4: nooit stil leeg), anders "".
  */
-let fail24 = 0;
+let fail24 = 0; // tijd van de laatste mislukte poging hier; een fout via encounters (fail24 = 0) mag één keer direct opnieuw
 export function monSearch(q, sel, typed, again) {
   const table = rulesOf(app.S), want = parseQuery(q).ed, ed = want || table;
   let st = "";
