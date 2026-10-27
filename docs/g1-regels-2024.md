@@ -1,0 +1,275 @@
+# G1 — D&D 5e 2024-regels naast 2014
+
+Plan van 27-10-2026 (stand 2.3.1, commit `4622436`). Status: **gepland, niets gebouwd**. Werkpakketten WP46–WP54; samenvatting in `ROADMAP.md`. Na elk pakket: keuze naar CLAUDE.md ("Gemaakte keuzes"), regel uit dit plan en de roadmap halen. Dit document vervalt als G1 klaar is.
+
+Legenda: **[B]** = bevestigd in de code, **[A]** = aanname, **[?]** = onbekend, eerst controleren.
+
+---
+
+## 1. Inventaris: wat er nu is
+
+### 1.1 Data
+| Wat | Waar | Vorm | Bevinding |
+|---|---|---|---|
+| Monsters 2014 | `data/monsters.json` (431 KB) | kale array, 322 × `{ n, meta, ac, hp, hd, spd, ab, x, cr, xp, t, a, ba, re, l, ld }` | [B] SRD 5.1 via Open5e. **Geen id, geen editie, geen bronveld; geen generator in `tools/`.** Identiteit = naam `n`. |
+| Spells 2014 | `data/spells.json` | `{ ed: "2014", src, spells: [{ n, lv, sch, t, r, c, d, x, h }] }` | [B] 319 SRD 5.1, `tools/spells_srd.py`. |
+| Spells 2024 | `data/spells-2024.json` | idem met `ed: "2024"` | [B] 339 SRD 5.2, Open5e, `tools/spells_srd2024.py`. |
+| Concentratie | `js/rules/conclist.js` | `CONC[2014]`, `CONC[2024]` | [B] gegenereerd door `tools/conc_lists.py`. |
+| Monsters 2024 | — | — | [B] **ontbreekt volledig.** |
+| Condities-uitleg | `locales/src/*/dnd.js` (`dnd.cond.*`, `dnd.exh.*`) | eigen samenvatting SRD 5.1 | [B] alleen 2014. |
+
+### 1.2 Hoe edities nu al werken (alleen spells)
+- [B] Instelling **Spells 2014 | 2024**: `js/ui/spellrules.js` (`it-spell-rules`, per apparaat, niet in de encounter), seg `#rules-seg` in `pages/initiative.html` r. 130–136, koppeling in `js/ui/actions.js` ~r. 2047.
+- [B] Regels krijgen de editie als parameter: `presetsFor(ed)` (`js/rules/effects.js` r. 42–44, `r24`-afwijkingen Haste/Barkskin), `isConc(n, ed)` en `edFor(c, n, instelling)` (`js/rules/spells.js`), `spellFor(sp, ed)` (Sleep 2024, `js/rules/spellcast.js`), `rulesDiffer(n)`.
+- [B] Spell-identiteit = genormaliseerde naam (`normSpell`/`keys`, aliassen zoals Feeblemind ↔ Befuddlement). Opzoeken per editie: `findSpell(n, ed)`, `pickEd(n, pref)` (`js/data/spells.js`). Beide edities lazy geladen.
+- [B] Per sheet-spell een editie (`spellEd` in `js/ddbjson.js`, `sp.ed` in de sheet, opgeschoond in `cleanSheet`, `js/backup.js` r. 91).
+- [B] Aanroepers van de instelling: `rulesEd()` in `js/ui/actions.js` (r. 229, 235, 403, 1467, 1612), `js/ui/render.js` r. 1188 (`presetEd`), `js/ui/spellinfo.js` r. 98.
+
+### 1.3 Monsters: opzoeken en identiteit
+- [B] `js/data/monsters.js`: `build()` voegt eigen > geïmporteerd > SRD samen en **ontdubbelt op naam (lowercase)**; `findMon(n)` zoekt op exacte naam.
+- [B] Deelnemer: `c.ref = m.n` (naam), statblock wordt **bij elk gebruik** opgezocht via `findMon(c.ref)` (± 25 plekken in `js/ui/render.js`, `js/ui/statblock.js`, `js/ui/actions.js`). Niet gekopieerd in de stand.
+- [B] Bij toevoegen (`js/ui/actions.js` r. 97–110): initiative = d20 + Dex-mod (`m.ab[1]`), `legInfo`, `rcInfo`, `castInfo` vastgelegd op de deelnemer.
+- [B] Zoeken (`parseQuery`/`filterMonsters`): naam/type/subtype + `cr`-filter in één veld; geen filterchips (CLAUDE.md).
+- **Gevolg:** 283 van de 331 SRD 5.2-monsters hebben **dezelfde naam** als een 2014-monster (Aboleth, Zombie, Adult Red Dragon …). Zonder editieveld zou een bestaande `ref: "Zombie"` na het toevoegen van 2024-data stil een ander statblock krijgen.
+
+### 1.4 Encounters, opslag, delen
+- [B] Encounter (`js/rules/encounters.js`): `{ id, updatedAt, name, notes, monsters: [{ ref, n, hidden?, anon?, grp? }], lair?, all? }`. `cleanEncounter` **gooit onbekende velden weg**. `ENC_VERSION = 1`; `parseEncFile` weigert een hogere versie.
+- [B] `fromList` voegt opeenvolgende deelnemers met dezelfde `ref` samen; `loadPlan(enc, has)` geeft ontbrekende refs terug; `buildEncFile` stuurt alleen eigen/geïmporteerde statblocks mee (SRD wordt verondersteld aanwezig).
+- [B] Backup (`js/backup.js`): `VERSION = 3`, migraties 1→2→3; `cleanCombatant` neemt `ref` mee maar geen editie; `parseImport` bouwt `S` opnieuw op uit een whitelist (een nieuw `S`-veld moet daar expliciet bij).
+- [B] Nieuwe stand zonder overname van instellingen: `"reset-yes"` en `"sample-clear"` (`js/ui/actions.js` r. 544, 551), `main.js` r. 130.
+- [B] Undo dekt `S` (`js/state.js`); party (`app.party`, incl. `eff`) valt erbuiten.
+- [B] Spelersscherm: `toPlayerView` → snapshot `v: 2` (`js/playerview.js` r. 193), whitelist, `cleanView`; condities-uitleg (`js/ui/condinfo.js`) ook op het spelersscherm, nu altijd 2014-tekst.
+
+### 1.5 Regels die van de editie afhangen (wat de app echt implementeert)
+| # | Regel | Waar [B] | 2014 (nu) | 2024 | Werk? |
+|---|---|---|---|---|---|
+| R1 | Exhaustion | `combat.js` `exhEffect`/`reExh` (r. 223–240), `effects.js` `setExh` (r. 254+), `conditions.js` `exhRows`, `attacks.js` `atkAdv` r. 179, `aoe.js` `saveAdv` r. 103 | niveau 1–6, dis. vanaf 3, max HP ½ vanaf 4, 6 = dood | −2 × niveau op elke d20-test, speed −5 ft × niveau, 6 = dood, geen HP-halvering | ja |
+| R2 | Concentration-DC | `combat.js` r. 180 | max(10, ½ schade) | idem, **max 30** | ja (klein) |
+| R3 | Surprise | `turns.js` r. 154–200 (`sur`, `skipsTurn`, `reactUsed`), initiative-paneel | ronde 1 overslaan, geen reaction | disadvantage op de initiativeworp, geen overgeslagen beurt | ja |
+| R4 | Auto-advantage | `attacks.js` r. 166–188 | PHB 2014 | Grappled: disadvantage op aanvallen tegen een ander dan de grappler; rest gelijk voor wat de app modelleert | klein (hint) |
+| R5 | Condities-uitleg | `conditions.js` `CINFO`, `dnd.cond.*` | SRD 5.1 | SRD 5.2 (o.a. Exhaustion, Grappled, Invisible, Incapacitated anders verwoord) | ja (tekst) |
+| R6 | Moeilijkheid | `encounters.js` `difficulty`/`deadlyTip`, UI `js/ui/encounters.js` r. 27–38, 176 | DMG 2014: drempels × multiplier, Easy–Deadly | XP-budget per level (Low/Moderate/High), geen multiplier | ja |
+| R7 | XP na het gevecht | `js/ui/einde.js`, `crXp` | XP per CR | [A] zelfde tabel; label "DMG 2014" | tekst + check |
+| R8 | Monster-initiative | `actions.js` r. 97 | d20 + Dex-mod | d20 + **Initiative-bonus uit het statblock** | ja |
+| R9 | Legendary | `spells.js` `legInfo` r. 80 | "can take 3 legendary actions"; LR "(3/Day)" | "Legendary Action Uses: 3 (4 in Lair)"; LR "(3/Day, or 4/Day in Lair)" → **regex faalt, LR = null** | ja (parser) |
+| R10 | Aanvallen/saves uit statblock | `attacks.js` `parseAction` r. 49 (`to hit`, `DC n X saving throw`), `monrules.js` r. 62–110 (riders na "Hit:") | 2014-formulering | "Attack Roll: +4", "Strength Saving Throw: DC 13 … Failure:/Success:" | ja (parser); `classic()` bestaat al in `statparse.js` r. 39 maar alleen voor plaktekst |
+| R11 | Spellcasting monster | `castInfo` r. 65 | slots + "3/day each" | geen slots, "At Will / 1/Day Each" | [A] werkt al (regex `gim`), testen |
+| R12 | Spell-presets en concentratie | `effects.js`, `spellcast.js`, `spells.js` | via `ed` | via `ed` | **al klaar**, alleen de bron van `ed` wijzigt |
+| R13 | Statblock-weergave + bronvermelding | `js/ui/statblock.js`, `init.sb.credit` | "SRD 5.1 (2014)" vast | Initiative, PB, SRD 5.2 | ja |
+| R14 | Undead Fortitude, Parry, crits, death saves, recharge | `monrules.js`, `attacks.js`, `combat.js` | — | [A] inhoudelijk gelijk | nee (regressietest) |
+| R15 | Rage (barbarian), weapon mastery, Heroic Inspiration | `effects.js` RE16 / — | Rage 2014 | Rage-duur anders; mastery/inspiration bestaan niet in de app | **buiten scope** (spelers rollen zelf, CLAUDE.md) — zie V5 |
+| R16 | Lair-deelnemer (init 20) | `newLair`, `app.lairs` | lair actions | SRD 5.2 heeft geen lair actions op init 20 | nee: eigen inhoud, editie-neutraal |
+
+### 1.6 Tests en validatie
+- [B] `npm test` groen op 2.3.1 (± 680 tests, ± 10 s). Relevant: `tests/spellrules.test.js`, `spells.test.js`, `statparse.test.js`, `encounters.test.js`, `encounter.test.js`, `monsters.test.js`, `legendary.test.js`, `attacks.test.js`, `saves.test.js`, `surprise.test.js`, `rules.test.js`, `playerview.test.js`, `share.test.js`, `i18n*.test.js`, `version.test.js`; gegenereerde bestanden worden op actualiteit getest.
+- [B] Migratiepatroon: `migrateNtoN+1` in `js/backup.js`; encounters via `cleanEncounter` bij laden.
+- [B] Browsercheck `tools/browsercheck.mjs` met scenario's in `SCEN`.
+
+### 1.7 Bronnen en licentie
+- [B] **SRD 5.2 monsters bij Open5e** (`open5e-api`, `data/v2/wizards-of-the-coast/srd-2024/`, document `srd-2024`, licentie `cc-by-40`): `Creature.json` (331), `CreatureAction.json` (989: 807 action, 82 legendary, 76 bonus, 24 reaction), `CreatureActionAttack.json`, `CreatureTrait.json`, `ConditionDescription.json` (15 condities). Zelfde bron als de 2024-spells.
+- [B] Datakwaliteit Open5e (steekproef): attacktekst mist "Hit:" ("Melee Attack Roll: +14, reach 10 ft. 13 (1d10 + 8) Slashing…"); **aantal legendary actions ontbreekt** (geen veld, geen tekst); `experience_points_integer` bijna altijd leeg (1 van 331); `initiative_bonus` en saves per ability zijn er wel; LR staat in de traitnaam.
+- [A] De XP-budgettabel (Low/Moderate/High) staat in SRD 5.2.1, Gameplay Toolbox → Combat Encounters. **Cijfers controleren tegen de officiële SRD 5.2.1-pdf** (dndbeyond.com/srd); niet uit de DMG 2024 of een derde site overnemen.
+- [?] Is Open5e `srd-2024` SRD 5.2 of 5.2.1 (errata)? Bronvermelding noemt de versie die echt gebruikt is.
+- Regel: alleen SRD 5.2 (CC-BY-4.0). Geen Monster Manual 2024 of andere niet-SRD-tekst. 2014-data wordt **nooit** als 2024 gelabeld.
+
+---
+
+## 2. Besluiten
+
+| # | Besluit | Waarom | Afgewezen |
+|---|---|---|---|
+| **B1** | **Eén regelset per tafel: `S.rules`** (`"2014"` \| `"2024"`; ontbreekt = `"2014"`). In de lopende stand, dus in undo, opslag en export. Alleen te wijzigen **zonder lopend gevecht**. Blijft staan bij "Encounter wissen → Alles", "Begin leeg" en voorbeeld wissen. | Mechaniek (exhaustion, surprise, moeilijkheid) geldt voor de hele tafel; een gevecht mag niet halverwege van regels wisselen; export/import neemt de keuze mee; undo blijft consistent. | Per apparaat (`localStorage`): niet in export, wisselen tijdens gevecht. Per opgeslagen encounter: een encounter is een monsterlijst zonder party/gevecht; twee bronnen zouden elkaar tegenspreken. |
+| **B2** | **Spells volgen de regelset.** Bij `S.rules = "2024"` zijn spells altijd 2024 (instelling Spells verborgen, uitleg "volgt Regels 2024"). Bij `"2014"` blijft de bestaande instelling **Spells 2014 \| 2024** (`it-spell-rules`) werken zoals nu. Eén pure functie `spellEdOf(rules, spellSetting)`; sheet-spells (`edFor`) gaan er nog steeds boven. | Hiërarchisch, dus nooit tegenstrijdig; bestaande gebruikers met Spells 2024 merken niets. | Instelling schrappen (verandert stil gedrag van bestaande gebruikers); twee losse instellingen naast elkaar. |
+| **B3** | **Monster-editie is data, geen instelling.** Bibliotheken: SRD 5.1 (`data/monsters.json`, ongewijzigd), SRD 5.2 (`data/monsters-2024.json`, nieuw), eigen + geïmporteerd (editie-neutraal). Deelnemer en encounterregel krijgen optioneel `ed: "2024"`; **ontbreekt = precies het huidige gedrag** (eigen > geïmporteerd > SRD 5.1 op naam). `findMon(ref, ed)`; bij `ed: "2024"` alleen SRD 5.2, geen schaduw door eigen monsters. | Alle bestaande refs, encounters en backups behouden hun betekenis zonder migratie van inhoud. Gemengd gebruik (2014-monster aan een 2024-tafel) blijft mogelijk. | Unieke refs ("Zombie (2024)"): gebruikersinhoud en namen op het spelersscherm vervuild. Eén samengevoegde lijst: botst op 283 namen. |
+| **B4** | **Ontbrekende 2024-data = expliciet.** `ed: "2024"` zonder geladen SRD 5.2 → geen statblock, melding/markering "statblock 2024 niet beschikbaar", nooit terugvallen op 2014. In `loadPlan` als ontbrekend ("Zombie · 2024"). | Eis: geen stille terugval. | Stille terugval naar de 2014-naam. |
+| **B5** | **Formaatversies omhoog**: backup `VERSION` 3 → 4 en `ENC_VERSION` 1 → 2, migratie no-op (ontbreekt = 2014). | Een oudere app moet een bestand met 2024-refs **weigeren** in plaats van het stil als 2014 te lezen; optionele velden zonder versie zouden dat niet afdwingen (CLAUDE.md: optionele velden mogen, maar hier verandert de betekenis). | Optioneel veld zonder versie; versie alleen ophogen als er 2024-data in zit (twee schrijfpaden). |
+| **B6** | **Regels krijgen de editie als parameter** (bestaand principe), nooit uit `S` of `localStorage` in `js/rules/`. 2024-afwijkingen naast de 2014-code (zoals `r24`), geen generieke rules engine. | Klein, testbaar, past op wat er is. | Rules engine / strategy-objecten per editie: speculatief voor ± 8 verschilpunten. |
+| **B7** | **Statblock-tekst blijft letterlijk**; de parsers worden editiebestendig door dezelfde normalisatie als plaktekst (`classic()`, verplaatst naar `js/rules/`). De converter herstelt alleen wat Open5e kwijt is ("Hit:", legendary-aantal). | Weergave blijft trouw aan SRD 5.2; één parserpad voor SRD, plaktekst en import. | 2024-tekst in de converter omschrijven naar 2014-zinnen. |
+| **B8** | **Spelersscherm**: snapshot krijgt optioneel `ed` (alleen `"2024"` meegestuurd), `v` blijft 2; `cleanView` whitelist. Spelers zien condities-uitleg van de tafelregels. | Taalneutraal, codes over de lijn (CLAUDE.md). | Uitleg alleen op de DM-kant. |
+| **B9** | **Data offline**: `data/monsters-2024.json` in de sw-precache (zoals `spells-2024.json`), geladen bij de eerste behoefte (regelset 2024, een `ed: "2024"`-deelnemer of zoeken op 2024). | Aan tafel soms zonder internet. | Alleen runtime-cache: faalt offline bij de eerste keer. |
+| **B10** | Lair, Rage, weapon mastery, Heroic Inspiration, "4 in Lair": **buiten G1** (zie R15/R16, V5). | App modelleert spelersaanvallen bewust niet; lair is eigen inhoud. | — |
+
+### Open besluiten voor Michiel
+| # | Vraag | Advies | Blokkeert |
+|---|---|---|---|
+| V1 | Standaard regelset voor een nieuwe installatie | **2014** bij oplevering (alle teksten en de markt van de app); later apart omzetten naar 2024 | WP53 |
+| V2 | Release: stapsgewijs in 2.x of één 3.0.0 | WP46–WP52 als onzichtbare 2.x-versies (regelset staat vast op 2014); keuze zichtbaar in WP53 als **2.x.0** (of 3.0.0 als Michiel een mijlpaal wil) | WP53 |
+| V3 | Bestaande "Spells 2024 onder regels 2014" behouden (B2) | ja | WP53 |
+| V4 | Andere-editie-monsters in de zoeklijst: zoekwoord `2014`/`2024` (zoals `cr 5`) of een andere vorm | UX-agent kiest in WP49 binnen "geen filterchips" | WP49 |
+| V5 | Rage 2024 en "4 in Lair" later als K-punt of nooit | op signaal | nee |
+
+Geen open vraag blokkeert **WP46**.
+
+---
+
+## 3. Volgorde
+
+```
+WP46 Fundament (regelset + editievelden + formaten) ──┬── WP48 Parsers ── WP49 Monsterkeuze & statblock ──┐
+WP47 SRD 5.2-monsterdata (tool + data) ───────────────┘                                                  │
+WP46 ── WP50 Mechaniek 2024 ─────────────────────────────────────────────────────────────────────────────┤
+WP46 ── WP51 Condities-uitleg 2024 + spelersscherm ───────────────────────────────────────────────────────┤
+WP46 ── WP52 Moeilijkheid 2024 ──────────────────────────────────────────────────────────────────────────┤
+                                                                         WP53 Regelkeuze zichtbaar ◄───────┘
+                                                                         WP54 Integratie en release
+```
+- Eerst **WP46**. **WP47** kan direct ernaast (tool en data raken geen app-code; alleen het laden komt in WP48/49).
+- Na WP46 zijn **WP50, WP51, WP52** onafhankelijk van elkaar en van WP47–49.
+- Tot WP53 is er niets zichtbaar: `S.rules` is altijd `"2014"`; 2024-paden zijn alleen via tests bereikbaar.
+
+Omvang: S ≈ één korte sessie (K-formaat), M ≈ één volle sessie, L ≈ grens van één sessie.
+
+---
+
+## 4. Werkpakketten
+
+### WP46 — Fundament: regelset per tafel, editievelden en bestandsformaten
+1. **Doel**: `S.rules` en optioneel `ed` op deelnemers en encounterregels bestaan, worden opgeslagen, opgeschoond, geëxporteerd en gedeeld; alle huidige gedrag blijft identiek (regelset altijd 2014, geen UI).
+2. **Huidige stand**: §1.3–1.4; `cleanCombatant`/`parseImport` (`js/backup.js`), `cleanEncounter`/`fromList`/`loadPlan`/`buildEncFile`/`parseEncFile` (`js/rules/encounters.js`), `build`/`findMon` (`js/data/monsters.js`), nieuwe `S` in `actions.js` r. 544/551 en `main.js` r. 130, `rulesEd()`-aanroepers (§1.2).
+3. **Scope**:
+   - Nieuw `js/rules/edition.js` (puur): `EDS`, `rulesOf(S)` (ontbreekt/onzin → `"2014"`), `spellEdOf(rules, setting)` (B2), `cleanEd(v)` (alleen `"2024"` blijft, anders weg).
+   - `S.rules` in `parseImport` (whitelist), behouden in reset/voorbeeld wissen/`main.js`-start en bij "Monsters wissen".
+   - `c.ed` in `cleanCombatant` (alleen monsters); encounterregel `ed` in `cleanEncounter`; `fromList` voegt alleen samen bij gelijke `ed` en kopieert hem; `loadPlan(enc, has)` met `has(ref, ed)` en `missing` als `[{ ref, ed }]`; `buildEncFile`/`parseEncFile` matchen statblocks alleen voor editie-neutrale refs.
+   - `ENC_VERSION = 2`, backup `VERSION = 4` + `migrate3to4` (no-op), oude bestanden (v1–3 resp. v1) blijven inleesbaar.
+   - `findMon(ref, ed)` en `allMonsters(ed)`-signatuur met een lege SRD 5.2-bibliotheek (`setSrd24(list)`), zonder `ed` exact het oude resultaat.
+   - Alle `rulesEd()`-aanroepers via `spellEdOf(rulesOf(app.S), rulesEd())` (gedrag identiek zolang `S.rules` 2014 is).
+4. **Buiten scope**: UI, 2024-data, mechaniek, spelersscherm, teksten.
+5. **Aanpak**: kleine pure helpers, geen nieuwe abstractielaag; `ed` alleen schrijven als het `"2024"` is (bestanden en undo-snapshots van 2014-gebruikers blijven gelijk). Encounters in IndexedDB worden bij laden al door `cleanEncounter` gehaald: geen aparte migratie.
+6. **Afhankelijk van**: —.
+7. **Acceptatie**:
+   - Een backup v3 (en v1/v2) uit `tests/` importeert met identieke uitkomst als nu; export schrijft `version: 4`.
+   - Encounterbestand v1 importeert; v2 met `ed: "2024"` blijft na `cleanEncounter` behouden; een app met `ENC_VERSION = 1` zou v2 weigeren (test op `parseEncFile` met versie 3 → "newer").
+   - `fromList` met twee `Zombie`'s, één met `ed: "2024"` → twee regels.
+   - `findMon("Zombie")` = SRD 5.1-zombie; `findMon("Zombie", "2024")` zonder geladen 2024-data = `undefined` (geen terugval); eigen monster "Zombie" schaduwt alleen zonder `ed`.
+   - `S.rules` overleeft reset, voorbeeld wissen, export/import en undo; onzin (`"2025"`) wordt 2014.
+8. **Tests**: nieuw `tests/edition.test.js`; uitbreiden `encounters.test.js`, `encounter.test.js`, `monsters.test.js`, backup-roundtrip; `npm test` volledig.
+9. **Klaar als**: tests groen, browsercheck zonder verschil, **volledige developer-review** (formaatwijziging), versie 2.4.0, CLAUDE.md "Opslag en data" (backup v4, encounter v2, `ed`) bijgewerkt, push.
+10. **Risico's**: vergeten whitelist-plek (sync van partyleden `PKEYS` in `state.js` hoeft `ed` niet: alleen monsters). Undo-snapshot van een oude versie wordt na update al genegeerd (bestaand gedrag).
+11. **Omvang**: M.
+
+### WP47 — SRD 5.2-monsterdata: converter en datafile
+1. **Doel**: `data/monsters-2024.json` met de 331 SRD 5.2-monsters in hetzelfde veldformaat als `monsters.json`, reproduceerbaar uit Open5e, met bronvermelding.
+2. **Huidige stand**: §1.1, §1.7; voorbeeld `tools/spells_srd2024.py`.
+3. **Scope**:
+   - `tools/monsters_srd2024.py` (`python3 -I`, invoer = Open5e `Creature*.json`, uitvoer `{ ed: "2024", src, monsters: [...] }`). Velden: `n, meta, ac, hp, hd, spd, ab, x, cr, xp, t, a, ba, re, l, ld` + nieuw `init` (Initiative-bonus) en `pb`.
+   - Herstel: "Hit:" in aanvallen uit `CreatureActionAttack.json`; `ld`-tekst met het aantal legendary actions (standaard 3, uitzonderingen via een kleine tabel na controle tegen de SRD 5.2.1-pdf); recharge/uses in de entrynaam ("(Recharge 5–6)", "(1/Day)", "(Costs 2 Actions)"); `xp` uit CR.
+   - `x` met "Saving Throws" (alleen waar de save afwijkt van de modifier), Skills, Immunities/Resistances, Senses, Languages, Gear.
+   - `data/monsters-2024.json` + regel in `sw.js`-precache; `loadSrd` accepteert array (oud) én omhulsel (nieuw).
+   - README-bronvermelding uitbreiden (SRD 5.2 ook voor monsters).
+4. **Buiten scope**: parsers, UI, zoeken.
+5. **Aanpak**: zelfde stijl als de spell-tool; test dat het bestand actueel is (zoals bij de spelldata).
+6. **Afhankelijk van**: — (laden aan de app-kant in WP48/49).
+7. **Acceptatie**: 331 monsters, unieke namen, elk met `n`, `cr`, `hp > 0`, `ac`, 6 ability scores; elke Open5e-attack heeft "Hit:" of een damage-expressie in de tekst; elk monster met legendary actions heeft `ld` met een aantal; steekproef van 15 statblocks (o.a. Aboleth, Adult Red Dragon, Goblin Warrior, Zombie, Lich, Mage, Vampire) handmatig gelijk aan SRD 5.2.1; geen tekst die niet in SRD 5.2 staat.
+8. **Tests**: `tests/monsters2024.test.js` (structuur, aantallen, steekproefwaarden), `tests/worker.test.js`/sw-test voor de precache-lijst.
+9. **Klaar als**: tests groen, developer-review van tool en steekproef, versie ophogen (de sw-precache wijzigt), push.
+10. **Risico's**: Open5e mist meer dan gezien (spellcasting-lijsten, lair-teksten); SRD 5.2 vs 5.2.1 (§1.7). Is de officiële pdf niet bereikbaar via de allowlist, dan levert Michiel hem aan.
+11. **Omvang**: M.
+
+### WP48 — Statblock-parsers en monster-initiative editiebestendig
+1. **Doel**: aanvallen, saves, riders, recharge, legendary, spellcasting en initiative werken voor SRD 5.2-statblocks zoals voor 2014.
+2. **Huidige stand**: R8–R11; `parseAction`/`monsterActions` (`attacks.js` r. 49/77), `DC_RE` (`monrules.js` r. 62), `legInfo`/`castInfo`/`rcInfo` (`spells.js`), `classic()` (`statparse.js` r. 39), toevoegen in `actions.js` r. 97–110.
+3. **Scope**: `classic()` naar `js/rules/` (statparse importeert hem); `monsterActions`/riders normaliseren eerst; 2024-riders ("Failure:", vaste conditie bij een treffer "has the Grappled condition (escape DC n)") als hint/rider waar de structuur het toelaat; `legInfo` leest "Legendary Action Uses: N" en "Legendary Resistance (N/Day, or M/Day in Lair)" (basiswaarde N); initiative bij toevoegen = `m.init ?? dexmod` (tiebreak blijft Dex); laden van SRD 5.2 in `js/data/monsters.js` (`loadSrd24`, één keer, fout = expliciete status).
+4. **Buiten scope**: zoek-UI, statblock-weergave, regels die van `S.rules` afhangen.
+5. **Aanpak**: één parserpad; 2014-uitkomsten byte-gelijk (bestaande tests).
+6. **Afhankelijk van**: WP46, WP47.
+7. **Acceptatie**: voor alle 331 SRD 5.2-monsters: elke actie met "Attack Roll" geeft to-hit en damage; elke "Saving Throw: DC" geeft DC + ability; LR bij alle monsters met die trait; legendary-aantal = `ld`; Adult Red Dragon toegevoegd → init = d20 + 12; alle 322 SRD 5.1-monsters geven exact de oude `monsterActions`/`legInfo`/`rcInfo`/`castInfo`.
+8. **Tests**: uitbreiden `attacks.test.js`, `legendary.test.js`, `statparse.test.js`, `hit.test.js`; snapshottest over beide datasets (aantallen geparste acties per editie).
+9. **Klaar als**: tests groen, developer-review, versie 2.x.0, push.
+10. **Risico's**: 2024-riders zonder save (automatisch Prone/Grappled) passen niet op het huidige rider-model → als hint tonen, niet automatiseren (beslissing vastleggen).
+11. **Omvang**: L.
+
+### WP49 — Monsterkeuze, dubbele namen, statblock en encounters in de UI
+1. **Doel**: de DM kiest bewust een 2014- of 2024-monster; editie is zichtbaar waar het ertoe doet; ontbrekende 2024-data is expliciet.
+2. **Huidige stand**: `filterMonsters`/`parseQuery`, `monList`/`addBlockHtml`/`monPrev` (`render.js` r. 937–1028), `js/ui/statblock.js`, `js/ui/encounters.js` (inladen, missing), `init.sb.credit`.
+3. **Scope**: zoeken standaard in de editie van de tafel + eigen monsters; andere editie bereikbaar volgens V4 (UX-agent); resultaatregel met editietag als die afwijkt van de tafel; `c.ed` bij toevoegen; statblock toont Initiative/PB en bronvermelding per editie (`init.sb.credit` → twee sleutels); encounterlijst/inladen toont "· 2024" bij afwijkende regels en ontbrekende 2024-statblocks; Nederlandse zoeksynoniemen voor nieuwe 2024-namen waar nodig (`locales/nl/search.js`).
+4. **Buiten scope**: regelset-keuze, mechaniek.
+5. **Aanpak**: **senior UX-agent vóór het bouwen** (minstens twee opties voor de editietag en de zoekvorm; geen filterchips; tikdoelen ≥ 44 px; 320 px). Tags met bestaande `.tag`-stijl, geen nieuwe kleuren.
+6. **Afhankelijk van**: WP46, WP47, WP48.
+7. **Acceptatie**: aan een 2014-tafel geeft "zombie" alleen de SRD 5.1-Zombie (+ eigen); de 2024-Zombie is via de gekozen vorm vindbaar en krijgt tag "2024"; toegevoegd heeft hij `ed: "2024"` en het juiste statblock; opgeslagen en ingeladen blijft hij 2024; zonder 2024-data (fetch faalt) toont inladen "Zombie · 2024 ontbreekt" en voegt hem niet als 2014 toe; browsercheck 320/360/390 licht/donker zonder horizontaal scrollen; `⟦` nergens bij `--i18n=xx`.
+8. **Tests**: `monsters.test.js` (filter per editie), `encounters.test.js` (missing met editie), i18n-tests, nieuw browsercheck-scenario `g1-mon`.
+9. **Klaar als**: tests en browsercheck groen, UX- en developer-review gemeld, Engelse tekst door de vertaalagent, versie, CLAUDE.md "Voorbereiden: monsters en encounters" bijgewerkt, push.
+10. **Risico's**: zoeklijst wordt drukker; prestaties bij twee bibliotheken (index per editie, één keer bouwen).
+11. **Omvang**: M.
+
+### WP50 — Mechaniek 2024 in de regels
+1. **Doel**: R1–R4 rekenen met `ed`, met 2014 onveranderd.
+2. **Huidige stand**: §1.5 R1–R4.
+3. **Scope**: `exhEffect`/`reExh`/`setExh(c, x, why, ed)`: 2024 zonder HP-halvering, d20-straf −2 × niveau in `atkAdv`/aanvalsworp en `saveAdv`/`rollSave` (als vaste modifier met reden, niet als disadvantage), speed-tekst; conc-DC `min(30, max(10, ½))` bij 2024; surprise 2024: geen `skipsTurn`/reaction-blokkade, wel disadvantage op de initiativeworp in het initiative-paneel (Rol); Grappled-hint bij 2024; functie `rulesSwitch(S, party, to)` die exhaustion-effecten van tafel én party omrekent (voor WP53).
+4. **Buiten scope**: UI-keuze, teksten van de condities-uitleg (WP51), Rage 2024 (B10).
+5. **Aanpak**: `ed` als laatste parameter met standaard `"2014"`; aanroepers in de UI geven `rulesOf(app.S)` door (nu altijd 2014).
+6. **Afhankelijk van**: WP46.
+7. **Acceptatie**: 2014-tests ongewijzigd groen; 2024: Exhaustion 4 laat max HP staan, save met Exhaustion 2 krijgt −4; 70 schade op een concentrerende caster → DC 30 (2024) resp. 35 (2014); verraste monsters in 2024 krijgen hun beurt in ronde 1 en rollen initiative met disadvantage; `rulesSwitch` 2014→2024 herstelt een gehalveerde max HP en logt het, 2024→2014 halveert weer.
+8. **Tests**: `rules.test.js`, `surprise.test.js`, `saves.test.js`, `attacks.test.js`, `effects.test.js`, `initround.test.js`.
+9. **Klaar als**: tests groen, developer-review (logica tegen 2014 én SRD 5.2), versie, push.
+10. **Risico's**: exhaustion op partyleden buiten de tafel (geen undo) → `rulesSwitch` raakt ze in dezelfde actie, met eigen Ongedaan in WP53.
+11. **Omvang**: L.
+
+### WP51 — Condities-uitleg 2024 en spelersscherm
+1. **Doel**: uitleg van condities en Exhaustion volgt de tafelregels, ook op het spelersscherm.
+2. **Huidige stand**: R5; `condInfo`, `CINFO`, `exhRows` (`conditions.js`), `js/ui/condinfo.js`, `toPlayerView`/`cleanView` (`playerview.js`).
+3. **Scope**: catalogus `dnd.cond24.<id>.*` en `dnd.exh24.*` (eigen samenvatting van SRD 5.2.1, Engels eerst, dan Nederlands, D&D-termen Engels); `condInfo(name, lvl, ed)` met `CINFO24`; snapshot optioneel `ed: "2024"` (B8), `cleanView` neemt het over; DM- en spelerskant geven `ed` door.
+4. **Buiten scope**: regelkeuze-UI.
+5. **Aanpak**: alleen afwijkende condities krijgen eigen 2024-tekst [A: Exhaustion, Grappled, Incapacitated, Invisible, Petrified?]; de rest verwijst naar dezelfde sleutels (één sleutel = één betekenis).
+6. **Afhankelijk van**: WP46.
+7. **Acceptatie**: met `ed: "2024"` toont het paneel de 2024-tekst, anders de oude; spelersscherm met een snapshot zonder `ed` = 2014; i18n-pariteit, ongebruikte sleutels en ratel groen; Engelse tekst nagelezen door de vertaalagent.
+8. **Tests**: `i18n*.test.js`, `playerview.test.js`, test op `CINFO24` ↔ catalogus.
+9. **Klaar als**: tests groen, checklist `docs/i18n.md` §9.5, developer-review, versie, push.
+10. **Risico's**: geen kopie van SRD-zinnen langer dan nodig; eigen samenvatting zoals bij 2014.
+11. **Omvang**: M.
+
+### WP52 — Moeilijkheid en XP volgens 2024
+1. **Doel**: de moeilijkheidsuitleg in Voorbereiden rekent met de regels van de tafel.
+2. **Huidige stand**: R6–R7; `difficulty`, `deadlyTip`, `noRatingCode`, UI `js/ui/encounters.js` r. 27–38 en 176.
+3. **Scope**: `difficulty(mons, who, all, ed)`: bij 2024 XP-budget per level uit SRD 5.2.1 (Low/Moderate/High, geen multiplier, geen "lage CR telt niet"), zelfde uitvoervorm met `rating` 0–2 en een "boven High"-stand; tip "wat weg moet voor High" (generalisatie van `deadlyTip`); labels via catalogus; "Toch meetellen" alleen bij 2014; XP-label in het afrondpaneel zonder "DMG 2014" bij 2024.
+4. **Buiten scope**: andere encounterfuncties.
+5. **Aanpak**: tabel als constante naast `THRESH`; cijfers alleen uit de officiële SRD 5.2.1-pdf, met paginaverwijzing in het commentaar.
+6. **Afhankelijk van**: WP46.
+7. **Acceptatie**: 2014-uitkomsten ongewijzigd (bestaande tests); 2024: vier spelers level 3 tegen vaste testsets geven het verwachte oordeel volgens de pdf; zonder level geen oordeel (zelfde codes).
+8. **Tests**: `encounters.test.js` (2024-tabel, randen 0/1 monster, onbekende CR).
+9. **Klaar als**: tests groen, developer-review, versie, push.
+10. **Risico's**: tabel niet in SRD 5.2.1 → dan geen 2024-oordeel tonen (code `"cr"`-achtig "niet beschikbaar"), niet terugvallen op 2014.
+11. **Omvang**: M.
+
+### WP53 — Regelkeuze zichtbaar: Instellingen → Regels 2014 | 2024
+1. **Doel**: de DM kiest de regelset; alles uit WP46–52 wordt bereikbaar.
+2. **Huidige stand**: sectie Spells in Instellingen (`pages/initiative.html` r. 130–136, `actions.js` r. 2047, `settings.js` r. 38); hinttekst `init.set.spellsRest`; teksten met "(2014)" (`init.welcome.text`, `page.app.desc`, `page.home.desc`, `page.manifest.desc`).
+3. **Scope**: sectie **Regels** met seg "2014 | 2024" (status in de kop), uitgeschakeld tijdens een gevecht met uitleg; Spells als subinstelling alleen bij 2014 (B2); wisselen = één undo-stap + logregel via `rulesSwitch` (party met eigen Ongedaan-knop); standaard volgens V1; welkomstkaart/rondleiding/pagina-omschrijvingen editie-neutraal; `S.rules` naar het spelersscherm (`ed`).
+4. **Buiten scope**: nieuwe mechaniek.
+5. **Aanpak**: **senior UX-agent vóór het bouwen** (plek: Instellingen-sectie vs welkomstkaart vs kop; aantal tikken; status zichtbaar in Voorbereiden?). Bestaande `.seg`-patroon, `<details class="setsec">`, geen melding bij opstarten.
+6. **Afhankelijk van**: WP46–WP52; V1–V3 beantwoord.
+7. **Acceptatie**: bestaande gebruiker ziet na update "Regels: 2014" en exact het oude gedrag (incl. Spells 2024 als hij dat had); omzetten naar 2024 verandert zoeken, statblocks, exhaustion, surprise, conc-DC, moeilijkheid, condities-uitleg en spells; tijdens een gevecht is de keuze niet te wijzigen; Ongedaan zet hem terug; export/import neemt hem mee; spelersscherm volgt.
+8. **Tests**: `spellrules.test.js`, `tour.test.js`, `pages.test.js`, i18n; browsercheck-scenario `g1-rules` op 320/360/390 licht/donker, `--lang=nl,en`, `--i18n=xx`.
+9. **Klaar als**: alles groen, UX- en developer-review gemeld, vertaalagent, versie volgens V2, CLAUDE.md "Basis" en "Gevecht" bijgewerkt, push.
+10. **Risico's**: verwarring Regels vs Spells → B2-uitleg in één zin, details onder "Meer".
+11. **Omvang**: M.
+
+### WP54 — Integratie, regressie en afronding G1
+1. **Doel**: G1 als geheel geverifieerd en gedocumenteerd.
+2. **Huidige stand**: na WP53.
+3. **Scope**: end-to-endtests (oude backup v3 → v4 zonder betekenisverschil; 2024-encounter exporteren → importeren → inladen; gemengde tafel 2024 met een 2014-monster; kamer/spelersscherm met `ed`); volledige browsercheck; CLAUDE.md-keuzes compleet (geen dubbelingen met dit plan); README/home-bronvermelding; `ROADMAP.md` G1 weg; dit document verwijderen of als historie markeren.
+4. **Buiten scope**: nieuwe functies.
+5. **Aanpak**: **volledige developer-review** (x.y.0 en formaatwijzigingen samen).
+6. **Afhankelijk van**: WP46–WP53.
+7. **Acceptatie**: alle punten uit §5 aantoonbaar gedekt door een test of browsercheck; live-check op telefoon (Michiel) in de roadmap onder Operationeel.
+8. **Tests**: `npm test` volledig, browsercheck volledig.
+9. **Klaar als**: bovenstaande, push en deployment geverifieerd.
+11. **Omvang**: S.
+
+---
+
+## 5. Achterwaartse compatibiliteit: risico's en dekking
+
+| Risico | Dekking |
+|---|---|
+| Bestaande encounter/deelnemer krijgt na 2024-data een ander statblock | B3: zonder `ed` exact oude opzoekvolgorde; test WP46 |
+| Oude app leest een 2024-bestand als 2014 | B5: versie omhoog, oude app weigert |
+| Legacy-data zonder regelset | `rulesOf` → 2014 (WP46) |
+| Gebruiker met Spells 2024 verliest gedrag | B2 (WP46/WP53) |
+| Wisselen halverwege een gevecht | B1: alleen zonder gevecht (WP53) |
+| Exhaustion-HP klopt niet na wisselen | `rulesSwitch` (WP50/53) |
+| 2024-data niet geladen/offline | B4 + B9 |
+| 2014-parseruitkomsten veranderen door normalisatie | byte-gelijk-test over 322 monsters (WP48) |
+| Spelersscherm van een oudere versie | `ed` optioneel; zonder `ed` 2014-uitleg (WP51) |
+| Gedeelde spelerslink/kamer | protocol ongewijzigd (`v: 2`), alleen een extra codeveld |
+
+Geen datamigratie van inhoud nodig: alleen versienummers met een no-op-migratie.
