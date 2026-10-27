@@ -37,7 +37,10 @@ const PAIRS = [
   ["bad", "surface", TEXT, "fout/destructief"], ["bad", "bg", TEXT, "fout op pagina"], ["bad", "bad-soft", TEXT, "Deadly-chip"], ["bad", "sunk", TEXT, "fout op verzonken vlak (lair)"],
   ["info", "surface", TEXT, "info/delen"], ["info", "bg", TEXT, "info op pagina"], ["bg", "info", TEXT, "temp HP-knop"],
   ["fg", "mon-soft", TEXT, "monster-avatar/tag"], ["fg", "pc-soft", TEXT, "speler-avatar"],
-  ["bg", "fg", TEXT, "Schade-knop, melding"], ["t-link", "fg", TEXT, "knop op melding"], ["t-good", "fg", TEXT, "crit op melding"], ["t-bad", "fg", TEXT, "fumble op melding"],
+  // WP39: "− Schade" en melding met eigen tokens (in donker geen ivoren vlak meer)
+  ["dmg-fg", "dmg", TEXT, "Schade-knop"], ["dmg-line", "card", UI, "rand Schade-knop op kaart"],
+  ["toast-fg", "toast-bg", TEXT, "melding"], ["t-link", "toast-bg", TEXT, "knop op melding"], ["t-good", "toast-bg", TEXT, "crit op melding"], ["t-bad", "toast-bg", TEXT, "fumble/fout-icoon op melding"],
+  ["toast-line", "bg", UI, "melding op pagina"],
   ["sb-ink", "surface", TEXT, "statblock"],
   // WP17: statblock op perkament (--sb-bg), deelnemerskaart --card, walnoot-kop spelersscherm
   ["sb-ink", "sb-bg", TEXT, "statblock-inkt op perkament"], ["sb-ink", "sunk", TEXT, "statblock-inkt op hover (ability)"], ["fg", "sb-bg", TEXT, "statblock-tekst"],
@@ -56,11 +59,17 @@ const PAIRS = [
   ["warn", "btn", TEXT, "save-knop, LA-chip"], ["bad", "btn", TEXT, "destructieve knop"], ["focus", "btn", UI, "focusring op knop"],
   ["focus", "sunk", UI, "focusring in verzonken paneeltje"], ["line-strong", "sunk", UI, "rand invoerveld op verzonken paneeltje"],
 ];
+// WP39: alleen in donker afgedwongen. In licht is de knoprand bewust decoratief (= --line, WP17: geen drukke lijst; het label draagt de knop),
+// en de melding ligt als walnoot-vlak al los van een licht paneel.
+const DARK_ONLY = [
+  ["btn-line", "card", UI, "knoprand op kaart"], ["btn-line", "surface", UI, "knoprand op paneel/dock"], ["btn-line", "sunk", UI, "knoprand in paneeltje (conditieraster)"],
+  ["toast-line", "surface", UI, "melding boven een open paneel"],
+];
 
 for (const [name, T] of [["licht", light], ["donker", darkSys]]) {
   test(`contrast ${name}`, () => {
     const bad = [];
-    for (const [f, b, min, what] of PAIRS) {
+    for (const [f, b, min, what] of name === "donker" ? [...PAIRS, ...DARK_ONLY] : PAIRS) {
       assert.ok(T[f] && T[b], `${name}: token --${f} of --${b} ontbreekt`);
       const r = ratio(T[f], T[b]);
       if (r < min) bad.push(`${what}: --${f} op --${b} = ${r.toFixed(2)} < ${min}`);
@@ -71,6 +80,12 @@ for (const [name, T] of [["licht", light], ["donker", darkSys]]) {
 
 test("HP-balk en statuskleuren als grafiek ≥ 3:1 tegen de kaart", () => {
   for (const T of [light, darkSys]) for (const k of ["good", "warn", "bad", "act-ink"]) for (const bg of ["surface", "card"]) assert.ok(ratio(T[k], T[bg]) >= UI, k + " op " + bg);
+});
+
+test("WP39: in donker is geen knop- of meldingsvlak lichter dan Lantern (schemerige kamer)", () => {
+  for (const k of ["dmg", "toast-bg", "btn"]) assert.ok(lum(darkSys[k]) < lum(darkSys.act), `--${k} lichter dan --act`);
+  assert.equal(light.dmg, light.fg, "licht: Schade blijft het donkere vlak (WP14 C)");
+  assert.equal(light["btn-line"], light.line, "licht: knoprand blijft --line (WP17)");
 });
 
 test("donker thema staat twee keer gelijk (systeem en vaste keuze)", () => {

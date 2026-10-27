@@ -151,6 +151,66 @@ const SCEN = {
     await mon.locator('[data-a="sb"]').tap();
     await page.waitForSelector(".sb h2", { state: "visible" });
   },
+  // WP39 (HS16–HS18): donker thema in een schemerige kamer (geen knop- of meldingsvlak feller dan Volgende), krap op 320 px
+  // (statblock-titel max. twee regels, .acts-labels niet tegen de rand, + Speler-velden op één hoogte, ras niet afgekapt),
+  // na Gevecht afronden statblock dicht en één melding, homepage-voet begint geen regel met "·". --shots=wp39: alle tussenstanden.
+  async wp39(page, base) {
+    const lum = () => { // relatieve luminantie van een computed rgb()-kleur
+      window.__lum = (c) => { const v = (c.match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map((x) => x / 255).map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4)); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+    };
+    await SCEN.letters(page); // gevecht, statblock van het eerste monster open
+    await page.evaluate(lum);
+    const sbl = await page.evaluate(() => { const h = document.querySelector(".sb h2"); h.textContent = "Adult Black Dragon"; // langste gangbare naam
+      return Math.round(h.getBoundingClientRect().height / parseFloat(getComputedStyle(h).lineHeight)); });
+    const xx = await page.evaluate(() => localStorage.getItem("kevs-i18n-debug") === "xx"); // testtaal: lange knoppen naast de titel, alleen lengte
+    if (sbl > 2 && !xx) throw new Error(`statblock-titel over ${sbl} regels`);
+    await snap(page, "wp39", "statblock");
+    await page.evaluate(async () => (await import("/js/ui/statblock.js")).closeSB());
+    const turn = page.locator("#order .c.k.turn");
+    if (!(await turn.evaluate((el) => el.classList.contains("open")))) await turn.locator(".khead").tap();
+    const acts = await turn.evaluate((el) => [...el.querySelectorAll(".acts button")].filter((b) => b.textContent.trim()).map((b) => {
+      const g = document.createRange(); g.selectNodeContents(b); const rs = [...g.getClientRects()], r = b.getBoundingClientRect();
+      return { t: b.textContent.trim(), free: Math.round(Math.min(...rs.map((x) => Math.min(x.left - r.left, r.right - x.right)))) }; })); // lucht tussen tekst en rand
+    const tight = acts.filter((a) => a.free < 3); // was ± 0 (persona-test 2.0)
+    if (tight.length && !xx) throw new Error("actieknop krap of overlopend: " + JSON.stringify(tight));
+    await turn.locator('[data-a="panel"][data-p="conds"]').tap();
+    await page.waitForSelector("#order .condgrid");
+    await snap(page, "wp39", "conditie");
+    await turn.locator(".khp").tap(); await page.waitForSelector("#sheet .pad");
+    await page.locator("#sheet .pad button", { hasText: /^7$/ }).first().tap();
+    await tap(page, '#sheet [data-sk="apply"]');
+    await page.waitForSelector("#toast .tmsg");
+    const dark = await page.evaluate(() => matchMedia("(prefers-color-scheme: dark)").matches);
+    if (dark) { // HS16: in een schemerige kamer is Volgende het felste vlak
+      const r = await page.evaluate(() => { const L = (el) => window.__lum(getComputedStyle(el).backgroundColor), nx = L(document.querySelector("#next"));
+        return [...document.querySelectorAll("#toast .tmsg, #order .acts button, #dock button:not(#next)")].filter((el) => L(el) > nx).map((el) => el.id || el.className || el.textContent.trim().slice(0, 16)); });
+      if (r.length) throw new Error("feller dan Volgende in donker: " + r.join(", "));
+    }
+    await snap(page, "wp39", "melding");
+    await tap(page, '#modes [data-setmode="prep"]');
+    await page.evaluate(async () => { const c = (await import("/js/state.js")).app.S.list.find((x) => x.kind === "monster"); if (c) (await import("/js/ui/statblock.js")).showSB(c, true); });
+    await tap(page, "#stop"); await page.waitForSelector("#esheet .esheet");
+    const end = await page.evaluate(() => ({ sb: document.querySelector("#sbwrap")?.dataset.open === "true", n: document.querySelectorAll("#toast .tmsg").length }));
+    if (end.sb || end.n !== 1) throw new Error("na Gevecht afronden: " + JSON.stringify(end));
+    await snap(page, "wp39", "einde");
+    await page.keyboard.press("Escape");
+    await tap(page, '#dock [data-prep="pc"]'); await page.waitForSelector("#f-pc", { state: "visible" });
+    const f = await page.evaluate(() => { const sel = document.querySelector("#pc-race"), rows = {}; // velden per rij (zelfde labelhoogte) moeten op dezelfde hoogte beginnen
+      for (const id of ["#pc-ac", "#pc-hp", "#pc-bon", "#pc-race", "#pc-lvl"]) { const el = document.querySelector(id), lt = Math.round(el.closest("label, .lab").getBoundingClientRect().top);
+        (rows[lt] ||= []).push(Math.round(el.getBoundingClientRect().top)); }
+      const cv = document.createElement("canvas").getContext("2d"), cs = getComputedStyle(sel); cv.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      const room = sel.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 16; // 16: pijltje
+      return { rows: Object.values(rows), scheef: Object.values(rows).some((r) => Math.max(...r) - Math.min(...r) > 1), cut: Math.round(cv.measureText(sel.options[sel.selectedIndex].text).width - room) }; });
+    if (f.scheef || f.cut > 0) throw new Error("+ Speler-formulier scheef of afgekapt: " + JSON.stringify(f));
+    await snap(page, "wp39", "speler");
+    const lang = await page.evaluate(() => document.documentElement.lang);
+    await page.goto(`${base}/${lang}/`); await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(() => scrollTo(0, document.body.scrollHeight));
+    const dot = await page.evaluate(() => { const li = [...document.querySelectorAll("footer .facts li")];
+      return li.slice(1).filter((x, i) => Math.round(x.getBoundingClientRect().top) !== Math.round(li[i].getBoundingClientRect().top) && getComputedStyle(x, "::before").content !== "none").length; });
+    if (dot) throw new Error("homepage-voet: regel begint met ·");
+    await snap(page, "wp39", "home");
+  },
   speler: null, // eigen startpagina, zie START
   home: null, homeen: null, notfound: null, // WP30: publieke homepage per taal en de niet-gevonden-pagina (START)
   // WP23: formulieren met de statische tekst (met --i18n=debug de Engelse pagina)

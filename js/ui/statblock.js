@@ -82,7 +82,7 @@ const sb = {
   nid: null,       // id van het monster in dat blok
 };
 const PHONE = matchMedia("(max-width:899px)");
-const phone = () => PHONE.matches;
+export const phone = () => PHONE.matches; // ook voor Gevecht afronden (WP39): één bron voor de telefoongrens
 // wisselen tussen telefoon en tablet/desktop (draaien, venster smaller): telefoon begint weer dicht, zonder volgen
 PHONE.addEventListener?.("change", () => {
   sb.prev = null; sb.back = null; // preview bestaat alleen op tablet/desktop

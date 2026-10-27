@@ -348,8 +348,12 @@ export function logLines(a, b) {
     let tight = false; // "Aria −7 HP" en "Goblin 1 neer" zonder dubbele punt
     const h0 = o.hp, h1 = c.hp, exact = h0 && h1 && h0.max != null && h1.max != null;
     if (exact && h1.hp !== h0.hp) { parts.push(`${h1.hp < h0.hp ? "−" : "+"}${Math.abs(h1.hp - h0.hp)} HP`); tight = true; }
-    if (c.kind === "monster" && c.out && !o.out) { parts.push(t("player.log.down")); if (parts.length === 1) tight = true; }
-    else if (h0 && h1 && h1.hs !== h0.hs && h1.hs && (!exact || DOWN_HS.includes(h1.hs) || DOWN_HS.includes(h0.hs))) parts.push(exact ? hsText(h1.hs).toLowerCase() : `${hsText(h0.hs) || "?"} → ${hsText(h1.hs)}`);
+    if (c.kind === "monster" && c.out && !o.out) { parts.unshift(t("player.log.down")); tight = true; } // WP39: "neer" vóór het getal (zelfde reden als hieronder)
+    else if (h0 && h1 && h1.hs !== h0.hs && h1.hs && (!exact || DOWN_HS.includes(h1.hs) || DOWN_HS.includes(h0.hs))) {
+      const st = exact ? hsText(h1.hs).toLowerCase() : `${hsText(h0.hs) || "?"} → ${hsText(h1.hs)}`;
+      // WP39 (HS17): neer/stabiel/dood vóór het getal, zodat de afkapping op 320 px het getal raakt en niet de toestand
+      if (exact && DOWN_HS.includes(h1.hs)) parts.unshift(st); else parts.push(st);
+    }
     const same = a.tg === b.tg, t0 = same ? loud(o) : new Map(), t1 = same ? loud(c) : new Map();
     const add = [...t1].filter(([x]) => !t0.has(x)).map(([, v]) => v), gone = [...t0].filter(([x]) => !t1.has(x)).map(([, v]) => v);
     if (add.length) parts.push(add.join(", "));

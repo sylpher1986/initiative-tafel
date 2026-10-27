@@ -26,6 +26,8 @@ img{max-width:100%}
    met dezelfde kleurtoon (Success/Error/Info halen op Walnut geen 3:1). Forest en Copper (bijna gelijk aan Success/Warning, 1,2:1) zijn geen tokens:
    speler/monster blijft zonder kleur (WP14, WP36 beslist). --sb-ink = statblock-inkt (koper) op --sb-bg.
    WP35 (UX-agent): --btn = secundaire knop (licht wit, donker iets lichter dan kaart én paneel); --dim en --shadow-* warm in licht, dieper in donker.
+   WP39 (UX-agent, persona-test 2.0 HS16): in donker geen ivoren vlakken meer (schemerige kamer): --dmg ("− Schade") en --toast-* (melding) donker met lichte rand;
+   --btn-line = knoprand (licht gelijk aan --line, donker ≥ 3:1 op kaart en paneel). In licht verandert niets.
    Licht = :root; donker twee keer gelijk (systeem en vaste keuze), de test bewaakt dat. */
 :root{
   --bg:#faf6ec; --surface:#fffdf8; --sunk:#f2ebdc; --line:#e3d9c6; --line-strong:#8c7d6b;
@@ -36,8 +38,11 @@ img{max-width:100%}
   --mon:#665647; --mon-soft:#ebe2d1; --pc-soft:#e9ddc4; --sb-ink:#8e5235; --sb-bg:#f6efe0; --card:#fffbf3;
   --now-ink:#e3a83b; /* aan de beurt op de walnoot-kop van het spelersscherm (Lantern, beide thema's) */
   --fight-bg:#241811; --fight-fg:#faf6ec; --fight-muted:#d8c9ae; --fight-btn:#3a281e; --fight-btn-line:#9c8670;
-  --t-link:#e3a83b; --t-good:#8fd3a0; --t-bad:#ff9f94; /* op de melding (vlak --fg, dus omgekeerd: in donker donkere tinten) */
+  --t-link:#e3a83b; --t-good:#8fd3a0; --t-bad:#ff9f94; /* op de melding (--toast-bg) */
   --btn:#ffffff; /* secundaire knop (WP35): wit zoals WP17 */
+  --btn-line:#e3d9c6; /* rand secundaire knop (WP39): in licht = --line (WP17: --line-strong op alle knoppen = drukke lijst) */
+  --dmg:#241811; --dmg-fg:#faf6ec; --dmg-line:#241811; /* "− Schade" (WP14 "C": donker vlak, Volgende blijft de enige gouden knop) */
+  --toast-bg:#241811; --toast-fg:#faf6ec; --toast-line:#241811; /* melding: walnoot op ivoor */
   --dim:rgba(36,24,17,.45); --shadow-up:0 -8px 24px rgba(36,24,17,.18); --shadow-dock:0 -6px 20px rgba(36,24,17,.08); --shadow-pop:0 6px 24px rgba(36,24,17,.3);
   --brand:Newsreader, Georgia, "Times New Roman", serif; /* merk en enkele koppen (tests/fonts.test.js) */
   --body:"DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -53,8 +58,11 @@ img{max-width:100%}
   --mon:#c4b498; --mon-soft:#45352a; --pc-soft:#4a3a2b; --sb-ink:#dc9a74; --sb-bg:#2c1e16; --card:#2c1e16;
   --now-ink:#e3a83b; /* aan de beurt op de walnoot-kop van het spelersscherm (Lantern, beide thema's) */
   --fight-bg:#3a281e; --fight-fg:#f3ead8; --fight-muted:#d2c3a8; --fight-btn:#4b372a; --fight-btn-line:#a08b74;
-  --t-link:#7a5512; --t-good:#2f6a41; --t-bad:#a3352e; /* op de melding (vlak --fg, dus omgekeerd: in donker donkere tinten) */
+  --t-link:#e3a83b; --t-good:#7fbf92; --t-bad:#ec8a80; /* op de melding (--toast-bg, WP39: donker vlak, dus lichte tinten) */
   --btn:#4b372a; /* secundaire knop (WP35): lichter dan kaart en paneel, anders leest hij als gat */
+  --btn-line:#8a7660; /* WP39: --line was 1,0:1 op --btn (knoppen lazen als losse tekst); 3,7:1 op kaart, 3,2:1 op paneel, rustiger dan --line-strong */
+  --dmg:#5c4434; --dmg-fg:#f3ead8; --dmg-line:#9a8670; /* WP39: geen ivoren vlak in een schemerige kamer; zwaarder dan --btn, veel donkerder dan Lantern */
+  --toast-bg:#4b372a; --toast-fg:#f3ead8; --toast-line:#9a8670; /* WP39: geen ivoor; de rand (4,0:1 op paneel) houdt de melding los van een open paneel */
   --dim:rgba(8,5,3,.6); --shadow-up:0 -8px 24px rgba(0,0,0,.5); --shadow-dock:0 -6px 20px rgba(0,0,0,.35); --shadow-pop:0 6px 24px rgba(0,0,0,.5);
   color-scheme:dark }}
 :root[data-theme="dark"]{
@@ -66,8 +74,11 @@ img{max-width:100%}
   --mon:#c4b498; --mon-soft:#45352a; --pc-soft:#4a3a2b; --sb-ink:#dc9a74; --sb-bg:#2c1e16; --card:#2c1e16;
   --now-ink:#e3a83b; /* aan de beurt op de walnoot-kop van het spelersscherm (Lantern, beide thema's) */
   --fight-bg:#3a281e; --fight-fg:#f3ead8; --fight-muted:#d2c3a8; --fight-btn:#4b372a; --fight-btn-line:#a08b74;
-  --t-link:#7a5512; --t-good:#2f6a41; --t-bad:#a3352e; /* op de melding (vlak --fg, dus omgekeerd: in donker donkere tinten) */
+  --t-link:#e3a83b; --t-good:#7fbf92; --t-bad:#ec8a80; /* op de melding (--toast-bg, WP39: donker vlak, dus lichte tinten) */
   --btn:#4b372a; /* secundaire knop (WP35): lichter dan kaart en paneel, anders leest hij als gat */
+  --btn-line:#8a7660; /* WP39: --line was 1,0:1 op --btn (knoppen lazen als losse tekst); 3,7:1 op kaart, 3,2:1 op paneel, rustiger dan --line-strong */
+  --dmg:#5c4434; --dmg-fg:#f3ead8; --dmg-line:#9a8670; /* WP39: geen ivoren vlak in een schemerige kamer; zwaarder dan --btn, veel donkerder dan Lantern */
+  --toast-bg:#4b372a; --toast-fg:#f3ead8; --toast-line:#9a8670; /* WP39: geen ivoor; de rand (4,0:1 op paneel) houdt de melding los van een open paneel */
   --dim:rgba(8,5,3,.6); --shadow-up:0 -8px 24px rgba(0,0,0,.5); --shadow-dock:0 -6px 20px rgba(0,0,0,.35); --shadow-pop:0 6px 24px rgba(0,0,0,.5);
   color-scheme:dark }
 *{box-sizing:border-box}
@@ -87,7 +98,7 @@ h1 span{color:var(--act-ink)}
 h1 .emb{width:1.33em;height:1.33em;vertical-align:-.28em;margin-right:.3em;color:var(--act-ink)}
 .round{display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
 .round b{font-family:var(--display);font-size:1.15rem}
-.btn{border:1px solid var(--line);background:var(--btn);border-radius:var(--r);padding:8px 12px;min-height:44px;min-width:44px}
+.btn{border:1px solid var(--btn-line);background:var(--btn);border-radius:var(--r);padding:8px 12px;min-height:44px;min-width:44px}
 .btn:hover{border-color:var(--muted)}
 .btn.primary{background:var(--act);border-color:var(--act);color:var(--act-fg);font-weight:700}
 .btn.ghost{background:transparent}
@@ -217,7 +228,7 @@ details.conds summary::-webkit-details-marker{display:none}
 .lg-turn{font-size:.78rem;color:var(--muted);padding:4px 0 0;text-transform:uppercase;letter-spacing:.06em}
 @media (max-width:420px){.lg{grid-template-columns:minmax(0,1fr)}.lg-meta{grid-row:auto}}
 .chip .dl{opacity:.8;font-variant-numeric:tabular-nums}
-.condgrid button{font-size:.82rem;min-height:44px;padding:2px 4px;border-radius:var(--r);border:1px solid var(--line);background:var(--btn)}
+.condgrid button{font-size:.82rem;min-height:44px;padding:2px 4px;border-radius:var(--r);border:1px solid var(--btn-line);background:var(--btn)}
 .condgrid button[aria-pressed="true"]{border-color:var(--warn);color:var(--warn);font-weight:700}
 
 /* Voorbereiden: paneel met de formulieren (knoppen in de beurtbalk) */
@@ -284,6 +295,8 @@ textarea{min-height:120px;resize:vertical}
 .abil button:hover{background:var(--sunk)}
 /* WP17 (HS6): ability-knoppen ≥ 44 px op 320 px: geen gap en tot in de padding van het statblock */
 @media (max-width:379px){.abil{gap:0;margin-inline:-10px}}
+/* WP39 (HS17): op 320 px liep "Adult Black Dragon" in Newsreader 1.6rem over drie regels naast Groot/Sluit; kleiner en gebalanceerd = max. twee */
+@media (max-width:379px){.sb h2{font-size:1.3rem;text-wrap:balance}.sbbtns .btn{padding:4px 10px}}
 .sb h3,.sbx h3{font-family:var(--display);color:var(--sb-ink);font-size:1.15rem;border-bottom:1px solid var(--sb-ink);margin:12px 0 6px;font-weight:700}
 .sb .entry b i,.sbx .entry b i{font-style:italic}
 .sb .entry,.sbx .entry{white-space:pre-line}
@@ -351,7 +364,7 @@ textarea{min-height:120px;resize:vertical}
 /* Roll toast */
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--dock-h) + 8px);z-index:50;display:flex;flex-direction:column;gap:6px;width:min(480px,calc(100% - 16px));pointer-events:none}
 .toast:empty{display:none}
-.tmsg{pointer-events:auto;background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:var(--r);font-variant-numeric:tabular-nums;box-shadow:var(--shadow-pop);max-height:30vh;max-height:30dvh;overflow:auto;overflow-wrap:anywhere}
+.tmsg{pointer-events:auto;background:var(--toast-bg);color:var(--toast-fg);border:1px solid var(--toast-line);padding:10px 16px;border-radius:var(--r);font-variant-numeric:tabular-nums;box-shadow:var(--shadow-pop);max-height:30vh;max-height:30dvh;overflow:auto;overflow-wrap:anywhere}
 .tmsg .tico{width:18px;height:18px;color:var(--t-bad);margin-right:8px;vertical-align:-.25em} /* WP17: alleen weigering/fout */
 .toast b{font-size:1.25rem}
 .toast .crit{color:var(--t-good)} .toast .fumble{color:var(--t-bad)}
@@ -440,9 +453,12 @@ ol.order{gap:6px}
 .bd.cbtn{cursor:pointer;min-height:44px;padding-inline:10px}
 .kbody{padding:0 12px 12px 48px;display:grid;gap:8px}
 .acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.acts button{min-height:46px;border-radius:var(--r);border:1px solid var(--line);background:var(--btn);font-weight:600;font-size:.8rem;letter-spacing:-.01em;padding:4px 2px;color:var(--fg)}
+.acts button{min-height:46px;border-radius:var(--r);border:1px solid var(--btn-line);background:var(--btn);font-weight:600;font-size:.8rem;letter-spacing:-.01em;padding:4px 2px;color:var(--fg)}
 .acts button[aria-pressed="true"]{background:var(--act-soft);color:var(--fg);border-color:var(--sel);box-shadow:inset 0 0 0 1px var(--sel)}
-.acts .dmg2{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.acts .dmg2{background:var(--dmg);border-color:var(--dmg-line);color:var(--dmg-fg)}
+/* WP39 (HS17): labels raakten op 320 px de rand (padding 2px); iets meer lucht, een label met spatie mag over twee regels (46 px hoog) */
+@media (max-width:379px){.acts{gap:4px}.acts button{padding:4px;text-wrap:balance}}
+@media (max-width:359px){.acts{gap:3px}.acts button{font-size:.75rem;padding:4px 3px}} /* één woord ("Condition") kan niet afbreken: op 320 iets kleiner, anders raakt het de rand */
 .acts .heal2{color:var(--good)}
 .acts .wide{grid-column:span 2}
 /* WP35: paneeltjes binnen een kaart of paneel zonder eigen rand (geen geneste randen); groepering via verzonken vlak, ruimte en radius */
@@ -468,14 +484,17 @@ ol.order{gap:6px}
 .dock .who b{font-family:var(--display);font-size:1.05rem;font-weight:700;color:var(--act-ink);display:inline-block;max-width:100%;vertical-align:bottom;overflow:hidden;text-overflow:ellipsis}
 .dock .who b:not(:last-child){max-width:calc(100% - 3.5em)}
 .dock .who .gk{font-size:.85rem;font-weight:700;color:var(--muted);white-space:nowrap}
-.dock .who .r{font-size:.8rem;color:var(--muted);text-align:right;min-width:0;max-width:50%;flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dock .who .r{color:var(--muted);text-align:right;min-width:0;max-width:50%;flex:0 1 auto;white-space:nowrap;overflow:hidden}
+/* WP39 (HS18): rechts hetzelfde labelpatroon als links (label in kapitalen, naam eronder) i.p.v. "volgende: naam" in kleine letters */
+.dock .who .r .l{display:block}
+.dock .who .rn{display:block;font-size:.9rem;font-weight:600;color:var(--fg);overflow:hidden;text-overflow:ellipsis}
 .dock .row{display:grid;grid-template-columns:52px 52px minmax(0,1fr);gap:8px}
 .dock .prow{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,.9fr) 50px;gap:6px;margin-bottom:8px}
 .dock .prow button{min-height:48px;font-size:.95rem;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;justify-content:center}
 .dock .prow button[aria-pressed="true"]{border-color:var(--sel);color:var(--fg);background:var(--act-soft)}
 @media (max-width:340px){.dock .prow .pp{display:none}}
 .dock .row.one{grid-template-columns:52px minmax(0,1fr)}
-.dock button{min-height:50px;border-radius:var(--r);border:1px solid var(--line);background:var(--btn);font-weight:700;font-size:1.05rem;color:var(--fg)}
+.dock button{min-height:50px;border-radius:var(--r);border:1px solid var(--btn-line);background:var(--btn);font-weight:700;font-size:1.05rem;color:var(--fg)}
 .dock button:disabled{opacity:.4}
 .dock .nx{background:var(--act);border-color:var(--act);color:var(--act-fg)}
 /* desktop: beurtbalk precies onder de linkerkolom (kolommen 1.1fr / 1fr, gap 16px, max 1180px) */
@@ -499,7 +518,7 @@ ol.order{gap:6px}
 .preview{text-align:center;color:var(--muted);font-size:.95rem;min-height:1.4em}
 .preview b{color:var(--fg)}.preview .bad{color:var(--bad)}
 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.pad button{min-height:52px;border-radius:var(--r);background:var(--btn);border:1px solid var(--line);font-size:1.35rem;font-weight:700;color:var(--fg)}
+.pad button{min-height:52px;border-radius:var(--r);background:var(--btn);border:1px solid var(--btn-line);font-size:1.35rem;font-weight:700;color:var(--fg)}
 .pad .go{grid-column:span 3;font-size:1.05rem;color:var(--act-fg);background:var(--act);border-color:var(--act)}
 .pad .go.go-heal{background:var(--good);border-color:var(--good);color:var(--good-fg)}
 .pad .go.go-thp{background:var(--info);border-color:var(--info);color:var(--bg)}
@@ -581,6 +600,7 @@ body:has(.sheet-wrap:not([hidden])) .toast{top:calc(8px + env(safe-area-inset-to
 /* Vorige: pijl met klein bijschrift eronder (AF3), zelfde breedte als een icoonknop */
 .dock .pv{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:0;line-height:1}
 .dock .pvl{font-size:.7rem;font-weight:600;color:var(--muted);margin-top:2px}
+.dock .pv>span:first-child{font-size:1.35rem;font-weight:700;line-height:.9} /* WP39 (HS18): het teken even zwaar als "Volgende ›", niet los boven het bijschrift */
 .dock .row.one{grid-template-columns:52px minmax(0,1fr)}
 .dock .aoeb{font-size:.95rem}
 @media (max-width:399px){.dock .nb{display:none}}
@@ -645,6 +665,7 @@ label .cw{display:none;color:var(--warn);font-weight:700}
 label.warn .cw{display:inline}
 label.warn .opt{display:none}
 .f2>label{align-content:end} /* velden op één lijn, ook als een label over twee regels loopt */
+#f-pc .f2{align-items:start} /* WP39 (HS17): labels op één regel (geen "(optioneel)" meer per veld), dus velden beginnen op dezelfde hoogte; de hint onder Init-bonus duwt niets omhoog */
 /* SP4/AF15: veld zonder input (stepper) dat eruitziet als een label; foutregel onder een veld (formulier zonder browser-bubbels) */
 .lab{display:grid;gap:3px;font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;align-content:end}
 .lab .stepper{text-transform:none;letter-spacing:0;color:var(--fg)}
@@ -677,7 +698,7 @@ label.warn input{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
 .drhead>span{min-width:0;overflow-wrap:anywhere}
 .drhead .link{flex:0 0 auto}
 .drgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-.drt{position:relative;min-height:44px;border:1px solid var(--line);border-radius:var(--r);background:var(--btn);color:var(--fg);font:inherit;font-size:.9rem;padding:4px}
+.drt{position:relative;min-height:44px;border:1px solid var(--btn-line);border-radius:var(--r);background:var(--btn);color:var(--fg);font:inherit;font-size:.9rem;padding:4px}
 .drt[aria-pressed="true"]{background:var(--act-soft);border-color:var(--sel);box-shadow:inset 0 0 0 1px var(--sel);font-weight:700}
 .drt.other{border-style:dashed}
 .drt small{position:absolute;top:2px;right:6px;font-size:.68rem;font-weight:700;color:var(--muted)}
@@ -740,7 +761,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .ar{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center;min-height:50px;padding:3px 0;border-bottom:1px solid var(--line)}
 .ar .an{font-weight:700;font-size:.92rem;min-width:0;overflow-wrap:break-word;line-height:1.2}
 .ar .an small{display:block;font-weight:400;font-size:.74rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
-.ar .d{min-height:44px;min-width:46px;border-radius:var(--r);border:1px solid var(--line);background:var(--btn);font-weight:700;font-size:.88rem;padding:2px 8px;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--fg);max-width:46vw}
+.ar .d{min-height:44px;min-width:46px;border-radius:var(--r);border:1px solid var(--btn-line);background:var(--btn);font-weight:700;font-size:.88rem;padding:2px 8px;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--fg);max-width:46vw}
 .ar .d.hit{color:var(--fg);border-color:var(--line-strong)}
 .ar .d.dm{min-width:94px}
 .ar .d.dm small{display:block;font-weight:400;font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -761,7 +782,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .dock .lachip{flex:1 1 0;min-width:0;min-height:44px;display:flex;align-items:center;gap:6px;padding:0 10px;font-size:.88rem;border-color:var(--warn);color:var(--fg);text-align:left}
 .lachip .ln{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lachip .ld{flex:0 0 auto;color:var(--warn);letter-spacing:.06em;font-variant-numeric:tabular-nums;white-space:nowrap}
-.dock .lachip.off,.dock .lachip:disabled{opacity:.5;border-color:var(--line);flex:0 1 auto;max-width:48%}
+.dock .lachip.off,.dock .lachip:disabled{opacity:.5;border-color:var(--btn-line);flex:0 1 auto;max-width:48%}
 .dock .larow>.lachip.off:only-child{max-width:none}
 .lachip.off .ld{color:var(--muted);font-weight:400;letter-spacing:0}
 .lachip.pulse{animation:lapulse 1.2s ease-out 1}
@@ -788,7 +809,7 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .svn{flex:1 1 auto;min-width:0;display:grid;line-height:1.15}
 .svn b{font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg);font-family:inherit}
 .svn small{font-size:.76rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dock .svrow button,.svrow button{flex:0 0 auto;min-height:44px;min-width:44px;border-radius:var(--r);border:1px solid var(--line);background:var(--btn);font-weight:700;font-size:.95rem;color:var(--fg);padding:0 10px}
+.dock .svrow button,.svrow button{flex:0 0 auto;min-height:44px;min-width:44px;border-radius:var(--r);border:1px solid var(--btn-line);background:var(--btn);font-weight:700;font-size:.95rem;color:var(--fg);padding:0 10px}
 .svrow .svroll{min-width:72px;color:var(--warn);border-color:var(--warn)}
 .svrow .svok.bad,.dock .svrow .svok.bad{color:var(--bad)}
 .svrow .svok,.dock .svrow .svok{font-size:.85rem;padding:0 8px;color:var(--good)} /* RE12: Geslaagd/Gefaald met tekst, past op 320 px */

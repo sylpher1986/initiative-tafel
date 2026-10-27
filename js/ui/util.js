@@ -41,6 +41,12 @@ export function closeToast() {
   const b = document.querySelector("#toast .tmsg button");
   if (b) b.closest(".tmsg").remove();
 }
+/** Hele stapel weg (WP39: na Gevecht afronden staat alleen die melding, oude meldingen over de lijst zeggen niets meer) */
+export function clearToasts() {
+  const box = $("#toast");
+  for (const o of [...box.children]) { clearTimeout(o._t); o.remove(); }
+  tEl = null;
+}
 export const toast = (text) => toastHtml(esc(text));
 /** Melding voor een weigering of fout (validatie, laden mislukt): icoon + "Let op:" voor schermlezers */
 export const toastBad = (text) => toastHtml(esc(text), true);

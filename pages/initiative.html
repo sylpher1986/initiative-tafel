@@ -8,7 +8,7 @@
 <meta name="description" content="{{t:page.app.desc}}">
 <meta name="theme-color" content="#241811" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1d130d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="2.0.0">
+<meta name="it-version" content="2.0.1">
 <script src="/js/theme.js"></script>
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
 <script>
@@ -73,13 +73,15 @@
         <label>{{t:init.pc.name}}<input id="pc-name" placeholder="{{t:init.pc.nameEg}}" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" aria-describedby="pc-name-e"><span class="ferr" id="pc-name-e" hidden></span></label>
         <label id="pc-initl" hidden>Initiative<span style="display:flex;gap:6px"><input id="pc-init" type="number" inputmode="numeric" autocomplete="off" placeholder="{{t:init.pc.initPh}}" aria-describedby="pc-init-e"><button type="button" class="btn small" id="pc-roll" title="{{t:init.pc.rollTip}}">{{t:init.pc.roll}}</button></span><span class="ferr" id="pc-init-e" hidden></span></label>
       </div>
+      <!-- WP39 (HS17): één hint i.p.v. "(optioneel)" bij elk veld; labels passen dan op 320 px op één regel -->
+      <p class="hint" id="pc-opt">{{t:init.pc.optNote}}</p>
       <div class="f2">
-        <label>AC<span class="opt"> {{t:init.pc.optional}}</span><span class="cw"> · {{t:init.pc.check}}</span><input id="pc-ac" type="number" inputmode="numeric" autocomplete="off" aria-describedby="pc-ac-e"><span class="ferr" id="pc-ac-e" hidden></span></label>
-        <label>Max HP<span class="opt"> {{t:init.pc.optional}}</span><span class="cw"> · {{t:init.pc.check}}</span><input id="pc-hp" type="number" inputmode="numeric" autocomplete="off" aria-describedby="pc-hp-e"><span class="ferr" id="pc-hp-e" hidden></span></label>
+        <label>AC<span class="cw"> · {{t:init.pc.check}}</span><input id="pc-ac" type="number" inputmode="numeric" autocomplete="off" aria-describedby="pc-ac-e"><span class="ferr" id="pc-ac-e" hidden></span></label>
+        <label>Max HP<span class="cw"> · {{t:init.pc.check}}</span><input id="pc-hp" type="number" inputmode="numeric" autocomplete="off" aria-describedby="pc-hp-e"><span class="ferr" id="pc-hp-e" hidden></span></label>
         <!-- AF15: stepper zonder toetsenbord (iOS heeft geen minteken op het cijferpad) -->
         <div class="lab"><span id="pc-bl">{{t:init.pc.bonus}}</span><div class="stepper" role="group" aria-labelledby="pc-bl" id="pc-bon"><button type="button" data-bon="-1" aria-label="{{t:init.pc.bonusDown}}">−</button><output id="pc-bonv" aria-live="polite">+0</output><button type="button" data-bon="1" aria-label="{{t:init.pc.bonusUp}}">+</button></div><span class="lhint" id="pc-bonh">{{t:init.pc.bonusHint}}</span></div>
         <label>{{t:init.pc.race}}<select id="pc-race"><option value="">{{t:init.pc.raceOther}}</option></select></label>
-        <label>Level<span class="opt"> {{t:init.pc.optional}}</span><input id="pc-lvl" type="number" inputmode="numeric" autocomplete="off" placeholder="{{t:init.pc.lvlPh}}" aria-describedby="pc-lvl-e"><span class="ferr" id="pc-lvl-e" hidden></span></label>
+        <label>Level<input id="pc-lvl" type="number" inputmode="numeric" autocomplete="off" placeholder="{{t:init.pc.lvlPh}}" aria-describedby="pc-lvl-e"><span class="ferr" id="pc-lvl-e" hidden></span></label>
       </div>
       <p class="hint warnline" id="pc-check" hidden></p>
       <details class="cast"><summary class="link">{{t:init.pc.slots}}</summary>

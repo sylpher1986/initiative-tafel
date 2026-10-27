@@ -140,7 +140,7 @@ test("logLines op codes: speler Engels, DM Nederlands", async () => {
   const S0 = { list: [P({ id: "p", name: "Aria" }), Mo({ id: "g", name: "Goblin 1", anon: 1 }), Mo({ id: "o", name: "Ogre" })], round: 2, active: "p" };
   const S1 = { list: [P({ id: "p", name: "Aria", hp: 0, ds: { s: 0, f: 0 }, cond: ["Prone"] }), Mo({ id: "g", name: "Goblin 1", anon: 1, hp: 4 }), Mo({ id: "o", name: "Ogre", hp: 0 })], round: 2, active: "p" };
   const a = (await across(S0)).V, b = (await across(S1)).V;
-  assert.deepEqual(logLines(a, b), ["Aria −20 HP · unconscious · Prone", "Unknown creature: Unhurt → Bloodied", "Ogre down"]);
+  assert.deepEqual(logLines(a, b), ["Aria unconscious · −20 HP · Prone", "Unknown creature: Unhurt → Bloodied", "Ogre down"]);
   const S2 = { ...S1, list: [P({ id: "p", name: "Aria", hp: 0, ds: { s: 0, f: 0 } }), ...S1.list.slice(1)] };
   assert.deepEqual(logLines(b, (await across(S2)).V), ["Aria: Prone ended"]);
 });

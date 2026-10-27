@@ -9,7 +9,7 @@
 <meta name="description" content="Initiative tracker for D&amp;D 5e (2014): players, SRD monsters, conditions, spell slots and a combat log.">
 <meta name="theme-color" content="#241811" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1d130d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="2.0.0">
+<meta name="it-version" content="2.0.1">
 <script src="/js/theme.js"></script>
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
 <script>
@@ -74,13 +74,15 @@
         <label>Name<input id="pc-name" placeholder="e.g. Thalia" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" aria-describedby="pc-name-e"><span class="ferr" id="pc-name-e" hidden></span></label>
         <label id="pc-initl" hidden>Initiative<span style="display:flex;gap:6px"><input id="pc-init" type="number" inputmode="numeric" autocomplete="off" placeholder="roll + bonus" aria-describedby="pc-init-e"><button type="button" class="btn small" id="pc-roll" title="d20 + init bonus">Roll</button></span><span class="ferr" id="pc-init-e" hidden></span></label>
       </div>
+      <!-- WP39 (HS17): één hint i.p.v. "(optioneel)" bij elk veld; labels passen dan op 320 px op één regel -->
+      <p class="hint" id="pc-opt">AC, max HP and level are optional.</p>
       <div class="f2">
-        <label>AC<span class="opt"> (optional)</span><span class="cw"> · verify</span><input id="pc-ac" type="number" inputmode="numeric" autocomplete="off" aria-describedby="pc-ac-e"><span class="ferr" id="pc-ac-e" hidden></span></label>
-        <label>Max HP<span class="opt"> (optional)</span><span class="cw"> · verify</span><input id="pc-hp" type="number" inputmode="numeric" autocomplete="off" aria-describedby="pc-hp-e"><span class="ferr" id="pc-hp-e" hidden></span></label>
+        <label>AC<span class="cw"> · verify</span><input id="pc-ac" type="number" inputmode="numeric" autocomplete="off" aria-describedby="pc-ac-e"><span class="ferr" id="pc-ac-e" hidden></span></label>
+        <label>Max HP<span class="cw"> · verify</span><input id="pc-hp" type="number" inputmode="numeric" autocomplete="off" aria-describedby="pc-hp-e"><span class="ferr" id="pc-hp-e" hidden></span></label>
         <!-- AF15: stepper zonder toetsenbord (iOS heeft geen minteken op het cijferpad) -->
         <div class="lab"><span id="pc-bl">Init bonus</span><div class="stepper" role="group" aria-labelledby="pc-bl" id="pc-bon"><button type="button" data-bon="-1" aria-label="Lower init bonus">−</button><output id="pc-bonv" aria-live="polite">+0</output><button type="button" data-bon="1" aria-label="Raise init bonus">+</button></div><span class="lhint" id="pc-bonh">Also used to break ties.</span></div>
-        <label>Race (icon)<select id="pc-race"><option value="">Other / unknown</option></select></label>
-        <label>Level<span class="opt"> (optional)</span><input id="pc-lvl" type="number" inputmode="numeric" autocomplete="off" placeholder="from sheet" aria-describedby="pc-lvl-e"><span class="ferr" id="pc-lvl-e" hidden></span></label>
+        <label>Race (icon)<select id="pc-race"><option value="">Other</option></select></label>
+        <label>Level<input id="pc-lvl" type="number" inputmode="numeric" autocomplete="off" placeholder="from sheet" aria-describedby="pc-lvl-e"><span class="ferr" id="pc-lvl-e" hidden></span></label>
       </div>
       <p class="hint warnline" id="pc-check" hidden></p>
       <details class="cast"><summary class="link">Spellcaster? Enter spell slots</summary>

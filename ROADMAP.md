@@ -106,13 +106,25 @@ Plan: projectdoc `claude/werkpakketten-2.0.md`. Gebouwd op branch `redesign`; WP
 | ~~**WP37**~~ | Homepage in de nieuwe stijl, alleen Initiative, hero-illustratie (klaar) | HS14 | WP34 | branch |
 | ~~**WP38**~~ | QA, persona-test, release (klaar) | HS15 | WP34–WP37 | 2.0.0 |
 
+### Werkpakketten na 2.0.0 (besloten 27-10-2026)
+Plan: projectdoc `claude/werkpakketten-2.1.md`. Volgorde = uitvoervolgorde; WP43 mag op elk moment. RE4 (2024-regels) rust: later een eigen traject dat begint met een inventaris.
+
+| WP | Inhoud | Codes | Versie |
+|---|---|---|---|
+| ~~**WP39**~~ | Afwerking huisstijl 2.0: donker thema, krap op 320 px, kleine afwerking (klaar) | HS16, HS17, HS18 | 2.0.1 |
+| **WP40** | Engelse tekst P3 | TA19 | 2.0.2 |
+| **WP41** | Surprise zonder spelers, links naar de spell-uitleg | RE5, RE6a | 2.1.0 |
+| **WP42** | Eigen notitie bij niet-SRD-spells, export versie 3 | RE6b | 2.2.0 |
+| **WP43** | Technische schuld: logboek in undo, pdf.js zelf hosten | TS3, TS1 | 2.x.1 |
+| Backlog | 2024-regels (eigen traject, eerst inventaris), fase 2 en 3 | RE4 | |
+
 ---
 
 ## Persona-test EN (WP32, 26-10-2026)
 Rapport: projectdoc `claude/persona-test-en.md`. P1's opgelost in 1.52.1. Vóór WP33 (Engels live) opgepakt:
 - [x] **TA17 Engelse tekst P2** (klaar, 1.52.2): `rules.drops` "its next turn" bij spelers → "their"; `init.log.turn` → "{name}'s turn" (gelijk aan `log.turn`); `log.renew` "Exhaustion refreshed" bij een hoger niveau; `rules.dur.sstart` "(active creature)"; effectchip "10r" (vaste tekst in `js/ui/render.js`) → catalogus; `init.aoe.lose` loopt niet. (1.53.0: ook de korte vorm `rules.dur.sstartS`, die nog "(active creature)" had.)
 - [x] **TA18 Weergave P2** (klaar, 1.52.2; tv: de rij liep over de rand, HP-kolom nu begrensd): "MAX HP 2D6" (uppercase-label raakt de hit dice); tv: death saves-tag afgekapt; "Stat block"-knop breekt op 320 px; `_mage armor_` zichtbaar in `data/monsters.json` (data, beide talen).
-- P3 (8): zie het rapport.
+- [ ] **TA19 Engelse tekst P3** (WP40): "Poisoned and Prone ended" (opsomming via array-param); `init.eff.concBy`; "Legendary Resistance" met hoofdletter; "None" in de save-keuze; "falls unconscious" i.p.v. "gets Unconscious"; Spells-hint inkorten met "More ▸"; "Dexterity" met hoofdletter in de 2014-spelldata. (P3 #2, afkapping op 320 px, valt onder HS17.)
 
 ## Indeling en navigatie
 - Geen open punten (IN8 en IN9 klaar in 1.35.1, zie Klaar).
@@ -124,10 +136,10 @@ Rapport: projectdoc `claude/persona-test-en.md`. P1's opgelost in 1.52.1. Vóór
 - Geen open punten (VB4 en VB5 klaar in 1.43.0, zie Klaar).
 
 ## Spelregels
-- [ ] **RE4 2024-regels buiten spells** (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen
+- [ ] **RE4 2024-regels buiten spells** (rust sinds 27-10: later een eigen traject, eerst een inventaris) (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen
 - [ ] **RE5 Surprise:** keuze ook zonder spelers aan tafel (paneel opent dan niet)
 - [x] **RE15 Eigen death save-worp invoeren** (P3): getal typen (nat 20 = 1 HP, nat 1 = twee fails), zoals het cijferpad bij initiative.
-- [ ] **RE6 Spell-uitleg:** link vanuit AoE-Spell en Effect-presets; eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie)
+- [ ] **RE6 Spell-uitleg:** **RE6a** link vanuit AoE-Spell en Effect-presets (WP41); **RE6b** eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie, WP42)
 
 ## Spelers en D&D Beyond
 - Later, als het nodig blijkt: handmatige "Defenses" op de D&D Beyond-sheet (`customDefenseAdjustments`) inlezen; tijdelijke resistances (Rage, Absorb Elements, Protection from Energy) als effect-preset.
@@ -170,9 +182,9 @@ Afgerond in WP13–WP17 (1.44.1–1.48.0); keuzes in CLAUDE.md, overzicht in pro
 
 ## Persona-test huisstijl 2.0 (WP38, 26-10-2026)
 Rapport: projectdoc `claude/persona-test-2.0.md`. Geen P1; de vijf P2's zijn in 2.0.0 opgelost (multiattack-clamp, aanvalsnaam breekt, legendary-chip volle breedte, ability-modifier op eigen regel, taalkiezer tv). Vervolg:
-- [ ] **HS16 Donker thema in een schemerige kamer**: "− Damage" is een fel ivoren blok, feller dan Volgende; meldingen ivoor op walnoot verblinden (voorstel `--surface` + `--fg`); secundaire knoppen hebben in donker vrijwel geen rand (`--line` op `--btn` 1,01:1; `.condgrid`, `.drt` lezen als losse tekst; voorstel `--line-strong` als knoprand). Eerst UX-agent (raakt WP35-keuzes).
-- [ ] **HS17 Krap op 320 px**: statblock-titel in Newsreader over drie regels naast Groot/Sluit; "Condition"/"Statblock" raken de knoprand; + Speler-formulier: "AC (OPTIONAL)" breekt en de velden beginnen niet op één hoogte, select afgekapt tot "Other / unkno".
-- [ ] **HS18 Kleine afwerking**: na Gevecht afronden blijft het statblock open achter het paneel, met twee meldingen over de lijst; homepage-voet (nl, 320) begint een regel met "· Geen account nodig" (`li+li::before`); dock-kop "UP NOW" in kapitalen tegenover "next: …" klein, "‹" los boven "Prev".
+- [x] **HS16 Donker thema in een schemerige kamer** (klaar in 2.0.1, WP39): "− Damage" is een fel ivoren blok, feller dan Volgende; meldingen ivoor op walnoot verblinden (voorstel `--surface` + `--fg`); secundaire knoppen hebben in donker vrijwel geen rand (`--line` op `--btn` 1,01:1; `.condgrid`, `.drt` lezen als losse tekst; voorstel `--line-strong` als knoprand). Eerst UX-agent (raakt WP35-keuzes).
+- [x] **HS17 Krap op 320 px** (klaar in 2.0.1, WP39; ook de afkapping in de mini-log): statblock-titel in Newsreader over drie regels naast Groot/Sluit; "Condition"/"Statblock" raken de knoprand; + Speler-formulier: "AC (OPTIONAL)" breekt en de velden beginnen niet op één hoogte, select afgekapt tot "Other / unkno".
+- [x] **HS18 Kleine afwerking** (klaar in 2.0.1, WP39): na Gevecht afronden blijft het statblock open achter het paneel, met twee meldingen over de lijst; homepage-voet (nl, 320) begint een regel met "· Geen account nodig" (`li+li::before`); dock-kop "UP NOW" in kapitalen tegenover "next: …" klein, "‹" los boven "Prev".
 
 ## Taal
 - [x] **TA1 Taaloptie Nederlands / English** (Instellingen, keuze bewaard op het apparaat). **Klaar in 1.53.0 (WP33): Engels en Nederlands live.** Bij English alle Nederlandse tekst vervangen: knoppen, labels, meldingen, logboek, hints, formulieren, spelersscherm en foutmeldingen (ook van de Worker). D&D-termen zijn al Engels. Aanpak: teksten centraal in een vertaalbestand per taal (`js/i18n/nl.js`, `en.js`) met een `t("sleutel")`-functie; logboekregels als sleutel + waarden opslaan zodat ze na wisselen ook vertaald zijn; test die bewaakt dat elke sleutel in beide talen bestaat

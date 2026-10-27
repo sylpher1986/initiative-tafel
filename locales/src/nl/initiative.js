@@ -18,13 +18,14 @@ export default {
   "init.pc.rollTip": "d20 + init-bonus", // tooltip op Rol
   "init.pc.roll": "Rol",
   "init.pc.optional": "(optioneel)",
+  "init.pc.optNote": "AC, max HP en level zijn optioneel.", // WP39: één hint boven AC/Max HP/Init-bonus/Ras/Level (+ Speler)
   "init.pc.check": "controleer", // achter een onzeker veld uit de sheet: "AC · controleer"
   "init.pc.bonus": "Init-bonus",
   "init.pc.bonusDown": "Init-bonus lager", // aria-label −
   "init.pc.bonusUp": "Init-bonus hoger", // aria-label +
   "init.pc.bonusHint": "Ook voor gelijke stand.",
   "init.pc.race": "Ras (icoon)",
-  "init.pc.raceOther": "Anders / onbekend",
+  "init.pc.raceOther": "Overig",
   "init.pc.lvlPh": "uit sheet", // placeholder bij Level
   "init.pc.slots": "Spellcaster? Spell slots invullen",
   "init.pc.sl1": "1e", // label per slot-level, smal
@@ -470,7 +471,7 @@ export default {
   "init.old.go": "Toch starten",
   "init.fight.now": "Aan de beurt",
   "init.fight.grpTip": "Groepsbeurt: lid {k} van {n}",
-  "init.fight.next": "volgende: {name}",
+  "init.fight.upNext": "Daarna", // beurtbalk rechts, label boven de naam (WP39: zelfde patroon als init.fight.now)
   "init.fight.allDown": "Alle monsters neer",
   "init.fight.prevAria": "Vorige beurt",
   "init.fight.prevTip": "Vorige beurt (Shift+N)",

@@ -2,7 +2,7 @@
 import { APP } from "../version.js";
 import { chev } from "./icons.js";
 import { openSettings } from "./settings.js";
-import { $, esc, n0, toast, toastHtml, closeToast, show, toastBad, tb, undoBtn } from "./util.js";
+import { $, esc, n0, toast, toastHtml, closeToast, clearToasts, show, toastBad, tb, undoBtn } from "./util.js";
 import { t } from "../i18n/boot.js";
 import { M, J } from "../i18n/msg.js";
 import { app, because, addWhy, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, resetBaseline } from "../state.js";
@@ -17,7 +17,7 @@ import { useLA } from "../rules/legendary.js";
 import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc, effSpec, setExh, startRage, rageOf } from "../rules/effects.js";
 import { exhLevel } from "../rules/conditions.js";
 import { openCond, closeCond, condOpen, condSheetClick } from "./condinfo.js";
-import { showSB, showSheet, monCard, doRoll, doDmgRoll, closeSB, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
+import { showSB, showSheet, monCard, doRoll, doDmgRoll, closeSB, phone, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { SYN } from "../data/syn.js";
 import { parseStatText, foundText, hasStructure, withParsed } from "../data/statparse.js";
@@ -490,8 +490,11 @@ const global = {
   /** Gevecht afronden (GV2): samenvatting (paneel + logregel) en stoppen in één undo-stap */
   stop() {
     const r = app.S.round;
+    clearToasts(); // vóór apply: effect-meldingen van stopCombat horen bij deze stap en voegen samen met de afrondmelding
     finishFight();
     apply(stopCombat(app.S)); ui.mode = null; rekeyEdit();
+    // WP39 (HS18): telefoon: statblock dicht (lag achter het afrondpaneel); alleen de afrondmelding blijft staan
+    if (phone()) closeSB();
     render();
     toastHtml(`${esc(t("init.msg.ended", { n: r }))} ${undoBtn()}`);
     $("#esheet .esheet")?.focus();
