@@ -57,7 +57,8 @@ Legenda: **[B]** = bevestigd in de code, **[A]** = aanname, **[?]** = onbekend, 
 | R12 | Spell-presets en concentratie | `effects.js`, `spellcast.js`, `spells.js` | via `ed` | via `ed` | **al klaar**, alleen de bron van `ed` wijzigt |
 | R13 | Statblock-weergave + bronvermelding | `js/ui/statblock.js`, `init.sb.credit` | "SRD 5.1 (2014)" vast | Initiative, PB, SRD 5.2 | ja |
 | R14 | Undead Fortitude, Parry, crits, death saves, recharge | `monrules.js`, `attacks.js`, `combat.js` | — | [A] inhoudelijk gelijk | nee (regressietest) |
-| R15 | Rage (barbarian), weapon mastery, Heroic Inspiration | `effects.js` RE16 / — | Rage 2014 | Rage-duur anders; mastery/inspiration bestaan niet in de app | **buiten scope** (spelers rollen zelf, CLAUDE.md) — zie V5 |
+| R15 | Rage (barbarian) | `effects.js` RE16 (`startRage`, Frenzy in `removeEffect`), `turns.js` `rageTurnEnd` | max 10 rondes; loopt door bij aanval of schade; Frenzy geeft na afloop 1 Exhaustion | max 10 minuten; loopt door bij aanval, vijand laten saven of bonus action (schade telt niet); Frenzy zonder Exhaustion | ja (WP50, besloten 27-10) |
+| R15b | Weapon mastery, Heroic Inspiration | — | — | bestaan niet in de app | **buiten scope** (spelers rollen zelf, CLAUDE.md) |
 | R16 | Lair-deelnemer (init 20) | `newLair`, `app.lairs` | lair actions | SRD 5.2 heeft geen lair actions op init 20 | nee: eigen inhoud, editie-neutraal |
 
 ### 1.6 Tests en validatie
@@ -87,7 +88,7 @@ Legenda: **[B]** = bevestigd in de code, **[A]** = aanname, **[?]** = onbekend, 
 | **B7** | **Statblock-tekst blijft letterlijk**; de parsers worden editiebestendig door dezelfde normalisatie als plaktekst (`classic()`, verplaatst naar `js/rules/`). De converter herstelt alleen wat Open5e kwijt is ("Hit:", legendary-aantal). | Weergave blijft trouw aan SRD 5.2; één parserpad voor SRD, plaktekst en import. | 2024-tekst in de converter omschrijven naar 2014-zinnen. |
 | **B8** | **Spelersscherm**: snapshot krijgt optioneel `ed` (alleen `"2024"` meegestuurd), `v` blijft 2; `cleanView` whitelist. Spelers zien condities-uitleg van de tafelregels. | Taalneutraal, codes over de lijn (CLAUDE.md). | Uitleg alleen op de DM-kant. |
 | **B9** | **Data offline**: `data/monsters-2024.json` in de sw-precache (zoals `spells-2024.json`), geladen bij de eerste behoefte (regelset 2024, een `ed: "2024"`-deelnemer of zoeken op 2024). | Aan tafel soms zonder internet. | Alleen runtime-cache: faalt offline bij de eerste keer. |
-| **B10** | Lair, Rage, weapon mastery, Heroic Inspiration, "4 in Lair": **buiten G1** (zie R15/R16, V5). | App modelleert spelersaanvallen bewust niet; lair is eigen inhoud. | — |
+| **B10** | Lair, weapon mastery, Heroic Inspiration, "4 in Lair": **buiten G1** (zie R15b/R16, V5). Rage 2024 zit wel in G1 (WP50). | App modelleert spelersaanvallen bewust niet; lair is eigen inhoud. | — |
 
 ### Open besluiten voor Michiel
 | # | Vraag | Advies | Blokkeert |
@@ -96,7 +97,7 @@ Legenda: **[B]** = bevestigd in de code, **[A]** = aanname, **[?]** = onbekend, 
 | V2 | Release: stapsgewijs in 2.x of één 3.0.0 | **Besloten 27-10: stapsgewijs in 2.x** (WP46–WP53 onzichtbaar, keuze zichtbaar in WP54 als 2.x.0) | — |
 | V3 | Bestaande "Spells 2024 onder regels 2014" behouden (B2) | **Besloten 27-10: ja** | — |
 | V4 | Andere-editie-monsters in de zoeklijst: zoekwoord `2014`/`2024` (zoals `cr 5`) of een andere vorm | UX-agent kiest in WP49 binnen "geen filterchips" | WP49 |
-| V5 | Rage 2024 en "4 in Lair" later als K-punt of nooit | op signaal | nee |
+| V5 | Rage 2024 / "4 in Lair" | **Besloten 27-10: Rage 2024 mee in WP50**; "4 in Lair" op signaal | — |
 
 Geen open vraag blokkeert **WP46**.
 
@@ -194,15 +195,15 @@ Omvang: S ≈ één korte sessie (K-formaat), M ≈ één volle sessie, L ≈ gr
 10. **Risico's**: zoeklijst wordt drukker; prestaties bij twee bibliotheken (index per editie, één keer bouwen).
 11. **Omvang**: M.
 
-### WP50 — Exhaustion volgens 2024
-1. **Doel**: Exhaustion rekent met `ed`; 2014 onveranderd.
-2. **Huidige stand**: §1.5 R1 (alle aanroepers staan daar).
-3. **Scope**: `ed` in `exhEffect`/`reExh` zelf (dan volgen `setExh`, `setMax`, `restMember`, Frenzy en Aid vanzelf); 2024 zonder HP-halvering; d20-straf −2 × niveau als vaste modifier met reden (geen disadvantage) in aanvalsworp (`atkAdv`/`rollAttack`), saves (`saveAdv`/`rollSave`, ook AoE) en de initiativeworp; speed-tekst in `exhRows`/`exhSummary`; **`reExh(c, ed)` idempotent** zodat B1 werkt (tafel bij wisselen, partylid bij aan tafel zetten/party-sync); UI-aanroepers (`render.js` r. 352/358, long rest `actions.js` r. 84/268/270/1959) geven `rulesOf(app.S)` door.
-4. **Buiten scope**: conc/surprise/Grappled (WP51), uitlegtekst (WP52), keuze-UI (WP54).
+### WP50 — Exhaustion en Rage volgens 2024
+1. **Doel**: Exhaustion en Rage rekenen met `ed`; 2014 onveranderd.
+2. **Huidige stand**: §1.5 R1 (alle aanroepers staan daar) en R15.
+3. **Scope**: `ed` in `exhEffect`/`reExh` zelf (dan volgen `setExh`, `setMax`, `restMember`, Frenzy en Aid vanzelf); 2024 zonder HP-halvering; d20-straf −2 × niveau als vaste modifier met reden (geen disadvantage) in aanvalsworp (`atkAdv`/`rollAttack`), saves (`saveAdv`/`rollSave`, ook AoE) en de initiativeworp; speed-tekst in `exhRows`/`exhSummary`; **`reExh(c, ed)` idempotent** zodat B1 werkt (tafel bij wisselen, partylid bij aan tafel zetten/party-sync); UI-aanroepers (`render.js` r. 352/358, long rest `actions.js` r. 84/268/270/1959) geven `rulesOf(app.S)` door. **Rage 2024**: `rageTurnEnd` (`turns.js` r. 386) telt schade niet meer als reden om door te lopen (alleen de bestaande DM-tik "loopt door"); duur max 10 minuten in plaats van 10 rondes; Frenzy (`e.frz` in `removeEffect`) geeft bij 2024 geen Exhaustion. Ed vastleggen op het rage-effect bij `startRage`, zodat een lopende rage zijn regels houdt.
+4. **Buiten scope**: conc/surprise/Grappled (WP51), uitlegtekst (WP52), keuze-UI (WP54), extra Frenzy-schade 2024 en rage-uses per short rest (de app telt uses niet).
 5. **Aanpak**: `ed` als laatste parameter met standaard `"2014"` (B6).
 6. **Afhankelijk van**: WP46.
-7. **Acceptatie**: 2014-tests ongewijzigd groen; 2024: Exhaustion 4 laat max HP staan; save met Exhaustion 2 krijgt −4 met reden "Exhaustion 2"; aanval met Exhaustion 3 krijgt −6 en géén disadvantage; `reExh` twee keer achter elkaar = zelfde uitkomst; 2014→2024 herstelt een gehalveerde max HP, 2024→2014 halveert weer (beide op tafel, met logregel); long rest −1 in beide.
-8. **Tests**: `rules.test.js`, `saves.test.js`, `attacks.test.js`, `effects.test.js`, `afwerking.test.js`.
+7. **Acceptatie**: 2014-tests ongewijzigd groen; 2024: Exhaustion 4 laat max HP staan; save met Exhaustion 2 krijgt −4 met reden "Exhaustion 2"; aanval met Exhaustion 3 krijgt −6 en géén disadvantage; `reExh` twee keer achter elkaar = zelfde uitkomst; 2014→2024 herstelt een gehalveerde max HP, 2024→2014 halveert weer (beide op tafel, met logregel); long rest −1 in beide; Rage 2024 met alleen schade sinds de vorige beurt → melding "loopt voorbij" (2014: loopt door); Frenzy-rage 2024 afgelopen → geen Exhaustion (2014: +1).
+8. **Tests**: `rules.test.js`, `saves.test.js`, `attacks.test.js`, `effects.test.js`, `afwerking.test.js`, rage-tests (`wp16.test.js` e.a.).
 9. **Klaar als**: tests groen, developer-review (2014 én SRD 5.2), versie, push.
 10. **Risico's**: d20-straf als modifier raakt de worptekst (`rollText`, `atkText`): tekst controleren in log en paneel.
 11. **Omvang**: M.

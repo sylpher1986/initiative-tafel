@@ -47,14 +47,14 @@ Plan met inventaris, besluiten (B1–B10) en per pakket scope en acceptatiecrite
 | **WP47** | SRD 5.2-monsterdata: `tools/monsters_srd2024.py` → `data/monsters-2024.json` (331), sw-precache | — (naast WP46) | M |
 | **WP48** | Parsers editiebestendig (aanvallen, saves, riders, legendary, spellcasting) + monster-initiative uit statblock | WP46, WP47 | L |
 | **WP49** | Monsterkeuze en dubbele namen, editietag, statblock, encounters inladen (UX-agent) | WP48 | M |
-| **WP50** | Exhaustion 2024 (geen HP-halvering, −2 × niveau op d20-tests), idempotente `reExh` | WP46 | M |
+| **WP50** | Exhaustion 2024 (geen HP-halvering, −2 × niveau op d20-tests), idempotente `reExh`, Rage 2024 (doorlopen, duur, Frenzy zonder Exhaustion) | WP46 | M |
 | **WP51** | Conc-DC max 30 (`concDc`), surprise 2024, Grappled-hint | WP46, WP48 | M |
 | **WP52** | Condities-uitleg 2024, `ed` in de spelerssnapshot | WP46 | M |
 | **WP53** | Moeilijkheid 2024 (XP-budget SRD 5.2.1) en XP-label | WP46 | M |
 | **WP54** | Instellingen → Regels 2014 \| 2024 zichtbaar, Spells als subinstelling bij 2014 (UX-agent) | WP46–WP53 | M |
 | **WP55** | Integratie, regressie, documentatie, G1 afsluiten | WP54 | S |
 
-Besloten (27-10): standaard regelset 2014, release stapsgewijs in 2.x, Spells 2024 onder regels 2014 blijft. Nog open: V4 vorm om andere-editie-monsters te vinden (UX in WP49), V5 Rage 2024 / "4 in Lair" op signaal.
+Besloten (27-10): standaard regelset 2014, release stapsgewijs in 2.x, Spells 2024 onder regels 2014 blijft. Rage 2024 gaat mee in WP50. Nog open: V4 vorm om andere-editie-monsters te vinden (UX in WP49); "4 in Lair" op signaal.
 
 ## Grote projecten (lange termijn)
 
