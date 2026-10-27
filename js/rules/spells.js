@@ -76,17 +76,21 @@ export function castInfo(m) {
   return slots.length || daily.length ? { slots, daily } : null;
 }
 
-/** Legendary actions per ronde en legendary resistance per dag */
+/**
+ * Legendary actions per ronde en legendary resistance per dag.
+ * 2024 (WP48): "Legendary Action Uses: 3 (4 in Lair)" en "Legendary Resistance (3/Day, or 4/Day in Lair)": de
+ * basiswaarde telt (de lair-waarde pas als de app een lair-gevecht kent; besluit V5 "op signaal").
+ */
 export function legInfo(m) {
   const out = { la: null, lr: null };
   if (!m) return out;
   if (m.l && m.l.length) {
-    const x = (m.ld || "").match(/take (\d+|one|two|three|four|five) legendary/i);
+    const x = (m.ld || "").match(/take (\d+|one|two|three|four|five) legendary/i) || (m.ld || "").match(/Legendary Action Uses:\s*(\d+)/i);
     const w = { one: 1, two: 2, three: 3, four: 4, five: 5 };
     const n = x ? (w[x[1].toLowerCase()] || +x[1]) : 3;
     out.la = { max: n, left: n };
   }
-  const lr = (m.t || []).map((t) => t[0].match(/Legendary Resistance \((\d+)\/Day\)/i)).find(Boolean);
+  const lr = (m.t || []).map((t) => t[0].match(/Legendary Resistance \((\d+)\/Day(?:, or \d+\/Day in Lair)?\)/i)).find(Boolean);
   if (lr) out.lr = { max: +lr[1], left: +lr[1] };
   return out;
 }

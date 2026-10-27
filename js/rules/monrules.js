@@ -9,6 +9,7 @@ import { makeDur } from "./turns.js";
 import { NO_ACT } from "./legendary.js";
 import { saveAdv, rollSave, saveBonus } from "./aoe.js";
 import { saveMods } from "./effects.js";
+import { classic, defRows } from "./statform.js";
 
 /** Monster-save rollen zoals overal: statblock-bonus, advantage/disadvantage (Rage, Exhaustion, Magic Resistance) en Bless/Bane/cover */
 export function monSave(c, m, ab, magic = false, rng = Math.random) {
@@ -77,38 +78,68 @@ function riderNote(s) {
   return n("see");
 }
 
+// 2024 (WP48): conditie zonder save na een treffer ("it has the Grappled condition (escape DC 14)", "has the Blinded and
+// Restrained conditions"); ook "can give it the Grappled condition" (Rug of Smothering)
+const FIX_RE = /\b(?:has|give it) the ([A-Z][a-z]+)(?: and ([A-Z][a-z]+))? conditions?(?:\s*\(escape DC (\d+)\))?/g;
+// 2024: schade direct in de Failure-regel ("Failure: 9 (2d8) Poison damage"); doorlopende schade later in de tekst telt niet
+const FAIL_DMG = /Failure:\s*(?:\d+\s*)?\((\d+d\d+(?:\s*[+−-]\s*\d+)?)\)\s+([a-z]+)\s+damage/i;
+
+/** 2024: vaste condities in dit stuk tekst als [{ k: "Grappled", esc: 14 }] (codes; de UI zet de naam erbij) */
+function fixedConds(s) {
+  const out = [];
+  // een zin met een voorwaarde die de app niet kent, telt niet ("if this damage reduces the target to 0 Hit Points", "had Advantage")
+  // en ook niet wat daaruit volgt ("While Poisoned, the target also has the Paralyzed condition")
+  let skip = false;
+  const plain = s.split(/(?<=\.)\s+(?=[A-Z])/).filter((x) => { skip = /reduces the target to 0 Hit Points|had Advantage/i.test(x) || (skip && /^While\b/.test(x)); return !skip; }).join(" ");
+  for (const m of plain.matchAll(FIX_RE)) for (const k of [m[1], m[2]].filter(Boolean)) {
+    const id = cap(k.toLowerCase());
+    if (CONDS.includes(id.toLowerCase()) && !out.some((x) => x.k === id)) out.push(m[3] && k === m[1] ? { k: id, esc: +m[3] } : { k: id });
+  }
+  return out;
+}
+
 /**
  * Rider uit de tekst van een aanval: alleen wat na "Hit:" staat en een DC met saving throw heeft.
  * { ab, dc, conds: ["Prone"], dur: "r10"|"", rep, dmg: { e, type, half } | null, note, only } of null.
  * conds/dmg leeg = alleen herinnering (note). only = beperking op het doel ("Medium or smaller").
+ * 2024-tekst gaat eerst door classic() ("Constitution Saving Throw: DC 10. Failure: …"); de gevolgen staan dan in de
+ * Failure-zin. Een conditie die een treffer vanzelf geeft (zonder save) komt als hint in fix: [{ k, esc? }] en wordt
+ * niet toegepast (besluit WP48: het rider-model heeft een save; Prone/Grappled hangen vaak af van grootte of aanloop).
+ * Zonder save maar met fix: { ab: "", dc: 0, conds: [], …, fix }. fix staat er alleen als hij niet leeg is.
  */
 export function parseRider(text) {
-  const t = String(text || "");
+  const t = classic(text || "");
   const h = t.search(/\bHit:/i);
   if (h < 0) return null;
-  const after = t.slice(h);
+  const after = t.slice(h).split(/\b(?:Hit or Miss|Miss):/)[0];
   const dm = after.match(DC_RE);
-  if (!dm) return null;
+  const fix = fixedConds(dm ? after.slice(0, dm.index) : after);
+  const fOnly = (s) => (s.match(/If the target is (?!a creature,)(?:a |an )?([^,]+?),\s*(?:it|the target) has the/i) || [])[1] || "";
+  if (!dm) return fix.length ? { ab: "", dc: 0, conds: [], dur: "", rep: false, dmg: null, note: "", only: fOnly(after), fix } : null;
   const from = after.slice(Math.max(0, dm.index - 160), dm.index); // de zin ervoor ("If the target is a creature, it must …")
   const rest = after.slice(dm.index);
-  const sent = rest.split(/(?<=\.)\s+(?=[A-Z])/)[0]; // de zin met de DC
+  const parts = rest.split(/(?<=\.)\s+(?=[A-Z])/);
+  const fail = /^(?:First )?Failure:/.test(parts[1] || "") ? parts[1] : ""; // 2024: "… saving throw: DC 10. Failure: The target has …"
+  const sent = fail ? `${parts[0]} ${fail}` : parts[0]; // de zin met de DC (+ de Failure-zin)
   const conds = [];
   if (/knocked prone/i.test(sent)) conds.push("Prone");
   for (const m of sent.matchAll(/\b(?:be|become|is|and)\s+(?:magically\s+)?(poisoned|paralyzed|frightened|charmed|stunned|blinded|restrained|incapacitated|deafened|petrified)\b/gi))
     if (!conds.includes(cap(m[1].toLowerCase()))) conds.push(cap(m[1].toLowerCase()));
+  if (fail) for (const x of fixedConds(fail)) if (!conds.includes(x.k)) conds.push(x.k);
   if (/against being magically petrified/i.test(sent) && /restrained/i.test(rest)) conds.push("Restrained"); // Cockatrice: eerst restrained
-  const dmx = sent.match(DMG_RE);
-  const dmg = dmx ? { e: dmx[1].replace(/−/g, "-").replace(/\s/g, ""), type: dmx[2].toLowerCase(), half: /half as much/i.test(sent) } : null;
+  const dmx = sent.match(DMG_RE) || (fail && fail.match(FAIL_DMG));
+  const dmg = dmx ? { e: dmx[1].replace(/−/g, "-").replace(/\s/g, ""), type: dmx[2].toLowerCase(), half: /half as much/i.test(sent) || (!!fail && /Success:\s*Half damage/i.test(rest.slice(0, 400))) } : null;
   // ziekte, vloek, max HP: geen conditie die de app kent (Death Dog "become poisoned until the disease is cured" wel)
   const noteOnly = /disease|cursed|lycanthropy|hit point maximum|swallowed|infernal wound/i.test(sent) && !dmg;
-  const only = (from.match(/If the target is (?!a creature,)(?:a |an )?([^,]+?),\s*it must[^.]*$/i) || [])[1] || "";
+  const only = (from.match(/If the target is (?!a creature,)(?:a |an )?([^,]+?),\s*it (?:must[^.]*|(?:is subjected to the following effect|must make the following saving throw)\.\s*)$/i) || [])[1] || "";
   const dur = /for 1 minute/i.test(sent) ? "r10" : "";
-  const rep = /repeat the saving throw at the end of each of its turns/i.test(rest.slice(0, 400));
+  const rep = /repeats? the (?:saving throw|save) at the end of each of its turns/i.test(rest.slice(0, 400));
   const out = { ab: ABIL[dm[2].toLowerCase()], dc: +dm[1], conds: noteOnly ? [] : conds, dur, rep: rep && !noteOnly && conds.length > 0, dmg: noteOnly ? null : dmg, note: "", only };
   if (!out.conds.length && !out.dmg) out.note = riderNote(rest.slice(0, 400));
-  else if (/fails by 5 or more|saving throw result is 5 or lower/i.test(rest.slice(0, 300))) out.note = tt("rules.rd.n.bigFail");
+  else if (/fails by 5 or more|saving throw result is 5 or lower|Failure by 5 or More/i.test(rest.slice(0, 300))) out.note = tt("rules.rd.n.bigFail");
   else if (/unconscious/i.test(sent)) out.note = tt("rules.rd.n.alsoUncon");
   else if (/damage at the start of each of its turns/i.test(rest.slice(0, 300))) out.note = tt("rules.rd.n.alsoDmg");
+  if (fix.length) out.fix = fix;
   return out;
 }
 
@@ -125,7 +156,7 @@ export function riderWhat(r) {
 /** Doel is immuun voor alle condities van de rider (monster: Condition Immunities uit het statblock) */
 export function riderImmune(r, m) {
   if (!r || !r.conds.length || r.dmg) return false;
-  const ci = String(((m && m.x || []).find((x) => x[0] === "Condition Immunities") || [])[1] || "").toLowerCase();
+  const ci = defRows(m && m.x).cimm.toLowerCase(); // 2014 "Condition Immunities", 2024 "Immunities: …; Poisoned"
   return r.conds.every((k) => ci.includes(k.toLowerCase()));
 }
 
@@ -162,19 +193,22 @@ const AUTO_FAIL = ["Paralyzed", "Stunned", "Unconscious", "Petrified"]; // PHB 2
 /**
  * Rider van een aanval tegen dit doel na de treffer, of null (geen rider, doel neer of dood).
  * sim = het doel ná de schade (kopie); choice = keuze van de DM ("fail"|"ok"|"na"|null).
- * { rd, act (conditie/schade toe te passen), immune, auto ("fail": faalt STR/DEX vanzelf), choice }.
+ * { rd, act (conditie/schade toe te passen), immune, auto ("fail": faalt STR/DEX vanzelf), choice, fix (WP48: hints zonder immune condities) }.
  */
 export function riderFor(rd, c, m, sim, choice = null) {
   if (!rd || !c || !sim) return null;
+  const ci = defRows(m && m.x).cimm.toLowerCase(), fix = (rd.fix || []).filter((f) => !ci.includes(f.k.toLowerCase())); // WP48: hint zonder condities waar het doel immuun voor is
+  if (!rd.ab) return fix.length ? { rd, act: false, immune: false, auto: null, choice: null, fix } : null;
+  const F = fix.length ? { fix } : {};
   if (sim.ds && sim.ds.dead) return null; // gestorven door de treffer
   if (c.kind === "monster" && c.max && sim.hp <= 0) return null; // monster neer: geen rider meer
   const down = c.kind === "pc" && c.max > 0 && sim.hp <= 0;
   if (down && !rd.dmg && rd.conds.length && rd.conds.every((k) => k === "Prone")) return null; // bewusteloos = al prone
-  if (riderImmune(rd, m)) return { rd, act: false, immune: true, auto: null, choice: null };
+  if (riderImmune(rd, m)) return { rd, act: false, immune: true, auto: null, choice: null, ...F };
   const act = !!(rd.conds.length || rd.dmg);
   const out = (rd.ab === "STR" || rd.ab === "DEX") && (down || (c.cond || []).some((k) => AUTO_FAIL.includes(k)));
   const auto = act && out ? "fail" : null;
-  return { rd, act, immune: false, auto, choice: auto || choice || null };
+  return { rd, act, immune: false, auto, choice: auto || choice || null, ...F };
 }
 
 /** Uitkomst als korte tekst: "Prone", "−9 poison", "half: −4 HP", "geen gevolg" (melding na toepassen) */

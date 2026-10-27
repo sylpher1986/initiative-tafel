@@ -691,6 +691,8 @@ export default {
   "init.atk.then": "Then · {ab} DC {dc} · {what}",
   "init.atk.only": "Only if: {what}",
   "init.atk.note": "Note: on a failed {ab} save (DC {dc}): {what}",
+  "init.atk.fix": "On a hit: {what} (apply it yourself)",
+  "init.atk.fixEsc": "{cond} (escape DC {dc})",
   "init.atk.half": "half {n}",
   "init.atk.autoFail": "unconscious: fails automatically",
   "init.atk.notApp": "n/a",

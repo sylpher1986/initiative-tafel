@@ -5,6 +5,7 @@ import { d } from "./dice.js";
 import { applyDamage, critAtZero, merge, wakeByDamage } from "./combat.js";
 import { M, J } from "../i18n/msg.js";
 import { t } from "../i18n/boot.js";
+import { classic } from "./statform.js";
 
 const ABIL = { strength: "STR", dexterity: "DEX", constitution: "CON", intelligence: "INT", wisdom: "WIS", charisma: "CHA" };
 const DICE = String.raw`(\d+d\d+(?:\s*[+−-]\s*\d+)?)`;
@@ -38,6 +39,7 @@ function damage(t, isAtk) {
     const gap = out.length ? part.slice(end, m.index) : "";
     end = m.index + m[0].length;
     if (!out.length || /^[\s,]*plus\s*$/i.test(gap) || (alt && /^[^.]*,\s*plus\s*$/i.test(gap))) {
+      if (out.length && /^,\s*plus\s*$/i.test(gap) && /^\s+if\b/i.test(part.slice(end))) break; // 2024: ", plus 2 (1d4) Slashing damage if the attack roll had Advantage" = voorwaarde
       out.push({ e: cleanExpr(m[1]), type: m[2].toLowerCase() }); alt = false;
     } else if (/^[\s,]*or\s*$/i.test(gap)) alt = true; // "…, or 8 (1d10 + 3) … if used with two hands, plus 3 (1d6) fire": alternatief overslaan
     else break;
@@ -47,9 +49,9 @@ function damage(t, isAtk) {
 
 /** Eén actie → { n, hit, reach, dmg: [{e, type} | {flat, type}], dc: {n, ab} | null, multi, kind (melee/ranged/both), text } */
 export function parseAction(name, text) {
-  const t = String(text || "");
+  const raw = String(text || ""), t = classic(raw); // WP48: 2024-schrijfwijze gelezen als klassiek; text blijft de echte tekst
   const n = String(name || "");
-  const hm = t.match(/([+-]\d+)\s+to hit/i);
+  const hm = t.match(/([+-]\d+)\s+to hit(?! with spell attacks?)/i); // 2024: Spellcasting is een actie ("+12 to hit with spell attacks"), geen aanval
   const hit = hm ? +hm[1] : null;
   const rm = t.match(/\b(reach \d+ ft\.|range \d+(?:\/\d+)? ft\.)/i);
   const dm = t.match(DC_RE);
@@ -60,7 +62,7 @@ export function parseAction(name, text) {
     dc: dm ? { n: +dm[1], ab: [dm[2], dm[3]].filter(Boolean).map((x) => ABIL[x.toLowerCase()]).join("/") } : null,
     multi: /^multiattack/i.test(n),
     kind: hit !== null ? atkKind(t) : "",
-    text: t,
+    text: raw,
   };
 }
 

@@ -22,8 +22,8 @@ import { showSB, showSheet, monCard, doRoll, doDmgRoll, closeSB, phone, toggleBi
 import { findMon, allMonsters, parseMonsterFile, filterMonsters } from "../data/monsters.js";
 import { SYN } from "../data/syn.js";
 import { parseStatText, foundText, hasStructure, withParsed } from "../data/statparse.js";
-import { d, mod, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
-import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant, setInit, durWords, saveWords } from "../rules/turns.js";
+import { d, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
+import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant, setInit, durWords, saveWords, initBo, monInit } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, saveAdv, DTYPES, targetMode, drToggle, drKind, DR_LBL, cleanDr } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage, multiSeq, seqAfter } from "../rules/attacks.js";
@@ -96,7 +96,6 @@ const apply = (fx) => { if (!fx) return; addWhy(fx.why); show(fx); if (fx.saves)
 export function addMonsters(name, n, hpmode, initmode, silent, fixed = null, hidden = false, anon = false, ed) {
   const S = app.S, m = findMon(name, ed);
   if (!m) return;
-  const dx = mod(m.ab ? m.ab[1] : m.dexScore || 10);
   // doornummeren vanaf het hoogste bestaande nummer, zodat "Goblin 2" na verwijderen niet dubbel ontstaat
   const nums = S.list.filter((c) => c.ref === name).map((c) => { const x = c.name.match(/ (\d+)$/); return x ? +x[1] : 1; });
   const next = nums.length ? Math.max(...nums) + 1 : 1;
@@ -109,14 +108,15 @@ export function addMonsters(name, n, hpmode, initmode, silent, fixed = null, hid
     let hp = m.hp;
     if (hpmode === "roll" && m.hd) { const x = rollExpr(m.hd); if (x) hp = Math.max(1, x.total); }
     const label = n > 1 || nums.length ? `${m.n} ${next + i}` : m.n;
-    const c = { id: uid(), name: label, kind: "monster", ref: m.n, ...edField(ed), ...(grp ? { grp } : {}), ...(hidden ? { hidden: true } : {}), ...(anon ? { anon: nextAnon(S.list) } : {}), init: set ? fixed : r + dx, roll: r, dex: dx, ac: parseInt(m.ac) || 10, hp, max: hp, cond: [], ...legInfo(m), rc: rcInfo(m), casting: castInfo(m) };
+    // WP48: monInit = d20 + Initiative uit een 2024-statblock (initBonus), anders + Dex; tiebreak blijft Dex
+    const c = { id: uid(), name: label, kind: "monster", ref: m.n, ...edField(ed), ...(grp ? { grp } : {}), ...(hidden ? { hidden: true } : {}), ...(anon ? { anon: nextAnon(S.list) } : {}), ...monInit(m, r, fixed), ac: parseInt(m.ac) || 10, hp, max: hp, cond: [], ...legInfo(m), rc: rcInfo(m), casting: castInfo(m) };
     S.list.push(c); out.push(c);
-    because(J([set ? M("log.w.initSet") : `d20 [${r}] ${sgn(dx)}`, group !== null && n > 1 ? M("log.w.grp") : null, hpmode === "roll" && m.hd ? M("log.w.hpRoll", { hd: m.hd }) : null]), c.id);
+    because(J([set ? M("log.w.initSet") : `d20 [${r}] ${sgn(initBo(c))}`, group !== null && n > 1 ? M("log.w.grp") : null, hpmode === "roll" && m.hd ? M("log.w.hpRoll", { hd: m.hd }) : null]), c.id);
   }
   if (!silent) {
     S.sample = false;
     wantSB(out[out.length - 1].id); // zijkolom toont het net toegevoegde monster
-    toastHtml(out.map((c) => `${esc(c.name)}: ${c.roll === undefined ? "initiative" : `d20 [${c.roll}] ${sgn(c.dex)} =`} <b>${c.init}</b>`).join("<br>") + (hidden ? `<br>${esc(t("init.mon.hidden"))}` : "") + (anon ? `<br>${esc(t("init.mon.anon"))}` : ""));
+    toastHtml(out.map((c) => `${esc(c.name)}: ${c.roll === undefined ? "initiative" : `d20 [${c.roll}] ${sgn(initBo(c))} =`} <b>${c.init}</b>`).join("<br>") + (hidden ? `<br>${esc(t("init.mon.hidden"))}` : "") + (anon ? `<br>${esc(t("init.mon.anon"))}` : ""));
   }
 }
 
@@ -1848,7 +1848,7 @@ function initKey(k, v) {
   if (k === "next") initNext(x);
   if (k === "roll") {
     const c = app.S.list.find((t) => t.id === v); if (!c) return;
-    const r = d(20), bo = c.initBonus ?? c.dex ?? 0;
+    const r = d(20), bo = initBo(c);
     x.v[c.id] = String(r + bo); x.rolls[c.id] = `d20 [${r}] ${sgn(bo)}`;
     x.act = c.id; initNext(x);
   }
@@ -1924,7 +1924,7 @@ export function bindParty() {
   });
   panel.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
-    const rollFor = (m) => { const r = d(20), bo = m.initBonus ?? m.dex ?? 0; ui.partyInit[m.pid] = r + bo; return `${esc(m.name)}: d20 [${r}] ${sgn(bo)} = <b>${r + bo}</b>`; };
+    const rollFor = (m) => { const r = d(20), bo = initBo(m); ui.partyInit[m.pid] = r + bo; return `${esc(m.name)}: d20 [${r}] ${sgn(bo)} = <b>${r + bo}</b>`; };
     const at = new Set(app.S.list.filter((c) => c.pid).map((c) => c.pid));
     if (b.dataset.pupd) { if (ui.pUpd?.st !== "busy") partyFetch(b.dataset.pupd); return; }
     if (b.dataset.pupdno) { ui.pUpd = null; pPaint(pLink(b.dataset.pupdno)); return; }

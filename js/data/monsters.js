@@ -20,8 +20,34 @@ export function setLibrary({ custom: c, imported: i }) {
 }
 /** SRD-bestand: kale array (data/monsters.json) of omhulsel { ed, src, monsters } (data/monsters-2024.json, WP47) */
 export const srdList = (j) => (Array.isArray(j) ? j : Array.isArray(j?.monsters) ? j.monsters : []);
-/** G1: SRD 5.2-bibliotheek (data/monsters-2024.json, laden komt in WP48/49); los van eigen/geïmporteerd, geen ontdubbeling */
+/** G1: SRD 5.2-bibliotheek (data/monsters-2024.json); los van eigen/geïmporteerd, geen ontdubbeling */
 export function setSrd24(l) { srd24 = srdList(l); list24 = index24 = null; }
+
+let st24 = "none", p24 = null;
+/** Stand van de SRD 5.2-data: "none" (niet gevraagd), "loading", "ok", "fail" (B4/B9: ontbrekend is expliciet, nooit stil leeg) */
+export const srd24Status = () => st24;
+/**
+ * WP48: SRD 5.2 laden, één keer (gelijktijdige aanroepen delen de belofte). Het omhulsel moet ed "2024" hebben, anders is
+ * het geen 2024-bestand. Gooit nooit: geeft de stand terug; na "fail" mag een volgende aanroep het opnieuw proberen.
+ */
+export function loadSrd24(url = "/data/monsters-2024.json") {
+  if (st24 === "ok") return Promise.resolve(st24);
+  if (p24) return p24;
+  st24 = "loading";
+  p24 = (async () => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const j = await res.json();
+      if (!j || j.ed !== "2024" || !Array.isArray(j.monsters)) throw new Error("not 2024");
+      setSrd24(j);
+      st24 = "ok";
+    } catch { st24 = "fail"; }
+    p24 = null;
+    return st24;
+  })();
+  return p24;
+}
 export const getCustom = () => custom;
 export const getImported = () => imported;
 

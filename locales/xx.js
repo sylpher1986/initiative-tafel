@@ -691,6 +691,8 @@ export default {
   "init.atk.then": "[Théñ · {ab} DÇ {dc} · {what} ·····]",
   "init.atk.only": "[Öñlý íf: {what} ····]",
   "init.atk.note": "[Ñöté: öñ á fáíléd {ab} sávé (DÇ {dc}): {what} ···········]",
+  "init.atk.fix": "[Öñ á hít: {what} (ápplý ít ýöürsélf) ···········]",
+  "init.atk.fixEsc": "[{cond} (ésçápé DÇ {dc}) ·····]",
   "init.atk.half": "[hálf {n} ··]",
   "init.atk.autoFail": "[üñçöñsçíöüs: fáíls áütömátíçállý ············]",
   "init.atk.notApp": "[ñ/á ··]",

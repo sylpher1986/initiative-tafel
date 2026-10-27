@@ -20,6 +20,7 @@ import { diceify, syncSB, monCard, isPhone } from "./statblock.js";
 import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
 import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
+import { defRows } from "../rules/statform.js";
 import { hasUF, ufDc, ufNeed, ufInfo, riderWhat, riderFor, parryOf, canParry } from "../rules/monrules.js";
 import { openSaves, lastTurn } from "../rules/saves.js";
 import { hpPct, hpCls } from "./hpbar.js";
@@ -279,9 +280,9 @@ function defLine(c) {
   if (!c.ref) return "";
   const m = findMon(c.ref, c.ed);
   if (!m || !m.x) return "";
-  const get = (l) => (m.x.find((x) => x[0] === l) || [])[1];
-  const parts = [["init.card.defVuln", "Damage Vulnerabilities"], ["init.card.defRes", "Damage Resistances"], ["init.card.defImm", "Damage Immunities"]]
-    .map(([n, l]) => (get(l) ? `${esc(t(n))}: <b>${esc(get(l))}</b>` : "")).filter(Boolean);
+  const D = defRows(m.x); // WP48: ook de 2024-regels (schade vóór ";" in "Immunities")
+  const parts = [["init.card.defVuln", D.vuln], ["init.card.defRes", D.res], ["init.card.defImm", D.imm]]
+    .map(([n, v]) => (v ? `${esc(t(n))}: <b>${esc(v)}</b>` : "")).filter(Boolean);
   return parts.length ? `<div class="defl">${parts.join(" · ")}</div>` : "";
 }
 
@@ -1350,12 +1351,15 @@ export function atkRider(x, c, res, sim) {
 function riderRow(x, c, ri) {
   const rd = ri.rd, head = esc(t("init.atk.then", { ab: rd.ab, dc: rd.dc, what: riderWhat(rd) }));
   const only = rd.only ? `<p class="hint">${esc(t("init.atk.only", { what: rd.only }))}</p>` : "";
-  if (ri.immune) return `<div class="xrider"><p class="hint">${head} <span class="tag">${esc(t("init.sp.immune"))}</span></p></div>`;
-  if (!ri.act) return `<div class="xrider"><p class="hint">${esc(t("init.atk.note", { ab: rd.ab, dc: rd.dc, what: rd.note }))}</p>${only}</div>`;
+  // WP48: conditie die een 2024-treffer zonder save geeft: alleen als hint, de DM past hem zelf toe
+  const fix = ri.fix && ri.fix.length ? `<p class="hint">${esc(t("init.atk.fix", { what: ri.fix.map((f) => (f.esc ? t("init.atk.fixEsc", { cond: term("cond", f.k), dc: f.esc }) : term("cond", f.k))) }))}</p>` : "";
+  if (!rd.ab) return `<div class="xrider">${fix}${only}</div>`;
+  if (ri.immune) return `<div class="xrider">${fix}<p class="hint">${head} <span class="tag">${esc(t("init.sp.immune"))}</span></p></div>`;
+  if (!ri.act) return `<div class="xrider">${fix}<p class="hint">${esc(t("init.atk.note", { ab: rd.ab, dc: rd.dc, what: rd.note }))}</p>${only}</div>`;
   const roll = x.rroll ? `<p class="hint">${esc(x.rroll.txt)}${rd.dmg.half ? `, ${esc(t("init.atk.half", { n: Math.floor(x.rroll.total / 2) }))}` : ""}</p>` : "";
-  if (ri.auto) return `<div class="xrider"><p class="qlbl">${head}</p>${roll}<p class="hint"><span class="tag">${esc(t("init.atk.autoFail"))}</span></p></div>`;
+  if (ri.auto) return `<div class="xrider">${fix}<p class="qlbl">${head}</p>${roll}<p class="hint"><span class="tag">${esc(t("init.atk.autoFail"))}</span></p></div>`;
   const canRoll = c.kind === "monster" && !selfRoll(c, rd.ab);
-  return `<div class="xrider"><p class="qlbl">${head}</p>${roll}
+  return `<div class="xrider">${fix}<p class="qlbl">${head}</p>${roll}
     <div class="xrow">${canRoll ? `<button type="button" class="btn small" data-xa="rroll" aria-label="${esc(t("init.sv.rollAria", { name: c.name, ab: rd.ab, dc: rd.dc }))}">${esc(t("init.sv.roll", { b: sgn(svBonus(c, rd.ab)) }))}</button>` : ""}
     <div class="seg2 sm" role="group" aria-label="Save ${esc(c.name)}">${[["fail", "init.sv.fail"], ["ok", "init.sv.ok"], ...(rd.only ? [["na", "init.atk.notApp"]] : [])].map(([v, l]) => `<button type="button" data-xa="rs" data-v="${v}" aria-pressed="${x.rs === v}">${esc(t(l))}</button>`).join("")}</div></div>
     ${x.rx ? `<p class="hint">${esc(`${rd.ab} ${rollText(x.rx, rd.dc)}`)}</p>` : ""}${only}</div>`;

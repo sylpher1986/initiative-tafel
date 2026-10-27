@@ -1,6 +1,7 @@
 // Area of effect (5e 2014): één schadeworp, per doelwit een save en resistance/vulnerability/immunity.
 // Volgorde (PHB): eerst de save (½ of 0, naar beneden afgerond), daarna resistance/vulnerability.
 // Voorbeeld: 27 fire, save geslaagd en resistant → 13 → 6.
+import { defRows } from "./statform.js";
 import { fx, merge, applyDamage } from "./combat.js";
 import { M, J } from "../i18n/msg.js";
 import { t } from "../i18n/boot.js";
@@ -143,9 +144,9 @@ export function defMode(x, type) {
   const out = { mode: 1, cond: "" };
   if (!type || !Array.isArray(x)) return out;
   const t = type.toLowerCase();
-  const rows = [["Damage Immunities", 0], ["Damage Resistances", 0.5], ["Damage Vulnerabilities", 2]];
-  for (const [label, m] of rows) {
-    const v = (x.find((r) => r[0] === label) || [])[1];
+  const D = defRows(x); // 2014 "Damage …" en 2024 "Immunities/Resistances/Vulnerabilities" (WP48)
+  const rows = [[D.imm, 0], [D.res, 0.5], [D.vuln, 2]];
+  for (const [v, m] of rows) {
     if (!v) continue;
     for (const seg of String(v).toLowerCase().split(";")) {
       if (!new RegExp(`\\b${t}\\b`).test(seg)) continue;

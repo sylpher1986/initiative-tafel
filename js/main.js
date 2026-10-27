@@ -1,7 +1,7 @@
 // Opstarten: data laden, events koppelen, eerste render, service worker.
 import { app, load, resetBaseline, setWarn } from "./state.js";
 import { slimLog } from "./log.js";
-import { loadSrd, findMon } from "./data/monsters.js";
+import { loadSrd, loadSrd24, srd24Status, findMon } from "./data/monsters.js";
 import { render, ui, setAfterRender, mode } from "./ui/render.js";
 import { initTour, tourTick, tourKey, killTour } from "./ui/tour.js";
 import { toPlayerView } from "./playerview.js";
@@ -29,8 +29,15 @@ function start(boot = false) {
   bindForms.impStatus();
   resetBaseline(boot); // herladen: undo-geschiedenis terug (DA2); import: nieuw vertrekpunt
   render();
+  need24();
   // lopend gevecht na herladen, app uit de achtergrond of import: wie aan de beurt is in beeld
   if (app.S.round) requestAnimationFrame(() => scrollToCard(app.S.active, true, true));
+}
+
+/** WP48: deelnemers met een SRD 5.2-statblock (na herladen of import): data op de achtergrond laden, daarna opnieuw tekenen */
+function need24() {
+  if (!app.S.list.some((c) => c.ed === "2024") || srd24Status() === "ok") return;
+  loadSrd24().then((st) => { if (st === "ok" && !gone) render(); });
 }
 
 /* DA3: een ander tabblad nam het over. Niets meer opslaan of naar spelers sturen; de app eronder is onbruikbaar

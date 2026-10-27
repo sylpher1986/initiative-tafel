@@ -636,6 +636,8 @@ export default {
   "init.atk.then": "Daarna · {ab} DC {dc} · {what}",
   "init.atk.only": "Alleen als: {what}",
   "init.atk.note": "Let op: bij gefaalde {ab} {dc}: {what}",
+  "init.atk.fix": "Bij een treffer: {what} (zelf toepassen)", // WP48: 2024-treffer met een vaste conditie (geen save); what = lijst
+  "init.atk.fixEsc": "{cond} (escape DC {dc})",
   "init.atk.half": "half {n}",
   "init.atk.autoFail": "bewusteloos: faalt vanzelf",
   "init.atk.notApp": "n.v.t.",

@@ -1,5 +1,5 @@
 // Beurtvolgorde, conditie-duur en alles wat aan het begin/einde van een beurt gebeurt.
-import { d, sgn } from "./dice.js";
+import { d, sgn, mod } from "./dice.js";
 import { fx, say } from "./combat.js";
 import { M, J } from "../i18n/msg.js";
 import { t, tr } from "../i18n/boot.js";
@@ -461,8 +461,25 @@ export function dropIds(state, gone) {
   }
 }
 
+/**
+ * Initiative-bonus van een deelnemer: c.initBonus als die er is (speler uit de sheet; 2024-monster uit het statblock,
+ * WP48), anders Dex. De tiebreak blijft c.dex (sortOrder).
+ */
+export const initBo = (c) => (Number.isFinite(c && c.initBonus) ? c.initBonus : c && Number.isFinite(c.dex) ? c.dex : 0);
+/** WP48: initiative-bonus uit een statblock (SRD 5.2 "Initiative +12" = m.init), of null (2014: dan Dex) */
+export const statInit = (m) => (m && Number.isFinite(m.init) ? m.init : null);
+/**
+ * Initiative-velden van een nieuw monster uit zijn statblock: r = d20-worp, of undefined bij een vaste waarde (fixed).
+ * { init, roll, dex, initBonus? }: dex = Dex-modifier (tiebreak); initBonus alleen als het statblock een eigen
+ * Initiative heeft (2024), zodat 2014-monsters er precies zo uitzien als voorheen.
+ */
+export function monInit(m, r, fixed = null) {
+  const dex = mod(m && m.ab ? m.ab[1] : (m && m.dexScore) || 10), si = statInit(m);
+  return { init: r === undefined ? fixed : r + (si ?? dex), roll: r, dex, ...(si !== null ? { initBonus: si } : {}) };
+}
+
 /** Levend monster met een worp die niemand heeft aangeraakt (niet ingevuld, niet via ⋯ of de kaart aangepast) */
-export const freshRoll = (c) => c.kind === "monster" && !isOut(c) && Number.isFinite(c.roll) && Number.isFinite(c.dex) && c.init === c.roll + c.dex;
+export const freshRoll = (c) => c.kind === "monster" && !isOut(c) && Number.isFinite(c.roll) && Number.isFinite(c.dex) && c.init === c.roll + initBo(c);
 
 /**
  * GV5: initiative van monsters opnieuw rollen bij Start gevecht. Alleen onaangeroerde worpen (freshRoll), ook verborgen
@@ -476,8 +493,9 @@ export function rerollMonsters(list, rng = Math.random) {
     const k = c.grp ? `${c.grp}|${c.init}` : null;
     let r = k ? groups.get(k) : undefined;
     if (r === undefined) { r = d(20, rng); if (k) groups.set(k, r); }
-    c.roll = r; c.init = r + c.dex; out.n++;
-    out.why.push({ t: J([`d20 [${r}] ${sgn(c.dex)}`, M("rules.rerollWhy"), k && M("rules.grpRoll")].filter(Boolean), ", "), id: c.id });
+    const bo = initBo(c);
+    c.roll = r; c.init = r + bo; out.n++;
+    out.why.push({ t: J([`d20 [${r}] ${sgn(bo)}`, M("rules.rerollWhy"), k && M("rules.grpRoll")].filter(Boolean), ", "), id: c.id });
   }
   if (out.n) out.msgs.push(say("rules.reroll", { n: String(out.n) }));
   return out;

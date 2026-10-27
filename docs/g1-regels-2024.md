@@ -143,18 +143,15 @@ Zie CLAUDE.md ("Opslag en data") en de kop van `tools/monsters_srd2024.py`. Voor
 
 ---
 
-### WP48 — Statblock-parsers en monster-initiative editiebestendig
-1. **Doel**: aanvallen, saves, riders, recharge, legendary, spellcasting en initiative werken voor SRD 5.2-statblocks zoals voor 2014.
-2. **Huidige stand**: R8–R11; `parseAction`/`monsterActions` (`attacks.js` r. 49/77), `DC_RE` (`monrules.js` r. 62), `legInfo`/`castInfo`/`rcInfo` (`spells.js`), `classic()` (`statparse.js` r. 39), toevoegen in `actions.js` r. 96–110, `freshRoll`/`rerollMonsters` (`turns.js` r. 465–479).
-3. **Scope**: `classic()` naar `js/rules/` (statparse importeert hem); `monsterActions`/riders normaliseren eerst; 2024-riders ("Failure:", vaste conditie bij een treffer "has the Grappled condition (escape DC n)") als hint/rider waar de structuur het toelaat; `legInfo` leest "Legendary Action Uses: N" en "Legendary Resistance (N/Day, or M/Day in Lair)" (basiswaarde N); initiative-bonus uit het statblock op het bestaande `c.initBonus` (tiebreak blijft `c.dex`), en `freshRoll`/`rerollMonsters` (`turns.js` r. 465/479) plus de toast/logtekst rekenen met `initBonus ?? dex`; laden van SRD 5.2 in `js/data/monsters.js` (`loadSrd24`, één keer, fout = expliciete status).
-4. **Buiten scope**: zoek-UI, statblock-weergave, regels die van `S.rules` afhangen.
-5. **Aanpak**: één parserpad; 2014-uitkomsten byte-gelijk (bestaande tests).
-6. **Afhankelijk van**: WP46, WP47.
-7. **Acceptatie**: voor alle 331 SRD 5.2-monsters: elke actie met "Attack Roll" geeft to-hit, en damage óf een rider-hint ("Hit: The target has the Grappled condition"); elke "Saving Throw: DC" geeft DC + ability; LR bij alle monsters met die trait; legendary-aantal = `ld`; Adult Red Dragon toegevoegd → `initBonus` 12, init = d20 + 12, telt als onaangeroerd en Opnieuw rollen geeft weer d20 + 12; alle 322 SRD 5.1-monsters geven exact de oude `monsterActions`/`legInfo`/`rcInfo`/`castInfo`.
-8. **Tests**: uitbreiden `attacks.test.js`, `legendary.test.js`, `statparse.test.js`, `hit.test.js`; snapshottest over beide datasets (aantallen geparste acties per editie).
-9. **Klaar als**: tests groen, developer-review, versie 2.x.0, push.
-10. **Risico's**: 2024-riders zonder save (automatisch Prone/Grappled) passen niet op het huidige rider-model → als hint tonen, niet automatiseren (beslissing vastleggen).
-11. **Omvang**: L.
+### WP48 — Statblock-parsers en monster-initiative: klaar in 2.5.0
+Zie CLAUDE.md ("Opslag en data", "Parsers editiebestendig"). Voor latere pakketten:
+- `loadSrd24()`/`srd24Status()` in `js/data/monsters.js`; `start()` laadt alleen als de tafel 2024-monsters heeft. WP49 roept het aan bij het kiezen/inladen van 2024-monsters en toont "fail" expliciet (B4/B9).
+- Nog 2014-rijnamen in de **statblock-weergave**: `DEF` in `js/ui/statblock.js` (preview `monCard`) leest alleen "Damage …" → in WP49 `defRows()` gebruiken.
+- Geplakte eigen monsters: `statparse` zet 2024 "Immunities: Poison; Poisoned" om naar "Damage Immunities" inclusief condities (bestaand gedrag, niet aangeraakt).
+- Vaste condities uit een 2024-treffer staan als hint (`rd.fix`) in het aanvalspaneel; WP51 (Grappled-hint) kan daarop voortbouwen.
+- Eigen/geplakte monsters met "Initiative +N" krijgen nog geen `initBonus` (`sanitizeOwn` neemt `init` niet over; statparse zet de regel alleen in `x`): bestaand gedrag, in WP49 meenemen.
+- Eén DC per actie: Sphinx of Valor "Roar" (drie brullen) geeft de eerste.
+- Lair-waarden ("4 in Lair", "4/Day in Lair") worden gelezen maar niet gebruikt (V5, op signaal).
 
 ### WP49 — Monsterkeuze, dubbele namen, statblock en encounters in de UI
 1. **Doel**: de DM kiest bewust een 2014- of 2024-monster; editie is zichtbaar waar het ertoe doet; ontbrekende 2024-data is expliciet.

@@ -2,6 +2,7 @@
 // Eén caster, per doel een save (gefaald = effect/conditie, geslaagd = niets), alles in één stap.
 // Condities van een concentratie-spell hangen aan de caster (cd[k].by/spell/cast), net als effecten:
 // endConcConds haalt ze weg zodra die concentratie voorbij is (aangeroepen in commit()). Puur: geen DOM.
+import { defRows } from "./statform.js";
 import { fx, merge, startConc, dropConc, downPc, say } from "./combat.js";
 import { M } from "../i18n/msg.js";
 import { t } from "../i18n/boot.js";
@@ -52,7 +53,7 @@ export function condImmune(m) {
   const v = immText(m);
   return SPELL_CONDS.filter((k) => new RegExp(`\\b${k}\\b`, "i").test(v));
 }
-const immText = (m) => ((m && Array.isArray(m.x) ? m.x : []).find((r) => r[0] === "Condition Immunities") || [])[1] || "";
+const immText = (m) => defRows(m && m.x).cimm; // 2014 "Condition Immunities", 2024 "Immunities: …; Charmed" (WP48)
 /** Immuun voor deze spell: voor de hoofdconditie, of (Sleep) voor `auto` (exhaustion) → slaagt vanzelf */
 export const spellImmune = (sp, m) => !!sp.conds && (condImmune(m).includes(sp.conds[0]) || (!!sp.auto && new RegExp(`\\b${sp.auto}\\b`, "i").test(immText(m))));
 /**

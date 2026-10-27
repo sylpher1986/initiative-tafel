@@ -419,6 +419,24 @@ const SCEN = {
     await mon.locator("[data-atk]").first().tap(); await page.waitForSelector("#xsheet .xsheet");
     await page.locator("#xsheet [data-xa=tgt]").first().tap(); await page.waitForSelector("#xsheet .xhit");
   },
+  // WP48: SRD 5.2-monster (Aboleth, ed 2024) aan de beurt; aanvalspaneel met een vaste conditie als hint ("Grappled (escape DC 14)")
+  async wp48(page) {
+    await SCEN.fight(page);
+    await page.evaluate(async () => {
+      const D = await import("/js/data/monsters.js"); if ((await D.loadSrd24()) !== "ok") throw new Error("SRD 5.2 niet geladen");
+      const { addMonsters } = await import("/js/ui/actions.js"), { app } = await import("/js/state.js");
+      addMonsters("Aboleth", 1, "avg", "each", true, null, false, false, "2024");
+      app.S.active = app.S.list.find((c) => c.ed === "2024").id;
+      (await import("/js/ui/render.js")).render();
+    });
+    const mon = page.locator("#order .c.k.turn");
+    await mon.locator('[data-atk="Tentacle"]').first().tap(); await page.waitForSelector("#xsheet .xsheet");
+    await page.locator("#xsheet [data-xa=tgt]").first().tap(); await page.waitForSelector("#xsheet .xhit");
+    if (await page.locator('#xsheet [data-xa="force"]').count()) await tap(page, '#xsheet [data-xa="force"]');
+    await page.waitForSelector("#xsheet .xrider");
+    const txt = await page.locator("#xsheet .xrider").first().innerText();
+    if (!/Grappled|Gegrepen/.test(txt) || !/14/.test(txt)) throw new Error("rider-hint ontbreekt: " + txt);
+  },
   async initp(page) { await SCEN.prep(page); await tap(page, "#start"); await page.waitForSelector("#isheet .isheet"); },
   async logp(page) { await SCEN.fight(page); await tap(page, "#logopen"); await page.waitForSelector("#gsheet .gsheet"); },
   async keyhelp(page) { await SCEN.fight(page); await page.evaluate(async () => (await import("/js/ui/keys.js")).openKeys()); await page.waitForSelector("#hsheet .hsheet"); },

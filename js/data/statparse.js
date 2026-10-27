@@ -4,6 +4,8 @@
 // (onbetrouwbaar); alles blijft platte tekst, de UI escapet.
 // Herkent het klassieke formaat (SRD, D&D Beyond, 5etools) en de 2024-schrijfwijze van aanvallen en saves.
 import { M, J } from "../i18n/msg.js";
+import { classic } from "../rules/statform.js";
+export { classic }; // WP48: verhuisd naar js/rules/statform.js (de parsers gebruiken hem ook)
 
 /** Naam van de trait met niet herkende tekst: een marker, de UI toont hem als "Other"/"Overig" (trName in statblock.js) */
 export const REST = "\u0000rest";
@@ -30,17 +32,6 @@ const SMALL = /^(?:of|the|and|or|in|on|with|to|a|an|its|by|for|from|at|per|vs\.?
 
 /** Uitgerekte tekens uit pdf's en websites gelijktrekken: echte min/streepjes, harde spaties, dubbele spaties */
 const norm = (s) => String(s).replace(/ /g, " ").replace(/[−]/g, "-").replace(/[ \t]+/g, " ").trim();
-
-/**
- * 2024-schrijfwijze naar de klassieke, zodat parseAction/actionAoe het lezen:
- * "Melee Attack Roll: +4, reach 5 ft." → "Melee Attack: +4 to hit, reach 5 ft.";
- * "Strength Saving Throw: DC 13, …" → "DC 13 Strength saving throw, …"; "Failure: …" blijft staan.
- */
-export function classic(t) {
-  return String(t)
-    .replace(/\b((?:Melee|Ranged|Melee or Ranged)\s+)?Attack Roll:\s*([+-]\d+)/gi, (_, k, b) => `${k || ""}Attack: ${b} to hit`)
-    .replace(/\b(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) Saving Throw:\s*DC (\d+)/g, "DC $2 $1 saving throw");
-}
 
 /** Lijkt op de naam van een entry ("Bite", "Fire Breath (Recharge 5–6)", "Wing Attack (Costs 2 Actions)") en niet op een zin */
 function entryName(s) {
