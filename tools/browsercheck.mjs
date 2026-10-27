@@ -54,9 +54,9 @@ function serve() {
 
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/en/initiative/player/", home: "/nl/", homeen: "/en/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/en/initiative/", wp33: "/nl/", wp37: "/nl/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/en/initiative/", wp33: "/nl/", wp37: "/nl/", wp43: "/en/initiative/" };
 // Eigen taalopzet: niet per taal herhalen (WP32)
-const ONCE = new Set(["i18n-mixed", "i18n-switch", "i18n-offline", "i18n-legacy", "homeen", "wp33"]);
+const ONCE = new Set(["i18n-mixed", "i18n-switch", "i18n-offline", "i18n-legacy", "homeen", "wp33", "wp43"]);
 // Startpagina in een taal: taalloze adressen en /nl/… worden /{taal}/…; vaste talen (ONCE) blijven zoals ze zijn
 function startFor(name, lang) {
   const p = START[name] || "/";
@@ -329,6 +329,40 @@ const SCEN = {
     if (await page.locator('#rsheet [data-rnote]').count()) throw new Error("notitieknop bij een SRD-spell");
     await tap(page, '#rsheet .shead [data-rsh="close"]');
     await page.evaluate(() => document.getElementById("wp42hex")?.remove());
+  },
+  // WP43 (TS1): PDF-import met het zelf gehoste pdf.js, eerst gewoon online, daarna offline via de service worker
+  // (eigen cache VENDOR); geen verzoek naar een andere host.
+  async wp43(page, base) {
+    const pdf = join(ROOT, "tests/fixtures/ddb-sheet.pdf");
+    const importPdf = async (p, where) => {
+      await p.locator('#dock [data-prep="pc"]').first().tap(); await p.waitForSelector("#f-pc", { state: "visible" });
+      await p.setInputFiles("#pc-pdf", pdf);
+      await p.waitForFunction(() => document.getElementById("pc-name")?.value === "Testa Vonk", null, { timeout: 15000 })
+        .catch(async () => { throw new Error(`${where}: PDF niet ingelezen (${await p.evaluate(() => document.getElementById("pc-sheetinfo")?.textContent)})`); });
+    };
+    const foreign = [];
+    page.on("request", (r) => { const u = new URL(r.url()); if (!/^(127\.0\.0\.1|localhost)$/.test(u.hostname) && u.protocol.startsWith("http")) foreign.push(u.host); });
+    await SCEN.prep(page);
+    await importPdf(page, "online");
+    if (foreign.length) throw new Error("verzoek naar een andere host: " + foreign.join(", "));
+    const ctx = await page.context().browser().newContext({ serviceWorkers: "allow", locale: "en-US", hasTouch: true, viewport: page.viewportSize() });
+    await ctx.addInitScript(() => { try { localStorage.setItem("it-tour", "pf"); } catch { /* geen opslag */ } });
+    const p = await ctx.newPage();
+    try {
+      await p.goto(base + "/en/initiative/"); await p.waitForSelector("#dock");
+      const ready = await p.evaluate(async () => {
+        await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+        await navigator.serviceWorker.ready;
+        for (let i = 0; i < 100 && !navigator.serviceWorker.controller; i++) await new Promise((r) => setTimeout(r, 100));
+        const c = await caches.open("initiative-tafel-pdfjs-3.11.174");
+        return !!navigator.serviceWorker.controller && !!(await c.match("/vendor/pdfjs/pdf.worker.js")) && !!(await c.match("/vendor/pdfjs/pdf.js"));
+      });
+      if (!ready) throw new Error("service worker of pdf.js-cache niet klaar");
+      OFFLINE = true;
+      await p.reload(); await p.waitForSelector("#dock");
+      await p.locator("#welcome-sample").tap(); await p.waitForSelector("#start:not([disabled])");
+      await importPdf(p, "offline");
+    } finally { OFFLINE = false; await ctx.close(); }
   },
   // WP23: formulieren met de statische tekst (met --i18n=debug de Engelse pagina)
   async pcform(page) { await SCEN.prep(page); await tap(page, '#dock [data-prep="pc"]'); await page.waitForSelector("#f-pc", { state: "visible" }); },

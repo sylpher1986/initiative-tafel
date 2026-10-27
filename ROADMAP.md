@@ -44,7 +44,7 @@ Opgesteld na persona-test 3 (drie DM's en negen spelers op eigen apparaten, vers
 - Voorbereiding: ~~VB4~~ · ~~VB5~~ (klaar in 1.43.0, WP11)
 - Gevecht: ~~GV10~~ (klaar in 1.37.1), ~~GV11~~ (klaar in 1.42.0)
 - Taal: **TA1** (uitgewerkt tot TA2–TA16 en WP18–WP33, zie "Taal" en `docs/i18n.md`; alle pakketten klaar, Engels live in 1.53.0)
-- Technische schuld: **TS1**, **TS3** (oppakken wanneer je die code toch aanraakt)
+- Technische schuld: ~~TS1~~, ~~TS3~~ (klaar in 2.2.1, WP43)
 - Fase 2 en 3
 - Bewust niet: zie "Persona-test 3 → Niet overgenomen"
 
@@ -70,7 +70,7 @@ De priolijst hierboven gebundeld tot pakketten die in één sessie te bouwen en 
 | ~~**WP15**~~ | Typografie: Playfair Display + Inter zelf meegeleverd (klaar) | HS4 | 1.46.0 |
 | ~~**WP16**~~ | Logo en app-icoon (klaar) | HS5 | 1.47.0 |
 | ~~**WP17**~~ | Componenten, lijn-iconen, spelersscherm in huisstijl (klaar) | HS6, HS7, HS8 | 1.48.0 |
-| Backlog | Niet ingepland | RE4, RE5, RE6, TS1, TS3, fase 2 en 3 | |
+| Backlog | Niet ingepland | RE4, RE5, RE6, fase 2 en 3 | |
 
 ### Werkpakketten meertaligheid (besloten 24-10-2026)
 Besluiten van Michiel (V1–V7): `kevs-inn.com` canoniek, alleen localStorage (geen cookie), Engelse padsegmenten, `/` opent de app, Engels live als 1.53.0 (niet 2.0.0: dat nummer is voor het redesign, besluit 26-10), Engelse tekst nagelezen door een aparte vertaalagent met D&D-kennis (zie `docs/i18n.md` §0). Plan en details per pakket (doel, scope, bestanden, acceptatie, risico's, operationele acties): `docs/i18n.md`. Volgorde = uitvoervolgorde; kritiek pad WP19 → WP21 → WP27 → WP28 → WP32 → WP33. Sinds WP33 (1.53.0) zijn Engels en Nederlands live (`LIVE = ["en", "nl"]`).
@@ -116,7 +116,7 @@ Plan: projectdoc `claude/werkpakketten-2.1.md`. Volgorde = uitvoervolgorde; WP43
 | ~~**WP40**~~ | Engelse tekst P3 (klaar) | TA19 | 2.0.3 |
 | ~~**WP41**~~ | Surprise zonder spelers, links naar de spell-uitleg, drie tekstpunten uit de WP40-vertaalcheck (klaar) | RE5, RE6a, TA20 | 2.1.0 |
 | ~~**WP42**~~ | Eigen notitie bij niet-SRD-spells, export versie 3 (klaar) | RE6b | 2.2.0 |
-| **WP43** | Technische schuld: logboek in undo, pdf.js zelf hosten | TS3, TS1 | 2.x.1 |
+| ~~**WP43**~~ | Technische schuld: logboek in undo kleiner, pdf.js zelf hosten (klaar) | TS3, TS1 | 2.2.1 |
 | Backlog | 2024-regels (eigen traject, eerst inventaris), fase 2 en 3 | RE4 | |
 
 ---
@@ -203,8 +203,10 @@ Rapport: projectdoc `claude/persona-test-2.0.md`. Geen P1; de vijf P2's zijn in 
   - **Afhankelijkheden buiten dit plan**: accounts/sync (Fase 2) alleen voor het bewaren van de voorkeur in een account; `kevs-inn.com` is in het Cloudflare-dashboard gekoppeld (V1, bevestigd 24-10-2026), niet in `wrangler.jsonc`.
 
 ## Technische schuld
-- [ ] **TS1** pdf.js zelf hosten (nu via CDN, zonder SRI)
-- [ ] **TS3** Logboek buiten de undo-snapshots houden (sinds WP27 is een logregel ± 2,5× groter door `m`/`w` naast `msg`/`why`; elke undo-stap bewaart de hele stand incl. max 600 regels, worst case ± 20 MB in IndexedDB bij 80 stappen en ± 300 KB stringify per tik). Simpele tussenstap uit de dev-review WP27: in `S.log` geen `msg`/`why` als er `m`/`w` is en die pas in `buildExport` aanvullen (± 25–30 % per regel; `stepEntries` dan op `msg ?? JSON van m`).
+- [ ] **TS5** (uit de dev-review WP43) Export-tekst hangt sinds TS3 af van de geladen catalogus: laadt die niet (na 3 s), dan krijgt `msg` de kale sleutel; en `cleanLog` gooit een bruikbare `msg` weg bij een onbekende `log.*`-sleutel uit een nieuwere app. Voorstel: `msg` houden als de sleutel onbekend is en `logMsg` daarop laten terugvallen.
+- [ ] **TS6** Browsercheck `wp42` is af en toe rood (± 1 van 12 combinaties, `locator.waitFor`-timeout; ook op 2.2.0 gezien): oorzaak zoeken (laden van beide spell-edities?).
+- [x] **TS1** pdf.js zelf hosten (nu via CDN, zonder SRI) → 2.2.1 (WP43): `vendor/pdfjs/`, eigen sw-cache
+- [x] **TS3** (tussenstap gedaan in 2.2.1, WP43: −23 % per regel; helemaal buiten de snapshots = apart besluit) Logboek buiten de undo-snapshots houden (sinds WP27 is een logregel ± 2,5× groter door `m`/`w` naast `msg`/`why`; elke undo-stap bewaart de hele stand incl. max 600 regels, worst case ± 20 MB in IndexedDB bij 80 stappen en ± 300 KB stringify per tik). Simpele tussenstap uit de dev-review WP27: in `S.log` geen `msg`/`why` als er `m`/`w` is en die pas in `buildExport` aanvullen (± 25–30 % per regel; `stepEntries` dan op `msg ?? JSON van m`).
 
 ## Fase 2: sync
 - [ ] Login en sync tussen apparaten (bijv. Supabase), local-first blijft de basis. Eerste collectie: `encounters` (heeft al `id` + `updatedAt`, nieuwste wint); tot dan wisselen via Delen/Importeren per encounter

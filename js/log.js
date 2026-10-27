@@ -104,10 +104,27 @@ export function logText(log) {
     : `${logRound(e.r)}${e.turn ? ` [${e.turn}]` : ""} ${msg}${why ? ` (${why})` : ""}${e.note ? ` | ${e.note}` : ""}`; }).join("\n").trim();
 }
 
+/** TS3: in de stand staat m (descriptor) óf msg (tekst), w óf why; weg met de tekst als de descriptor er is (in place). */
+export function slimLog(log) {
+  if (!Array.isArray(log)) return;
+  for (const e of log) if (e && typeof e === "object") { if (e.m) delete e.msg; if (Array.isArray(e.w) && e.w.length) delete e.why; }
+}
+
+/** TS3: logregel voor de export met msg en why als tekst in de actieve taal (oudere apps lezen alleen die), zelfde
+ *  sleutelvolgorde als vóór 2.2.1. Muteert de regel niet. */
+export function exportLog(log) {
+  return (log || []).map((e) => {
+    if (!e || typeof e !== "object") return e;
+    const { id, r, turn, type, msg, why, note, ...rest } = e;
+    return { id, r, turn, type, msg: logMsg(e), why: logWhy(e), note, ...rest };
+  });
+}
+
 /** Logregels van één stap: wat in newer staat en niet in older (op id; inkorten tot 600 haalt alleen oude regels weg). */
 export function stepEntries(newer, older) {
-  const m = new Map((older || []).map((e) => [e && e.id, e && e.msg]));
-  return (newer || []).filter((e) => e && (!m.has(e.id) || m.get(e.id) !== e.msg)); // relog (afronden-chips) herschrijft een regel (msg verandert mee)
+  const sig = (e) => (e && e.m ? JSON.stringify(e.m) : e && e.msg); // TS3: m óf msg
+  const m = new Map((older || []).map((e) => [e && e.id, sig(e)]));
+  return (newer || []).filter((e) => e && (!m.has(e.id) || m.get(e.id) !== sig(e))); // relog (afronden-chips) herschrijft een regel
 }
 
 const CUT = 70; // ± twee regels in een melding op 320 px

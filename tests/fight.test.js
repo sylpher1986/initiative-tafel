@@ -5,6 +5,7 @@ import { addEnc, encName, cleanEnc, tidy, startFight, endSummary, endCalc, endTe
 import { clearMonsters } from "../js/rules/turns.js";
 import { app, commit, logAs, relog, resetBaseline, undo } from "../js/state.js";
 import { parseImport } from "../js/backup.js";
+import { logMsg } from "../js/log.js";
 
 const LIB = { Goblin: { cr: "1/4" }, Hobgoblin: { cr: "1/2" }, Thing: { cr: "" }, Ogre: { cr: "2" } };
 const find = (r) => LIB[r];
@@ -93,7 +94,7 @@ test("logAs met key + relog: samenvatting in het logboek, bij te werken; undo va
   resetBaseline();
   app.S.round = 0; logAs("Gevecht afgerond: 2 rondes.", "end");
   commit();
-  assert.deepEqual(app.S.log.map((e) => [e.msg, e.key]), [["Gevecht gestopt", undefined], ["Gevecht afgerond: 2 rondes.", "end"]]);
+  assert.deepEqual(app.S.log.map((e) => [logMsg(e), e.key]), [["Gevecht gestopt", undefined], ["Gevecht afgerond: 2 rondes.", "end"]]);
   relog("end", "nieuw"); app.S.endSum = { flip: ["x"] }; commit();
   assert.equal(app.S.log.at(-1).msg, "nieuw");
   assert.equal(app.S.log.length, 2);

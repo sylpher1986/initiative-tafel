@@ -20,7 +20,7 @@ test("J: delen vertaald en samengevoegd, lege delen weg", () => {
   assert.equal(tr(J(["a", "b"], ". ")), "a. b");
 });
 
-test("logboek: m en w als descriptor naast msg en why (tekst)", () => {
+test("logboek: m en w als descriptor; msg en why pas in de export (TS3)", () => {
   app.S = { list: [pc(), mon()], round: 1, active: "p", log: [] };
   resetBaseline();
   const f = applyDamage(app.S.list[1], 9, 1, true);
@@ -29,16 +29,16 @@ test("logboek: m en w als descriptor naast msg en why (tekst)", () => {
   commit();
   const e = app.S.log.at(-1);
   assert.ok(e.m && /^log\./.test(e.m.k), "regel heeft een descriptor");
-  assert.equal(typeof e.msg, "string");
-  assert.equal(e.msg, logMsg(e));
+  assert.equal(e.msg, undefined, "geen tekst naast de descriptor (TS3)");
+  assert.match(logMsg(e), /Goblin/);
   assert.ok(Array.isArray(e.w) && e.w.some((x) => x && x.k === "log.w.edited"));
-  assert.match(e.why, /bewerkt/);
-  assert.equal(logWhy(e), e.why);
+  assert.equal(e.why, undefined);
+  assert.match(logWhy(e), /bewerkt/);
   // samenvatting via logAs met een descriptor
   app.S.list.push(mon({ id: "g2", name: "Goblin 2" }));
   logAs(M("log.encLoaded", { name: "Grot", n: 1, lair: "" }));
   commit();
-  assert.equal(app.S.log.at(-1).msg, 'Encounter "Grot" ingeladen: 1 monster');
+  assert.equal(logMsg(app.S.log.at(-1)), 'Encounter "Grot" ingeladen: 1 monster');
 });
 
 test("cleanDesc: alleen bekende voorvoegsels, begrensde diepte en lengte", () => {
@@ -72,8 +72,9 @@ test("import: oude regels (zonder m) blijven, rare m valt weg maar msg blijft", 
     { id: "3", r: 1, msg: "Ayla: Prone is voorbij.", why: "", m: M("rules.over", { name: "Ayla", what: "Prone" }) },
   ];
   const { S } = parseImport({ format: FORMAT, version: 2, state: { list: [], round: 0, log } });
-  assert.deepEqual(S.log.map((e) => e.msg), log.map((e) => e.msg));
+  assert.deepEqual(S.log.map(logMsg), log.map((e) => e.msg));
   assert.equal(S.log[0].m, undefined);
+  assert.equal(S.log[2].msg, undefined, "geldige m: geen tekst ernaast in de stand (TS3)");
   assert.equal(S.log[1].m, undefined); assert.equal(S.log[1].w, undefined);
   assert.equal(logMsg(S.log[1]), "Tekst");
   assert.deepEqual(S.log[2].m, log[2].m);

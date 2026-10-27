@@ -1,6 +1,6 @@
 // Centrale toestand, vastleggen van wijzigingen (logboek + undo), opslag en party-sync.
 import * as store from "./storage.js";
-import { diffLog } from "./log.js";
+import { diffLog, slimLog } from "./log.js";
 import { uid } from "./rules/dice.js";
 import { setLibrary } from "./data/monsters.js";
 import { endConcEffects, endRage } from "./rules/effects.js";
@@ -80,6 +80,7 @@ export async function load() {
     store.get("state", null), store.get("party", []), store.get("lairs", {}), store.get("custom", []), store.get("imported", []), store.get("encounters", []), store.get("spellNotes", {}),
     store.range(HLO, HHI), store.range(BLO, BHI),
   ]);
+  slimLog(app.S && app.S.log); // TS3: regels van vóór 2.2.1 hebben msg/why naast m/w
   app.encounters = cleanEncounters(encs);
   app.spellNotes = cleanSpellNotes(notes);
   setLibrary({ custom: app.custom, imported: app.imported });
@@ -191,8 +192,9 @@ export function relog(key, msg) {
   for (let i = L.length - 1; i >= 0; i--) if (L[i].key === key) { setMsg(L[i], msg); return; } // geen findLast: oudere iPads
 }
 const desc = (x) => isMsg(x) || isJoin(x);
-/** Tekst en descriptor van een logregel: msg altijd tekst (actieve taal; oudere apps, export), m alleen bij een descriptor (WP27) */
-function setMsg(e, msg) { e.msg = tr(msg); if (desc(msg)) e.m = msg; else delete e.m; }
+/** Tekst of descriptor van een logregel (TS3): m bij een descriptor (WP27), anders msg als tekst. Nooit beide: de tekst
+ *  komt pas in de export erbij (exportLog in js/log.js), zodat elke undo-stap kleiner blijft. */
+function setMsg(e, msg) { if (desc(msg)) { e.m = msg; delete e.msg; } else { e.msg = tr(msg); delete e.m; } }
 
 export function undo() {
   if (!hist.length) return false;
@@ -245,9 +247,10 @@ function writeLog(prev) {
   const act = S.list.find((c) => c.id === S.active);
   for (const e of entries) {
     const ws = e.type ? [] : pendingWhy.filter((w) => !w.id || (!e.sum && w.id === e.who)).map((w) => w.t).filter((x) => x != null && x !== "");
-    const row = { id: uid(), r: S.round || 0, turn: e.type ? "" : act ? act.name : "", type: e.type || "", msg: "", why: ws.map(tr).join("; "), note: "", ...(e.key ? { key: e.key } : {}) };
+    const row = { id: uid(), r: S.round || 0, turn: e.type ? "" : act ? act.name : "", type: e.type || "", note: "", ...(e.key ? { key: e.key } : {}) };
     setMsg(row, e.m !== undefined ? e.m : e.msg);
-    if (ws.some(desc)) row.w = ws; // oorzaken als descriptoren (WP27); why blijft de tekst
+    if (ws.some(desc)) row.w = ws; // oorzaken als descriptoren (WP27); de tekst (why) pas in de export (TS3)
+    else if (ws.length) row.why = ws.map(tr).join("; ");
     S.log.push(row);
   }
   if (S.log.length > 600) S.log.splice(0, S.log.length - 600);

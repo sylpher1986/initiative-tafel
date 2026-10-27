@@ -12,6 +12,7 @@ import { cleanDr } from "./rules/aoe.js";
 import { cleanRs, cleanTk } from "./rules/effects.js";
 import { cleanPas } from "./rules/passives.js";
 import { cleanSpellNotes } from "./data/spellnotes.js";
+import { exportLog } from "./log.js";
 
 export const FORMAT = "initiative-tafel";
 export const VERSION = 3; // 2 (1.28.0): encounters erbij; 3 (2.2.0, WP42): spellNotes erbij
@@ -25,7 +26,7 @@ export function exportName(t) {
 export function buildExport(app) {
   return {
     format: FORMAT, version: VERSION, exported: new Date().toISOString(),
-    state: app.S, party: app.party, lairs: app.lairs, custom: app.custom, imported: app.imported, encounters: app.encounters || [], spellNotes: app.spellNotes || {},
+    state: app.S && Array.isArray(app.S.log) ? { ...app.S, log: exportLog(app.S.log) } : app.S, party: app.party, lairs: app.lairs, custom: app.custom, imported: app.imported, encounters: app.encounters || [], spellNotes: app.spellNotes || {},
   };
 }
 
@@ -57,9 +58,9 @@ export function cleanDesc(x, depth = 0) {
 function cleanLog(e) {
   const out = { id: str(e.id, 40), r: num(e.r), turn: str(e.turn, 120), type: ["round", "turn"].includes(e.type) ? e.type : "", msg: str(e.msg, 1000), why: str(e.why, 1000), note: str(e.note, 1000) };
   const m = e.m && typeof e.m === "object" ? cleanDesc(e.m) : null;
-  if (m) out.m = m;
+  if (m) { out.m = m; delete out.msg; } // TS3: in de stand m óf msg; de export vult msg weer aan
   const w = Array.isArray(e.w) ? cleanDesc(e.w.slice(0, 12)) : null;
-  if (w) out.w = w;
+  if (w && w.length) { out.w = w; delete out.why; }
   if (typeof e.key === "string" && /^\w{1,20}$/.test(e.key)) out.key = e.key;
   return out;
 }

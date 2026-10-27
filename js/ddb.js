@@ -58,22 +58,23 @@ export function parseDdbFields(annots){
 }
 
 let pdfjsReady = null;
-const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+// TS1 (2.2.1): pdf.js zelf gehost, ongewijzigd uit de officiële release (vendor/pdfjs/README.md); offline via sw.js (VENDOR)
+const PDFJS = "/vendor/pdfjs/";
 
 function loadScript(src) {
   return new Promise((ok, err) => {
     const s = document.createElement("script");
-    s.src = src; s.crossOrigin = "anonymous";
+    s.src = src;
     s.onload = ok; s.onerror = () => err(new Error(src));
     document.head.appendChild(s);
   });
 }
 function loadPdfJs() {
   if (!pdfjsReady) {
-    // Worker-script eerst: pdf.js draait dan op de hoofdthread, wat cross-origin worker-problemen voorkomt
-    pdfjsReady = loadScript(PDFJS + "pdf.worker.min.js")
-      .then(() => loadScript(PDFJS + "pdf.min.js"))
-      .then(() => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js"; return window.pdfjsLib; })
+    // Worker-script eerst: pdf.js draait dan op de hoofdthread (zoals vóór TS1; een echte Worker kan nu ook, maar is buiten scope)
+    pdfjsReady = loadScript(PDFJS + "pdf.worker.js")
+      .then(() => loadScript(PDFJS + "pdf.js"))
+      .then(() => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.js"; return window.pdfjsLib; })
       .catch((e) => { pdfjsReady = null; throw e; });
   }
   return pdfjsReady;
