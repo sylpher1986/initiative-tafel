@@ -39,19 +39,20 @@ Volgorde = voorstel. K1–K3 merkt de gebruiker, K4–K7 zijn technisch.
 
 ## G1 D&D 2024-regels: werkpakketten (gepland)
 
-Plan met inventaris, besluiten (B1–B10) en per pakket scope en acceptatiecriteria: [`docs/g1-regels-2024.md`](docs/g1-regels-2024.md). Kern: één regelset per tafel (`S.rules`, alleen buiten een gevecht te wijzigen), monster-editie als data (`ed: "2024"`, ontbreekt = huidig gedrag), SRD 5.2-monsters via Open5e, backup v4 en encounterbestand v2. Tot WP53 niets zichtbaar.
+Plan met inventaris, besluiten (B1–B10) en per pakket scope en acceptatiecriteria: [`docs/g1-regels-2024.md`](docs/g1-regels-2024.md). Kern: één regelset per tafel (`S.rules`, alleen buiten een gevecht te wijzigen), monster-editie als data (`ed: "2024"`, ontbreekt = huidig gedrag), SRD 5.2-monsters via Open5e, backup v4 / encounterbestand v2 alleen bij 2024-inhoud. Tot WP54 niets zichtbaar.
 
 | Code | Wat | Na | Omvang |
 |---|---|---|---|
-| **WP46** | Fundament: `S.rules`, `ed` op deelnemer en encounterregel, backup v4 / encounter v2, `findMon(ref, ed)` | — | M |
+| **WP46** | Fundament: `S.rules`, `ed` op deelnemer en encounterregel, backup v4 / encounter v2 bij 2024-inhoud, `findMon(ref, ed)` overal | — | M |
 | **WP47** | SRD 5.2-monsterdata: `tools/monsters_srd2024.py` → `data/monsters-2024.json` (331), sw-precache | — (naast WP46) | M |
 | **WP48** | Parsers editiebestendig (aanvallen, saves, riders, legendary, spellcasting) + monster-initiative uit statblock | WP46, WP47 | L |
 | **WP49** | Monsterkeuze en dubbele namen, editietag, statblock, encounters inladen (UX-agent) | WP48 | M |
-| **WP50** | Mechaniek 2024: Exhaustion, conc-DC max 30, surprise, Grappled; omrekenen bij wisselen | WP46 | L |
-| **WP51** | Condities-uitleg 2024, `ed` in de spelerssnapshot | WP46 | M |
-| **WP52** | Moeilijkheid 2024 (XP-budget SRD 5.2.1) en XP-label | WP46 | M |
-| **WP53** | Instellingen → Regels 2014 \| 2024 zichtbaar, Spells als subinstelling bij 2014 (UX-agent) | WP46–WP52 | M |
-| **WP54** | Integratie, regressie, documentatie, G1 afsluiten | WP53 | S |
+| **WP50** | Exhaustion 2024 (geen HP-halvering, −2 × niveau op d20-tests), idempotente `reExh` | WP46 | M |
+| **WP51** | Conc-DC max 30 (`concDc`), surprise 2024, Grappled-hint | WP46, WP48 | M |
+| **WP52** | Condities-uitleg 2024, `ed` in de spelerssnapshot | WP46 | M |
+| **WP53** | Moeilijkheid 2024 (XP-budget SRD 5.2.1) en XP-label | WP46 | M |
+| **WP54** | Instellingen → Regels 2014 \| 2024 zichtbaar, Spells als subinstelling bij 2014 (UX-agent) | WP46–WP53 | M |
+| **WP55** | Integratie, regressie, documentatie, G1 afsluiten | WP54 | S |
 
 Open besluiten (Michiel), geen ervan blokkeert WP46: V1 standaard regelset nieuwe installatie (advies 2014), V2 release 2.x of 3.0.0, V3 Spells 2024 onder regels 2014 behouden (advies ja), V4 vorm om andere-editie-monsters te vinden (UX in WP49), V5 Rage 2024 / "4 in Lair" op signaal.
 
