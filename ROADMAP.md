@@ -117,7 +117,7 @@ Plan: projectdoc `claude/werkpakketten-2.1.md`. Volgorde = uitvoervolgorde; WP45
 | ~~**WP41**~~ | Surprise zonder spelers, links naar de spell-uitleg, drie tekstpunten uit de WP40-vertaalcheck (klaar) | RE5, RE6a, TA20 | 2.1.0 |
 | ~~**WP42**~~ | Eigen notitie bij niet-SRD-spells, export versie 3 (klaar) | RE6b | 2.2.0 |
 | ~~**WP43**~~ | Technische schuld: logboek in undo kleiner, pdf.js zelf hosten (klaar) | TS3, TS1 | 2.2.1 |
-| **WP44** | Engels zonder taalcode (`/`), andere talen met voorvoegsel (`/nl/`), `/en/*` → 301 | WB1 | 2.3.0 |
+| **WP44** | Engels zonder taalcode (`/`), andere talen met voorvoegsel (`/nl/`), `/en/*` → 301; homepage-thema volgt de app-keuze, anders het systeem | WB1, WB2 | 2.3.0 |
 | **WP45** | Technische schuld: exporttekst zonder geladen catalogus, browsercheck `wp42` soms rood | TS5, TS6 | 2.3.1 |
 | Backlog | 2024-regels (eigen traject, eerst inventaris), fase 2 en 3 | RE4 | |
 
