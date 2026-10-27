@@ -54,7 +54,7 @@ Plan met inventaris, besluiten (B1–B10) en per pakket scope en acceptatiecrite
 | **WP54** | Instellingen → Regels 2014 \| 2024 zichtbaar, Spells als subinstelling bij 2014 (UX-agent) | WP46–WP53 | M |
 | **WP55** | Integratie, regressie, documentatie, G1 afsluiten | WP54 | S |
 
-Open besluiten (Michiel), geen ervan blokkeert WP46: V1 standaard regelset nieuwe installatie (advies 2014), V2 release 2.x of 3.0.0, V3 Spells 2024 onder regels 2014 behouden (advies ja), V4 vorm om andere-editie-monsters te vinden (UX in WP49), V5 Rage 2024 / "4 in Lair" op signaal.
+Besloten (27-10): standaard regelset 2014, release stapsgewijs in 2.x, Spells 2024 onder regels 2014 blijft. Nog open: V4 vorm om andere-editie-monsters te vinden (UX in WP49), V5 Rage 2024 / "4 in Lair" op signaal.
 
 ## Grote projecten (lange termijn)
 

@@ -92,9 +92,9 @@ Legenda: **[B]** = bevestigd in de code, **[A]** = aanname, **[?]** = onbekend, 
 ### Open besluiten voor Michiel
 | # | Vraag | Advies | Blokkeert |
 |---|---|---|---|
-| V1 | Standaard regelset voor een nieuwe installatie | **2014** bij oplevering (alle teksten en de markt van de app); later apart omzetten naar 2024 | WP54 |
-| V2 | Release: stapsgewijs in 2.x of één 3.0.0 | WP46–WP53 als onzichtbare 2.x-versies (regelset staat vast op 2014); keuze zichtbaar in WP54 als **2.x.0** (of 3.0.0 als Michiel een mijlpaal wil) | WP54 |
-| V3 | Bestaande "Spells 2024 onder regels 2014" behouden (B2) | ja | WP54 |
+| V1 | Standaard regelset voor een nieuwe installatie | **Besloten 27-10: 2014** | — |
+| V2 | Release: stapsgewijs in 2.x of één 3.0.0 | **Besloten 27-10: stapsgewijs in 2.x** (WP46–WP53 onzichtbaar, keuze zichtbaar in WP54 als 2.x.0) | — |
+| V3 | Bestaande "Spells 2024 onder regels 2014" behouden (B2) | **Besloten 27-10: ja** | — |
 | V4 | Andere-editie-monsters in de zoeklijst: zoekwoord `2014`/`2024` (zoals `cr 5`) of een andere vorm | UX-agent kiest in WP49 binnen "geen filterchips" | WP49 |
 | V5 | Rage 2024 en "4 in Lair" later als K-punt of nooit | op signaal | nee |
 
@@ -251,7 +251,7 @@ Omvang: S ≈ één korte sessie (K-formaat), M ≈ één volle sessie, L ≈ gr
 3. **Scope**: sectie **Regels** met seg "2014 | 2024" (status in de kop), uitgeschakeld tijdens een gevecht met uitleg; Spells als subinstelling alleen bij 2014 (B2); wisselen = één undo-stap + logregel, alleen de tafel omgerekend via `reExh` (B1; party volgt bij aan tafel zetten); standaard volgens V1; welkomstkaart/rondleiding/pagina-omschrijvingen editie-neutraal; `S.rules` naar het spelersscherm (`ed`); voorbeeld (`loadSample`, `actions.js` r. 606, voegt "Goblin" toe, die in SRD 5.2 niet bestaat) bij 2024 met Goblin Warrior en `ed: "2024"`, bij 2014 ongewijzigd.
 4. **Buiten scope**: nieuwe mechaniek.
 5. **Aanpak**: **senior UX-agent vóór het bouwen** (plek: Instellingen-sectie vs welkomstkaart vs kop; aantal tikken; status zichtbaar in Voorbereiden?). Bestaande `.seg`-patroon, `<details class="setsec">`, geen melding bij opstarten.
-6. **Afhankelijk van**: WP46–WP53; V1–V3 beantwoord.
+6. **Afhankelijk van**: WP46–WP53.
 7. **Acceptatie**: bestaande gebruiker ziet na update "Regels: 2014" en exact het oude gedrag (incl. Spells 2024 als hij dat had); omzetten naar 2024 verandert zoeken, statblocks, exhaustion, surprise, conc-DC, moeilijkheid, condities-uitleg en spells; tijdens een gevecht is de keuze niet te wijzigen; Ongedaan zet hem terug; export/import neemt hem mee; spelersscherm volgt.
 8. **Tests**: `spellrules.test.js`, `tour.test.js`, `pages.test.js`, i18n; browsercheck-scenario `g1-rules` op 320/360/390 licht/donker, `--lang=nl,en`, `--i18n=xx`.
 9. **Klaar als**: alles groen, UX- en developer-review gemeld, vertaalagent, versie volgens V2, CLAUDE.md "Basis" en "Gevecht" bijgewerkt, push.
