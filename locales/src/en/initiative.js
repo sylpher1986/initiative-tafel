@@ -54,7 +54,7 @@ export default {
   "init.set.reactOn": "Button",
   "init.set.reactOff": "Players", // spelers houden hun reaction zelf bij
   "init.set.reactHint": "Players: they track their own reaction, so player cards have no Reaction button. Monsters keep the button. Surprised and Shield still work.",
-  "init.set.spellsHint": "Rules and descriptions for spells: the Barkskin, Haste and Sleep presets (Sleep 2024 only), which spells need concentration, and which text the spell panel shows.", // eerste zin; daarna volgt spellsOnly vet
+  "init.set.spellsHint": "Rules and descriptions for spells: the Barkskin, Haste and Sleep presets (Sleep: 2024 version only), which spells need concentration, and which text the spell panel shows.", // eerste zin; daarna volgt spellsOnly vet
   "init.set.more": "More", // uitklapper onder een lange hint in Instellingen
   "init.set.spellsOnly": "Applies to spells only:", // vet
   "init.set.spellsRest": "the rest of the app (conditions, crits, concentration DC) stays 2014.",
@@ -153,6 +153,7 @@ export default {
   "init.dock.undo": "Undo", // aria-label van ↶
   "init.dock.undoTip": "Undo ({key})", // tooltip, key = ⌘Z of Ctrl+Z
   "init.dock.start": "Start combat",
+  "init.dock.surMon": "Monsters surprised", // RE5: toggle next to Start when there are no players (no initiative panel)
   "init.dock.startWhy": "Add someone first",
   "init.dock.back": "Back to combat · round {n}",
   "init.empty.none": "There's no one left in the list.",
@@ -425,6 +426,7 @@ export default {
   "init.eff.note": "Note",
   "init.eff.notePh": "e.g. +1d4 on saves",
   "init.eff.concBy": "Caster (concentration)",
+  "init.eff.spellInfo": "Spell info:", // RE6a: line under the Effect presets, followed by tappable spell names
   "init.eff.add": "Add",
   "init.eff.acFirst": "Enter AC first (⋯)",
   "init.eff.custom": "+ Custom effect",

@@ -460,9 +460,11 @@ const global = {
     // spelers eerst hun initiative (paneel); vanuit het paneel komt start terug met initSkip
     if (!ui.initSkip && !app.S.round && initPcs(app.S.list).length) { ui.startAsk = false; openInit(); return false; }
     ui.initSkip = false; ui.startAsk = false;
+    const sur = ui.surMon && !initPcs(app.S.list).length; ui.surMon = false; // RE5: met spelers beslist het paneel (dat zette setSurprise al)
     const drop = ui.oldGo === "drop"; ui.oldGo = null;
     const gone = drop ? dropOld(app.S) : 0; // zelfde undo-stap als de start
     if (gone) because(M("log.w.oldGone", { n: gone }));
+    if (sur) apply(setSurprise(app.S.list, "mon")); // vóór startCombat: die zet de reaction van verrasten op gebruikt
     startFight(app.S, Date.now()); // GV2: duur en wie neer ging; oude samenvatting weg
     // GV5: onaangeroerde monsterworpen opnieuw (keuze in het paneel; zonder spelers de onthouden keuze), zelfde undo-stap;
     // !round is een vangnet (#start bestaat alleen vóór het gevecht)
@@ -472,6 +474,8 @@ const global = {
   },
   /** GV7: antwoorden op "Nog N monsters uit het vorige gevecht" boven Start */
   "old-start"() { ui.oldGo = "drop"; return global.start(); },
+  /** RE5: Verrast zonder spelers (schakelaar naast Start) */
+  "sur-mon"() { ui.surMon = !ui.surMon; render(); $("#sur-mon")?.focus(); return false; },
   "old-go"() { ui.oldGo = "keep"; return global.start(); },
   "old-no"() { ui.startAsk = false; ui.oldGo = null; render(); $("#start")?.focus(); return false; },
   /** Alleen oude monsters in de lijst: wissen en in Voorbereiden blijven */
@@ -1794,7 +1798,7 @@ export function bindAtk() {
 function openInit() {
   const L = initPcs(app.S.list);
   ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.atk = null; ui.la = null; ui.sv = false;
-  ui.initDraft = { v: Object.fromEntries(L.map((c) => [c.id, c.init == null ? "" : String(c.init)])), act: L[0].id, fresh: true, rolls: {} };
+  ui.initDraft = { v: Object.fromEntries(L.map((c) => [c.id, c.init == null ? "" : String(c.init)])), act: L[0].id, fresh: true, rolls: {}, sur: ui.surMon ? "mon" : undefined }; // RE5: schakelaar van vóór de eerste speler gaat mee
   render();
   $("#isheet .isheet")?.focus();
 }

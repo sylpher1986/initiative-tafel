@@ -30,7 +30,7 @@ export default {
   "player.ds.none": "Death saves: nog geen worp",
   "player.ds.some": "Death saves: {s} gelukt · {f} mislukt",
   "player.log.down": "neer", // "Goblin 1 neer"
-  "player.log.gone": "{what} weg", // "Aria: Prone weg"
+  "player.log.gone": "{what} voorbij", // "Aria: Prone voorbij" (zoals log.ends)
   "player.row.me": "jij", // badge bij je eigen personage
   "player.row.next": "volgende", // badge bij wie daarna komt
   "player.tagInfo": "{tag}: uitleg", // aria-label van een tikbare conditie

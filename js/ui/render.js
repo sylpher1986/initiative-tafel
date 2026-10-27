@@ -49,6 +49,7 @@ export const ui = {
   exhOpen: false,      // RE11: rij met het Exhaustion-niveau in het Conditie-paneel
   rage: null,          // RE16: bevestigstap { id, bear, frz } in het Effect-paneel
   logOpen: false, editLog: null, partyInit: {},
+  surMon: false,       // RE5: "Monsters verrast" in de dock (geen spelers aan tafel); geldt bij de volgende Start, niet in undo/opslag
   startAsk: false,     // GV7: vraag "Nog N monsters uit het vorige gevecht" boven Start
   oldGo: null,         // GV7: antwoord daarop tot het gevecht echt start: "drop" (oude wissen) | "keep" (toch starten)
   endPick: {},         // GV7: condities in de samenvatting die de DM aan/uit zette ({ "id|cond": bool })
@@ -462,9 +463,16 @@ function effPanel(c) {
       const off = p.st === "ac" && p.op === "+" && !c.ac;
       return `<button class="btn tap" data-a="effp" data-i="${i}" ${off ? `disabled title="${esc(t("init.eff.acFirst"))}"` : ""}><span>${esc(p.n)}${tag ? ` <span class="tag">${esc(tag)}</span>` : ""}</span><small>${esc(p.dex ? "AC 13 + Dex" : p.st ? effText(p) : p.sh || effText(p))}${p.conc ? " · conc" : ""}</small></button>`;
     }).join("")}<button class="btn tap" data-a="effcustom" aria-pressed="${ui.effCustom}">${esc(t("init.eff.custom"))}</button></div>
+    ${effLinks(c, act)}
     ${!c.ac ? `<p class="hint">${esc(t("init.eff.noAc"))}</p>` : ""}
     <p class="hint">${act ? tb("init.eff.hintTurn", {}, act.name) : esc(t("init.eff.hintPick"))}</p>
     ${custom}</div>`;
+}
+
+/** RE6a: spell-uitleg van de presets in een eigen regel onder het grid (een tik op de tegel past het effect direct toe); alleen spells (lv), geen cover of Rage */
+function effLinks(c, act) {
+  const L = presetOrder(c).map((i) => PRESETS_14[i]).filter((p) => p.lv);
+  return L.length ? `<p class="hint efflinks"><span>${esc(t("init.eff.spellInfo"))}</span>${L.map((p) => spLink(p.n, act)).join("")}</p>` : "";
 }
 
 /** RE16: Rage alleen bij spelers; bij een barbarian (klasse of Rage-teller) als eerste. Indexen blijven die van PRESETS. */
@@ -716,7 +724,10 @@ function paintDock() {
   const pb = (k, l, al) => `<button type="button" data-prep="${k}" aria-pressed="${ui.prep === k || (k === "mon" && MONTABS.includes(ui.prep))}"${al ? ` aria-label="${al}" title="${al}"` : ""}>${l}</button>`;
   const prepRow = mode() === "prep" ? `<div class="prow">${pb("mon", `<span class="pp">+&nbsp;</span>Monster`, "")}${pb("pc", `<span class="pp">+&nbsp;</span>${esc(t("init.dock.pc"))}`, "")}${pb("party", esc(t("init.prep.tParty")), "")}${pb("data", GEAR, esc(t("init.dock.settings")))}</div>` : "";
   if (!S.round) {
-    $("#dock").innerHTML = `${prepRow}${svBar(S)}${oldAsk(S)}<div class="row one">${undoBtn}<button class="nx" id="start" ${L.length ? "" : `disabled aria-describedby="start-why"`}>${esc(t("init.dock.start"))}</button></div>
+    // RE5: zonder spelers opent Start geen initiative-paneel; Verrast dan als schakelaar naast Start (Start blijft één tik)
+    const sur = !initPcs(S.list).length && S.list.some((c) => c.kind === "monster" && !isOut(c));
+    const surBtn = sur ? `<button type="button" class="surtog" id="sur-mon" aria-pressed="${ui.surMon}">${ui.surMon ? ico("check") : ""}<span>${esc(t("init.dock.surMon"))}</span></button>` : "";
+    $("#dock").innerHTML = `${prepRow}${svBar(S)}${oldAsk(S)}<div class="row one${sur ? " sur" : ""}">${undoBtn}${surBtn}<button class="nx" id="start" ${L.length ? "" : `disabled aria-describedby="start-why"`}>${esc(t("init.dock.start"))}</button></div>
       ${L.length ? "" : `<p class="why" id="start-why">${esc(t("init.dock.startWhy"))}</p>`}`;
     return;
   }
@@ -1111,7 +1122,7 @@ function dmgCastHtml(a) {
   const meta = [sp.lv ? ORD[dmgLevel(a, c, sp)] : "cantrip", `${sp.ab} ${sp.half ? "½" : "0"}`, sp.type].join(" · ");
   const cant = !sp.lv && sp.cant ? `<p class="hint">${esc(lvl ? t("init.aoe.cantrip", { lvl, dice: dmgDice(a, c, sp) }) : t("init.aoe.cantrip0", { dice: sp.dice }))}</p>` : "";
   const lose = c && sp.conc && c.cond.includes("Concentrating") && c.concSpell && c.concSpell !== sp.n ? c.concSpell : ""; // zoals in de tab Spell
-  return `${casterSel}<div class="aspell"><div class="dsel"><span><b>${esc(sp.n)}</b> · ${esc(meta)}${sp.conc ? " · conc" : ""}</span><button type="button" class="link" data-ao="dspx" aria-label="${esc(t("init.aoe.otherSpell"))}">${ico("x")}</button></div>${cant}
+  return `${casterSel}<div class="aspell"><div class="dsel"><span><b>${spLink(sp.n, c)}</b> · ${esc(meta)}${sp.conc ? " · conc" : ""}</span><button type="button" class="link" data-ao="dspx" aria-label="${esc(t("init.aoe.otherSpell"))}">${ico("x")}</button></div>${cant}
     ${lose ? `<p class="hint"><b class="bad">${esc(t("init.aoe.lose", { name: c.name, spell: lose }))}</b></p>` : ""}
     ${c && sp.lv ? slotSeg(c, sp.lv, sp.n, dmgSlot(a, c, sp), "slot") : ""}</div>`;
 }
@@ -1164,6 +1175,9 @@ export function paintAoe() {
   const slotT = slotName(c, k) ? ` · ${slotName(c, k)}` : "";
   go.textContent = !n ? t("init.aoe.fill") : !sel.length ? t("init.aoe.pickT") : t("init.aoe.go", { dmg: `${n}${a.type ? " " + a.type : ""}`, n: sel.length }) + slotT;
 }
+
+/** RE6a: tikbare spellnaam buiten een preset-tegel (de tegel houdt één actie); cid alleen voor spelers (sheet-editie en niet-SRD-terugval) */
+const spLink = (n, caster) => spellLink(n, n, caster && caster.kind === "pc" ? caster.id : "");
 
 /* ---------- Spell op doelen (tab in het AoE-paneel): Bless, Hold Person e.d. op meerdere doelen ---------- */
 /** Tabs Schade | Spell; niet bij een save-actie van een monster (die is altijd schade) */
@@ -1239,7 +1253,7 @@ function paintSpell(el, a) {
       ${sp && sp.ab ? `<div class="asave"><span class="qlbl">Save</span><b>${esc(sp.ab)}</b>
         <input id="s-dc" type="number" inputmode="numeric" placeholder="DC" aria-label="DC" min="1" max="40" value="${esc(a.sdc || "")}">
         <button type="button" class="btn small" data-ao="sroll">${esc(t("init.aoe.rollMons"))}</button></div>` : ""}
-      <p class="hint" id="s-info" aria-live="polite"></p>
+      <div class="sname" id="s-name"></div><p class="hint" id="s-info" aria-live="polite"></p>
       <div class="asel"><span class="qlbl" id="a-cnt"></span><span><button type="button" class="link" data-ao="sall" data-v="monster">${esc(t("init.aoe.selMons"))}</button><button type="button" class="link" data-ao="sall" data-v="pc">${esc(t("init.aoe.selPcs"))}</button><button type="button" class="link" data-ao="sall" data-v="">${esc(t("init.aoe.selNone"))}</button></span></div>
       <div class="alist" id="a-list"></div>
       <div class="afoot"><span class="hint" id="a-sum" aria-live="polite"></span><button type="button" class="btn primary qgo ago" data-ao="sgo"></button></div>
@@ -1250,6 +1264,7 @@ function paintSpell(el, a) {
   const go = el.querySelector(".ago");
   if (!sp) {
     const gone = typeof a.sp === "number" && SPELLS[a.sp]; // preset bestaat niet voor de editie van deze caster (Sleep 2014)
+    $("#s-name").innerHTML = "";
     $("#s-info").textContent = gone ? t(gone.n === "Sleep" ? "init.sp.noPresetHp" : "init.sp.noPreset", { spell: `${gone.n} ${presetEd(caster, gone.n)}` }) : t("init.sp.pickDot");
     $("#a-list").innerHTML = ""; $("#a-cnt").textContent = ""; $("#a-sum").textContent = "";
     go.disabled = true; go.textContent = t("init.sp.pick");
@@ -1260,6 +1275,9 @@ function paintSpell(el, a) {
   const what = sp.eff ? effText(presetsFor(presetEd(caster, sp.n)).find((p) => p.n === sp.eff)) || "" : sp.conds.join(" + ");
   const bits = [what, sp.dur === "inf" && sp.conc ? t("init.sp.whileConc") : durName(sp.eff ? "r10" : sp.dur), sp.conc ? "conc" : "", sp.rep ? t("init.sp.rep", { ab: sp.ab }) : "", sp.nk ? t(sp.nk) : ""].filter(Boolean);
   const lose = caster && sp.conc && caster.cond.includes("Concentrating") && caster.concSpell && caster.concSpell !== sp.n ? caster.concSpell : "";
+  // RE6a: naam buiten de live-regio en alleen opnieuw als hij verandert (focus blijft op de link na het sluiten van #rsheet)
+  const nm = sp.custom ? "" : spLink(sp.n, caster), ne = $("#s-name");
+  if (ne.innerHTML !== nm) ne.innerHTML = nm;
   $("#s-info").innerHTML = `${esc(bits.join(" · "))}${lose ? `<br><b class="bad">${esc(t("init.aoe.lose", { name: caster.name, spell: lose }))}</b>` : ""}${a.redc ? `<br>${esc(t("init.sp.redc", { dc: a.redc }))}` : ""}`;
   $("#a-list").innerHTML = rows.map((x) => spellRow(a, sp, caster, x.c, x.p)).join("") || `<p class="hint">${esc(t("init.sp.nobody"))}</p>`;
   // RE8: maximum aantal doelen (Hold Person 1, Bless/Bane 3, +1 per hoger slot); niet blokkeren.

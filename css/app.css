@@ -498,6 +498,11 @@ ol.order{gap:6px}
 .dock .prow button[aria-pressed="true"]{border-color:var(--sel);color:var(--fg);background:var(--act-soft)}
 @media (max-width:340px){.dock .prow .pp{display:none}}
 .dock .row.one{grid-template-columns:52px minmax(0,1fr)}
+/* RE5: Verrast-schakelaar tussen Ongedaan en Start (geen spelers): smal, mag over twee regels; aan = vinkje + zacht vlak (niet alleen kleur) */
+.dock .row.one.sur{grid-template-columns:52px auto minmax(0,1fr)}
+.dock .surtog{display:flex;align-items:center;gap:4px;max-width:118px;padding:0 10px;font-size:.88rem;font-weight:600;line-height:1.15;text-align:left}
+.dock .surtog[aria-pressed="true"]{border-color:var(--sel);background:var(--act-soft)}
+.dock .surtog .li{flex:none}
 .dock button{min-height:50px;border-radius:var(--r);border:1px solid var(--btn-line);background:var(--btn);font-weight:700;font-size:1.05rem;color:var(--fg)}
 .dock button:disabled{opacity:.4}
 .dock .nx{background:var(--act);border-color:var(--act);color:var(--act-fg)}
@@ -875,6 +880,13 @@ ol.pvlist{list-style:none;margin:0;padding:0;display:grid;gap:.4em}
 .spl{font:inherit;font-style:italic;color:inherit;background:none;border:0;border-bottom:1px dotted var(--muted);border-radius:0;
   padding:10px 0 4px;margin:-10px 0 -4px;line-height:inherit;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent}
 .spl:hover,.spl:focus-visible{color:var(--act-ink);border-bottom-color:var(--act-ink)}
+/* RE6a: namen onder de Effect-presets en in de keuzeregel van het AoE-paneel: tikvlak 44 px hoog, regel mag omlopen */
+.efflinks{display:flex;flex-wrap:wrap;align-items:center;column-gap:14px;line-height:1.3} /* rijen van 44 px; ruimte i.p.v. scheidingstekens */
+.efflinks .spl,.dsel .spl{display:inline-flex;justify-content:center}
+.sname .spl{display:flex;width:max-content;justify-content:flex-start} /* naam op een eigen regel boven de uitleg, buiten de live-regio #s-info */
+.efflinks .spl,.dsel .spl,.sname .spl{align-items:center;min-height:44px;min-width:44px;padding:0;margin:0;vertical-align:middle;border-bottom:0;text-decoration:underline dotted var(--muted);text-underline-offset:3px}
+.efflinks .spl:hover,.efflinks .spl:focus-visible,.dsel .spl:hover,.dsel .spl:focus-visible,.sname .spl:hover,.sname .spl:focus-visible{text-decoration-color:var(--act-ink)}
+.sname:empty{display:none}
 .rwrap{z-index:45}
 .rsheet{max-height:85dvh;gap:8px;padding-top:0}
 .rsheet .grab{margin-top:10px}

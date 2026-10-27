@@ -114,7 +114,7 @@ Plan: projectdoc `claude/werkpakketten-2.1.md`. Volgorde = uitvoervolgorde; WP43
 | ~~**WP39**~~ | Afwerking huisstijl 2.0: donker thema, krap op 320 px, kleine afwerking (klaar) | HS16, HS17, HS18 | 2.0.1 |
 | ~~Nazorg~~ | Knoprand ook op seg-keuzes, aanvalsuitklap en doelrijen in donker (klaar) | HS16 | 2.0.2 |
 | ~~**WP40**~~ | Engelse tekst P3 (klaar) | TA19 | 2.0.3 |
-| **WP41** | Surprise zonder spelers, links naar de spell-uitleg, drie tekstpunten uit de WP40-vertaalcheck | RE5, RE6a, TA20 | 2.1.0 |
+| ~~**WP41**~~ | Surprise zonder spelers, links naar de spell-uitleg, drie tekstpunten uit de WP40-vertaalcheck (klaar) | RE5, RE6a, TA20 | 2.1.0 |
 | **WP42** | Eigen notitie bij niet-SRD-spells, export versie 3 | RE6b | 2.2.0 |
 | **WP43** | Technische schuld: logboek in undo, pdf.js zelf hosten | TS3, TS1 | 2.x.1 |
 | Backlog | 2024-regels (eigen traject, eerst inventaris), fase 2 en 3 | RE4 | |
@@ -126,7 +126,7 @@ Rapport: projectdoc `claude/persona-test-en.md`. P1's opgelost in 1.52.1. Vóór
 - [x] **TA17 Engelse tekst P2** (klaar, 1.52.2): `rules.drops` "its next turn" bij spelers → "their"; `init.log.turn` → "{name}'s turn" (gelijk aan `log.turn`); `log.renew` "Exhaustion refreshed" bij een hoger niveau; `rules.dur.sstart` "(active creature)"; effectchip "10r" (vaste tekst in `js/ui/render.js`) → catalogus; `init.aoe.lose` loopt niet. (1.53.0: ook de korte vorm `rules.dur.sstartS`, die nog "(active creature)" had.)
 - [x] **TA18 Weergave P2** (klaar, 1.52.2; tv: de rij liep over de rand, HP-kolom nu begrensd): "MAX HP 2D6" (uppercase-label raakt de hit dice); tv: death saves-tag afgekapt; "Stat block"-knop breekt op 320 px; `_mage armor_` zichtbaar in `data/monsters.json` (data, beide talen).
 - [x] **TA19 Engelse tekst P3** (klaar, WP40, 2.0.3): "Poisoned and Prone ended" (opsomming via array-param); `init.eff.concBy`; "Legendary Resistance" met hoofdletter; "None" in de save-keuze; "falls unconscious" i.p.v. "gets Unconscious"; Spells-hint inkorten met "More ▸"; "Dexterity" met hoofdletter in de 2014-spelldata. (P3 #2, afkapping op 320 px, valt onder HS17.)
-- [ ] **TA20 Tekst uit de WP40-vertaalcheck** (WP41): NL `player.log.gone` "{what} weg" → "{what} voorbij" (gelijk aan `log.ends`); NL `init.eff.concBy` "Concentratie van" → "Caster (concentratie)" (gelijk aan EN); EN `init.set.spellsHint` "(Sleep 2024 only)" → "(Sleep: 2024 version only)".
+- [x] **TA20 Tekst uit de WP40-vertaalcheck** (klaar, WP41, 2.1.0): NL `player.log.gone` "{what} weg" → "{what} voorbij" (gelijk aan `log.ends`); NL `init.eff.concBy` "Concentratie van" → "Caster (concentratie)" (gelijk aan EN); EN `init.set.spellsHint` "(Sleep 2024 only)" → "(Sleep: 2024 version only)".
 
 ## Indeling en navigatie
 - Geen open punten (IN8 en IN9 klaar in 1.35.1, zie Klaar).
@@ -139,9 +139,9 @@ Rapport: projectdoc `claude/persona-test-en.md`. P1's opgelost in 1.52.1. Vóór
 
 ## Spelregels
 - [ ] **RE4 2024-regels buiten spells** (rust sinds 27-10: later een eigen traject, eerst een inventaris) (condities zoals Exhaustion en Invisible, concentratie-DC max 30, weapon mastery): als dit komt, de hinttekst bij Instellingen → Spells aanpassen
-- [ ] **RE5 Surprise:** keuze ook zonder spelers aan tafel (paneel opent dan niet)
+- [x] **RE5 Surprise:** keuze ook zonder spelers aan tafel (klaar, WP41, 2.1.0: schakelaar "Monsters verrast" naast Start)
 - [x] **RE15 Eigen death save-worp invoeren** (P3): getal typen (nat 20 = 1 HP, nat 1 = twee fails), zoals het cijferpad bij initiative.
-- [ ] **RE6 Spell-uitleg:** **RE6a** link vanuit AoE-Spell en Effect-presets (WP41); **RE6b** eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie, WP42)
+- [ ] **RE6 Spell-uitleg:** ~~**RE6a**~~ link vanuit AoE-Spell en Effect-presets (klaar, WP41, 2.1.0); **RE6b** eigen notitie voor niet-SRD-spells (vraagt opslag + exportversie, WP42)
 
 ## Spelers en D&D Beyond
 - Later, als het nodig blijkt: handmatige "Defenses" op de D&D Beyond-sheet (`customDefenseAdjustments`) inlezen; tijdelijke resistances (Rage, Absorb Elements, Protection from Energy) als effect-preset.

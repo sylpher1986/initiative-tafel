@@ -16,7 +16,7 @@ test("spelerslog: meerdere condities weg als opsomming (EN 'and', NL 'en')", asy
   await lang("en");
   assert.deepEqual(logLines(view(S0), view(S1)), ["Aria: Poisoned and Prone ended"]);
   await lang("nl");
-  assert.deepEqual(logLines(view(S0), view(S1)), ["Aria: Poisoned en Prone weg"]);
+  assert.deepEqual(logLines(view(S0), view(S1)), ["Aria: Poisoned en Prone voorbij"]);
   const S2 = { ...S1, list: [P({ id: "p", name: "Aria", cond: ["Prone"] })] };
   await lang("en");
   assert.deepEqual(logLines(view(S2), view(S1)), ["Aria: Prone ended"], "één conditie blijft gewoon");

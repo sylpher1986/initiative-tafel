@@ -227,6 +227,63 @@ const SCEN = {
     await page.locator('details[data-sec="spells"] .hmore > p').waitFor({ state: "visible" });
     await snap(page, "wp40", "open");
   },
+  // WP41 (RE5, RE6a): zonder spelers "Monsters verrast" naast Start (≥ 44 px, Start blijft één tik, geen paneel); daarna
+  // spellnamen buiten de tegels: keuzeregel tab Spell, gekozen schade-spell, regel onder de Effect-presets → #rsheet en focus terug.
+  // --shots=wp41: dock met schakelaar, tab Spell, Effect-paneel.
+  async wp41(page) {
+    await SCEN.prep(page);
+    await page.evaluate(async () => { const { app } = await import("/js/state.js"), { render } = await import("/js/ui/render.js");
+      app.S.list = app.S.list.filter((c) => c.kind !== "pc"); render(); }); // voorbeeld zonder spelers
+    const tog = page.locator("#sur-mon");
+    await tog.waitFor({ state: "visible" });
+    const h = await tog.evaluate((el) => el.getBoundingClientRect().height);
+    if (h < 44) throw new Error(`"Monsters verrast" is ${h}px hoog (< 44)`);
+    const over = await page.evaluate(() => { const r = document.querySelector("#dock .row.one"); return r.scrollWidth - r.clientWidth; });
+    if (over > 0) throw new Error(`dock-rij met Verrast loopt ${over}px over`);
+    await tog.tap();
+    if ((await page.locator("#sur-mon").getAttribute("aria-pressed")) !== "true") throw new Error("Verrast-schakelaar gaat niet aan");
+    await snap(page, "wp41", "dock");
+    // speler erbij terwijl de schakelaar aan staat: Start opent het paneel en neemt "Monsters" over
+    await page.evaluate(async () => { const { app } = await import("/js/state.js"), { render } = await import("/js/ui/render.js");
+      app.S.list.push({ id: "wp41pc", name: "Aria", kind: "pc", init: null, dex: 2, ac: 15, hp: 20, max: 20, cond: [] }); render(); });
+    if (await page.locator("#sur-mon").count()) throw new Error("schakelaar blijft staan met een speler");
+    await tap(page, "#start"); await page.waitForSelector("#isheet .isheet");
+    if ((await page.locator('#isheet [data-ia="sur"][data-v="mon"]').getAttribute("aria-pressed")) !== "true") throw new Error("paneel nam 'Monsters verrast' niet over");
+    await tap(page, '#isheet .shead [data-ia="close"]'); await page.waitForSelector("#isheet", { state: "hidden" });
+    await page.evaluate(async () => { const { app } = await import("/js/state.js"), { render } = await import("/js/ui/render.js");
+      app.S.list = app.S.list.filter((c) => c.id !== "wp41pc"); render(); });
+    if ((await page.locator("#sur-mon").getAttribute("aria-pressed")) !== "true") throw new Error("schakelaar niet meer aan na Annuleer");
+    await tap(page, "#start");
+    await page.waitForSelector("#next");
+    if (await page.locator("#isheet .isheet").count()) throw new Error("initiative-paneel opende zonder spelers");
+    const sur = await page.evaluate(async () => { const { app } = await import("/js/state.js");
+      return app.S.round === 2 || app.S.list.filter((c) => c.kind === "monster" && c.hp > 0).every((c) => c.sur); }); // iedereen verrast: ronde 1 vervalt
+    if (!sur) throw new Error("niet alle monsters verrast na Start");
+    // a) tab Spell: naam in de keuzeregel
+    await tap(page, "#aoe"); await page.waitForSelector("#asheet .asheet");
+    await tap(page, '#asheet [data-ao="tab"][data-v="spell"]'); await tap(page, '#asheet [data-ao="sp"][data-v="0"]');
+    const link = page.locator("#s-name .spl");
+    await link.waitFor({ state: "visible" });
+    const lh = await link.evaluate((el) => el.getBoundingClientRect().height);
+    if (lh < 44) throw new Error(`spellnaam boven #s-info is ${lh}px hoog (< 44)`);
+    await snap(page, "wp41", "spell");
+    await link.tap(); await page.waitForSelector("#rsheet .rsheet");
+    await tap(page, '#rsheet .shead [data-rsh="close"]'); await page.waitForSelector("#rsheet", { state: "hidden" });
+    await page.evaluate(async () => (await import("/js/ui/render.js")).paintAoe()); // een paint na het sluiten: de link blijft staan, focus blijft
+    if (!(await page.evaluate(() => document.activeElement?.matches("#s-name .spl")))) throw new Error("focus niet terug op de spellnaam");
+    // b) tab Schade: gekozen schade-spell
+    await tap(page, '#asheet [data-ao="tab"][data-v="dmg"]');
+    await page.fill("#a-q", "fireb"); await tap(page, '#a-sugg [data-ao="dsp"]');
+    await page.locator(".dsel .spl").waitFor({ state: "visible" });
+    await tap(page, '#asheet .shead [data-ao="close"]'); await page.waitForSelector("#asheet", { state: "hidden" });
+    // c) Effect-paneel op de open kaart: regel onder het grid, tegel ongewijzigd
+    await page.locator('#order .c.k.open [data-a="panel"][data-p="eff"]').first().tap();
+    const el = page.locator("#order .efflinks .spl").first();
+    await el.waitFor({ state: "visible" });
+    await el.evaluate((x) => x.scrollIntoView({ block: "center" }));
+    await snap(page, "wp41", "effect");
+    await el.tap(); await page.waitForSelector("#rsheet .rsheet");
+  },
   // WP23: formulieren met de statische tekst (met --i18n=debug de Engelse pagina)
   async pcform(page) { await SCEN.prep(page); await tap(page, '#dock [data-prep="pc"]'); await page.waitForSelector("#f-pc", { state: "visible" }); },
   // WP24: Party met een lid (Bijwerken/Uit party), moeilijkheid met uitleg en levelveld, snel toevoegen met het toevoegblok

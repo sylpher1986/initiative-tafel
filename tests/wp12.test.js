@@ -52,7 +52,7 @@ test("SC9: HP-verandering, status en condities als regels", () => {
   const b = view([P({ id: "p", name: "Aria", hp: 13, cond: ["Prone"] }), M({ id: "g", name: "Goblin 1", hp: 5 })]);
   assert.deepEqual(logLines(a, b), ["Aria −7 HP · Prone", "Goblin 1: Ongedeerd → Bloodied"]);
   const c = view([P({ id: "p", name: "Aria", hp: 13 }), M({ id: "g", name: "Goblin 1", hp: 0 })]);
-  assert.deepEqual(logLines(b, c), ["Aria: Prone weg", "Goblin 1 neer"]);
+  assert.deepEqual(logLines(b, c), ["Aria: Prone voorbij", "Goblin 1 neer"]);
   // WP39: met exacte monster-HP staat "neer" vóór het getal (afkapping op 320 px raakt het getal)
   const ex = { ...VIS, monHp: "exact" };
   assert.deepEqual(logLines(view([M({ id: "g", name: "Goblin 1", hp: 5 })], ex), view([M({ id: "g", name: "Goblin 1", hp: 0 })], ex)), ["Goblin 1 neer · −5 HP"]);

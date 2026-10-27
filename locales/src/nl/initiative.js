@@ -152,6 +152,7 @@ export default {
   "init.dock.undo": "Ongedaan maken",
   "init.dock.undoTip": "Ongedaan maken ({key})",
   "init.dock.start": "Start gevecht",
+  "init.dock.surMon": "Monsters verrast", // RE5: schakelaar naast Start zonder spelers (geen initiative-paneel)
   "init.dock.startWhy": "Voeg eerst iemand toe",
   "init.dock.back": "Terug naar gevecht · ronde {n}",
   "init.empty.none": "Er staat niemand meer in de lijst.",
@@ -423,7 +424,8 @@ export default {
   "init.eff.durLr": "Tot long rest",
   "init.eff.note": "Notitie",
   "init.eff.notePh": "bijv. +1d4 op saves",
-  "init.eff.concBy": "Concentratie van",
+  "init.eff.concBy": "Caster (concentratie)",
+  "init.eff.spellInfo": "Spell-uitleg:", // RE6a: regel onder de Effect-presets, gevolgd door tikbare spellnamen
   "init.eff.add": "Toevoegen",
   "init.eff.acFirst": "Vul eerst AC in (⋯)",
   "init.eff.custom": "+ Eigen effect",
