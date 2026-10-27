@@ -9,6 +9,7 @@
 //   ?i18n=xx     testtaal: lange tekst met accenten (tools/i18n-pseudo.mjs); wat niet verandert, is nog niet vertaald
 //   ?i18n=off    weer normaal
 import { createI18n } from "./core.js";
+import { descKnown } from "./msg.js";
 import { normLang, LOCALES, DEFAULT, DEBUG_KEY, DEBUG_MODES as MODES } from "./lang.js";
 
 export { DEBUG_KEY };
@@ -33,6 +34,8 @@ export const i18nDebug = () => curMode;
 export const i18n = () => cur;
 export const t = (key, params) => cur.t(key, params);
 export const tr = (d) => cur.tr(d);
+/** TS5: kent de geladen catalogus (of de Engelse terugval) elke sleutel in deze descriptor? Vóór initI18n: nee. */
+export const known = (d) => descKnown(d, cur.has);
 
 const loadCat = (l) => import(`../../locales/${l}.js`).then((m) => m.default || {});
 

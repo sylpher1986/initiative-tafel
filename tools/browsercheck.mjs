@@ -29,6 +29,22 @@ process.env.PLAYWRIGHT_BROWSERS_PATH ||= "/opt/pw-browsers";
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const WIDTHS = [320, 360, 390], SCHEMES = ["light", "dark"];
 
+/** TS6: wacht tot sleutel key in de IndexedDB van de app (js/storage.js: db "initiative-tafel", store "kv") ok(waarde) geeft.
+ *  Leest de opslag zelf, niet app-geheugen: zo is een herladen daarna zeker van de nieuwe waarde. */
+async function idbHas(page, key, ok, ms = 5000) {
+  const read = () => page.evaluate((k) => new Promise((res) => {
+    const r = indexedDB.open("initiative-tafel");
+    r.onerror = () => res(undefined);
+    r.onsuccess = () => { try { const g = r.result.transaction("kv").objectStore("kv").get(k); g.onsuccess = () => { r.result.close(); res(g.result); }; g.onerror = () => res(undefined); } catch { res(undefined); } };
+  }), key);
+  const end = Date.now() + ms;
+  for (;;) {
+    if (ok(await read())) return;
+    if (Date.now() > end) throw new Error(`IndexedDB: ${key} niet opgeslagen binnen ${ms} ms`);
+    await page.waitForTimeout(50);
+  }
+}
+
 async function loadPw() {
   for (const p of [process.env.PW_MODULE, "playwright", "/opt/npm-tools/node_modules/playwright", "/opt/node-tools/node_modules/playwright"].filter(Boolean)) {
     try { return p.startsWith("/") ? createRequire(import.meta.url)(p) : await import(p); } catch { /* volgende */ }
@@ -315,7 +331,10 @@ const SCEN = {
     await snap(page, "wp42", "note");
     const edit = page.locator('#rsheet [data-rnote="edit"]');
     if ((await edit.evaluate((el) => el.getBoundingClientRect().height)) < 44) throw new Error("Edit < 44px");
-    // herladen: notitie blijft (IndexedDB), en staat in de export
+    // herladen: notitie blijft (IndexedDB), en staat in de export. TS6: eerst wachten tot de schrijfactie in IndexedDB
+    // staat; direct herladen breekt een lopende transactie af (de oude waarde blijft, ± 1 op 12 rood). Een mens
+    // herlaadt nooit binnen die paar ms; de test moet dus op de opslag wachten, niet op een timeout.
+    await idbHas(page, "spellNotes", (v) => v?.["toll the dead"]?.t === "Bonus action · 90 ft\n1d6 necrotic on hit");
     await page.reload(); await page.waitForSelector("#start");
     await openHex();
     await page.locator("#rsheet .rntxt").waitFor({ state: "visible" });

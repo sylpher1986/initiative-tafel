@@ -20,3 +20,16 @@ export const isJoin = (x) => !!x && typeof x === "object" && Array.isArray(x.j);
 
 /** Is dit een descriptor? (object met een string-sleutel k, geen array) */
 export const isMsg = (x) => !!x && typeof x === "object" && !Array.isArray(x) && typeof x.k === "string" && x.k !== "";
+
+/**
+ * TS5: zijn alle sleutels in deze descriptor (ook geneste waarden, J-delen en lijsten) bekend volgens has?
+ * Tekst en getallen zijn altijd bekend. Zo valt een logregel met een sleutel uit een nieuwere app, of zonder geladen
+ * catalogus, terug op zijn bewaarde tekst in plaats van de kale sleutel. Diepte begrensd zoals de vertaler (core.js).
+ */
+export function descKnown(x, has, depth = 0) {
+  if (depth > 8) return false;
+  if (isMsg(x)) return !!has(x.k) && (!x.p || typeof x.p !== "object" || Object.values(x.p).every((v) => descKnown(v, has, depth + 1)));
+  if (isJoin(x)) return x.j.every((y) => descKnown(y, has, depth + 1));
+  if (Array.isArray(x)) return x.every((y) => descKnown(y, has, depth + 1));
+  return x == null || typeof x !== "object";
+}

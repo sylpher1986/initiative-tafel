@@ -3,7 +3,7 @@ import { ORD } from "./rules/spells.js";
 import { effText } from "./rules/effects.js";
 import { pasText } from "./rules/passives.js";
 import { M, J } from "./i18n/msg.js";
-import { t, tr } from "./i18n/boot.js";
+import { t, tr, known } from "./i18n/boot.js";
 
 export function diffLog(prev, cur) {
   const out = [];
@@ -94,10 +94,20 @@ export function logRound(r) {
   return Number.isFinite(n) && n > 0 ? t("log.r", { n: String(n) }) : t("log.prep");
 }
 
-/** Tekst van een logregel in de actieve taal: descriptor (m, WP27) als die er is, anders de bewaarde tekst (oude regels) */
-export const logMsg = (e) => (e && e.m ? tr(e.m) : (e && e.msg) || "");
-/** Oorzaak van een logregel: descriptoren (w) als die er zijn, anders de bewaarde tekst */
-export const logWhy = (e) => (e && Array.isArray(e.w) ? e.w.map(tr).filter(Boolean).join("; ") : (e && e.why) || "");
+/** Tekst van een logregel in de actieve taal: descriptor (m, WP27) als die er is, anders de bewaarde tekst (oude regels).
+ *  TS5: kent de catalogus een sleutel niet (nieuwere app, catalogus niet geladen), dan wint een bewaarde msg. */
+export const logMsg = (e) => {
+  if (!e) return "";
+  if (e.m && (known(e.m) || !e.msg)) return tr(e.m);
+  return e.msg || "";
+};
+const whyD = (e) => Array.isArray(e.w) && e.w.length > 0;
+/** Oorzaak van een logregel: descriptoren (w) als die er zijn, anders de bewaarde tekst (TS5: ook bij onbekende sleutels) */
+export const logWhy = (e) => {
+  if (!e) return "";
+  if (whyD(e) && (known(e.w) || !e.why)) return e.w.map(tr).filter(Boolean).join("; ");
+  return e.why || "";
+};
 
 export function logText(log) {
   return (log || []).map((e) => { const msg = logMsg(e), why = logWhy(e); return e.type === "round" ? `\n== ${msg} ==` : e.type === "turn" ? `-- ${msg} --`
@@ -107,7 +117,8 @@ export function logText(log) {
 /** TS3: in de stand staat m (descriptor) óf msg (tekst), w óf why; weg met de tekst als de descriptor er is (in place). */
 export function slimLog(log) {
   if (!Array.isArray(log)) return;
-  for (const e of log) if (e && typeof e === "object") { if (e.m) delete e.msg; if (Array.isArray(e.w) && e.w.length) delete e.why; }
+  // TS5: alleen als de catalogus elke sleutel kent; anders blijft de tekst de terugval (nieuwere app, catalogus te laat)
+  for (const e of log) if (e && typeof e === "object") { if (e.m && known(e.m)) delete e.msg; if (whyD(e) && known(e.w)) delete e.why; }
 }
 
 /** TS3: logregel voor de export met msg en why als tekst in de actieve taal (oudere apps lezen alleen die), zelfde
@@ -116,7 +127,9 @@ export function exportLog(log) {
   return (log || []).map((e) => {
     if (!e || typeof e !== "object") return e;
     const { id, r, turn, type, msg, why, note, ...rest } = e;
-    return { id, r, turn, type, msg: logMsg(e), why: logWhy(e), note, ...rest };
+    // TS5: zonder bruikbare vertaling geen kale sleutel in msg/why, maar de bewaarde tekst (of niets)
+    const okM = !e.m || known(e.m), okW = !whyD(e) || known(e.w);
+    return { id, r, turn, type, msg: okM ? logMsg(e) : msg, why: okW ? logWhy(e) : why, note, ...rest };
   });
 }
 
