@@ -59,6 +59,8 @@ export default {
   "dnd.exh.s6": "dood",
   "dnd.exh.sum": "Niveau {n}: {list}",
   "dnd.exh.none": "Niveau 0: geen exhaustion",
+  "dnd.exh24.d20": "−{n} op d20-tests",
+  "dnd.exh24.speed": "speed −{n} ft",
   // Monsters zoeken (js/data/monsters.js): typfout-correctie in de kop
   "dnd.search.fix": "Bedoelde je: {words}",
   // Uitleg bij effect-presets (js/rules/effects.js PRESETS, veld tk; WP29). Effectnamen zelf blijven Engels (id).

@@ -5,6 +5,7 @@ import { M, J } from "../i18n/msg.js";
 import { t, tr } from "../i18n/boot.js";
 import { tickEffects, endFightEffects, rageOf } from "./effects.js";
 import { tickSaves, turnSaves, untickSaves } from "./saves.js";
+import { exhMod } from "./conditions.js";
 
 export const CONDS = ["Blinded", "Charmed", "Deafened", "Frightened", "Grappled", "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned", "Prone", "Restrained", "Stunned", "Unconscious", "Concentrating"];
 
@@ -465,6 +466,8 @@ export function dropIds(state, gone) {
  * Initiative-bonus van een deelnemer: c.initBonus als die er is (speler uit de sheet; 2024-monster uit het statblock,
  * WP48), anders Dex. De tiebreak blijft c.dex (sortOrder).
  */
+/** WP50: " − 4 Exhaustion 2" achter een initiativeworp, of "" (em = exhMod) */
+export const initModText = (em) => (em ? ` − ${-em.b} ${em.n}` : "");
 export const initBo = (c) => (Number.isFinite(c && c.initBonus) ? c.initBonus : c && Number.isFinite(c.dex) ? c.dex : 0);
 /** WP48: initiative-bonus uit een statblock (SRD 5.2 "Initiative +12" = m.init), of null (2014: dan Dex) */
 export const statInit = (m) => (m && Number.isFinite(m.init) ? m.init : null);
@@ -493,9 +496,9 @@ export function rerollMonsters(list, rng = Math.random) {
     const k = c.grp ? `${c.grp}|${c.init}` : null;
     let r = k ? groups.get(k) : undefined;
     if (r === undefined) { r = d(20, rng); if (k) groups.set(k, r); }
-    const bo = initBo(c);
-    c.roll = r; c.init = r + bo; out.n++;
-    out.why.push({ t: J([`d20 [${r}] ${sgn(bo)}`, M("rules.rerollWhy"), k && M("rules.grpRoll")].filter(Boolean), ", "), id: c.id });
+    const bo = initBo(c), em = exhMod(c); // WP50: Exhaustion 2024 −2 × niveau (de worp telt daarna niet meer als onaangeroerd)
+    c.roll = r; c.init = r + bo + (em ? em.b : 0); out.n++;
+    out.why.push({ t: J([`d20 [${r}] ${sgn(bo)}${initModText(em)}`, M("rules.rerollWhy"), k && M("rules.grpRoll")].filter(Boolean), ", "), id: c.id });
   }
   if (out.n) out.msgs.push(say("rules.reroll", { n: String(out.n) }));
   return out;

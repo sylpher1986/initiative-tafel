@@ -941,6 +941,19 @@ const SCEN = {
     if (last.some((m) => isDutch(m))) throw new Error("nieuwe logregel Nederlands: " + last.join(" | "));
     await tap(page, "#undo"); await page.waitForSelector("#toast .tmsg");
   },
+  // WP50: Rage 2024-regel in de beurtbalk (langere tekst, elke beurt) en Exhaustion 2024 bij wie aan de beurt is: past op 320 px
+  async wp50(page) {
+    await SCEN.fight(page);
+    const ok = await page.evaluate(async () => {
+      const { app } = await import("/js/state.js"), E = await import("/js/rules/effects.js"), { makeDur } = await import("/js/rules/turns.js");
+      app.S.rules = "2024"; const c = app.S.list.find((x) => x.id === app.S.active);
+      E.setExh(c, 2, undefined, "2024"); E.startRage(c, makeDur(c, { dur: "r100" }, c.id), { ed: "2024" });
+      (await import("/js/ui/render.js")).render();
+      return !!document.querySelector(".rgrow");
+    });
+    if (!ok) throw new Error("WP50: geen Rage-regel in de beurtbalk");
+    await snap(page, "wp50", "rage");
+  },
   // WP46: export versie 4 (regelset 2024, monster met ed "2024" zonder SRD 5.2-data): laden zonder JS-fout, zonder terugval op 2014, regelset overleeft reset
   async wp46(page) {
     await page.route("**/data/monsters-2024.json", (r) => r.abort()); // zonder SRD 5.2-data (regelset 2024 laadt hem sinds WP49 bij de eerste behoefte)

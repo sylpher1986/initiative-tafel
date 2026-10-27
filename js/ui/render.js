@@ -11,14 +11,14 @@ import { rulesOf } from "../rules/edition.js";
 import { SYN } from "../data/syn.js";
 import { sortOrder, CONDS, DURS, durText, durLabel, isOut, parseInit, initPcs, groupOf, isSurprised, reactUsed, reactTag, canToggleSurprise, nextUp, freshRoll, initPlan, initText, durShort } from "../rules/turns.js";
 import { PRESETS as PRESETS_14, presetsFor, effAc, effText, effNote, acBreakdown, baseMax, saveMods, modsText, isWarn, effName, isRage, rageOf, rageRes, barbLevel, rageDmg } from "../rules/effects.js";
-import { isExh, exhLevel, exhSummary, SUR, condName } from "../rules/conditions.js";
+import { isExh, exhLevel, exhSummary, exhEd, exhMod, SUR, condName } from "../rules/conditions.js";
 import { term } from "../i18n/term.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList, splitSpells, edFor, sheetEd } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus, saveKnown, targetMode, drText, drKind, DR_LBL, saveAdv } from "../rules/aoe.js";
 import { spellItem } from "../data/spells.js";
 import { diceify, syncSB, monCard, isPhone, edTag as monEdTag } from "./statblock.js";
-import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv } from "../rules/attacks.js";
+import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv, atkMods } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
 import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
 import { defRows } from "../rules/statform.js";
@@ -360,7 +360,7 @@ function exhRow(c) {
   const x = exhLevel(c), dead = c.kind === "pc" ? !!(c.ds && c.ds.dead) : c.max > 0 && c.hp <= 0;
   return `<div class="exhrow"><button type="button" class="btn" data-a="exh" data-v="-1" ${x && !dead ? "" : "disabled"} aria-label="${esc(t("init.cond.exhDown"))}">−</button>
     <b aria-live="polite">${esc(term("cond", "Exhaustion"))} ${x}</b><button type="button" class="btn" data-a="exh" data-v="1" ${x >= 6 ? "disabled" : ""} aria-label="${esc(t("init.cond.exhUp"))}">+</button></div>
-    <p class="hint exhtxt">${esc(tr(exhSummary(x)))}. ${esc(t(dead && x ? "init.cond.exhBack" : "init.cond.exhLr"))}</p>`;
+    <p class="hint exhtxt">${esc(tr(exhSummary(x, x ? exhEd(c) : rulesOf(app.S))))}. ${esc(t(dead && x ? "init.cond.exhBack" : "init.cond.exhLr"))}</p>`;
 }
 
 
@@ -495,7 +495,7 @@ function rageBox(c) {
     <p class="hint">${esc(t("init.rage.sum", { b: b ? `+${b}` : "+2/+3/+4", res: o.bear ? t("init.rage.allBut") : "B/P/S" }))}</p>
     <p class="hint">${esc(res)}</p>${conc}
     <div class="effgrid rgopt">${tg("bear", "Bear Totem")}${tg("frz", "Frenzy")}</div>
-    ${o.frz ? `<p class="hint">${esc(t("init.rage.frenzy"))}</p>` : ""}
+    ${o.frz && rulesOf(app.S) !== "2024" ? `<p class="hint">${esc(t("init.rage.frenzy"))}</p>` : ""}
     ${on ? `<p class="hint rgwarn">${esc(t("init.rage.on"))}</p>` : ""}
     <div class="bar"><button type="button" class="btn tap" data-a="rage-no">${esc(t("common.cancel"))}</button><button type="button" class="btn primary tap" data-a="rage-go" ${on ? "disabled" : ""}>${esc(t(r && r.left <= 0 ? "init.rage.start0" : "init.rage.start"))}</button></div></div>`;
 }
@@ -762,18 +762,19 @@ function svRow(S, s, full = false) {
   const btns = c.kind === "monster" && !self
     ? `<button type="button" class="svroll" data-svroll="${esc(s.sid)}" aria-label="${esc(t("init.sv.rollAria", { name: c.name, ab: s.ab, dc: s.dc }))}">${esc(t("init.sv.roll", { b: sgn(svBonus(c, s.ab)) }))}</button>`
     : `<button type="button" class="svok" data-svok="${esc(s.sid)}" data-v="1" aria-label="${esc(t("init.sv.okAria", { name: c.name, ab: s.ab }))}">${esc(t("init.sv.ok"))}</button><button type="button" class="svok bad" data-svok="${esc(s.sid)}" data-v="0" aria-label="${esc(t("init.sv.failAria", { name: c.name, ab: s.ab }))}">${esc(t("init.sv.fail"))}</button>`;
-  const av = saveAdv(c, s.ab), adv = av.v ? ` · ${av.v > 0 ? "adv" : "dis"} (${av.why})` : ""; // RE11/RE16
+  const av = saveAdv(c, s.ab), em = exhMod(c), adv = (av.v ? ` · ${av.v > 0 ? "adv" : "dis"} (${av.why})` : "") + (em ? ` · ${modsText([em])}` : ""); // RE11/RE16; WP50 Exhaustion 2024
   return `<div class="svrow${end ? " svend" : ""}"><span class="svn"><b>${esc(c.name)}</b><small>${esc(`${s.ab} ${s.dc} · ${what}${adv}${self ? ` · ${t("init.sv.self")}` : ""}`)}</small>${end ? `<small class="svx">${esc(t("init.sv.expires"))}</small>` : ""}</span>${btns}</div>`;
 }
 
 /**
  * RE16: "Rage loopt door?" tijdens de beurt van een barbarian in rage die sinds zijn vorige beurt geen schade nam.
  * Doorgaan is het normale geval (0 tikken); de app weet niet of hij aanviel, dus alleen een knop Voorbij.
+ * Rage 2024 (WP50): schade telt niet, dus de regel staat elke beurt (met de 2024-voorwaarden als tekst).
  */
 function rageRow(S) {
   const c = S.round ? S.list.find((x) => x.id === S.active) : null, e = c && rageOf(c);
   if (!e || e.hit) return "";
-  return `<div class="svrow rgrow"><span class="svn"><b>${esc(c.name)}</b><small>${esc(t("init.sv.rage"))}</small></span><button type="button" class="svok bad" data-rgend="${esc(c.id)}" aria-label="${esc(t("init.sv.rageEndAria", { name: c.name }))}">${esc(t("init.sv.rageEnd"))}</button></div>`;
+  return `<div class="svrow rgrow"><span class="svn"><b>${esc(c.name)}</b><small>${esc(t(e.ed === "2024" ? "init.sv.rage24" : "init.sv.rage"))}</small></span><button type="button" class="svok bad" data-rgend="${esc(c.id)}" aria-label="${esc(t("init.sv.rageEndAria", { name: c.name }))}">${esc(t("init.sv.rageEnd"))}</button></div>`;
 }
 
 /** GV2: alle monsters op 0 HP (minstens één; lair telt niet): regel in de beurtbalk, de DM rondt zelf af */
@@ -1396,7 +1397,7 @@ function riderRow(x, c, ri) {
 /** Effectieve worp tegen dit doel: Auto = advantage/disadvantage uit condities (atkAdv), anders de handmatige stand */
 export function atkRoll(x, by, c) {
   const au = atkAdv(by, c, x.kind);
-  return { au, r: withAdv(x.r, x.adv === "a" ? au.v : x.adv) };
+  return { au, r: withAdv(x.r, x.adv === "a" ? au.v : x.adv, atkMods(by)) }; // WP50: Exhaustion 2024 als vaste straf
 }
 /** Reden als korte tag: "adv Prone", "dis Invisible", "adv/dis heffen op" */
 const advTag = (au) => (!au.adv.length && !au.dis.length ? "" : au.v ? `${au.v > 0 ? "adv" : "dis"} ${(au.v > 0 ? au.adv : au.dis).map((x) => x.replace(/ \(.*\)$/, "").split(" ").pop()).join(", ")}` : t("init.atk.cancel"));
@@ -1434,7 +1435,7 @@ function atkPick(x, by) {
 function atkHtml(r, ac) {
   const used = r.d.length > 1 ? r.d.indexOf(r.nat) : 0;
   const dice = r.d.map((v, i) => (i === used ? String(v) : `<s>${v}</s>`)).join(", ");
-  return `d20 [${dice}] ${r.bo >= 0 ? "+" : "−"}${Math.abs(r.bo)} = ${r.tot}${ac ? ` vs AC ${ac}` : ""}`;
+  return `d20 [${dice}] ${r.bo >= 0 ? "+" : "−"}${Math.abs(r.bo)}${(r.m || []).map((x) => ` ${x.b >= 0 ? "+" : "−"} ${Math.abs(x.b)} ${esc(x.n)}`).join("")} = ${r.tot}${ac ? ` vs AC ${ac}` : ""}`;
 }
 
 /** Welke modus en waarom: "Advantage (Ayla Prone)", "Handmatig: Advantage · auto: dis (Invisible)" */

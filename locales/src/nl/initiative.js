@@ -503,6 +503,7 @@ export default {
   "init.sv.fail": "Gefaald",
   "init.sv.expires": "vervalt bij Volgende",
   "init.sv.rage": "Rage loopt door? geen schade sinds vorige beurt",
+  "init.sv.rage24": "Rage door? Aanval, save afdwingen of Bonus Action",
   "init.sv.rageEndAria": "Rage van {name} voorbij",
   "init.sv.rageEnd": "Voorbij",
   "init.sv.open": "Saves · {n} open",

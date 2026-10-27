@@ -504,6 +504,7 @@ export default {
   "init.sv.fail": "Fail", // save
   "init.sv.expires": "expires on Next",
   "init.sv.rage": "Rage continues? No damage since last turn",
+  "init.sv.rage24": "Rage on? Attack, force a save or Bonus Action",
   "init.sv.rageEndAria": "Rage of {name} over",
   "init.sv.rageEnd": "Over",
   "init.sv.open": "Saves · {n} open",

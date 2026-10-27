@@ -1,6 +1,6 @@
 // Acties uit een statblock compact maken voor de monsterkaart: to hit, damage (met type) en save-DC.
 // Puur: geen DOM. Statblocktekst kan uit een import komen; de UI escapet alles wat hieruit komt.
-import { exhLevel } from "./conditions.js";
+import { exhLevel, exhEd, exhMod } from "./conditions.js";
 import { d } from "./dice.js";
 import { applyDamage, critAtZero, merge, wakeByDamage } from "./combat.js";
 import { M, J } from "../i18n/msg.js";
@@ -151,12 +151,17 @@ export function rollAttack(bonus, adv = 0, rng = Math.random) {
   return withAdv({ dd: [d(20, rng), d(20, rng)], bo: bonus }, adv);
 }
 
-/** Dezelfde worp met een andere modus: d = de getoonde dobbelstenen (één bij normaal) */
-export function withAdv(r, adv) {
+/**
+ * Dezelfde worp met een andere modus: d = de getoonde dobbelstenen (één bij normaal).
+ * m = vaste modifiers [{ n, b }] bovenop de bonus (WP50: Exhaustion 2024), met naam in de worptekst.
+ */
+export function withAdv(r, adv, m = r.m || []) {
   const [a, b] = r.dd, v = adv > 0 ? 1 : adv < 0 ? -1 : 0;
   const nat = !v ? a : v > 0 ? Math.max(a, b) : Math.min(a, b);
-  return { dd: r.dd, d: v ? [a, b] : [a], adv: v, nat, bo: r.bo, tot: nat + r.bo };
+  return { dd: r.dd, d: v ? [a, b] : [a], adv: v, nat, bo: r.bo, ...(m.length ? { m } : {}), tot: nat + r.bo + m.reduce((s, x) => s + x.b, 0) };
 }
+/** WP50: vaste modifiers op de aanvalsworp van deze aanvaller (Exhaustion 2024: −2 × niveau) */
+export const atkMods = (by) => { const x = exhMod(by); return x ? [x] : []; };
 
 /** Melee of ranged uit de aanvalstekst; "Melee or Ranged …" = beide */
 export const atkKind = (t) => {
@@ -178,7 +183,7 @@ export function atkAdv(by, tgt, kind = "") {
   const adv = [], dis = [], hint = [];
   const bc = (by && by.cond) || [], tc = (tgt && tgt.cond) || [];
   for (const k of DIS_BY) if (bc.includes(k)) dis.push(`${by.name} ${k}`);
-  if (exhLevel(by) >= 3) dis.push(`${by.name} Exhaustion ${exhLevel(by)}`); // RE11: niveau 3+ disadvantage op aanvallen
+  if (exhLevel(by) >= 3 && exhEd(by) !== "2024") dis.push(`${by.name} Exhaustion ${exhLevel(by)}`); // RE11: niveau 3+ disadvantage op aanvallen (2024: vaste straf, atkMods)
   if (bc.includes("Invisible")) adv.push(`${by.name} Invisible`);
   if (bc.includes("Frightened")) hint.push(t("rules.adv.fright", { name: by.name }));
   for (const k of ADV_TGT) if (tc.includes(k)) adv.push(`${tgt.name} ${k}`);
@@ -235,7 +240,7 @@ export function atkResult(atk, ac, parts, modes = {}, force = {}) {
 }
 
 /** Tekst van de to-hit-worp: "d20 [14, 7] adv +11 = 25 vs AC 16" */
-export const atkText = (atk, ac) => `d20 [${atk.d.join(", ")}]${atk.adv ? (atk.adv > 0 ? " adv" : " dis") : ""} ${atk.bo >= 0 ? "+" : "−"}${Math.abs(atk.bo)} = ${atk.tot}${ac != null ? ` vs AC ${ac}` : ""}`;
+export const atkText = (atk, ac) => `d20 [${atk.d.join(", ")}]${atk.adv ? (atk.adv > 0 ? " adv" : " dis") : ""} ${atk.bo >= 0 ? "+" : "−"}${Math.abs(atk.bo)}${(atk.m || []).map((x) => ` ${x.b >= 0 ? "+" : "−"} ${Math.abs(x.b)} ${x.n}`).join("")} = ${atk.tot}${ac != null ? ` vs AC ${ac}` : ""}`;
 
 const MODE_STEP = { 0.5: "×½", 2: "×2" };
 /** Logboek-oorzaak (descriptor): "Bite (Dragon): d20 [14] +11 = 25 vs AC 16, raak; 2d10+6 [7, 3] +6 = 16 piercing + … → 21" */

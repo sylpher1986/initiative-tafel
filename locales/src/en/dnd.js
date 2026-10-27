@@ -60,6 +60,8 @@ export default {
   "dnd.exh.s6": "death",
   "dnd.exh.sum": "Level {n}: {list}",
   "dnd.exh.none": "Level 0: no exhaustion",
+  "dnd.exh24.d20": "−{n} on d20 tests", // 2024 (SRD 5.2.1): −2 × level
+  "dnd.exh24.speed": "speed −{n} ft", // 2024: −5 ft × level
   // Monsters zoeken (js/data/monsters.js): typfout-correctie in de kop
   "dnd.search.fix": "Did you mean: {words}",
   // Uitleg bij effect-presets (js/rules/effects.js PRESETS, veld tk; WP29). Effectnamen zelf blijven Engels (id).

@@ -6,7 +6,7 @@ import { M, J } from "../i18n/msg.js";
 import { tr } from "../i18n/boot.js";
 /** Reden "handmatig" (descriptor, of de oude tekst): dan geen "(reden)" in de melding */
 import { DTYPES } from "./aoe.js";
-import { isExh, exhLevel } from "./conditions.js";
+import { isExh, exhLevel, exhMod, exhEd } from "./conditions.js";
 const manual = (w) => w === "handmatig" || (!!w && w.k === "rules.manual");
 
 /**
@@ -103,7 +103,7 @@ export function addEffect(c, spec, d, opt = {}) {
   if (opt.by && opt.cast) e.cast = String(opt.cast).slice(0, 60);
   const rs = cleanRs(spec.rs);
   if (rs) e.rs = rs; // tijdelijke resistance (Rage)
-  if (spec.rage) { e.rg = 1; if (spec.frz) e.frz = 1; if (spec.bear) e.bear = 1; }
+  if (spec.rage) { e.rg = 1; if (spec.frz) e.frz = 1; if (spec.bear) e.bear = 1; if (spec.ed === "2024") e.ed = "2024"; } // WP50: regels vast bij de rage
   // vervolg (Lethargy) vastleggen bij het effect: een latere wissel van de spellregels verandert een lopende spell niet
   if (spec.after && spec.after.n) e.af = { n: String(spec.after.n).slice(0, 60), txt: String(spec.after.txt || "").slice(0, 120), ...(cleanTk(spec.after.tk) ? { tk: spec.after.tk } : {}), ...(spec.after.cond ? { cond: String(spec.after.cond).slice(0, 20) } : {}) };
   c.eff = [...(c.eff || []), e];
@@ -147,6 +147,8 @@ export function saveMods(c, ab) {
     if (p.grp === "cover") { if (!cover || p.sv.b > cover.b) cover = { n: p.n, b: p.sv.b }; }
     else out.push(p.sv.d ? { n: p.n, d: p.sv.d } : { n: p.n, b: p.sv.b });
   }
+  const ex = exhMod(c); // WP50: Exhaustion 2024 = −2 × niveau op elke save
+  if (ex) out.push(ex);
   return cover ? [cover, ...out] : out;
 }
 
@@ -178,7 +180,7 @@ export function removeEffect(c, id, why = M("rules.manual"), opt = {}) {
   c.eff = c.eff.filter((x) => x !== e);
   if (e.hpd) { revertMax(c, e.hpd); if (!isExh(e)) reExh(c); }
   if (why === null) return out;
-  if (e.frz) { // Frenzy (Path of the Berserker): na afloop één niveau exhaustion, ook als het gevecht stopt
+  if (e.frz && e.ed !== "2024") { // Frenzy (Path of the Berserker 2014): na afloop één niveau exhaustion, ook als het gevecht stopt; 2024 niet (WP50)
     const r = setExh(c, exhLevel(c) + 1, M("rules.frenzyEnd"));
     out.why.push(...r.why); out.msgs.push(...r.msgs);
   }
@@ -256,16 +258,18 @@ export function effSpec(k, v) {
 /**
  * Exhaustion op niveau x zetten (0 = weg). Eén effect "Exhaustion" met niveau `x`; niveau 4+ halveert max HP (hpd,
  * draait terug bij een lager niveau), niveau 6 is de dood. why = reden voor het logboek.
+ * ed = regels (WP50; 2024: geen halvering, −2 × niveau op d20-tests); zonder ed de regels van het huidige effect.
  */
-export function setExh(c, x, why = M("rules.manual")) {
+export function setExh(c, x, why = M("rules.manual"), ed) {
   const out = fx();
   x = Math.max(0, Math.min(6, Math.round(+x) || 0));
   const old = (c.eff || []).find(isExh), was = exhLevel(c);
+  if (ed === undefined) ed = exhEd(c);
   if (x === was) return out;
   if (old) removeEffect(c, old.id, null);
   out.why.push({ t: why && !manual(why) ? J([`Exhaustion ${was} → ${x} (`, why, ")"], "") : `Exhaustion ${was} → ${x}`, id: c.id });
   if (!x) { out.msgs.push(say("rules.exhEnd", { name: c.name })); return out; }
-  exhEffect(c, x);
+  exhEffect(c, x, ed);
   const dead = c.kind === "pc" ? !!(c.ds && c.ds.dead) : c.max > 0 && c.hp <= 0;
   if (x === 6 && !dead) {
     if (c.kind === "pc") { c.ds = { ...newDs(), f: 3, dead: true }; c.hp = 0; c.temp = 0; setUncon(c, true); }
@@ -274,7 +278,7 @@ export function setExh(c, x, why = M("rules.manual")) {
     out.msgs.push(say("rules.exh6", { name: c.name }));
     return out;
   }
-  out.msgs.push(x > was ? say("rules.exhUp", { name: c.name, n: x, what: M(`dnd.exh.s${x}`) }) : say("rules.exhLvl", { name: c.name, n: x }));
+  out.msgs.push(x > was ? say("rules.exhUp", { name: c.name, n: x, what: ed === "2024" ? J([M("dnd.exh24.d20", { n: 2 * x }), M("dnd.exh24.speed", { n: 5 * x })], ", ") : M(`dnd.exh.s${x}`) }) : say("rules.exhLvl", { name: c.name, n: x }));
   return out;
 }
 
@@ -303,13 +307,13 @@ export const rageRes = (c) => (c && c.res || []).find((r) => /^rage\b/i.test(Str
  * Rage starten. opt: { bear, frz }. d = duur (makeDur, 10 rondes). Lopende concentratie stopt (PHB: geen
  * concentratie tijdens rage); de sheet-resource telt af als hij er is. Op 0 HP kan het niet.
  */
-export function startRage(c, d, opt = {}) {
+export function startRage(c, d, opt = {}) { // opt.ed "2024" (WP50): schade houdt hem niet gaande, Frenzy zonder Exhaustion; d dan 10 minuten
   const out = fx();
   if (c.max && c.hp <= 0) { out.msgs.push(say("rules.rage0", { name: c.name })); return out; }
   const inc = c.cond.find((k) => NO_RAGE.includes(k)); // Rage is een bonus action
   if (inc) { out.msgs.push(say("rules.rageInc", { name: c.name, cond: inc })); return out; }
   const p = preset("Rage");
-  merge(out, addEffect(c, { ...p, rs: opt.bear ? RS_ALL : p.rs, tk: opt.bear ? "dnd.pre.rageBear" : p.tk, bear: !!opt.bear, frz: !!opt.frz }, d));
+  merge(out, addEffect(c, { ...p, rs: opt.bear ? RS_ALL : p.rs, tk: opt.bear ? "dnd.pre.rageBear" : p.tk, bear: !!opt.bear, frz: !!opt.frz, ed: opt.ed }, d));
   const r = rageRes(c);
   if (r) {
     if (r.left > 0) { r.left--; out.msgs.push(say("rules.resLeft", { name: r.n, n: String(r.left), max: String(r.max) })); }

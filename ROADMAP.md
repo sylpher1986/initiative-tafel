@@ -1,6 +1,6 @@
 # Roadmap
 
-Stand: **2.6.0** (27-10-2026). Alleen open werk staat hier. Wat klaar is, staat in de code, in CLAUDE.md ("Gemaakte keuzes") en in de git-geschiedenis. De oude roadmap met alle afgevinkte punten (codes IN, GV, VB, RE, SP, SC, AF, OB, DA, HS, TA, TS, WB en WP1–WP45) staat in commit `4e83db1`.
+Stand: **2.7.0** (27-10-2026). Alleen open werk staat hier. Wat klaar is, staat in de code, in CLAUDE.md ("Gemaakte keuzes") en in de git-geschiedenis. De oude roadmap met alle afgevinkte punten (codes IN, GV, VB, RE, SP, SC, AF, OB, DA, HS, TA, TS, WB en WP1–WP45) staat in commit `4e83db1`.
 
 Codes: **K** = kleine fix of optimalisatie (één sessie, patch- of minor-versie), **G** = groot project (eerst een eigen plan met inventaris en besluiten). Een afgerond punt gaat hier weg; de keuze komt in CLAUDE.md.
 
@@ -39,18 +39,17 @@ Volgorde = voorstel. K1–K3 merkt de gebruiker, K4–K7 zijn technisch.
 
 ## G1 D&D 2024-regels: werkpakketten (gepland)
 
-Plan met inventaris, besluiten (B1–B10) en per pakket scope en acceptatiecriteria: [`docs/g1-regels-2024.md`](docs/g1-regels-2024.md). Kern: één regelset per tafel (`S.rules`, alleen buiten een gevecht te wijzigen), monster-editie als data (`ed: "2024"`, ontbreekt = huidig gedrag), SRD 5.2-monsters via Open5e, backup v4 / encounterbestand v2 alleen bij 2024-inhoud. Tot WP54 niets zichtbaar. WP46 (fundament) is klaar in 2.4.0, WP47 (SRD 5.2-monsterdata) in 2.4.1, WP48 (parsers en monster-initiative) in 2.5.0 (CLAUDE.md, "Opslag en data"), WP49 (monsterkeuze per editie) in 2.6.0 (CLAUDE.md, "Voorbereiden").
+Plan met inventaris, besluiten (B1–B10) en per pakket scope en acceptatiecriteria: [`docs/g1-regels-2024.md`](docs/g1-regels-2024.md). Kern: één regelset per tafel (`S.rules`, alleen buiten een gevecht te wijzigen), monster-editie als data (`ed: "2024"`, ontbreekt = huidig gedrag), SRD 5.2-monsters via Open5e, backup v4 / encounterbestand v2 alleen bij 2024-inhoud. Tot WP54 niets zichtbaar. WP46 (fundament) is klaar in 2.4.0, WP47 (SRD 5.2-monsterdata) in 2.4.1, WP48 (parsers en monster-initiative) in 2.5.0 (CLAUDE.md, "Opslag en data"), WP49 (monsterkeuze per editie) in 2.6.0 (CLAUDE.md, "Voorbereiden"), WP50 (Exhaustion en Rage 2024) in 2.7.0 (CLAUDE.md, "Gevecht").
 
 | Code | Wat | Na | Omvang |
 |---|---|---|---|
-| **WP50** | Exhaustion 2024 (geen HP-halvering, −2 × niveau op d20-tests), idempotente `reExh`, Rage 2024 (doorlopen, duur, Frenzy zonder Exhaustion) | WP46 | M |
 | **WP51** | Conc-DC max 30 (`concDc`), surprise 2024, Grappled-hint | WP46, WP48 | M |
 | **WP52** | Condities-uitleg 2024, `ed` in de spelerssnapshot | WP46 | M |
 | **WP53** | Moeilijkheid 2024 (XP-budget SRD 5.2.1) en XP-label | WP46 | M |
 | **WP54** | Instellingen → Regels 2014 \| 2024 zichtbaar, Spells als subinstelling bij 2014 (UX-agent) | WP46–WP53 | M |
 | **WP55** | Integratie, regressie, documentatie, G1 afsluiten | WP54 | S |
 
-Besloten (27-10): standaard regelset 2014, release stapsgewijs in 2.x, Spells 2024 onder regels 2014 blijft. Rage 2024 gaat mee in WP50. V4 besloten in WP49: zoekwoord `2014`/`2024` plus regel onder de lijst. Nog open: "4 in Lair" op signaal.
+Besloten (27-10): standaard regelset 2014, release stapsgewijs in 2.x, Spells 2024 onder regels 2014 blijft. V4 besloten in WP49: zoekwoord `2014`/`2024` plus regel onder de lijst. Nog open: "4 in Lair" op signaal.
 
 ## Grote projecten (lange termijn)
 

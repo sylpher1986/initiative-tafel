@@ -1,6 +1,6 @@
 # G1 — D&D 5e 2024-regels naast 2014
 
-Plan van 27-10-2026 (stand 2.3.1, commit `4622436`). Status: **WP46 klaar (2.4.0), WP47 klaar (2.4.1), WP48 klaar (2.5.0), WP49 klaar (2.6.0)**, rest gepland. Werkpakketten WP46–WP55; samenvatting in `ROADMAP.md`. Na elk pakket: keuze naar CLAUDE.md ("Gemaakte keuzes"), regel uit dit plan en de roadmap halen. Dit document vervalt als G1 klaar is.
+Plan van 27-10-2026 (stand 2.3.1, commit `4622436`). Status: **WP46 klaar (2.4.0), WP47 klaar (2.4.1), WP48 klaar (2.5.0), WP49 klaar (2.6.0), WP50 klaar (2.7.0)**, rest gepland. Werkpakketten WP46–WP55; samenvatting in `ROADMAP.md`. Na elk pakket: keuze naar CLAUDE.md ("Gemaakte keuzes"), regel uit dit plan en de roadmap halen. Dit document vervalt als G1 klaar is.
 
 Legenda: **[B]** = bevestigd in de code, **[A]** = aanname, **[?]** = onbekend, eerst controleren.
 
@@ -159,18 +159,11 @@ Zie CLAUDE.md ("Voorbereiden: monsters en encounters", "Editie in de keuze"). Vo
 - De melding bij een ontbrekend 2024-statblock is de bestaande zin met "Zombie · 2024" (`init.enc.missing`); de bewerkregel toont "2024 · ontbreekt".
 - Nederlandse zoeksynoniemen: aangevuld voor SRD 5.2-namen (Tough, Warrior …, Pirate, Hippopotamus, Seahorse); demon/duergar/gnome/orc bestaan in SRD 5.2 niet. Verder op signaal.
 
-### WP50 — Exhaustion en Rage volgens 2024
-1. **Doel**: Exhaustion en Rage rekenen met `ed`; 2014 onveranderd.
-2. **Huidige stand**: §1.5 R1 (alle aanroepers staan daar) en R15.
-3. **Scope**: `ed` in `exhEffect`/`reExh` zelf (dan volgen `setExh`, `setMax`, `restMember`, Frenzy en Aid vanzelf); 2024 zonder HP-halvering; d20-straf −2 × niveau als vaste modifier met reden (geen disadvantage) in aanvalsworp (`atkAdv`/`rollAttack`), saves (`saveAdv`/`rollSave`, ook AoE) en de initiativeworp; speed-tekst in `exhRows`/`exhSummary`; **`reExh(c, ed)` idempotent** zodat B1 werkt (tafel bij wisselen, partylid bij aan tafel zetten/party-sync); UI-aanroepers (`render.js` r. 352/358, long rest `actions.js` r. 84/268/270/1959) geven `rulesOf(app.S)` door. **Rage 2024**: `rageTurnEnd` (`turns.js` r. 386) telt schade niet meer als reden om door te lopen (alleen de bestaande DM-tik "loopt door"); duur max 10 minuten in plaats van 10 rondes; Frenzy (`e.frz` in `removeEffect`) geeft bij 2024 geen Exhaustion. Ed vastleggen op het rage-effect bij `startRage`, zodat een lopende rage zijn regels houdt.
-4. **Buiten scope**: conc/surprise/Grappled (WP51), uitlegtekst (WP52), keuze-UI (WP54), extra Frenzy-schade 2024 en rage-uses per short rest (de app telt uses niet).
-5. **Aanpak**: `ed` als laatste parameter met standaard `"2014"` (B6).
-6. **Afhankelijk van**: WP46.
-7. **Acceptatie**: 2014-tests ongewijzigd groen; 2024: Exhaustion 4 laat max HP staan; save met Exhaustion 2 krijgt −4 met reden "Exhaustion 2"; aanval met Exhaustion 3 krijgt −6 en géén disadvantage; `reExh` twee keer achter elkaar = zelfde uitkomst; 2014→2024 herstelt een gehalveerde max HP, 2024→2014 halveert weer (beide op tafel, met logregel); long rest −1 in beide; Rage 2024 met alleen schade sinds de vorige beurt → melding "loopt voorbij" (2014: loopt door); Frenzy-rage 2024 afgelopen → geen Exhaustion (2014: +1).
-8. **Tests**: `rules.test.js`, `saves.test.js`, `attacks.test.js`, `effects.test.js`, `afwerking.test.js`, rage-tests in `wp8.test.js`.
-9. **Klaar als**: tests groen, developer-review (2014 én SRD 5.2), versie, push.
-10. **Risico's**: d20-straf als modifier raakt de worptekst (`rollText`, `atkText`): tekst controleren in log en paneel.
-11. **Omvang**: M.
+### WP50 — Exhaustion en Rage volgens 2024: klaar in 2.7.0
+Zie CLAUDE.md ("Gevecht: kaarten en panelen", "Exhaustion en Rage per editie"). Voor latere pakketten:
+- WP54: bij de regelwissel `reExhAll(app.S.list, ed)` in dezelfde undo-stap (geeft de logregels); partyleden volgen bij aan tafel zetten (`seatMember`).
+- WP52: `exhRows(x, ed)`/`exhSummary(lvl, ed)` en de sleutels `dnd.exh24.d20`/`dnd.exh24.speed` bestaan; `condInfo` krijgt `ed` nog niet mee.
+- WP51: `exhMod`/`initModText` zijn het patroon voor een vaste modifier op een worp; surprise 2024 (disadvantage op initiative) kan naast de Exhaustion-straf.
 
 ### WP51 — Concentration-DC, surprise en Grappled volgens 2024
 1. **Doel**: R2–R4 rekenen met `ed`; 2014 onveranderd.

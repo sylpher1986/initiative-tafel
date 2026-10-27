@@ -16,13 +16,13 @@ import { spendSlot, autoSpend } from "../rules/slots.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
 import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc, effSpec, setExh, startRage, rageOf } from "../rules/effects.js";
-import { exhLevel } from "../rules/conditions.js";
+import { exhLevel, exhMod } from "../rules/conditions.js";
 import { openCond, closeCond, condOpen, condSheetClick } from "./condinfo.js";
 import { showSB, showSheet, monCard, doRoll, doDmgRoll, closeSB, phone, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
 import { findMon, parseMonsterFile, findKey, keyRef, withEdWord } from "../data/monsters.js";
 import { parseStatText, foundText, hasStructure, withParsed } from "../data/statparse.js";
 import { d, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
-import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant, setInit, durWords, saveWords, initBo, monInit } from "../rules/turns.js";
+import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant, setInit, durWords, saveWords, initBo, monInit, initModText } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, saveAdv, DTYPES, targetMode, drToggle, drKind, DR_LBL, cleanDr } from "../rules/aoe.js";
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage, multiSeq, seqAfter } from "../rules/attacks.js";
@@ -260,14 +260,15 @@ const row = {
     const o = ui.rage; if (!o || o.id !== c.id || rageOf(c)) return false; // loopt al: geen tweede resource
     ui.rage = null; ui.panel = null;
     because("Rage");
-    const out = startRage(c, makeDur(c, { dur: "r10" }, app.S.active), { bear: o.bear, frz: o.frz });
+    const ed = rulesOf(app.S); // WP50: 2014 10 rondes, 2024 10 minuten; regels vast op de rage
+    const out = startRage(c, makeDur(c, { dur: ed === "2024" ? "r100" : "r10" }, app.S.active), { bear: o.bear, frz: o.frz, ed });
     addWhy(out.why);
     return out.msgs.length ? { undoToast: out.msgs.join(" ") } : undefined;
   },
   /* ---- Exhaustion (RE11): rij met − en + in het Conditie-paneel ---- */
   "exh-open"() { ui.exhOpen = !ui.exhOpen; },
   exh(c, b) {
-    const out = setExh(c, exhLevel(c) + +b.dataset.v);
+    const out = setExh(c, exhLevel(c) + +b.dataset.v, undefined, rulesOf(app.S));
     addWhy(out.why);
     if (exhLevel(c) === 6) return { undoToast: out.msgs.join(" ") }; // dood: zonder "Zeker?", met Ongedaan (zoals verwijderen)
   },
@@ -1012,6 +1013,7 @@ function dupHint() {
 function seatMember(m, init) {
   const c = structuredClone(m); delete c.pid;
   endFightEffects([c]); // ronde-effecten van een vorig (niet gestopt) gevecht vervallen
+  R.reExh(c, rulesOf(app.S)); // WP50/B1: Exhaustion volgens de regels van de tafel (de party zelf wordt niet omgerekend)
   app.S.list.push({ ...c, id: uid(), pid: m.pid, kind: "pc", init, cond: c.hp > 0 ? [] : ["Unconscious"], reaction: false });
 }
 
@@ -1854,8 +1856,8 @@ function initKey(k, v) {
   if (k === "next") initNext(x);
   if (k === "roll") {
     const c = app.S.list.find((t) => t.id === v); if (!c) return;
-    const r = d(20), bo = initBo(c);
-    x.v[c.id] = String(r + bo); x.rolls[c.id] = `d20 [${r}] ${sgn(bo)}`;
+    const r = d(20), bo = initBo(c), em = exhMod(c); // WP50: Exhaustion 2024 op de initiativeworp
+    x.v[c.id] = String(r + bo + (em ? em.b : 0)); x.rolls[c.id] = `d20 [${r}] ${sgn(bo)}${initModText(em)}`;
     x.act = c.id; initNext(x);
   }
   paintInit();
@@ -1930,7 +1932,7 @@ export function bindParty() {
   });
   panel.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
-    const rollFor = (m) => { const r = d(20), bo = initBo(m); ui.partyInit[m.pid] = r + bo; return `${esc(m.name)}: d20 [${r}] ${sgn(bo)} = <b>${r + bo}</b>`; };
+    const rollFor = (m) => { const r = d(20), bo = initBo(m), em = exhMod(m), v = r + bo + (em ? em.b : 0); ui.partyInit[m.pid] = v; return `${esc(m.name)}: d20 [${r}] ${sgn(bo)}${esc(initModText(em))} = <b>${v}</b>`; }; // WP50
     const at = new Set(app.S.list.filter((c) => c.pid).map((c) => c.pid));
     if (b.dataset.pupd) { if (ui.pUpd?.st !== "busy") partyFetch(b.dataset.pupd); return; }
     if (b.dataset.pupdno) { ui.pUpd = null; pPaint(pLink(b.dataset.pupdno)); return; }
@@ -1966,8 +1968,9 @@ export function bindParty() {
       const long = b.id === "p-long";
       because(long ? "long rest" : "short rest");
       const ex = long ? app.party.filter((m) => exhLevel(m)).map((m) => [m.name, exhLevel(m)]) : [];
-      app.party.forEach((m) => R.restMember(m, long));
-      app.S.list.forEach((c) => { if (c.pid) R.restMember(c, long); });
+      const ed = rulesOf(app.S); // WP50: Exhaustion na de rust volgens de regels van de tafel
+      app.party.forEach((m) => R.restMember(m, long, ed));
+      app.S.list.forEach((c) => { if (c.pid) R.restMember(c, long, ed); });
       const exT = ex.length ? ` Exhaustion: ${ex.map(([n, x]) => `${n} ${x} → ${x - 1}`).join(", ")}.` : ""; // RE11: één niveau minder
       const pact = [...app.party, ...app.S.list].some((m) => m.casting && m.casting.pact); // RE3
       saveParty(); toast(long ? t("init.party.long", { ex: exT }) : t(pact ? "init.party.shortPact" : "init.party.short")); render();

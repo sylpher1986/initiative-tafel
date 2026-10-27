@@ -105,7 +105,7 @@ export function saveAdv(c, ab, magic = false) {
   if (magic) adv.push("Magic Resistance");
   if (ab === "STR" && (c && c.eff || []).some((e) => e.rg)) adv.push("Rage");
   const ex = (c && c.eff || []).find((e) => e.n === "Exhaustion");
-  if (ex && (ex.x | 0) >= 3) dis.push(`Exhaustion ${ex.x | 0}`);
+  if (ex && (ex.x | 0) >= 3 && ex.ed !== "2024") dis.push(`Exhaustion ${ex.x | 0}`); // 2024: vaste −2 × niveau via saveMods (WP50)
   const v = adv.length && !dis.length ? 1 : dis.length && !adv.length ? -1 : 0;
   return { v, why: v > 0 ? adv.join(", ") : v < 0 ? dis.join(", ") : "" };
 }

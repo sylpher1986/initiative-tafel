@@ -160,7 +160,7 @@ export function applyDamage(c, raw, mode = 1, quiet = false) {
   const out = fx();
   const v = Math.floor(raw * mode);
   if (v > 0) merge(out, wakeByDamage(c)); // vóór de HP: wie op 0 valt is daarna gewoon bewusteloos
-  if (v > 0) for (const e of c.eff || []) if (e.rg) e.hit = 1; // RE16: schade genomen sinds de vorige beurt = rage loopt door
+  if (v > 0) for (const e of c.eff || []) if (e.rg && e.ed !== "2024") e.hit = 1; // RE16: schade sinds de vorige beurt = rage loopt door (2024: telt niet, WP50)
   const absorb = Math.min(c.temp || 0, v);
   if (absorb) c.temp -= absorb;
   const rest = v - absorb;
@@ -218,26 +218,30 @@ export function revertMax(c, hpd) {
 /**
  * Exhaustion-effect op niveau x (1–6) toevoegen (RE11). Het oude Exhaustion-effect moet al weg zijn.
  * Niveau 4+: max HP gehalveerd (naar beneden afgerond, minstens 1), als max-HP-verschil `hpd` zoals Aid, zodat het
- * vanzelf terugdraait. Geeft het effect; de dood bij niveau 6 regelt de aanroeper.
+ * vanzelf terugdraait. ed "2024" (WP50) wordt op het effect vastgelegd: geen halvering, wel −2 × niveau op d20-tests
+ * (exhMod). Geeft het effect; de dood bij niveau 6 regelt de aanroeper.
  */
-export function exhEffect(c, x) {
+export function exhEffect(c, x, ed = "2014") {
   const e = { id: Math.random().toString(36).slice(2, 9), n: EXH_NAME, x, st: "", op: "+", v: 0, txt: "", end: "", d: null, lr: false, by: null, spell: null, hpd: 0 };
   c.eff = [...(c.eff || []).filter((y) => !isExh(y)), e];
-  reExh(c);
+  reExh(c, ed);
   return e;
 }
 
 /**
- * Exhaustion 4+: max HP gehalveerd (PHB: naar beneden afgerond) op de huidige max, ook na Aid, bewerken of een
+ * Exhaustion 4+ (2014): max HP gehalveerd (PHB: naar beneden afgerond) op de huidige max, ook na Aid, bewerken of een
  * bijgewerkte sheet. Eerst de oude halvering terug, dan opnieuw rekenen; aanroepen na elke wijziging van max HP.
+ * Idempotent (WP50, B1): twee keer achter elkaar = zelfde uitkomst. ed = de regels om mee te rekenen; zonder ed de
+ * regels die op het effect staan. Met ed worden die regels op het effect gezet (2024 = geen halvering).
  * Zonder bekende max HP (0) alleen het niveau; de halvering volgt zodra max HP bekend is.
  */
-export function reExh(c) {
+export function reExh(c, ed) {
   const e = (c.eff || []).find(isExh);
   if (!e) return;
+  if (ed !== undefined) { if (ed === "2024") e.ed = "2024"; else delete e.ed; }
   if (e.hpd) c.max = Math.max(1, (c.max || 0) - e.hpd);
   e.st = ""; e.v = 0; e.hpd = 0;
-  if ((e.x | 0) >= 4 && c.max > 0) {
+  if ((e.x | 0) >= 4 && c.max > 0 && e.ed !== "2024") {
     const nm = Math.max(1, Math.floor(c.max / 2));
     e.st = "max"; e.v = e.hpd = nm - c.max;
     c.max = nm;
@@ -245,13 +249,30 @@ export function reExh(c) {
   if (c.max > 0) c.hp = Math.min(c.hp, c.max);
 }
 
+/**
+ * WP50 (B1, voor de regelwissel van WP54): Exhaustion van iedereen aan tafel naar regels ed omrekenen.
+ * Logregel per deelnemer van wie max HP verandert ("Exhaustion 4 · 2024: max HP 20 → 40").
+ */
+export function reExhAll(list, ed) {
+  const out = fx();
+  for (const c of list) {
+    const x = exhLevel(c);
+    if (!x) continue;
+    const was = c.max;
+    reExh(c, ed);
+    if (c.max !== was) out.why.push({ t: M("rules.exhEd", { n: x, ed: ed === "2024" ? "2024" : "2014", from: String(was), to: String(c.max) }), id: c.id });
+  }
+  return out;
+}
+
 /** Short of long rest voor een speler (party-lid of deelnemer aan tafel) */
-export function restMember(m, long) {
+export function restMember(m, long, ed) {
   if (long) {
-    const ex = exhLevel(m); // Exhaustion: één niveau minder (PHB: long rest met eten en drinken)
+    const ex = exhLevel(m); // Exhaustion: één niveau minder (PHB/SRD 5.2.1: long rest)
+    const xe = ed !== undefined ? ed : (m.eff || []).some((e) => isExh(e) && e.ed === "2024") ? "2024" : "2014"; // WP50
     for (const e of m.eff || []) if (e.hpd) revertMax(m, e.hpd); // long rest: alle tijdelijke effecten voorbij
     m.eff = [];
-    if (ex > 1) exhEffect(m, ex - 1);
+    if (ex > 1) exhEffect(m, ex - 1, xe);
     m.hp = m.max; m.temp = 0; m.ds = null;
     if (m.cond) m.cond = m.cond.filter((x) => x !== "Unconscious");
     if (m.casting) {

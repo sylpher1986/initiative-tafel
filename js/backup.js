@@ -7,7 +7,7 @@ import { CONDS } from "./rules/turns.js";
 import { cleanImg } from "./ui/avatar.js";
 import { dedupeAnon } from "./playerview.js";
 import { cleanEncounters, cleanLvl, encHas2024 } from "./rules/encounters.js";
-import { cleanEd, rulesOf, rulesField } from "./rules/edition.js";
+import { cleanEd, edField, rulesOf, rulesField } from "./rules/edition.js";
 import { cleanEnc } from "./rules/fight.js";
 import { cleanDr } from "./rules/aoe.js";
 import { cleanRs, cleanTk } from "./rules/effects.js";
@@ -18,7 +18,8 @@ import { exportLog } from "./log.js";
 export const FORMAT = "initiative-tafel";
 export const VERSION = 4; // 2 (1.28.0): encounters erbij; 3 (2.2.0, WP42): spellNotes erbij; 4 (2.4.0, WP46): 2024-inhoud
 /** B5: 2024-inhoud (regelset of een monster/encounterregel met ed "2024") → versie 4, anders nog 3 (leesbaar voor een oudere app) */
-export const has2024 = (app) => rulesOf(app.S) === "2024" || !!(app.S && Array.isArray(app.S.list) && app.S.list.some((c) => cleanEd(c.ed))) || (app.encounters || []).some(encHas2024);
+const eff2024 = (c) => !!c && Array.isArray(c.eff) && c.eff.some((e) => e && cleanEd(e.ed)); // WP50: Exhaustion/Rage met 2024-regels
+export const has2024 = (app) => rulesOf(app.S) === "2024" || !!(app.S && Array.isArray(app.S.list) && app.S.list.some((c) => cleanEd(c.ed) || eff2024(c))) || (app.party || []).some(eff2024) || (app.encounters || []).some(encHas2024);
 
 /** AF11: bestandsnaam in lokale tijd ("kevs-inn-itiative-2026-10-23-21-14.json"; het formaat heet nog "initiative-tafel"), niet UTC */
 export function exportName(t) {
@@ -118,9 +119,9 @@ const cleanEff = (e) => {
 /** RE11/RE16: niveau (halvering alleen vanaf 4), tijdelijke resistance en rage-vlaggen */
 const exhRage = (e) => {
   const o = {}, rs = cleanRs(e.rs);
-  if (e.n === "Exhaustion") { o.x = lim(e.x, 1, 6) || 1; if (o.x < 4) Object.assign(o, { st: "", v: 0, hpd: 0 }); }
+  if (e.n === "Exhaustion") { o.x = lim(e.x, 1, 6) || 1; if (e.ed === "2024") o.ed = "2024"; if (o.x < 4 || o.ed) Object.assign(o, { st: "", v: 0, hpd: 0 }); } // WP50: 2024 halveert niet
   if (rs) o.rs = rs;
-  if (e.rg) Object.assign(o, { rg: 1 }, e.frz ? { frz: 1 } : {}, e.bear ? { bear: 1 } : {}, e.hit ? { hit: 1 } : {}, e.ph != null ? { ph: e.ph ? 1 : 0 } : {});
+  if (e.rg) Object.assign(o, { rg: 1 }, e.frz ? { frz: 1 } : {}, e.bear ? { bear: 1 } : {}, e.hit ? { hit: 1 } : {}, e.ph != null ? { ph: e.ph ? 1 : 0 } : {}, edField(e.ed));
   return o;
 };
 
