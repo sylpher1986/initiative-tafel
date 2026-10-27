@@ -357,7 +357,7 @@ export function logLines(a, b) {
     const same = a.tg === b.tg, t0 = same ? loud(o) : new Map(), t1 = same ? loud(c) : new Map();
     const add = [...t1].filter(([x]) => !t0.has(x)).map(([, v]) => v), gone = [...t0].filter(([x]) => !t1.has(x)).map(([, v]) => v);
     if (add.length) parts.push(add.join(", "));
-    if (gone.length) parts.push(t("player.log.gone", { what: gone.join(", ") }));
+    if (gone.length) parts.push(t("player.log.gone", { what: gone }));
     if (!parts.length) continue;
     out.push(`${pvName(c)}${tight ? " " : ": "}${parts.join(" · ")}`);
   }

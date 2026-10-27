@@ -22,6 +22,7 @@ export default {
   "log.renew": "{name} vernieuwd",
   "log.exhCh": "Exhaustion {a} → {b}",
   "log.gets": "krijgt {name}",
+  "log.unc": "raakt bewusteloos",
   "log.getsX": "krijgt {name} ({x})",
   "log.ends": "{name} voorbij",
   "log.hp": "{a} → {b} HP ({d})",

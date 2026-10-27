@@ -188,6 +188,8 @@ button.link,summary.link{display:inline-flex;align-items:center;gap:.3em;min-hei
 details:not(.cast):not(.conds)>summary.link::before,.setsec .schev::before{content:"";flex:0 0 auto;width:.42em;height:.42em;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(-45deg);margin:0 .45em 0 .1em}
 details[open]:not(.cast):not(.conds)>summary.link::before,.setsec[open] .schev::before{transform:rotate(45deg)}
 .link.strong{color:var(--act-ink);font-weight:700}
+/* WP40: lange hint in Instellingen ingekort; "Meer" klapt de rest uit, tekst lijnt uit met de hint erboven */
+.hmore>summary.link{margin-inline-start:-8px}
 details.conds{width:100%}
 details.conds summary{list-style:none;display:inline-flex}
 details.conds summary::-webkit-details-marker{display:none}

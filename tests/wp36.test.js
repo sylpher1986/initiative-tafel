@@ -54,7 +54,7 @@ test("avatar: vorm hangt aan het soort, niet aan de plek; rand als buitenste laa
 });
 
 test("open monsterkaart (HS13): legendary-label en pips op één regel, volledig label voor de schermlezer", () => {
-  assert.match(render, /pips\(c\.lr, "lr", "Legendary resistance", t\("init\.card\.lrPer"\)\)/);
+  assert.match(render, /pips\(c\.lr, "lr", "Legendary Resistance", t\("init\.card\.lrPer"\)\)/);
   assert.match(render, /pipState\(full, i, o\)/);
   assert.match(css, /\.pips\{display:flex;[^}]*min-height:44px/);
   assert.match(css, /\.pips \.pg\{[^}]*margin-left:auto/);

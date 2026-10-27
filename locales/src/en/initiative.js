@@ -55,8 +55,10 @@ export default {
   "init.set.reactOff": "Players", // spelers houden hun reaction zelf bij
   "init.set.reactHint": "Players: they track their own reaction, so player cards have no Reaction button. Monsters keep the button. Surprised and Shield still work.",
   "init.set.spellsHint": "Rules and descriptions for spells: the Barkskin, Haste and Sleep presets (Sleep 2024 only), which spells need concentration, and which text the spell panel shows.", // eerste zin; daarna volgt spellsOnly vet
+  "init.set.more": "More", // uitklapper onder een lange hint in Instellingen
   "init.set.spellsOnly": "Applies to spells only:", // vet
-  "init.set.spellsRest": "the rest of the app (conditions, crits, concentration DC) stays 2014. Players with a D&D Beyond sheet follow the version on their sheet for each spell; monsters, players without a sheet and spells not on the sheet follow this setting. In the spell panel you can view the other version; that doesn't change the rules. Anything already running keeps the rules from when it was cast.",
+  "init.set.spellsRest": "the rest of the app (conditions, crits, concentration DC) stays 2014.",
+  "init.set.spellsMore": "Players with a D&D Beyond sheet follow the version on their sheet for each spell; monsters, players without a sheet and spells not on the sheet follow this setting. In the spell panel you can view the other version; that doesn't change the rules. Anything already running keeps the rules from when it was cast.",
   "init.set.player": "Player view", // sectie in Instellingen
   "init.set.playerHint": "Players see the order, whose turn it is and player HP. Never stat blocks, notes or anything you hide (monsters via ⋯, the lair on its card).",
   "init.set.vis": "What players see",
@@ -352,7 +354,7 @@ export default {
   "init.card.rcRest": "after rest", // recharge-chip
   "init.card.rcTip": "Tap to mark as used or available",
   "init.card.lrDay": "LR {n}/day", // badge legendary resistance
-  "init.card.lrPer": "Legendary resistance per day",
+  "init.card.lrPer": "Legendary Resistance per day",
   "init.card.pipUsed": "{label} {i} of {n}, used", // aria-label per bolletje
   "init.card.pipFree": "{label} {i} of {n}, available",
   "init.card.defVuln": "Vulnerable",
@@ -380,6 +382,7 @@ export default {
   "init.card.perSr": "per short rest",
   "init.card.perLr": "per long rest",
   "init.card.none": "none",
+  "init.card.noneOpt": "None", // eerste optie in een keuzelijst (save, caster); "none" hierboven staat midden in een regel
   "init.cond.dur": "Duration when applied",
   "init.cond.save": "Save at end of turn",
   "init.cond.exhDown": "Exhaustion one level lower",
@@ -421,7 +424,7 @@ export default {
   "init.eff.durLr": "Until long rest",
   "init.eff.note": "Note",
   "init.eff.notePh": "e.g. +1d4 on saves",
-  "init.eff.concBy": "Concentrating caster",
+  "init.eff.concBy": "Caster (concentration)",
   "init.eff.add": "Add",
   "init.eff.acFirst": "Enter AC first (⋯)",
   "init.eff.custom": "+ Custom effect",
@@ -552,7 +555,7 @@ export default {
   "init.aoe.saved": "stored", // resistance komt uit de opgeslagen gegevens van de speler
   "init.aoe.sb": "stat block",
   "init.aoe.note": "note: {what}",
-  "init.aoe.lrOk": "Legendary resistance: save succeeded",
+  "init.aoe.lrOk": "Legendary Resistance: save succeeded",
   "init.aoe.lrUse": "Use legendary resistance ({n} left)",
   "init.aoe.evasion": "No damage (e.g. Evasion)",
   "init.aoe.resAria": "Resistance {name}",

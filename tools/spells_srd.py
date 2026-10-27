@@ -15,6 +15,13 @@ TRIGGER = {
     "Shield": "which you take when you are hit by an attack or targeted by the magic missile spell",
 }
 
+# 5e-bits schrijft "dexterity saving throw"; de SRD gebruikt ability-namen met hoofdletter (WP40)
+ABIL = re.compile(r"\b(strength|dexterity|constitution|intelligence|wisdom|charisma)\b(?= (?:saving throws?|checks?|scores?|modifiers?)\b| \()")
+
+def cap(t):
+    return ABIL.sub(lambda m: m[1].capitalize(), t)
+
+
 def blocks(paras):
     out, tbl = [], None
     for p in (x.strip() for x in paras):
@@ -27,11 +34,11 @@ def blocks(paras):
             if tbl is None:
                 tbl = {"tbl": []}
                 out.append(tbl)
-            tbl["tbl"].append([c.replace("*", "") for c in cells])
+            tbl["tbl"].append([cap(c.replace("*", "")) for c in cells])
             continue
         tbl = None
         m = re.match(r"^\*\*\*(.+?)\*\*\*\s*(.*)$", p)
-        out.append({"b": m[1].strip(), "t": m[2].replace("*", "")} if m else p.replace("*", ""))
+        out.append({"b": m[1].strip(), "t": cap(m[2].replace("*", ""))} if m else cap(p.replace("*", "")))
     return out
 
 

@@ -346,7 +346,7 @@ function condPanel(c) {
   return `<div class="kpanel">
     <div class="durrow">
       <label>${esc(t("init.cond.dur"))}<select data-f="cdur">${DURS.map(([v, l]) => `<option value="${v}" ${(opt.dur || "inf") === v ? "selected" : ""}>${esc(t(l))}</option>`).join("")}</select></label>
-      <label>${esc(t("init.cond.save"))}<span style="display:flex;gap:4px"><select data-f="cab"><option value="">${esc(t("init.card.none"))}</option>${["STR", "DEX", "CON", "INT", "WIS", "CHA"].map((a) => `<option ${opt.ab === a ? "selected" : ""}>${a}</option>`).join("")}</select><input data-f="cdc" type="number" inputmode="numeric" placeholder="DC" value="${esc(opt.dc || "")}" style="width:64px"></span></label>
+      <label>${esc(t("init.cond.save"))}<span style="display:flex;gap:4px"><select data-f="cab"><option value="">${esc(t("init.card.noneOpt"))}</option>${["STR", "DEX", "CON", "INT", "WIS", "CHA"].map((a) => `<option ${opt.ab === a ? "selected" : ""}>${a}</option>`).join("")}</select><input data-f="cdc" type="number" inputmode="numeric" placeholder="DC" value="${esc(opt.dc || "")}" style="width:64px"></span></label>
     </div>
     <div class="condgrid">${CONDS.map((x) => `<button type="button" data-cond="${x}" aria-pressed="${c.cond.includes(x)}">${esc(term("cond", x))}</button>`).join("")}<button type="button" data-a="exh-open" aria-pressed="${exhLevel(c) > 0}" aria-expanded="${!!ui.exhOpen}">${esc(term("cond", "Exhaustion"))}${exhLevel(c) ? ` ${exhLevel(c)}` : ""}</button></div>
     ${ui.exhOpen ? exhRow(c) : ""}</div>`;
@@ -454,7 +454,7 @@ function effPanel(c) {
         <label>${esc(t("init.eff.dur"))}<select data-f="ef-dur">${[...DURS, ["lr", "init.eff.durLr"]].map(([v, l]) => `<option value="${v}" ${(f.dur || "inf") === v ? "selected" : ""}>${esc(t(l))}</option>`).join("")}</select></label>
       </div>
       <label>${esc(t("init.eff.note"))}<input data-f="ef-txt" value="${esc(f.txt || "")}" placeholder="${esc(t("init.eff.notePh"))}" maxlength="120"></label>
-      <label>${esc(t("init.eff.concBy"))}<select data-f="ef-by"><option value="">${esc(t("init.card.none"))}</option>${S.list.filter((x) => x.id === f.by || spellTargets([x]).length).map((x) => `<option value="${esc(x.id)}" ${f.by === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label>
+      <label>${esc(t("init.eff.concBy"))}<select data-f="ef-by"><option value="">${esc(t("init.card.noneOpt"))}</option>${S.list.filter((x) => x.id === f.by || spellTargets([x]).length).map((x) => `<option value="${esc(x.id)}" ${f.by === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label>
       <button class="btn primary tap" data-a="eff-add">${esc(t("init.eff.add"))}</button></div>` : "";
   return `<div class="kpanel">
     <div class="effgrid">${presetOrder(c).map((i) => {
@@ -636,7 +636,7 @@ function row(c, S, down = false) {
       ${dsBlock(c)}
       ${prep ? `${prepFields(c)}${prepActions(c)}` : `${atkBlock(c, S)}
       ${c.rc && c.rc.length ? `<div class="rcs">${c.rc.map((r, i) => `<button class="rc" data-rc="${i}" aria-pressed="${!!r.ready}" title="${esc(t("init.card.rcTip"))}">${esc(r.n)} · ${esc(r.ready ? t("init.card.rcReady") : r.rest ? t("init.card.rcRest") : `recharge ${n0(r.min)}–6`)}</button>`).join("")}</div>` : ""}
-      ${pips(c.la, "la", "Legendary actions")}${pips(c.lr, "lr", "Legendary resistance", t("init.card.lrPer"))}
+      ${pips(c.la, "la", "Legendary actions")}${pips(c.lr, "lr", "Legendary Resistance", t("init.card.lrPer"))}
       ${actionsBlock(c)}`}
       ${castBlock(c)}
       ${resBlock(c)}
@@ -1222,7 +1222,7 @@ function paintSpell(el, a) {
         <label>${esc(t("init.pc.name"))}<input id="s-n" value="${esc(cf.n || "")}" placeholder="${esc(t("init.sp.namePh"))}" maxlength="60" autocomplete="off"></label>
         <div class="ed3">
           <label>${esc(t("init.prep.cond"))}<select id="s-cond">${SPELL_CONDS.map((k) => `<option ${(cf.cond || "Frightened") === k ? "selected" : ""}>${k}</option>`).join("")}</select></label>
-          <label>Save<select id="s-ab"><option value="">${esc(t("init.card.none"))}</option>${ABS.map((x) => `<option ${cf.ab === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+          <label>Save<select id="s-ab"><option value="">${esc(t("init.card.noneOpt"))}</option>${ABS.map((x) => `<option ${cf.ab === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
           <label>${esc(t("init.eff.dur"))}<select id="s-dur">${DURS.map(([v, l]) => `<option value="${v}" ${(cf.dur || "r10") === v ? "selected" : ""}>${esc(t(l))}</option>`).join("")}</select></label>
         </div>
         <div class="schk"><label><input type="checkbox" id="s-rep" ${cf.rep ? "checked" : ""}> ${esc(t("init.cond.save"))}</label><label><input type="checkbox" id="s-conc" ${cf.conc === false ? "" : "checked"}> ${esc(t("init.sp.conc"))}</label></div>

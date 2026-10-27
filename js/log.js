@@ -41,7 +41,7 @@ export function diffLog(prev, cur) {
     if (c.max && o.hp !== c.hp) m.push(M("log.hp", { a: String(o.hp), b: String(c.hp), d: `${c.hp > o.hp ? "+" : "−"}${Math.abs(c.hp - o.hp)}` }));
     if ((o.temp || 0) !== (c.temp || 0)) m.push(M("log.temp", { a: String(o.temp || 0), b: String(c.temp || 0) }));
     const oc = o.cond || [], cc = c.cond || [];
-    cc.filter((x) => !oc.includes(x)).forEach((x) => m.push(x === "Concentrating" && c.concSpell ? M("log.concOn", { spell: c.concSpell }) : M("log.gets", { name: x })));
+    cc.filter((x) => !oc.includes(x)).forEach((x) => m.push(x === "Concentrating" && c.concSpell ? M("log.concOn", { spell: c.concSpell }) : x === "Unconscious" ? M("log.unc") : M("log.gets", { name: x })));
     oc.filter((x) => !cc.includes(x)).forEach((x) => m.push(x === "Concentrating" ? (o.concSpell ? M("log.concEndOn", { spell: o.concSpell }) : M("log.concEnd")) : M("log.ends", { name: x })));
     if (oc.includes("Concentrating") && cc.includes("Concentrating") && o.concSpell !== c.concSpell && c.concSpell)
       m.push(o.concSpell ? M("log.concNowWas", { spell: c.concSpell, old: o.concSpell }) : M("log.concNow", { spell: c.concSpell }));

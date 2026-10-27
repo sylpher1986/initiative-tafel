@@ -213,6 +213,20 @@ const SCEN = {
   },
   speler: null, // eigen startpagina, zie START
   home: null, homeen: null, notfound: null, // WP30: publieke homepage per taal en de niet-gevonden-pagina (START)
+  // WP40 (TA19): Spells-hint in Instellingen ingekort; "More" (44 px) klapt de rest uit. --shots=wp40: dicht en open.
+  async wp40(page) {
+    await SCEN.settings(page);
+    await page.locator('details[data-sec="spells"] > summary').tap();
+    const sum = page.locator('details[data-sec="spells"] .hmore > summary');
+    await sum.waitFor({ state: "visible" });
+    if (await page.locator('details[data-sec="spells"] .hmore > p').isVisible()) throw new Error("rest van de Spells-hint staat al open");
+    const h = await sum.evaluate((el) => el.getBoundingClientRect().height);
+    if (h < 44) throw new Error(`"More" is ${h}px hoog (< 44)`);
+    await snap(page, "wp40", "dicht");
+    await sum.tap();
+    await page.locator('details[data-sec="spells"] .hmore > p').waitFor({ state: "visible" });
+    await snap(page, "wp40", "open");
+  },
   // WP23: formulieren met de statische tekst (met --i18n=debug de Engelse pagina)
   async pcform(page) { await SCEN.prep(page); await tap(page, '#dock [data-prep="pc"]'); await page.waitForSelector("#f-pc", { state: "visible" }); },
   // WP24: Party met een lid (Bijwerken/Uit party), moeilijkheid met uitleg en levelveld, snel toevoegen met het toevoegblok

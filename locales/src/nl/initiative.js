@@ -54,8 +54,10 @@ export default {
   "init.set.reactOff": "Spelers zelf", // spelers houden hun reaction zelf bij
   "init.set.reactHint": "Spelers zelf: geen Reaction-knop op spelerskaarten. Monsters houden de knop. Verrast en Shield blijven werken.",
   "init.set.spellsHint": "Regels en uitleg van spells: de presets Barkskin, Haste en Sleep (alleen 2024), welke spells concentratie vragen, en welke tekst het spell-paneel toont.", // eerste zin; daarna volgt spellsOnly vet
+  "init.set.more": "Meer",
   "init.set.spellsOnly": "Geldt alleen voor spells:", // vet
-  "init.set.spellsRest": "de rest van de app (condities, crits, concentratie-DC) blijft 2014. Spelers met een D&D Beyond-sheet volgen per spell de versie op hun sheet; monsters, spelers zonder sheet en spells die niet op de sheet staan, volgen deze instelling. In het spell-paneel kun je de andere versie bekijken; dat verandert niets aan de regels. Wat al loopt, houdt de regels van het moment van casten.",
+  "init.set.spellsRest": "de rest van de app (condities, crits, concentratie-DC) blijft 2014.",
+  "init.set.spellsMore": "Spelers met een D&D Beyond-sheet volgen per spell de versie op hun sheet; monsters, spelers zonder sheet en spells die niet op de sheet staan, volgen deze instelling. In het spell-paneel kun je de andere versie bekijken; dat verandert niets aan de regels. Wat al loopt, houdt de regels van het moment van casten.",
   "init.set.player": "Spelersscherm", // sectie in Instellingen
   "init.set.playerHint": "Spelers zien de volgorde, wie aan de beurt is en de HP van spelers. Nooit statblocks, notities of wat je verbergt (monsters via ⋯, de lair op zijn kaart).",
   "init.set.vis": "Wat spelers zien",
@@ -351,7 +353,7 @@ export default {
   "init.card.rcRest": "na rust",
   "init.card.rcTip": "Tik om te markeren als gebruikt of beschikbaar",
   "init.card.lrDay": "LR {n}/dag",
-  "init.card.lrPer": "Legendary resistance per dag",
+  "init.card.lrPer": "Legendary Resistance per dag",
   "init.card.pipUsed": "{label} {i} van {n}, gebruikt",
   "init.card.pipFree": "{label} {i} van {n}, beschikbaar",
   "init.card.defVuln": "Kwetsbaar",
@@ -379,6 +381,7 @@ export default {
   "init.card.perSr": "per short rest",
   "init.card.perLr": "per long rest",
   "init.card.none": "geen",
+  "init.card.noneOpt": "Geen",
   "init.cond.dur": "Duur bij aanzetten",
   "init.cond.save": "Save aan einde beurt",
   "init.cond.exhDown": "Exhaustion een niveau lager",
@@ -551,7 +554,7 @@ export default {
   "init.aoe.saved": "opgeslagen",
   "init.aoe.sb": "statblock",
   "init.aoe.note": "let op: {what}",
-  "init.aoe.lrOk": "Legendary resistance: save geslaagd",
+  "init.aoe.lrOk": "Legendary Resistance: save geslaagd",
   "init.aoe.lrUse": "Legendary resistance gebruiken ({n} over)",
   "init.aoe.evasion": "Geen schade (bijv. Evasion)",
   "init.aoe.resAria": "Weerstand {name}",

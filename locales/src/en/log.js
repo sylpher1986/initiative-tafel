@@ -23,6 +23,7 @@ export default {
   "log.renew": "{name} refreshed",
   "log.exhCh": "Exhaustion {a} → {b}",
   "log.gets": "gets {name}", // effect of conditie
+  "log.unc": "falls unconscious", // conditie Unconscious erbij (i.p.v. "gets Unconscious")
   "log.getsX": "gets {name} ({x})",
   "log.ends": "{name} ends",
   "log.hp": "{a} → {b} HP ({d})",
