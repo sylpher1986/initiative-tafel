@@ -1564,6 +1564,7 @@ export default {
   "dnd.cond24.Incapacitated.2": "[Íñçápáçítátéd whéñ röllíñg íñítíátívé: dísádváñtágé öñ thé röll. ·······················]",
   "dnd.cond24.Invisible.1": "[Üñáfféçtéd bý éfféçts thát réqüíré sééíñg théír tárgét, üñléss thé éfféçt's çréátör çáñ séé ít. Íñvísíblé whéñ röllíñg íñítíátívé: ádváñtágé öñ thé röll. ······················································]",
   "dnd.cond24.Invisible.2": "[Íts áttáçk rölls hávé ádváñtágé; áttáçk rölls ágáíñst ít hávé dísádváñtágé. Ñéíthér ápplíés ágáíñst á çréátüré thát çáñ séé ít. ·············································]",
+  "dnd.cond24.Prone.1": "[Çáñ öñlý çráwl; stáñdíñg üp çösts hálf íts spééd áñd ís ímpössíblé át spééd 0. Íts áttáçk rölls hávé dísádváñtágé. ········································]",
   "dnd.cond24.Petrified.2": "[Åttáçk rölls ágáíñst ít hávé ádváñtágé. Résístáñçé tö áll dámágé; ímmüñé tö thé pöísöñéd çöñdítíöñ. ···································]",
   "dnd.cond24.Stunned.1": "[Íñçápáçítátéd, büt çáñ stíll mövé. Åütömátíçállý fáíls Stréñgth áñd Déxtérítý sávíñg thröws. ·································]",
   "dnd.cond24.Concentrating.1": "[Máíñtáíñíñg á spéll. Öñ tákíñg dámágé, á Çöñstítütíöñ sávíñg thröw: DÇ 10 ör hálf thé dámágé, whíçhévér ís híghér (máxímüm DÇ 30). ··············································]",

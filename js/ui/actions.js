@@ -16,7 +16,7 @@ import { spendSlot, autoSpend } from "../rules/slots.js";
 import { addSave, resolveSave, openSaves, isValid } from "../rules/saves.js";
 import { useLA } from "../rules/legendary.js";
 import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax, endOtherCasts, saveMods, effAc, effSpec, setExh, startRage, rageOf } from "../rules/effects.js";
-import { exhLevel, exhMod, exhEd, EXH_NAME } from "../rules/conditions.js";
+import { exhLevel, exhMod, condEd } from "../rules/conditions.js";
 import { openCond, closeCond, condOpen, condSheetClick } from "./condinfo.js";
 import { showSB, showSheet, monCard, doRoll, doDmgRoll, closeSB, phone, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
 import { findMon, parseMonsterFile, findKey, keyRef, withEdWord } from "../data/monsters.js";
@@ -81,9 +81,7 @@ function openCondFor(btn) {
   const e = c.cd && c.cd[k], by = e && e.by && S.list.find((x) => x.id === e.by);
   const rows = k === "Concentrating" ? [["Spell", c.concSpell || ""]]
     : e ? [[t("init.eff.dur"), durWords(e, S.list)], [t("init.cinfo.rep"), saveWords(e)], [t("init.cinfo.from"), e.spell ? `${e.spell}${by ? ` · ${by.name}${by.cond.includes("Concentrating") ? ` ${t("init.cinfo.conc")}` : ""}` : ""}` : ""]] : [];
-  // WP52: uitleg volgens de tafel; Exhaustion volgens de regels op het effect zelf (WP50, zoals de kaartregel)
-  const lvl = exhLevel(c);
-  openCond(btn, { lvl, ed: k === EXH_NAME && lvl ? exhEd(c) : rulesOf(S), rows });
+  openCond(btn, { lvl: exhLevel(c), ed: condEd(k, c, rulesOf(S)), rows }); // WP52
 }
 
 const apply = (fx) => { if (!fx) return; addWhy(fx.why); show(fx); if (fx.saves) fx.saves.forEach((x) => addSave(app.S, x)); };

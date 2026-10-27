@@ -173,7 +173,8 @@ Zie CLAUDE.md ("Gevecht: kaarten en panelen", "Concentration-DC, surprise en Gra
 ### WP52 — Condities-uitleg 2024 en spelersscherm: klaar in 2.9.0
 Zie CLAUDE.md ("Gevecht: kaarten en panelen", "Spelersscherm"). Voor latere pakketten:
 - WP54: niets extra; DM-kant leest `rulesOf(app.S)`, het spelersscherm krijgt `ed` vanzelf zodra `S.rules` "2024" is.
-- Afwijkend in 2024 (SRD 5.2.1 vergeleken): Charmed, Grappled, Incapacitated, Invisible, Petrified, Stunned, Concentrating (max 30), Exhaustion. Gelijk: Blinded, Deafened, Frightened, Paralyzed, Poisoned, Prone, Restrained, Unconscious.
+- Afwijkend in 2024 (SRD 5.2.1 vergeleken): Charmed, Grappled, Incapacitated, Invisible, Petrified, Prone (niet opstaan bij speed 0), Stunned, Concentrating (max 30), Exhaustion. Gelijk: Blinded, Deafened, Frightened, Paralyzed, Poisoned, Restrained, Unconscious.
+- WP54: het spelersscherm legt Exhaustion uit volgens de tafel (`ed` in de snapshot), de DM-kant volgens het effect (`condEd`). Gelijk zolang de regelwissel `reExhAll` in dezelfde stap draait; zo niet, dan de editie per tag meesturen.
 - Op signaal: Incapacitated (disadvantage) en Invisible (advantage) op initiative 2024 staan alleen in de uitleg.
 
 ### WP53 — Moeilijkheid en XP volgens 2024

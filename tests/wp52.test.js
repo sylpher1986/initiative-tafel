@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createI18n } from "../js/i18n/core.js";
 import { LOCALES } from "../js/i18n/lang.js";
-import { CINFO, CINFO24, cinfoKeys, condInfo } from "../js/rules/conditions.js";
+import { CINFO, CINFO24, cinfoKeys, condInfo, condEd } from "../js/rules/conditions.js";
 import { toPlayerView, cleanView } from "../js/playerview.js";
 import en from "../locales/en.js";
 import nlCat from "../locales/nl.js";
@@ -39,7 +39,7 @@ test("condInfo: 2024-tekst alleen bij ed 2024; gelijke condities dezelfde sleute
   // gedeelde regel: Petrified 1 is 2014, regel 2 eigen
   assert.deepEqual(cinfoKeys("Petrified", "2024"), ["dnd.cond.Petrified.1", "dnd.cond24.Petrified.2"]);
   // niet afwijkend: precies de 2014-uitleg
-  for (const k of ["Blinded", "Prone", "Paralyzed", "Surprised"]) assert.deepEqual(cinfoKeys(k, "2024"), cinfoKeys(k, "2014"), k);
+  for (const k of ["Blinded", "Paralyzed", "Restrained", "Surprised"]) assert.deepEqual(cinfoKeys(k, "2024"), cinfoKeys(k, "2014"), k);
   assert.match(E.tr(condInfo("Stunned", 0, "2024").lines[0]), /can still move/);
   assert.match(E.tr(condInfo("Concentrating", 0, "2024").lines[0]), /maximum DC 30/);
   assert.doesNotMatch(E.tr(condInfo("Concentrating").lines[0]), /maximum/);
@@ -57,6 +57,17 @@ test("Exhaustion-uitleg per editie", () => {
   assert.equal(condInfo("Exhaustion", 6, "2024").lines.length, 2);
   assert.match(E.tr(condInfo("Exhaustion", 6, "2024").lines[0]), /^6 Death$/);
   assert.equal(condInfo("Exhaustion").lines.length, 7); // 2014 ongewijzigd: zes niveaus + regel
+  assert.equal(E.tr(condInfo("Exhaustion", 9, "2024").name), "Exhaustion 6"); // niveau begrensd, ook in de naam
+});
+
+test("condEd: Exhaustion met niveau volgt het effect, de rest de tafel", () => {
+  const ex = (ed) => ({ eff: [{ n: "Exhaustion", x: 2, ...(ed ? { ed } : {}) }] });
+  assert.equal(condEd("Exhaustion", ex("2024"), "2014"), "2024");
+  assert.equal(condEd("Exhaustion", ex(), "2024"), "2014");
+  assert.equal(condEd("Exhaustion", { eff: [] }, "2024"), "2024"); // zonder niveau: de tafel
+  assert.equal(condEd("Grappled", ex("2024"), "2014"), "2014");
+  assert.equal(condEd("Grappled", {}, "2024"), "2024");
+  assert.equal(condEd("Grappled", {}, "onzin"), "2014");
 });
 
 const pc = (o) => ({ kind: "pc", cond: [], dex: 0, ac: 15, hp: 20, max: 20, ...o });

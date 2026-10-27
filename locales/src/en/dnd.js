@@ -55,6 +55,7 @@ export default {
   "dnd.cond24.Incapacitated.2": "Incapacitated when rolling initiative: disadvantage on the roll.",
   "dnd.cond24.Invisible.1": "Unaffected by effects that require seeing their target, unless the effect's creator can see it. Invisible when rolling initiative: advantage on the roll.",
   "dnd.cond24.Invisible.2": "Its attack rolls have advantage; attack rolls against it have disadvantage. Neither applies against a creature that can see it.",
+  "dnd.cond24.Prone.1": "Can only crawl; standing up costs half its speed and is impossible at speed 0. Its attack rolls have disadvantage.",
   "dnd.cond24.Petrified.2": "Attack rolls against it have advantage. Resistance to all damage; immune to the poisoned condition.",
   "dnd.cond24.Stunned.1": "Incapacitated, but can still move. Automatically fails Strength and Dexterity saving throws.",
   "dnd.cond24.Concentrating.1": "Maintaining a spell. On taking damage, a Constitution saving throw: DC 10 or half the damage, whichever is higher (maximum DC 30).",

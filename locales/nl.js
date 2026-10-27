@@ -1561,6 +1561,7 @@ export default {
   "dnd.cond24.Incapacitated.2": "Incapacitated bij de initiative-worp: disadvantage op die worp.",
   "dnd.cond24.Invisible.1": "Effecten die hun doel moeten zien, raken hem niet, tenzij de maker ervan hem kan zien. Onzichtbaar bij de initiative-worp: advantage op die worp.",
   "dnd.cond24.Invisible.2": "Zijn aanvallen hebben advantage, aanvallen tegen hem disadvantage. Geen van beide tegenover wie hem kan zien.",
+  "dnd.cond24.Prone.1": "Kan alleen kruipen; opstaan kost de helft van zijn speed en kan niet bij speed 0. Zijn aanvallen hebben disadvantage.",
   "dnd.cond24.Petrified.2": "Aanvallen tegen hem hebben advantage. Resistance tegen alle schade, immuun voor poisoned.",
   "dnd.cond24.Stunned.1": "Incapacitated, maar kan nog bewegen. STR- en DEX-saves mislukken vanzelf.",
   "dnd.cond24.Concentrating.1": "Houdt een spell vast. Bij schade een CON-save: DC 10 of de helft van de schade, het hoogste telt (maximaal DC 30).",

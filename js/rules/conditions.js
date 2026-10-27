@@ -12,11 +12,11 @@ export const CINFO = {
 /**
  * WP52 (G1): uitleg volgens 2024 (SRD 5.2.1, Rules Glossary). Alleen condities die afwijken; per regel 24 = eigen tekst
  * dnd.cond24.<id>.<regel>, 14 = dezelfde regel als 2014 (dnd.cond.<id>.<regel>; één sleutel = één betekenis). Niet in de
- * lijst = de 2014-uitleg geldt ongewijzigd (Blinded, Deafened, Frightened, Paralyzed, Poisoned, Prone, Restrained,
+ * lijst = de 2014-uitleg geldt ongewijzigd (Blinded, Deafened, Frightened, Paralyzed, Poisoned, Restrained,
  * Unconscious, Surprised: die badge bestaat in 2024 niet, WP51).
  */
 export const CINFO24 = {
-  Charmed: [24, 14], Grappled: [24, 24, 24], Incapacitated: [24, 24], Invisible: [24, 24], Petrified: [14, 24],
+  Charmed: [24, 14], Grappled: [24, 24, 24], Prone: [24, 14], Incapacitated: [24, 24], Invisible: [24, 24], Petrified: [14, 24],
   Stunned: [24, 14], Concentrating: [24, 14], Exhaustion: [24],
 };
 /** Catalogussleutels van de uitleg bij id en editie (in volgorde); [] zonder uitleg */
@@ -75,6 +75,8 @@ export function condInfo(name, lvl = 0, ed = "2014") {
   if (!hasCondInfo(name)) return null;
   const e24 = ed === "2024" ? "2024" : "2014", lines = cinfoKeys(name, e24).map((k) => M(k));
   if (name !== EXH_NAME) return { name: condName(name), lines };
-  const rows = e24 === "2024" ? exhRows(lvl, e24) : exhRows(lvl || 6);
-  return { name: lvl ? `${EXH_NAME} ${lvl}` : EXH_NAME, lines: [...rows, lines[0]] };
+  const x = Math.max(0, Math.min(6, lvl | 0)), rows = e24 === "2024" ? exhRows(x, e24) : exhRows(x || 6);
+  return { name: x ? `${EXH_NAME} ${x}` : EXH_NAME, lines: [...rows, lines[0]] };
 }
+/** WP52: regels voor de uitleg op de DM-kant: Exhaustion met niveau volgens het effect (WP50), de rest volgens de tafel */
+export const condEd = (name, c, rules) => (name === EXH_NAME && exhLevel(c) ? exhEd(c) : rules === "2024" ? "2024" : "2014");
