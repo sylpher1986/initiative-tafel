@@ -25,6 +25,7 @@ js/data/spells.js     spellbibliotheek voor de spell-uitleg (laden bij de eerste
 js/rules/             spelregels, puur en getest
 js/ui/                tekenen en gebruikersacties
 data/monsters.json    SRD 5.1 monsters
+data/monsters-2024.json SRD 5.2 monsters (gemaakt met tools/monsters_srd2024.py uit open5e-api, gecontroleerd tegen de SRD 5.2.1-pdf)
 data/spells.json      SRD 5.1 spells (gemaakt met tools/spells_srd.py uit 5e-bits/5e-database)
 data/spells-2024.json SRD 5.2 spells (gemaakt met tools/spells_srd2024.py uit open5e-api)
 sw.js                 service worker (offline)
@@ -51,6 +52,6 @@ Verhoog `VERSION` in `sw.js` én `js/version.js`, anders blijven geïnstalleerde
 
 ## Licentie van de monsterdata
 
-Bevat materiaal uit het System Reference Document 5.1 (2014) van Wizards of the Coast LLC, beschikbaar onder [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode), via [Open5e](https://open5e.com) (monsters) en [5e-bits/5e-database](https://github.com/5e-bits/5e-database) (spells), en uit het System Reference Document 5.2 (2024) van Wizards of the Coast LLC onder [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode), via [Open5e](https://open5e.com) (spells). Dungeons & Dragons is een handelsmerk van Wizards of the Coast; dit project is daar niet aan verbonden.
+Bevat materiaal uit het System Reference Document 5.1 (2014) van Wizards of the Coast LLC, beschikbaar onder [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode), via [Open5e](https://open5e.com) (monsters) en [5e-bits/5e-database](https://github.com/5e-bits/5e-database) (spells), en uit het System Reference Document 5.2 en 5.2.1 (2024) van Wizards of the Coast LLC onder [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode), via [Open5e](https://open5e.com) (spells en monsters; de monsters gecontroleerd en verbeterd tegen de officiële SRD 5.2.1-pdf). Dungeons & Dragons is een handelsmerk van Wizards of the Coast; dit project is daar niet aan verbonden.
 
 Icoontjes voor rassen en creature types (`icons/creatures.svg`) komen van [game-icons.net](https://game-icons.net), door Lorc, Delapouite, Sbed en Cathelineau, onder [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Lettertypes DM Sans en Newsreader: SIL Open Font License (`fonts/OFL.txt`). Interface-iconen (`icons/ui.svg`): eigen tekeningen, behalve pen en tandwiel naar [Feather Icons](https://feathericons.com) (MIT, Cole Bemis). PDF-import met [pdf.js](https://mozilla.github.io/pdf.js/) 3.11.174 van Mozilla, zelf gehost in `vendor/pdfjs/` (Apache License 2.0).

@@ -1,6 +1,6 @@
 # G1 — D&D 5e 2024-regels naast 2014
 
-Plan van 27-10-2026 (stand 2.3.1, commit `4622436`). Status: **WP46 klaar (2.4.0)**, rest gepland. Werkpakketten WP46–WP55; samenvatting in `ROADMAP.md`. Na elk pakket: keuze naar CLAUDE.md ("Gemaakte keuzes"), regel uit dit plan en de roadmap halen. Dit document vervalt als G1 klaar is.
+Plan van 27-10-2026 (stand 2.3.1, commit `4622436`). Status: **WP46 klaar (2.4.0), WP47 klaar (2.4.1)**, rest gepland. Werkpakketten WP46–WP55; samenvatting in `ROADMAP.md`. Na elk pakket: keuze naar CLAUDE.md ("Gemaakte keuzes"), regel uit dit plan en de roadmap halen. Dit document vervalt als G1 klaar is.
 
 Legenda: **[B]** = bevestigd in de code, **[A]** = aanname, **[?]** = onbekend, eerst controleren.
 
@@ -131,23 +131,16 @@ Zie CLAUDE.md ("Opslag en data") en `js/rules/edition.js`. Voor latere pakketten
 
 ---
 
-### WP47 — SRD 5.2-monsterdata: converter en datafile
-1. **Doel**: `data/monsters-2024.json` met de 331 SRD 5.2-monsters in hetzelfde veldformaat als `monsters.json`, reproduceerbaar uit Open5e, met bronvermelding.
-2. **Huidige stand**: §1.1, §1.7; voorbeeld `tools/spells_srd2024.py`.
-3. **Scope**:
-   - `tools/monsters_srd2024.py` (`python3 -I`, invoer = Open5e `Creature*.json`, uitvoer `{ ed: "2024", src, monsters: [...] }`). Velden: `n, meta, ac, hp, hd, spd, ab, x, cr, xp, t, a, ba, re, l, ld` + nieuw `init` (Initiative-bonus) en `pb`.
-   - Herstel: "Hit:" in aanvallen uit `CreatureActionAttack.json`; `ld`-tekst met het aantal legendary actions (standaard 3, uitzonderingen via een kleine tabel na controle tegen de SRD 5.2.1-pdf); recharge/uses in de entrynaam ("(Recharge 5–6)", "(1/Day)", "(Costs 2 Actions)"); `xp` uit CR.
-   - `x` met "Saving Throws" (alleen waar de save afwijkt van de modifier), Skills, Immunities/Resistances, Senses, Languages, Gear.
-   - `data/monsters-2024.json` + regel in `sw.js`-precache; `loadSrd` accepteert array (oud) én omhulsel (nieuw).
-   - README-bronvermelding uitbreiden (SRD 5.2 ook voor monsters).
-4. **Buiten scope**: parsers, UI, zoeken.
-5. **Aanpak**: zelfde stijl als de spell-tool; test dat het bestand actueel is (zoals bij de spelldata).
-6. **Afhankelijk van**: — (laden aan de app-kant in WP48/49).
-7. **Acceptatie**: 331 monsters, unieke namen, elk met `n`, `cr`, `hp > 0`, `ac`, 6 ability scores; elke Open5e-attack heeft "Hit:" of een damage-expressie in de tekst; elk monster met legendary actions heeft `ld` met een aantal; steekproef van 15 statblocks (o.a. Aboleth, Adult Red Dragon, Goblin Warrior, Zombie, Lich, Mage, Vampire) gelijk aan SRD 5.2.1 op AC, HP, hit dice, CR, Initiative, saves, aantal en namen van traits/acties/legendary actions en het legendary-aantal; geen tekst die niet in SRD 5.2 staat.
-8. **Tests**: `tests/monsters2024.test.js` (structuur, aantallen, steekproefwaarden), `tests/worker.test.js`/sw-test voor de precache-lijst.
-9. **Klaar als**: tests groen, developer-review van tool en steekproef, versie ophogen (de sw-precache wijzigt), push.
-10. **Risico's**: Open5e mist meer dan gezien (spellcasting-lijsten, lair-teksten); SRD 5.2 vs 5.2.1 (§1.7). Is de officiële pdf niet bereikbaar via de allowlist, dan levert Michiel hem aan. De handmatige steekproef maakt het pakket krap: blijft er tijd over, dan niet uitbreiden.
-11. **Omvang**: M (krap).
+### WP47 — SRD 5.2-monsterdata: klaar in 2.4.1
+Zie CLAUDE.md ("Opslag en data") en de kop van `tools/monsters_srd2024.py`. Voor WP48/49:
+- Bron is Open5e `srd-2024` (commit `e69ac13`), **volledig** vergeleken met de officiële SRD 5.2.1-pdf (in open5e-api: `data/raw_sources/srd_5_2/SRD_CC_v5.2.1.pdf`); §1.7-vraag beantwoord: de tekst volgt 5.2.1 ("GM", Awakened Tree 14 (3d6 + 4)). Bronvermelding: SRD 5.2.1.
+- Velden als `monsters.json` + `init` (statblock-Initiative, voor R8) en `pb`. `ld` begint met "Legendary Action Uses: 3" of "3 (4 in Lair)" (30 monsters, 27 met lair; LR-trait "(3/Day, or 4/Day in Lair)").
+- Attacktekst 2024-vorm: "Melee or Ranged Attack Roll: +9 (with Advantage if …), reach 5 ft. or range 150 ft. Hit: 27 (4d10 + 5) Force damage." (geen "to hit", geen "one target"). Saves: "Dexterity Saving Throw: DC 18, … Failure: … Success: Half damage." Riders: "has the Grappled condition (escape DC 14)". Spellcasting is een **actie** met regels "• At Will: …", "• 2/Day Each: …", "• 1/Day: …" en "(level N version)".
+- Gebruik en vorm in de naam: "(Recharge 5–6)" (en-dash), "(Recharge after a Short or Long Rest)", "(3/Day)", "(Bear or Hybrid Form Only)", "(1/Day; Requires Soul Bag)". Nooit "(Costs N Actions)".
+- Statregels: "Resistances", "Immunities" (schade; condities), "Vulnerabilities", "Gear", "Senses" ("…; Passive Perception N"), "Saving Throws" alleen waar de save afwijkt van de modifier.
+- Ontbreekt (niet in Open5e): subtypes en "Swarm of Tiny Beasts" in `meta`. Speed-notities alleen bij de weerdieren en Swarm of Insects.
+
+---
 
 ### WP48 — Statblock-parsers en monster-initiative editiebestendig
 1. **Doel**: aanvallen, saves, riders, recharge, legendary, spellcasting en initiative werken voor SRD 5.2-statblocks zoals voor 2014.

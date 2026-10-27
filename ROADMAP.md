@@ -39,11 +39,10 @@ Volgorde = voorstel. K1–K3 merkt de gebruiker, K4–K7 zijn technisch.
 
 ## G1 D&D 2024-regels: werkpakketten (gepland)
 
-Plan met inventaris, besluiten (B1–B10) en per pakket scope en acceptatiecriteria: [`docs/g1-regels-2024.md`](docs/g1-regels-2024.md). Kern: één regelset per tafel (`S.rules`, alleen buiten een gevecht te wijzigen), monster-editie als data (`ed: "2024"`, ontbreekt = huidig gedrag), SRD 5.2-monsters via Open5e, backup v4 / encounterbestand v2 alleen bij 2024-inhoud. Tot WP54 niets zichtbaar. WP46 (fundament) is klaar in 2.4.0 (CLAUDE.md, "Opslag en data").
+Plan met inventaris, besluiten (B1–B10) en per pakket scope en acceptatiecriteria: [`docs/g1-regels-2024.md`](docs/g1-regels-2024.md). Kern: één regelset per tafel (`S.rules`, alleen buiten een gevecht te wijzigen), monster-editie als data (`ed: "2024"`, ontbreekt = huidig gedrag), SRD 5.2-monsters via Open5e, backup v4 / encounterbestand v2 alleen bij 2024-inhoud. Tot WP54 niets zichtbaar. WP46 (fundament) is klaar in 2.4.0, WP47 (SRD 5.2-monsterdata) in 2.4.1 (CLAUDE.md, "Opslag en data").
 
 | Code | Wat | Na | Omvang |
 |---|---|---|---|
-| **WP47** | SRD 5.2-monsterdata: `tools/monsters_srd2024.py` → `data/monsters-2024.json` (331), sw-precache | — | M |
 | **WP48** | Parsers editiebestendig (aanvallen, saves, riders, legendary, spellcasting) + monster-initiative uit statblock | WP46, WP47 | L |
 | **WP49** | Monsterkeuze en dubbele namen, editietag, statblock, encounters inladen (UX-agent) | WP48 | M |
 | **WP50** | Exhaustion 2024 (geen HP-halvering, −2 × niveau op d20-tests), idempotente `reExh`, Rage 2024 (doorlopen, duur, Frenzy zonder Exhaustion) | WP46 | M |

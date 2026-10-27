@@ -10,7 +10,7 @@ let list = null, index = null, list24 = null, index24 = null;
 export async function loadSrd(url = "/data/monsters.json") {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`); // taalneutraal: de UI zet er init.boot.srdFail omheen
-  srd = await res.json();
+  srd = srdList(await res.json());
   invalidate();
 }
 export function setLibrary({ custom: c, imported: i }) {
@@ -18,8 +18,10 @@ export function setLibrary({ custom: c, imported: i }) {
   if (i) imported = i;
   invalidate();
 }
+/** SRD-bestand: kale array (data/monsters.json) of omhulsel { ed, src, monsters } (data/monsters-2024.json, WP47) */
+export const srdList = (j) => (Array.isArray(j) ? j : Array.isArray(j?.monsters) ? j.monsters : []);
 /** G1: SRD 5.2-bibliotheek (data/monsters-2024.json, laden komt in WP48/49); los van eigen/geïmporteerd, geen ontdubbeling */
-export function setSrd24(l) { srd24 = Array.isArray(l) ? l : []; list24 = index24 = null; }
+export function setSrd24(l) { srd24 = srdList(l); list24 = index24 = null; }
 export const getCustom = () => custom;
 export const getImported = () => imported;
 
