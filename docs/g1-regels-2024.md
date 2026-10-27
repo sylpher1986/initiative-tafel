@@ -203,7 +203,7 @@ Omvang: S ≈ één korte sessie (K-formaat), M ≈ één volle sessie, L ≈ gr
 5. **Aanpak**: `ed` als laatste parameter met standaard `"2014"` (B6).
 6. **Afhankelijk van**: WP46.
 7. **Acceptatie**: 2014-tests ongewijzigd groen; 2024: Exhaustion 4 laat max HP staan; save met Exhaustion 2 krijgt −4 met reden "Exhaustion 2"; aanval met Exhaustion 3 krijgt −6 en géén disadvantage; `reExh` twee keer achter elkaar = zelfde uitkomst; 2014→2024 herstelt een gehalveerde max HP, 2024→2014 halveert weer (beide op tafel, met logregel); long rest −1 in beide; Rage 2024 met alleen schade sinds de vorige beurt → melding "loopt voorbij" (2014: loopt door); Frenzy-rage 2024 afgelopen → geen Exhaustion (2014: +1).
-8. **Tests**: `rules.test.js`, `saves.test.js`, `attacks.test.js`, `effects.test.js`, `afwerking.test.js`, rage-tests (`wp16.test.js` e.a.).
+8. **Tests**: `rules.test.js`, `saves.test.js`, `attacks.test.js`, `effects.test.js`, `afwerking.test.js`, rage-tests in `wp8.test.js`.
 9. **Klaar als**: tests groen, developer-review (2014 én SRD 5.2), versie, push.
 10. **Risico's**: d20-straf als modifier raakt de worptekst (`rollText`, `atkText`): tekst controleren in log en paneel.
 11. **Omvang**: M.
