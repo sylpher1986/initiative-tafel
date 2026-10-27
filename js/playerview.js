@@ -7,6 +7,7 @@ import { iconId, cleanImg } from "./ui/avatar.js";
 import { esc } from "./ui/util.js";
 import { t } from "./i18n/boot.js";
 import { isMsg } from "./i18n/msg.js";
+import { rulesOf } from "./rules/edition.js";
 
 // Meertaligheid (WP28): de snapshot bevat codes (hs, anon, tk, tdx), elk spelersscherm vertaalt zelf in zijn eigen taal.
 // Sinds WP32 (v 2) zonder de oude Nederlandse velden (hp.st, naam "Onbekend wezen", tags-woorden, td, gname): geen UI-tekst
@@ -195,6 +196,7 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS, prev = null, opts 
   out.tg = vis.tags; // SC9: instelling gewisseld → geen regelstorm (zegt niets wat spelers niet al zien)
   if (!fight && S.endSum) out.end = Math.max(0, S.endSum.r | 0);
   if (inTurn.size > 1) out.group = [...inTurn]; // groepsnaam maakt het spelersscherm zelf (shownGroup)
+  if (rulesOf(S) === "2024") out.ed = "2024"; // WP52 (B8): regels voor de conditie-uitleg; ontbreekt = 2014 (oudere schermen negeren het)
   return out;
 }
 
@@ -322,6 +324,7 @@ export function cleanView(d) {
   const pick = (v) => (typeof v === "string" && ids.has(v) ? v : null);
   const out = { v: d.v, round: Math.max(0, int(d.round)), active: pick(d.active), next: pick(d.next), list };
   if (d.nolog) out.nolog = 1;
+  if (d.ed === "2024") out.ed = "2024";
   if (VIS_OPTS.tags.includes(d.tg)) out.tg = d.tg;
   if (!out.round && d.end != null) out.end = Math.max(0, Math.min(9999, int(d.end)));
   const group = Array.isArray(d.group) ? [...new Set(d.group.map(pick).filter(Boolean))].slice(0, 20) : [];

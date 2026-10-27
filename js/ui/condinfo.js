@@ -11,11 +11,12 @@ let from = null;  // knop die het paneel opende
 export const condOpen = () => !!cur;
 
 /**
- * Paneel openen. btn = de chip (data-cinfo = conditie, data-cid = deelnemer); info = { lvl, rows: [[label, waarde]] }.
+ * Paneel openen. btn = de chip (data-cinfo = conditie, data-cid = deelnemer); info = { lvl, ed, rows: [[label, waarde]] }
+ * (ed "2024" = uitleg volgens 2024, WP52; anders 2014).
  * Regels zonder waarde vallen weg; zonder uitleg (CINFO) gebeurt er niets.
  */
 export function openCond(btn, info = {}) {
-  const key = btn.dataset.cinfo, ci = condInfo(key, info.lvl || 0);
+  const key = btn.dataset.cinfo, ci = condInfo(key, info.lvl || 0, info.ed);
   if (!ci) return false;
   cur = { key, cid: btn.dataset.cid || "" };
   from = btn;

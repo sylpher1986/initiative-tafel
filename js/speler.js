@@ -171,7 +171,7 @@ function bindMe() {
     const c = lastV && lastV.list.find((x) => x.id === b.dataset.cid), i = +b.dataset.ti;
     const dx = c && c.tdx && c.tdx[i];
     const val = (f) => (dx && dx[f] ? tr(dx[f]) : "");
-    openCond(b, { lvl: +b.dataset.lvl || 0, rows: [[t("player.cinfo.dur"), val("d")], [t("player.cinfo.rep"), val("s")]] });
+    openCond(b, { lvl: +b.dataset.lvl || 0, ed: lastV && lastV.ed, rows: [[t("player.cinfo.dur"), val("d")], [t("player.cinfo.rep"), val("s")]] });
   });
 }
 

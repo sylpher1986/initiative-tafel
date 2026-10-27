@@ -307,6 +307,20 @@ const SCEN = {
     await snap(page, "wp41", "effect");
     await el.tap(); await page.waitForSelector("#rsheet .rsheet");
   },
+  // WP52 (G1): conditie-uitleg volgens de tafelregels (2024 nog alleen via de stand: de keuze komt in WP54)
+  async wp52(page) {
+    await SCEN.fight(page);
+    await page.evaluate(async () => { const { app } = await import("/js/state.js"), { render } = await import("/js/ui/render.js");
+      app.S.rules = "2024"; const c = app.S.list.find((x) => x.id === app.S.active); c.cond = [...c.cond, "Grappled"]; render(); });
+    const chip = page.locator('#order .c.k.open [data-cinfo="Grappled"]').first();
+    await chip.waitFor({ state: "visible" });
+    await chip.evaluate((x) => x.scrollIntoView({ block: "center" }));
+    await chip.tap(); await page.waitForSelector("#csheet .csheet");
+    const n = await page.locator("#csheet .rtext p").count();
+    if (n !== 3) throw new Error(`Grappled 2024: ${n} regels uitleg, verwacht 3`);
+    await snap(page, "wp52", "grappled");
+    await tap(page, '#csheet .shead [data-csh="close"]'); await page.waitForSelector("#csheet", { state: "hidden" });
+  },
   // --shots=wp42: eigen notitie bij een niet-SRD-spell (Toll the Dead; Hex staat in SRD 5.2): toevoegen, bewaard na herladen, in de export, wissen + Undo.
   async wp42(page) {
     await SCEN.prep(page);

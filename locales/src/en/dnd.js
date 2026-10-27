@@ -45,6 +45,20 @@ export default {
   "dnd.cond.Surprised.2": "Round 1 only: whoever didn't notice the threat (Stealth against passive Perception).",
   "dnd.cond.Exhaustion.1": "Six levels, which are cumulative. A long rest (with food and drink) removes one level.",
   "dnd.cond.Surprised.name": "Surprised", // geen conditie in de regels: label in de taal (init.card.sur)
+  // WP52 (G1): uitleg volgens 2024 (SRD 5.2.1, Rules Glossary), alleen waar die afwijkt: dnd.cond24.<id>.<regel>.
+  // Welke regels eigen tekst hebben en welke de 2014-regel delen: CINFO24 in js/rules/conditions.js (test). Eigen samenvatting.
+  "dnd.cond24.Charmed.1": "Can't attack the charmer or target it with damaging abilities or magical effects.",
+  "dnd.cond24.Grappled.1": "Speed 0 and can't increase. Disadvantage on attack rolls against anyone other than the grappler.",
+  "dnd.cond24.Grappled.2": "The grappler can drag or carry it, but each foot of movement costs 1 extra foot unless it's Tiny or two or more sizes smaller.",
+  "dnd.cond24.Grappled.3": "Escape: an action for a Strength (Athletics) or Dexterity (Acrobatics) check against the escape DC. Also ends if the grappler is incapacitated or it's moved out of range.",
+  "dnd.cond24.Incapacitated.1": "Can't take actions, bonus actions, or reactions, and can't speak. Its concentration ends.",
+  "dnd.cond24.Incapacitated.2": "Incapacitated when rolling initiative: disadvantage on the roll.",
+  "dnd.cond24.Invisible.1": "Unaffected by anything that requires its target to be seen, unless the source can see it. Invisible when rolling initiative: advantage on the roll.",
+  "dnd.cond24.Invisible.2": "Its attack rolls have advantage; attack rolls against it have disadvantage. Not against a creature that can see it.",
+  "dnd.cond24.Petrified.2": "Attack rolls against it have advantage. Resistance to all damage; immune to the poisoned condition.",
+  "dnd.cond24.Stunned.1": "Incapacitated, but can still move. Automatically fails Strength and Dexterity saving throws.",
+  "dnd.cond24.Concentrating.1": "Maintaining a spell. On taking damage, a Constitution saving throw: DC 10 or half the damage, whichever is higher (maximum 30).",
+  "dnd.cond24.Exhaustion.1": "Up to six levels: each level gives −2 on d20 tests and −5 ft speed; level 6 is death. A long rest removes one level.",
   // Exhaustion (RE11): wat er per niveau bijkomt (paneel), kort (rij in het Conditie-paneel en de melding)
   "dnd.exh.1": "Disadvantage on ability checks",
   "dnd.exh.2": "Speed halved",

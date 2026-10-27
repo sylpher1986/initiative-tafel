@@ -1,4 +1,4 @@
-// Uitleg bij condities (RE10) en Exhaustion-niveaus (RE11), 5e 2014. Puur: geen DOM.
+// Uitleg bij condities (RE10) en Exhaustion-niveaus (RE11), 5e 2014; afwijkingen volgens 2024 in CINFO24 (WP52). Puur: geen DOM.
 // De tekst staat in de catalogus (locales/src/*/dnd.js, dnd.cond.* en dnd.exh.*; WP29): eigen samenvatting van de
 // SRD 5.1 (appendix A). Hier alleen de id's en de opbouw; functies geven descriptoren (js/i18n/msg.js) terug.
 import { M, J } from "../i18n/msg.js";
@@ -9,6 +9,23 @@ export const CINFO = {
   Blinded: 2, Charmed: 2, Deafened: 1, Frightened: 2, Grappled: 2, Incapacitated: 1, Invisible: 2, Paralyzed: 2,
   Petrified: 2, Poisoned: 1, Prone: 2, Restrained: 2, Stunned: 2, Unconscious: 2, Concentrating: 2, Surprised: 2, Exhaustion: 1,
 };
+/**
+ * WP52 (G1): uitleg volgens 2024 (SRD 5.2.1, Rules Glossary). Alleen condities die afwijken; per regel 24 = eigen tekst
+ * dnd.cond24.<id>.<regel>, 14 = dezelfde regel als 2014 (dnd.cond.<id>.<regel>; één sleutel = één betekenis). Niet in de
+ * lijst = de 2014-uitleg geldt ongewijzigd (Blinded, Deafened, Frightened, Paralyzed, Poisoned, Prone, Restrained,
+ * Unconscious, Surprised: die badge bestaat in 2024 niet, WP51).
+ */
+export const CINFO24 = {
+  Charmed: [24, 14], Grappled: [24, 24, 24], Incapacitated: [24, 24], Invisible: [24, 24], Petrified: [14, 24],
+  Stunned: [24, 14], Concentrating: [24, 14], Exhaustion: [24],
+};
+/** Catalogussleutels van de uitleg bij id en editie (in volgorde); [] zonder uitleg */
+export function cinfoKeys(name, ed = "2014") {
+  if (!hasCondInfo(name)) return [];
+  const v = ed === "2024" && Object.prototype.hasOwnProperty.call(CINFO24, name) ? CINFO24[name] : null;
+  if (!v) return Array.from({ length: CINFO[name] }, (_, i) => `dnd.cond.${name}.${i + 1}`);
+  return v.map((e, i) => `dnd.${e === 24 ? "cond24" : "cond"}.${name}.${i + 1}`);
+}
 /** Id van de uitleg bij de badge Verrast (geen conditie in c.cond, maar c.sur) */
 export const SUR = "Surprised";
 /** Heeft deze id uitleg? (eigen sleutel: geen "constructor" of andere prototype-naam) */
@@ -50,12 +67,14 @@ export const exhEd = (c) => { const e = (c && c.eff || []).find(isExh); return e
 export const exhMod = (c) => { const x = exhLevel(c); return x && x < 6 && exhEd(c) === "2024" ? { n: `${EXH_NAME} ${x}`, b: -2 * x } : null; };
 
 /**
- * Uitleg voor het paneel (RE10). name = id (conditienaam, "Exhaustion" of "Surprised"); lvl = Exhaustion-niveau.
- * → { name, lines } (tekst of descriptoren, tonen met tr) of null als er geen uitleg is.
+ * Uitleg voor het paneel (RE10). name = id (conditienaam, "Exhaustion" of "Surprised"); lvl = Exhaustion-niveau;
+ * ed = regels ("2024" = SRD 5.2.1, WP52; anders 2014). → { name, lines } (descriptoren, tonen met tr) of null.
+ * Exhaustion 2014 zonder niveau toont alle zes niveaus; 2024 zonder niveau alleen de algemene regel (die zegt het al).
  */
-export function condInfo(name, lvl = 0) {
+export function condInfo(name, lvl = 0, ed = "2014") {
   if (!hasCondInfo(name)) return null;
-  const lines = Array.from({ length: CINFO[name] }, (_, i) => M(`dnd.cond.${name}.${i + 1}`));
+  const e24 = ed === "2024" ? "2024" : "2014", lines = cinfoKeys(name, e24).map((k) => M(k));
   if (name !== EXH_NAME) return { name: condName(name), lines };
-  return { name: lvl ? `${EXH_NAME} ${lvl}` : EXH_NAME, lines: [...exhRows(lvl || 6), lines[0]] };
+  const rows = e24 === "2024" ? exhRows(lvl, e24) : exhRows(lvl || 6);
+  return { name: lvl ? `${EXH_NAME} ${lvl}` : EXH_NAME, lines: [...rows, lines[0]] };
 }
