@@ -1,6 +1,6 @@
 // Meertaligheid (WP18, TA2): telt per bestand de Nederlandse tekst die nog niet uit een vertaalcatalogus komt.
 // Het nulpunt staat in tests/i18n-baseline.json; tests/i18n-ratchet.test.js bewaakt dat een getal alleen omlaag gaat.
-// Plan en pakketindeling: docs/i18n.md (§7).
+// Conventies: docs/i18n.md §9.
 //
 // Gebruik (in de repo):
 //   node tools/i18n-audit.mjs            overzicht per bestand en per werkpakket
@@ -151,7 +151,7 @@ export function dutchIn(path, src) {
   return all.filter((x) => !isCode(x.text) && isDutch(x.text));
 }
 
-// Welk werkpakket haalt de tekst uit welk bestand (docs/i18n.md §7). Elk bestand met Nederlandse tekst moet hier
+// Welk werkpakket haalt de tekst uit welk bestand (docs/i18n.md §9). Elk bestand met Nederlandse tekst moet hier
 // staan (test). render.js en actions.js zijn te groot voor één pakket: verdeeld over WP24–WP26 per scherm.
 export const PLAN = {
   "pages/initiative.html": "WP23", "pages/player.html": "WP23", "pages/home.html": "WP30",

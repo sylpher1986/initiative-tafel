@@ -22,7 +22,7 @@ test("minder tekst is vastgelegd in het nulpunt (winst sluipt niet terug)", () =
 });
 
 test("elk bestand met Nederlandse tekst hoort bij een werkpakket (PLAN in tools/i18n-audit.mjs)", () => {
-  assert.deepEqual(Object.keys(now).filter((f) => !planFor(f)), [], "Zet het bestand in PLAN in tools/i18n-audit.mjs (docs/i18n.md §7).");
+  assert.deepEqual(Object.keys(now).filter((f) => !planFor(f)), [], "Zet het bestand in PLAN in tools/i18n-audit.mjs (docs/i18n.md §9).");
 });
 
 test("scanner: commentaar telt niet, strings en templates wel, regex-literals breken niets", () => {
