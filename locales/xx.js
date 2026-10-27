@@ -607,7 +607,7 @@ export default {
   "init.aoe.sb": "[stát blöçk ····]",
   "init.aoe.note": "[ñöté: {what} ···]",
   "init.aoe.lrOk": "[Légéñdárý Résístáñçé: sávé süççéédéd ·············]",
-  "init.aoe.lrUse": "[Üsé légéñdárý résístáñçé ({n} léft) ············]",
+  "init.aoe.lrUse": "[Üsé Légéñdárý Résístáñçé ({n} léft) ············]",
   "init.aoe.evasion": "[Ñö dámágé (é.g. Évásíöñ) ·········]",
   "init.aoe.resAria": "[Résístáñçé {name} ····]",
   "init.aoe.fill": "[Éñtér thé dámágé ······]",

@@ -555,7 +555,7 @@ export default {
   "init.aoe.sb": "statblock",
   "init.aoe.note": "let op: {what}",
   "init.aoe.lrOk": "Legendary Resistance: save geslaagd",
-  "init.aoe.lrUse": "Legendary resistance gebruiken ({n} over)",
+  "init.aoe.lrUse": "Legendary Resistance gebruiken ({n} over)",
   "init.aoe.evasion": "Geen schade (bijv. Evasion)",
   "init.aoe.resAria": "Weerstand {name}",
   "init.aoe.fill": "Vul de schade in",

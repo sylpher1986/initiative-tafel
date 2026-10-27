@@ -607,7 +607,7 @@ export default {
   "init.aoe.sb": "stat block",
   "init.aoe.note": "note: {what}",
   "init.aoe.lrOk": "Legendary Resistance: save succeeded",
-  "init.aoe.lrUse": "Use legendary resistance ({n} left)",
+  "init.aoe.lrUse": "Use Legendary Resistance ({n} left)",
   "init.aoe.evasion": "No damage (e.g. Evasion)",
   "init.aoe.resAria": "Resistance {name}",
   "init.aoe.fill": "Enter the damage",

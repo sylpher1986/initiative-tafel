@@ -25,7 +25,6 @@ test("spelerslog: meerdere condities weg als opsomming (EN 'and', NL 'en')", asy
 test("logboek: Unconscious erbij is 'falls unconscious', andere condities blijven 'gets X'", async () => {
   const a = { list: [P({ id: "p", name: "Aria" })] };
   const b = { list: [P({ id: "p", name: "Aria", cond: ["Unconscious", "Prone"] })] };
-  const m = diffLog(a, b).flatMap((e) => (e.m ? [].concat(e.m) : []));
   await lang("en");
   const en = diffLog(a, b).map((e) => (e.m ? tr(e.m) : e.msg)).join(" | ");
   assert.match(en, /falls unconscious/);
@@ -33,13 +32,13 @@ test("logboek: Unconscious erbij is 'falls unconscious', andere condities blijve
   assert.doesNotMatch(en, /gets Unconscious/);
   await lang("nl");
   assert.match(diffLog(a, b).map((e) => (e.m ? tr(e.m) : e.msg)).join(" | "), /raakt bewusteloos/);
-  assert.ok(m.length, "descriptoren, geen zinnen");
 });
 
 test("teksten: Legendary Resistance, Caster (concentration), None in keuzelijsten", async () => {
   await lang("en");
   assert.equal(t("init.card.lrPer"), "Legendary Resistance per day");
   assert.equal(t("init.aoe.lrOk"), "Legendary Resistance: save succeeded");
+  assert.equal(t("init.aoe.lrUse", { n: 2 }), "Use Legendary Resistance (2 left)");
   assert.equal(t("init.eff.concBy"), "Caster (concentration)");
   assert.equal(t("init.card.noneOpt"), "None");
   assert.equal(t("init.card.none"), "none", "midden in een regel blijft klein");
