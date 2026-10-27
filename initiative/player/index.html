@@ -1,18 +1,46 @@
 <!doctype html>
-<!-- Gegenereerd door tools/pages.mjs: doorverwijzer /initiative/player/ → /{taal}/initiative/player/ (js/i18n/redirect.js) -->
+<!-- Gegenereerd door tools/pages.mjs uit pages/player.html: wijzig het sjabloon en draai node tools/pages.mjs -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Kev’s Inn itiative</title>
+<title>Player view · Kev’s Inn itiative</title>
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#241811" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1d130d" media="(prefers-color-scheme: dark)">
+<script src="/js/theme.js"></script>
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
-<style>html{background:#faf6ec;color:#241811;font:16px/1.4 system-ui,sans-serif}@media (prefers-color-scheme:dark){html{background:#1d130d;color:#f3ead8}}body{margin:0;padding:16px}a{color:inherit;opacity:0;animation:show 0s 2s forwards}@keyframes show{to{opacity:1}}</style>
-<script type="module" onerror="location.replace('/en/initiative/player/' + location.search + location.hash)">import { go } from "/js/i18n/redirect.js"; go();</script>
-<script nomodule>location.replace('/en/initiative/player/' + location.search + location.hash)</script>
-<noscript><meta http-equiv="refresh" content="0; url=/en/initiative/player/"></noscript>
+<link rel="stylesheet" href="/css/app.css">
+<script type="module" src="/js/speler.js"></script>
 </head>
-<body><a href="/en/initiative/player/">Kev’s Inn itiative</a></body>
+<body class="pv">
+<main class="pvwrap">
+  <header class="pvtop">
+    <div class="pvbrand"><h1><!-- embleem: zelfde tekening als EMBLEM in tools/icons.mjs (WP16) --><svg class="emb" viewBox="20 2 176 196" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M108 16 181 58v84l-73 42-73-42V58Z" stroke-width="11"/><g transform="translate(0 13)" stroke-width="10"><path d="M100 47v-8q8-10 16 0v8"/><path d="M88 55h40l-8 11H96Z"/><path d="M96 70h24l8 10v42H88V80Z"/><path d="M84 130h48"/></g><path d="M108 102c-9 10-9 19 0 26 9-7 9-16 0-26Z" fill="currentColor" stroke="none"/></svg>Kev’s Inn <span>itiative</span></h1><p class="pvtag" id="pv-tag">Your home between adventures.</p></div>
+    <div class="pvtools">
+      <button type="button" class="btn small" id="pv-me" aria-controls="pv-mepick" aria-expanded="false" hidden>Who are you?</button>
+      <button type="button" class="btn small" id="pv-full">Full screen</button>
+      <div class="seg pvlang" id="pv-lang" role="group" hidden></div><!-- taalkiezer: js/ui/langpick.js (WP22) -->
+    </div>
+  </header>
+  <section class="pvpick" id="pv-mepick" aria-labelledby="pv-mepick-h" hidden></section>
+  <div class="pvstick" id="pv-stick">
+    <p class="pvnet" id="pv-net" role="status" hidden></p>
+    <section class="pvnow" id="pv-now" aria-live="polite"></section>
+    <ol class="pvlog" id="pv-log" aria-label="What just happened" hidden></ol>
+  </div>
+  <section class="pvme" id="pv-mecard" aria-label="Your character" hidden></section>
+  <ol class="pvlist" id="pv-list"></ol>
+  <p class="pvdown" id="pv-down" hidden></p>
+  <aside class="pvqr" id="pv-qr" aria-label="Follow along on your phone" hidden></aside>
+  <p class="hint pvwait" id="pv-wait">Waiting for the DM screen…</p>
+  <form class="pvjoin" id="pv-join" hidden>
+    <label for="pv-code">Room code</label>
+    <div class="row"><input id="pv-code" name="k" maxlength="9" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" aria-describedby="pv-joinmsg"><button class="btn primary" type="submit">Join</button></div>
+    <p class="hint" id="pv-joinmsg">Or open Kev’s Inn itiative in another window of this browser.</p>
+  </form>
+</main>
+<div class="sheet-wrap rwrap" id="csheet" hidden></div>
+<noscript><p style="padding:16px">The player view needs JavaScript.</p></noscript>
+</body>
 </html>

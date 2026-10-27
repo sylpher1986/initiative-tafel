@@ -7,6 +7,7 @@ import { $, esc, toast, toastHtml, closeToast, toastBad } from "./util.js";
 import { canWrite } from "../storage.js";
 import { qrSvg } from "../qr.js";
 import { t } from "../i18n/boot.js";
+import { joinUrl } from "../i18n/lang.js";
 
 const KEY = "it-room";
 const LOST_MS = 10000; // pas na 10 s kwijt: rode stip op ⚙ en één melding
@@ -33,7 +34,7 @@ function loadRoom() {
 }
 function saveRoom(r) { try { r ? localStorage.setItem(KEY, JSON.stringify(r)) : localStorage.removeItem(KEY); } catch { /* privémodus: alleen deze sessie */ } }
 
-const shareUrl = () => `${location.origin}/speler?k=${room.code}`;
+const shareUrl = () => joinUrl(location.origin, document.documentElement.lang, room.code); // WP44: pagina van de eigen taal, zonder doorverwijzing
 /** Gestopt en (vrijwel zeker) verlopen: niet meer dezelfde code beloven. Klok verzet (at in de toekomst) telt als verlopen. */
 export const expired = (r, now = Date.now()) => !!r?.stopped && !(now - r.at < ROOM_MS - 60e3 && r.at <= now + 60e3);
 

@@ -1,5 +1,6 @@
-// Cloudflare Worker: alleen /api/* komt hier (run_worker_first in wrangler.jsonc); de rest zijn statische assets.
+// Cloudflare Worker: alleen /api/* en /en(/…) komen hier (run_worker_first in wrangler.jsonc); de rest zijn statische assets.
 //
+// /en, /en/…                → 301 naar hetzelfde pad zonder /en (WP44: Engels staat zonder taalcode), query blijft
 // GET /api/ddb/:id          → character-JSON van D&D Beyond (ongewijzigd doorgegeven)
 // GET /api/ddb/:id/avatar   → het portret van díé character (url komt uit de character-data, nooit van de client)
 // /api/room…                → spelersscherm op andere apparaten (Durable Object, zie worker/room.js)
@@ -111,8 +112,20 @@ async function avatar(id) {
   return new Response(buf, { headers: { "content-type": type, "cache-control": "private, max-age=300", "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'" } });
 }
 
+/** WP44 (WB1): oud Engels adres → zelfde pad zonder /en. "/en" en "/en/" → "/", "/en/initiative/player/?k=X" →
+ *  "/initiative/player/?k=X". Eén stap (geen keten), het doel heeft nooit /en, dus geen lus. Dubbele slashes aan het
+ *  begin worden er één ("/en//evil.com" mag geen //evil.com worden: dat is een adres op een andere host).
+ *  Geen /en-adres → null. Gelijk aan de regel in sw.js (offline). Deze regel nooit weghalen: gedeelde links en zoekmachines. */
+export function enRedirect(url) {
+  const m = /^\/en(\/.*)?$/.exec(url.pathname);
+  if (!m) return null;
+  return url.origin + "/" + (m[1] || "/").replace(/^\/+/, "") + url.search;
+}
+
 export async function handle(req, env) {
   const url = new URL(req.url);
+  const en = enRedirect(url);
+  if (en) return new Response(null, { status: 301, headers: { location: en, "cache-control": "public, max-age=86400" } });
   if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
   if (url.pathname.startsWith("/api/room")) { const r = await roomRoute(req, env, url); if (r) return r; }
   const m = url.pathname.match(/^\/api\/ddb\/([^/]+)(\/avatar)?\/?$/);

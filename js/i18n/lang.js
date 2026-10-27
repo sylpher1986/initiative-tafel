@@ -1,12 +1,12 @@
-// Taal bepalen en taalpaden voor heel Kev’s Inn (meertaligheid, WP19/TA3). Puur, behalve prefStore (localStorage,
-// altijd in try/catch). Regels: docs/i18n.md §2.2; besluiten §0 (alleen localStorage, Engelse padsegmenten, / = app).
+// Taal bepalen en taalpaden voor heel Kev’s Inn (meertaligheid, WP19/TA3; sinds WP44 Engels zonder voorvoegsel).
+// Puur, behalve prefStore (localStorage, altijd in try/catch). Regels: docs/i18n.md §2.2.
 //
-// Volgorde:
-//   1. ondersteund prefix in de URL (/en/…, /nl/…) wint altijd, zonder melding; verandert de voorkeur niet
-//      (alleen de taalkiezer schrijft de voorkeur; resolveLang schrijft nooit)
-//   2. ongeldig of niet-ondersteund prefix (/de/…, /xx/…) → Engels (DEFAULT, ook als en nog niet live is), zelfde rest van het pad
-//   3. geen prefix: opgeslagen voorkeur → eerste ondersteunde browsertaal (nl-BE → nl) → terugvaltaal
-// 3 kiest alleen uit LIVE (sinds WP33 beide talen; daarvoor alleen nl).
+// Adressen (WP44, WB1, 2.3.0): Engels is de leidende taal en staat zonder taalcode ("/", "/initiative/",
+// "/initiative/player/"); elke andere taal krijgt een voorvoegsel ("/nl/", "/nl/initiative/"). "/en/…" bestaat niet
+// meer: de Worker (worker/index.js, enRedirect) en de service worker sturen het met 301 door naar het pad zonder /en/.
+// Taal uit het pad alleen via langFromPath/parsePath; adressen alleen via pathFor/switchPath (nooit zelf "/en/" of
+// "/{lang}/" in een string). Geen automatische taalredirect op voorkeur of browsertaal, behalve bij het openen van een
+// geïnstalleerde app (launchRedirect). De voorkeur (kevs-lang) schrijft alleen de taalkiezer (en eenmalig adoptExisting).
 
 /** Talen met code, catalogi en pagina's */
 export const SUPPORTED = ["en", "nl"];
@@ -37,9 +37,6 @@ export function debugStored(storage) {
 // Een nieuwe map of pagina van twee letters (/qr/, /tv/) moet in RESERVED, anders telt hij als ongeldig taalprefix.
 const CODE = /^[a-z]{2}([-_][a-z]{2})?$/i;
 const RESERVED = new Set(["js"]);
-/** Is er een homepage op /{lang}/? Sinds WP30 (1.52.0) wel: een kaal prefix (/en/, /EN, /xx/) gaat naar de homepage.
- *  Taalloos "/" blijft de app (V4, pathFor). */
-export const HOME = true;
 
 /** Taalcode naar ondersteunde taal: "nl-BE" → "nl", "EN" → "en", onbekend of leeg → null */
 export function normLang(tag, list = SUPPORTED) {
@@ -60,30 +57,41 @@ export function parsePath(path, list = SUPPORTED) {
   return { prefix: seg, lang: normLang(seg, list), rest: m[2] || "/" };
 }
 
-// Oude en taalloze adressen → pagina (pad na het taalprefix). Alles wat er niet in staat blijft gelijk.
+/** Taal van een adres (WP44, WB1): geen voorvoegsel = Engels (DEFAULT), een ondersteund voorvoegsel = die taal,
+ *  een ongeldig voorvoegsel (/xx/…) = Engels (resolveLang zet het adres recht). De enige regel voor taal-uit-pad. */
+export function langFromPath(path) {
+  const { prefix, lang } = parsePath(path);
+  return prefix && lang ? lang : DEFAULT;
+}
+
+// Oude en verkorte adressen → pagina (pad zonder taalvoorvoegsel). Alles wat er niet in staat blijft gelijk.
 const PAGES = {
-  "/": "/initiative/", "/index.html": "/initiative/",
-  "/initiative": "/initiative/", "/initiative/": "/initiative/", "/initiative/index.html": "/initiative/",
+  "/index.html": "/",
+  "/initiative": "/initiative/", "/initiative/index.html": "/initiative/",
   "/speler": "/initiative/player/", "/speler/": "/initiative/player/", "/speler.html": "/initiative/player/",
-  "/player": "/initiative/player/", "/player/": "/initiative/player/",
+  "/player": "/initiative/player/", "/player/": "/initiative/player/", "/player.html": "/initiative/player/",
   "/initiative/player": "/initiative/player/", "/initiative/player/index.html": "/initiative/player/",
 };
-/** Pagina voor een pad zonder prefix: "/speler.html" → "/initiative/player/" (V4: "/" = de app) */
+/** Pagina voor een pad zonder prefix: "/speler.html" → "/initiative/player/"; "/" is de homepage (WP44) */
 export const pageFor = (rest) => PAGES[rest] || rest;
 
 const slash = (p) => "/" + String(p || "/").replace(/^\/+/, "");
-/** Taalloos adres in een taal (oude adressen eerst omgezet): pathFor("nl", "/speler") → "/nl/initiative/player/",
- *  pathFor("nl", "/") → "/nl/initiative/" (V4) */
-export const pathFor = (lang, path = "/") => `/${lang}${pageFor(slash(path))}`;
-/** Rest van een pad dat al een prefix had, in een andere taal: langPath("en", "/") → "/en/" (homepage) */
-const langPath = (lang, rest) => { const r = slash(rest); return `/${lang}${r === "/" && !HOME ? "/initiative/" : r}`; };
+/** Voorvoegsel van een taal: Engels heeft er geen (WP44: "/", "/initiative/"), elke andere taal "/{taal}" */
+export const langBase = (lang) => (lang === DEFAULT ? "" : `/${lang}`);
+/** Adres van een pagina in een taal (oude adressen eerst omgezet). Nooit "/en/…":
+ *  pathFor("en", "/") → "/", pathFor("nl", "/") → "/nl/", pathFor("nl", "/speler") → "/nl/initiative/player/" */
+export const pathFor = (lang, page = "/") => langBase(lang) + pageFor(slash(page));
 
-/** Zelfde pagina in een andere taal (taalkiezer): "/nl/initiative/" → "/en/initiative/" */
+/** Zelfde pagina in een andere taal (taalkiezer): "/nl/initiative/" → "/initiative/", "/initiative/player/" → "/nl/initiative/player/" */
 export function switchPath(path, lang) {
   lang = normLang(lang) || DEFAULT;
   const { prefix, rest } = parsePath(path);
-  return prefix ? langPath(lang, rest) : pathFor(lang, path);
+  return pathFor(lang, prefix ? rest : path);
 }
+
+/** Spelerslink voor een kamer in de taal van de pagina (WP44): "https://kevs-inn.com/initiative/player/?k=K7M3QX",
+ *  in het Nederlands ".../nl/initiative/player/?k=…". Rechtstreeks naar de pagina: geen doorverwijzing voor de speler. */
+export const joinUrl = (origin, lang, code) => `${origin}${pathFor(normLang(lang) || DEFAULT, "/initiative/player/")}?k=${code}`;
 
 /** Eerste ondersteunde browsertaal uit navigator.languages (of navigator.language) */
 export function browserLang(languages, list = LIVE) {
@@ -92,29 +100,33 @@ export function browserLang(languages, list = LIVE) {
 }
 
 /**
- * Taal voor een adres.
- * @param {object} o
- * @param {string} o.path            location.pathname
- * @param {string} [o.search]        location.search (blijft bij een doorverwijzing staan, ook ?k=)
- * @param {string} [o.hash]
- * @param {string|null} [o.pref]     opgeslagen voorkeur (prefStore().get())
- * @param {string[]} [o.languages]   navigator.languages
- * @param {string[]} [o.live]        talen voor automatische keuze (standaard LIVE)
- * @returns {{ lang: string, source: "path"|"pref"|"browser"|"default", redirect: string|null }}
- *   redirect = waar de pagina naartoe moet (location.replace), of null als het adres goed is
+ * Taal voor een adres en of het adres rechtgezet moet worden (WP44, WB1). Alleen het pad telt: geen voorkeur, geen
+ * browsertaal (geen automatische taalredirect; "/" is altijd Engels). Gebruikt door de 404-pagina's.
+ *   1. ondersteund voorvoegsel: die taal; "/en/…" (oud) → zelfde pad zonder voorvoegsel; schrijfwijze rechtgezet ("/NL/" → "/nl/")
+ *   2. ongeldig of niet-ondersteund voorvoegsel (/de/…, /xx/…) → Engels, zelfde rest van het pad
+ *   3. geen voorvoegsel: Engels, niets doen
+ * @returns {{ lang: string, source: "path"|"default", redirect: string|null }} redirect inclusief search en hash
  */
-export function resolveLang({ path = "/", search = "", hash = "", pref = null, languages = [], live = LIVE } = {}) {
+export function resolveLang({ path = "/", search = "", hash = "" } = {}) {
   const tail = (search || "") + (hash || "");
   const { prefix, lang, rest } = parsePath(path);
-  const fb = fallbackIn(live);
-  if (prefix && lang) { // 1. ondersteund prefix wint, ook als de voorkeur anders is; alleen de schrijfwijze rechtzetten
-    const to = langPath(lang, rest); // /en/ = homepage (HOME); zonder homepage zou dat /en/initiative/ zijn
-    return { lang, source: "path", redirect: prefix === lang && to === `/${lang}${slash(rest)}` ? null : to + tail };
-  }
-  if (prefix) return { lang: DEFAULT, source: "default", redirect: langPath(DEFAULT, rest) + tail }; // 2. ongeldig prefix: altijd Engels (besluit 26-10, WP30), ook vóór WP33
-  const p = normLang(pref, live), b = browserLang(languages, live); // 3. geen prefix
-  const pick = p ? [p, "pref"] : b ? [b, "browser"] : [fb, "default"];
-  return { lang: pick[0], source: pick[1], redirect: pathFor(pick[0], path) + tail };
+  if (!prefix) return { lang: DEFAULT, source: "path", redirect: null };
+  if (!lang) return { lang: DEFAULT, source: "default", redirect: pathFor(DEFAULT, rest) + tail };
+  return { lang, source: "path", redirect: lang === DEFAULT || prefix !== lang ? langBase(lang) + slash(rest) + tail : null };
+}
+
+/**
+ * Taal waarin een beginscherm-app opent (WP44). Alle manifesten hebben start_url "/initiative/" (id "/" ongewijzigd,
+ * zodat bestaande installaties één app blijven). Vóór 2.3.0 was dat een doorverwijzer naar de taal van voorkeur of
+ * browser; nu is het de Engelse app. Alleen in een geïnstalleerde app (standalone) en alleen op een adres zonder
+ * voorvoegsel kiest de app daarom nog: voorkeur (taalkiezer, adoptExisting) → browsertaal → Engels. De website zelf
+ * verwijst nooit automatisch door.
+ * @returns {string|null} adres in de andere taal (met search en hash), of null
+ */
+export function launchRedirect({ path = "/", search = "", hash = "", standalone = false, pref = null, languages = [], live = LIVE } = {}) {
+  if (!standalone || parsePath(path).prefix) return null;
+  const lang = normLang(pref, live) || browserLang(languages, live) || fallbackIn(live);
+  return lang === DEFAULT ? null : pathFor(lang, path) + (search || "") + (hash || "");
 }
 
 /** Opgeslagen voorkeur lezen: '{"lang":"nl","t":…}' → "nl"; kapot, onbekend of oud formaat → null */

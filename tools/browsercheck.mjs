@@ -5,7 +5,7 @@
 //   node tools/browsercheck.mjs                 alle scenario's
 //   node tools/browsercheck.mjs prep fight      alleen deze scenario's
 //   node tools/browsercheck.mjs --shots=fight   ook screenshots van "fight" in shots/ (komma's voor meer)
-//   node tools/browsercheck.mjs --lang=nl,en,xx  taal als extra as (WP32; standaard nl): /{taal}/… per scenario; xx = de
+//   node tools/browsercheck.mjs --lang=nl,en,xx  taal als extra as (WP32; standaard nl): pagina in die taal (WP44: Engels zonder voorvoegsel); xx = de
 //                                                testtaal op de Engelse pagina's (lange tekst, accenten; WP20)
 //   node tools/browsercheck.mjs --i18n=debug     debugstand (ontbrekende vertaling als ⟦…⟧); --i18n=xx = --lang=xx (oud)
 //
@@ -22,6 +22,8 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { extname, join, normalize } from "node:path";
 import { isDutch } from "./i18n-audit.mjs";
+import { pathFor, langBase } from "../js/i18n/lang.js";
+import { enRedirect } from "../worker/index.js";
 
 process.env.PLAYWRIGHT_BROWSERS_PATH ||= "/opt/pw-browsers";
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -34,14 +36,17 @@ async function loadPw() {
   throw new Error("Playwright niet gevonden. Zet PW_MODULE op het pad van de playwright-module.");
 }
 
-// Statische server zoals Cloudflare: /speler → speler.html, /nl/initiative/ → nl/initiative/index.html (WP21).
-// /api/* bestaat hier niet (404, wordt genegeerd); elke andere 404 is FOUT (bijv. een relatief pad onder /{taal}/).
+// Statische server zoals Cloudflare: /speler → speler.html, /nl/initiative/ → nl/initiative/index.html (WP21);
+// /en, /en/… → 301 zoals de Worker (enRedirect, WP44). /api/* bestaat hier niet (404, wordt genegeerd); elke andere 404
+// is FOUT (bijv. een relatief pad onder /nl/).
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".avif": "image/avif", ".webp": "image/webp", ".woff2": "font/woff2", ".webmanifest": "application/manifest+json" };
 let OFFLINE = false; // i18n-offline: server weigert alles (Chromiums setOffline blokkeert navigaties al vóór de service worker)
 function serve() {
   const srv = createServer(async (req, res) => {
     if (OFFLINE) { req.socket.destroy(); return; }
     let p;
+    const en = enRedirect(new URL(req.url, "http://127.0.0.1"));
+    if (en) { const u = new URL(en); res.writeHead(301, { location: u.pathname + u.search }).end(); return; }
     try { p = decodeURIComponent(new URL(req.url, "http://x").pathname); } catch { res.writeHead(400).end(); return; }
     if (p.endsWith("/")) p += "index.html"; else if (!extname(p)) p += ".html";
     const f = normalize(join(ROOT, p));
@@ -53,17 +58,18 @@ function serve() {
 }
 
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
-const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/en/initiative/player/", home: "/nl/", homeen: "/en/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/en/initiative/", wp33: "/nl/", wp37: "/nl/", wp43: "/en/initiative/" };
+// "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
+const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/" };
 // Eigen taalopzet: niet per taal herhalen (WP32)
-const ONCE = new Set(["i18n-mixed", "i18n-switch", "i18n-offline", "i18n-legacy", "homeen", "wp33", "wp43"]);
-// Startpagina in een taal: taalloze adressen en /nl/… worden /{taal}/…; vaste talen (ONCE) blijven zoals ze zijn
+const ONCE = new Set(["i18n-mixed", "i18n-switch", "i18n-offline", "i18n-legacy", "homeen", "wp33", "wp43", "wp44"]);
+// Startpagina in een taal (pathFor: Engels zonder voorvoegsel); /nl/… wordt de pagina in die taal; ONCE blijft zoals het is
 function startFor(name, lang) {
   const p = START[name] || "/";
   if (ONCE.has(name)) return p;
-  if (p === "/") return `/${lang}/initiative/`;
-  if (p === "/speler") return `/${lang}/initiative/player/`;
-  return p.replace(/^\/nl\//, `/${lang}/`);
+  if (p === "/") return pathFor(lang, "/initiative/");
+  if (p === "/speler") return pathFor(lang, "/initiative/player/");
+  return p.replace(/^\/nl\//, langBase(lang) + "/");
 }
 // Wat scenario's zelf intypen (gebruikersinhoud: wordt nooit vertaald)
 const OWN = ["Hinderlaag bij de oude brug", "Aurelianus Vandermeer", "Zonder Level", "Vrije regel zonder punt"];
@@ -204,7 +210,7 @@ const SCEN = {
     if (f.scheef || f.cut > 0) throw new Error("+ Speler-formulier scheef of afgekapt: " + JSON.stringify(f));
     await snap(page, "wp39", "speler");
     const lang = await page.evaluate(() => document.documentElement.lang);
-    await page.goto(`${base}/${lang}/`); await page.evaluate(() => document.fonts.ready);
+    await page.goto(base + pathFor(lang, "/")); await page.evaluate(() => document.fonts.ready);
     await page.evaluate(() => scrollTo(0, document.body.scrollHeight));
     const dot = await page.evaluate(() => { const li = [...document.querySelectorAll("footer .facts li")];
       return li.slice(1).filter((x, i) => Math.round(x.getBoundingClientRect().top) !== Math.round(li[i].getBoundingClientRect().top) && getComputedStyle(x, "::before").content !== "none").length; });
@@ -609,7 +615,7 @@ const SCEN = {
     for (const [w, h] of [[page.viewportSize().width, 780], [1280, 720]]) {
       const pv = await page.context().newPage();
       await pv.setViewportSize({ width: w, height: h });
-      await pv.goto(base + "/" + (await page.evaluate(() => document.documentElement.lang)) + "/initiative/player/");
+      await pv.goto(base + pathFor(await page.evaluate(() => document.documentElement.lang), "/initiative/player/"));
       await pv.waitForSelector("#pv-list .pvc .av");
       const r = await pv.evaluate(() => [...document.querySelectorAll("#pv-list .pvc")].map((c) => {
         const av = c.querySelector(".av"), st = getComputedStyle(av);
@@ -665,7 +671,7 @@ const SCEN = {
     // tv: zelfde stand op een groot scherm in het Engels (tv-stand, geen Nederlandse tekst)
     const tv = await page.context().newPage();
     await tv.setViewportSize({ width: 1280, height: 720 });
-    await tv.goto(base + "/en/initiative/player/");
+    await tv.goto(base + "/initiative/player/");
     await tv.waitForFunction((x) => document.body.classList.contains("tv") && (x || /Unknown creature/.test(document.querySelector("#pv-list").innerText)), xx, { timeout: 5000 });
     const tvTxt = await tv.locator("main").innerText();
     const ds = await tv.evaluate(() => { const b = document.querySelector("#pv-list .bd.r"), v = b && b.querySelector("[aria-hidden]"); // zichtbare deel; .vh telt niet
@@ -695,7 +701,7 @@ const SCEN = {
     if (s1.active === s0.active && s1.round === s0.round) throw new Error("Volgende deed niets");
     await tap(page, '#modes [data-setmode="prep"]'); await tap(page, '#dock [data-prep="data"]'); await page.waitForSelector("#psheet .sheet", { state: "visible" });
     await page.locator('details[data-sec="look"] > summary').tap();
-    await Promise.all([page.waitForURL(/\/en\/initiative\//), tap(page, '#lang-seg [data-lang="en"]')]);
+    await Promise.all([page.waitForURL((u) => u.pathname === "/initiative/"), tap(page, '#lang-seg [data-lang="en"]')]); // WP44: Engels zonder /en/
     await page.waitForSelector("#dock");
     const lang = await page.evaluate(() => document.documentElement.lang);
     const s2 = await state();
@@ -714,7 +720,8 @@ const SCEN = {
     const kb = await page.locator("#kamer-box").innerText();
     if (!/E5H\s?MTJ/.test(kb)) throw new Error("kamercode niet in het kamer-blok: " + kb.slice(0, 120));
   },
-  // WP32: één bezoek (nl) met de service worker, daarna offline: beide talen, spelersscherm, homepage en doorverwijzer laden
+  // WP32: één bezoek (nl) met de service worker, daarna offline: beide talen, spelersscherm, homepages, oud spelersadres
+  // en (WP44) een oud /en/-adres via de service worker
   async "i18n-offline"(page, base) {
     const ctx = await page.context().browser().newContext({ serviceWorkers: "allow", locale: "nl-NL" }); // taalloze adressen volgen sinds WP33 de browsertaal
     const p = await ctx.newPage();
@@ -730,7 +737,8 @@ const SCEN = {
       });
       if (!ready) throw new Error("service worker bestuurt de pagina niet");
       OFFLINE = true;
-      for (const [u, sel, lang] of [["/en/initiative/", "#dock", "en"], ["/nl/initiative/", "#dock", "nl"], ["/en/initiative/player/", "#pv-wait", "en"], ["/speler", "#pv-wait", "nl"], ["/", "#dock", "nl"], ["/en/", "main", "en"]]) {
+      for (const [u, sel, lang] of [["/initiative/", "#dock", "en"], ["/nl/initiative/", "#dock", "nl"], ["/initiative/player/", "#pv-wait", "en"], ["/speler", "#pv-wait", "en"],
+        ["/", "main", "en"], ["/nl/", "main", "nl"], ["/en/initiative/", "#dock", "en"]]) {
         await p.goto(base + u);
         await p.waitForSelector(sel, { state: "attached", timeout: 8000 }).catch(async () => { throw new Error(`offline ${u}: ${sel} ontbreekt (${p.url()}): ${(await p.evaluate(() => document.body?.innerText || "")).slice(0, 80)}`); });
         const l = await p.evaluate(() => document.documentElement.lang);
@@ -740,32 +748,91 @@ const SCEN = {
       }
     } finally { OFFLINE = false; await ctx.close(); }
   },
-  // WP33: Engels live. Nieuwe Engelstalige browser → /en/, Nederlandse → /nl/, bestaande gebruiker (it-*, geen voorkeur)
-  // met een Engelse browser blijft Nederlands; taalkiezer zichtbaar; een nieuwe gebruiker telt later niet als bestaand.
+  // WP33/WP44: geen automatische taalredirect meer. "/" is voor elke browsertaal de Engelse homepage, een oud spelersadres
+  // gaat naar het Engelse spelersscherm (met ?k=); een bestaande gebruiker (it-*, geen voorkeur) krijgt bij het openen
+  // van de app nog wel stil de voorkeur nl (voor zijn geïnstalleerde app); taalkiezer zichtbaar.
   async wp33(page, base) {
     const browser = page.context().browser();
     const visit = async (locale, seed, steps) => {
       const ctx = await browser.newContext({ locale });
       if (seed) await ctx.addInitScript(() => { if (!localStorage.getItem("bc-seeded")) { localStorage.setItem("it-tour", "pf"); localStorage.setItem("bc-seeded", "1"); } });
       const p = await ctx.newPage();
-      try { for (const [u, want, sel] of steps) {
+      try { for (const [u, want, sel, lang] of steps) {
         await p.goto(base + u);
-        await p.waitForURL((x) => x.pathname.startsWith(want), { timeout: 8000 }).catch(() => { throw new Error(`${locale}${seed ? " (bestaand)" : ""} ${u}: ${p.url()}, verwacht ${want}`); });
         await p.waitForSelector(sel, { state: "attached" });
+        const at = new URL(p.url());
+        if (at.pathname !== want) throw new Error(`${locale}${seed ? " (bestaand)" : ""} ${u}: ${p.url()}, verwacht ${want}`);
         const l = await p.evaluate(() => document.documentElement.lang);
-        if (l !== want.slice(1, 3)) throw new Error(`${u}: lang ${l}`);
+        if (l !== lang) throw new Error(`${u}: lang ${l}, verwacht ${lang}`);
       } return p; } catch (e) { await ctx.close(); throw e; }
     };
-    const a = await visit("en-US", false, [["/", "/en/initiative/", "#dock"], ["/", "/en/initiative/", "#dock"], ["/speler?k=ABC234", "/en/initiative/player/", "#pv-wait"]]);
-    if (!(await a.url()).includes("?k=ABC234")) throw new Error("?k= weg na doorverwijzen");
-    await a.goto(base + "/en/initiative/"); await a.waitForSelector("#dock");
-    if (await a.evaluate(() => document.querySelector("#lang-seg")?.hidden !== false)) throw new Error("taalkiezer verborgen in Instellingen");
-    await a.context().close();
-    await (await visit("nl-NL", false, [["/", "/nl/initiative/", "#dock"]])).context().close();
-    const c = await visit("en-US", true, [["/", "/nl/initiative/", "#dock"], ["/speler", "/nl/initiative/player/", "#pv-wait"]]);
+    for (const loc of ["en-US", "nl-NL"]) {
+      const a = await visit(loc, false, [["/", "/", "main", "en"], ["/speler?k=ABC234", "/initiative/player/", "#pv-wait", "en"]]);
+      if (!(await a.url()).includes("?k=ABC234")) throw new Error("?k= weg na doorverwijzen");
+      await a.context().close();
+    }
+    const c = await visit("nl-NL", true, [["/initiative/", "/initiative/", "#dock", "en"]]);
+    if (await c.evaluate(() => document.querySelector("#lang-seg")?.hidden !== false)) throw new Error("taalkiezer verborgen in Instellingen");
     const pref = await c.evaluate(() => JSON.parse(localStorage.getItem("kevs-lang") || "null"));
     if (!pref || pref.lang !== "nl") throw new Error("bestaande gebruiker kreeg geen voorkeur nl: " + JSON.stringify(pref));
     await c.context().close();
+  },
+  // WP44 (WB1, WB2): /en/… → 301 naar het pad zonder /en/ (query blijft); geïnstalleerde app op /initiative/ opent in de
+  // voorkeurstaal, de website niet; homepage (/ en /nl/) volgt een bewuste themakeuze uit de app, anders het systeem
+  // (ook zonder JavaScript en bij een systeemwissel zonder herladen), zonder flits van het verkeerde thema.
+  async wp44(page, base) {
+    const browser = page.context().browser();
+    const resp = await page.goto(base + "/en/initiative/?x=1");
+    const chain = []; for (let r = resp.request().redirectedFrom(); r; r = r.redirectedFrom()) chain.push(r.url());
+    if (new URL(page.url()).pathname + new URL(page.url()).search !== "/initiative/?x=1" || chain.length !== 1) throw new Error(`/en/ niet in één stap: ${chain.join(" → ")} → ${page.url()}`);
+    // geïnstalleerde app (display-mode standalone nagebootst)
+    for (const [standalone, want] of [[true, "/nl/initiative/"], [false, "/initiative/"]]) {
+      const ctx = await browser.newContext({ locale: "en-US" });
+      await ctx.addInitScript((sa) => {
+        try { localStorage.setItem("it-tour", "pf"); localStorage.setItem("kevs-lang", JSON.stringify({ lang: "nl", t: 1 })); } catch { /* */ }
+        const mm = window.matchMedia.bind(window);
+        window.matchMedia = (q) => (/display-mode: standalone/.test(q) ? { matches: sa, media: q, addEventListener() {}, removeEventListener() {} } : mm(q));
+      }, standalone);
+      const p = await ctx.newPage();
+      await p.goto(base + "/initiative/"); await p.waitForURL((u) => u.pathname === want, { timeout: 8000 }).catch(() => {});
+      await p.waitForSelector("#dock");
+      const at = new URL(p.url()).pathname;
+      await ctx.close();
+      if (at !== want) throw new Error(`app ${standalone ? "geïnstalleerd" : "website"} met voorkeur nl: ${at}, verwacht ${want}`);
+    }
+    // homepage-thema
+    const BG = { light: "rgb(250, 246, 236)", dark: "rgb(29, 19, 13)" };
+    for (const path of ["/", "/nl/"]) for (const scheme of ["light", "dark"]) for (const pick of [null, "light", "dark", "system"]) {
+      const ctx = await browser.newContext({ colorScheme: scheme });
+      await ctx.addInitScript((v) => {
+        try { if (v && v !== "system") localStorage.setItem("it-theme", v); } catch { /* */ }
+        document.addEventListener("DOMContentLoaded", () => { window.__bg0 = getComputedStyle(document.body).backgroundColor; });
+      }, pick);
+      const p = await ctx.newPage();
+      await p.goto(base + path, { waitUntil: "domcontentloaded" });
+      const want = !pick || pick === "system" ? scheme : pick;
+      const [bg0, bg, dt] = await p.evaluate(() => [window.__bg0, getComputedStyle(document.body).backgroundColor, document.documentElement.dataset.theme || ""]);
+      if (bg0 !== BG[want] || bg !== BG[want]) { await ctx.close(); throw new Error(`${path} systeem ${scheme}, app ${pick}: achtergrond ${bg0} → ${bg}, verwacht ${want}`); }
+      if (!pick || pick === "system") { // systeemwissel op een open pagina: zonder herladen mee
+        const other = scheme === "light" ? "dark" : "light";
+        await p.emulateMedia({ colorScheme: other });
+        const bg2 = await p.evaluate(() => getComputedStyle(document.body).backgroundColor);
+        if (bg2 !== BG[other] || dt) { await ctx.close(); throw new Error(`${path}: systeemwissel niet gevolgd (${bg2}, data-theme "${dt}")`); }
+      } else { // bewuste keuze blijft bij een systeemwissel
+        await p.emulateMedia({ colorScheme: scheme === "light" ? "dark" : "light" });
+        if (await p.evaluate(() => getComputedStyle(document.body).backgroundColor) !== BG[pick]) { await ctx.close(); throw new Error(`${path}: keuze ${pick} losgelaten bij systeemwissel`); }
+      }
+      await ctx.close();
+    }
+    // zonder JavaScript: systeem
+    for (const scheme of ["light", "dark"]) {
+      const ctx = await browser.newContext({ colorScheme: scheme, javaScriptEnabled: false });
+      const p = await ctx.newPage(); await p.goto(base + "/");
+      const bg = await p.evaluate(() => getComputedStyle(document.body).backgroundColor); // evaluate werkt ook met de paginascripts uit
+      await ctx.close();
+      if (bg !== BG[scheme]) throw new Error(`zonder JS ${scheme}: ${bg}`);
+    }
+    await page.goto(base + "/"); await page.waitForSelector("main");
   },
   // WP32: export van 1.48.0 (Nederlands logboek zonder descriptoren) importeren in de Engelse app: oude regels blijven
   // zoals ze waren, nieuwe regels in het Engels, undo werkt, geen fouten

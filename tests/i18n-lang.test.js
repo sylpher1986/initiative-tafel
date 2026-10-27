@@ -1,12 +1,13 @@
-// Meertaligheid WP19 (TA3): taalbepaling resolveLang, taalpaden en de opgeslagen voorkeur (docs/i18n.md §2.2).
+// Meertaligheid WP19 (TA3): taalbepaling, taalpaden en de opgeslagen voorkeur (docs/i18n.md §2.2).
+// Sinds WP44 (WB1, 2.3.0): Engels zonder taalcode ("/", "/initiative/"), andere talen met voorvoegsel ("/nl/…");
+// taal alleen uit het pad, geen automatische taalredirect (behalve het openen van een geïnstalleerde app). Meer in tests/wp44.test.js.
 import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { resolveLang, parsePath, normLang, browserLang, pathFor, pageFor, switchPath, parsePref, prefValue, prefStore,
-  fallbackIn, SUPPORTED, LIVE, DEFAULT, LOCALES, PREF_KEY, HOME } from "../js/i18n/lang.js";
+  fallbackIn, langFromPath, SUPPORTED, LIVE, DEFAULT, LOCALES, PREF_KEY } from "../js/i18n/lang.js";
 
-const BOTH = ["en", "nl"]; // na WP33
-const r = (o) => resolveLang({ live: BOTH, ...o });
+const r = (o) => resolveLang(o);
 
 test("constanten: Engels is standaard en ondersteund; sinds WP33 zijn Engels en Nederlands live", () => {
   assert.equal(DEFAULT, "en");
@@ -16,58 +17,47 @@ test("constanten: Engels is standaard en ondersteund; sinds WP33 zijn Engels en 
   assert.equal(PREF_KEY, "kevs-lang");
 });
 
-test("1. prefix in de URL wint van voorkeur en browser, zonder doorverwijzing", () => {
-  assert.deepEqual(r({ path: "/en/initiative/", pref: "nl", languages: ["nl-NL"] }), { lang: "en", source: "path", redirect: null });
+test("1. ondersteund voorvoegsel: die taal, zonder doorverwijzing; voorkeur en browser tellen niet (WP44)", () => {
   assert.deepEqual(r({ path: "/nl/initiative/player/", pref: "en" }), { lang: "nl", source: "path", redirect: null });
-  assert.deepEqual(r({ path: "/en/initiative/" }), { lang: "en", source: "path", redirect: null });
+  assert.deepEqual(r({ path: "/nl/" }), { lang: "nl", source: "path", redirect: null });
+  assert.deepEqual(r({ path: "/nl", search: "?k=ABC234" }), { lang: "nl", source: "path", redirect: null }, "slash: Cloudflare (html_handling)");
 });
 
-test("1. ook als Engels nog niet live is werkt een /en/-link (gedeelde URL)", () => {
-  assert.deepEqual(resolveLang({ path: "/en/initiative/", pref: "nl" }), { lang: "en", source: "path", redirect: null });
+test("1. oud /en/… → hetzelfde pad zonder voorvoegsel, query en hash blijven (WP44)", () => {
+  assert.deepEqual(r({ path: "/en/initiative/", search: "?k=ABC234", hash: "#x" }), { lang: "en", source: "path", redirect: "/initiative/?k=ABC234#x" });
+  assert.equal(r({ path: "/en/" }).redirect, "/");
+  assert.equal(r({ path: "/en" }).redirect, "/");
+  assert.equal(r({ path: "/EN/initiative/player/" }).redirect, "/initiative/player/");
+  assert.equal(r({ path: "/en-GB/x" }).redirect, "/x");
 });
 
-test("1. schrijfwijze van het prefix wordt rechtgezet, taal blijft", () => {
-  assert.deepEqual(r({ path: "/EN/initiative/", search: "?k=ABC234" }), { lang: "en", source: "path", redirect: "/en/initiative/?k=ABC234" });
+test("1. schrijfwijze van het voorvoegsel wordt rechtgezet, taal blijft", () => {
+  assert.deepEqual(r({ path: "/NL/initiative/", search: "?k=ABC234" }), { lang: "nl", source: "path", redirect: "/nl/initiative/?k=ABC234" });
   assert.deepEqual(r({ path: "/nl-BE/" }), { lang: "nl", source: "path", redirect: "/nl/" });
   assert.deepEqual(r({ path: "/nl_BE/x" }), { lang: "nl", source: "path", redirect: "/nl/x" });
 });
 
-test("2. ongeldig of niet-ondersteund prefix → Engels, rest van het pad en de query blijven", () => {
-  assert.deepEqual(r({ path: "/de/initiative/", pref: "nl", search: "?k=ABC234" }), { lang: "en", source: "default", redirect: "/en/initiative/?k=ABC234" });
-  assert.deepEqual(r({ path: "/xx/" }), { lang: "en", source: "default", redirect: "/en/" });
-  assert.equal(resolveLang({ path: "/xx/" }).redirect, "/en/", "ongeldig prefix: altijd Engels, ook vóór WP33 (besluit 26-10)");
-  assert.equal(resolveLang({ path: "/xx/initiative/", pref: "nl", languages: ["nl-NL"] }).redirect, "/en/initiative/");
+test("2. ongeldig of niet-ondersteund voorvoegsel → Engels zonder voorvoegsel, rest van het pad en de query blijven", () => {
+  assert.deepEqual(r({ path: "/de/initiative/", search: "?k=ABC234" }), { lang: "en", source: "default", redirect: "/initiative/?k=ABC234" });
+  assert.deepEqual(r({ path: "/xx/" }), { lang: "en", source: "default", redirect: "/" });
+  assert.equal(r({ path: "/xx/initiative/" }).redirect, "/initiative/");
 });
 
-test("3. zonder prefix: voorkeur, dan browsertaal, dan Engels", () => {
-  assert.deepEqual(r({ path: "/", pref: "nl", languages: ["en-US"] }), { lang: "nl", source: "pref", redirect: "/nl/initiative/" });
-  assert.deepEqual(r({ path: "/", languages: ["de-DE", "nl-BE", "en"] }), { lang: "nl", source: "browser", redirect: "/nl/initiative/" });
-  assert.deepEqual(r({ path: "/", languages: ["de-DE", "fr"] }), { lang: "en", source: "default", redirect: "/en/initiative/" });
-  assert.deepEqual(r({ path: "/", languages: [] }), { lang: "en", source: "default", redirect: "/en/initiative/" });
-  assert.deepEqual(r({ path: "/", languages: undefined }), { lang: "en", source: "default", redirect: "/en/initiative/" });
+test("3. geen voorvoegsel = Engels, nooit een doorverwijzing (ook niet bij Nederlandse voorkeur of browser)", () => {
+  for (const path of ["/", "/initiative/", "/initiative/player/", "/index.html", "/speler", "/foo/bar", "/characters/"])
+    assert.deepEqual(r({ path, pref: "nl", languages: ["nl-NL"] }), { lang: "en", source: "path", redirect: null }, path);
 });
 
-test("3. een expliciete keuze gaat voor de browsertaal; een ongeldige voorkeur telt niet", () => {
-  assert.equal(r({ path: "/", pref: "en", languages: ["nl-NL"] }).lang, "en");
-  assert.deepEqual(r({ path: "/", pref: "de", languages: ["nl"] }), { lang: "nl", source: "browser", redirect: "/nl/initiative/" });
-});
-
-test("3. sinds WP33 (standaard LIVE): Engelse voorkeur of browser geeft Engels, onbekend geeft Engels, Nederlands blijft", () => {
-  assert.equal(resolveLang({ path: "/", pref: "en" }).lang, "en");
-  assert.equal(resolveLang({ path: "/", languages: ["en-US"] }).lang, "en");
-  assert.equal(resolveLang({ path: "/", languages: ["nl-NL"] }).lang, "nl");
-  assert.equal(resolveLang({ path: "/", languages: ["ja"] }).lang, "en");
-  assert.equal(resolveLang({ path: "/", pref: "nl", languages: ["en-US"] }).lang, "nl");
-});
-
-test("oude adressen gaan naar de juiste pagina, met ?k= (spelerslink en QR blijven werken)", () => {
-  const go = (path) => r({ path, pref: "nl", search: "?k=K7M3QX" }).redirect;
-  assert.equal(go("/"), "/nl/initiative/?k=K7M3QX");
-  assert.equal(go("/index.html"), "/nl/initiative/?k=K7M3QX");
-  assert.equal(go("/initiative"), "/nl/initiative/?k=K7M3QX");
-  assert.equal(go("/initiative/"), "/nl/initiative/?k=K7M3QX");
-  for (const p of ["/speler", "/speler.html", "/player", "/player/", "/initiative/player"]) assert.equal(go(p), "/nl/initiative/player/?k=K7M3QX", p);
-  assert.equal(r({ path: "/speler", languages: ["en-GB"], hash: "#x" }).redirect, "/en/initiative/player/#x");
+test("langFromPath: één regel voor taal-uit-pad", () => {
+  assert.equal(langFromPath("/"), "en");
+  assert.equal(langFromPath("/initiative/"), "en");
+  assert.equal(langFromPath("/initiative/player/"), "en");
+  assert.equal(langFromPath("/nl/"), "nl");
+  assert.equal(langFromPath("/nl/initiative/player/"), "nl");
+  assert.equal(langFromPath("/NL/initiative/"), "nl");
+  assert.equal(langFromPath("/xx/initiative/"), "en", "ongeldig voorvoegsel: Engels");
+  assert.equal(langFromPath("/js/main.js"), "en");
+  assert.equal(langFromPath(""), "en");
 });
 
 test("resolveLang schrijft niets en hangt niet van de omgeving af", () => {
@@ -91,23 +81,33 @@ test("normLang en browserLang", () => {
   assert.equal(normLang("de"), null);
   assert.equal(normLang(null), null);
   assert.equal(normLang("en", ["nl"]), null);
-  assert.equal(browserLang(["fr", "en-GB", "nl"], BOTH), "en");
-  assert.equal(browserLang("nl-NL", BOTH), "nl");
+  assert.equal(browserLang(["fr", "en-GB", "nl"], LIVE), "en");
+  assert.equal(browserLang("nl-NL", LIVE), "nl");
   assert.equal(browserLang(null), null);
   assert.equal(fallbackIn(["nl"]), "nl");
-  assert.equal(fallbackIn(BOTH), "en");
+  assert.equal(fallbackIn(LIVE), "en");
 });
 
-test("pathFor, pageFor en switchPath (taalkiezer)", () => {
+test("pathFor, pageFor en switchPath (taalkiezer): Engels nooit met /en/", () => {
+  assert.equal(pathFor("en", "/"), "/");
+  assert.equal(pathFor("nl", "/"), "/nl/");
+  assert.equal(pathFor("en", "/initiative/"), "/initiative/");
+  assert.equal(pathFor("nl", "/initiative/player/"), "/nl/initiative/player/");
   assert.equal(pathFor("nl", "/speler"), "/nl/initiative/player/");
-  assert.equal(pathFor("en", "/"), "/en/initiative/");
+  assert.equal(pathFor("en", "/speler.html"), "/initiative/player/");
+  assert.equal(pathFor("en", "/index.html"), "/");
   assert.equal(pageFor("/characters/"), "/characters/");
-  assert.equal(switchPath("/nl/initiative/", "en"), "/en/initiative/");
-  assert.equal(switchPath("/nl/", "en"), HOME ? "/en/" : "/en/initiative/", "homepage blijft homepage (zodra die er is)");
-  assert.equal(switchPath("/nl/initiative/", undefined), "/en/initiative/", "ongeldige taal: terugval");
-  assert.equal(switchPath("/nl/initiative/", "de"), "/en/initiative/");
-  assert.equal(switchPath("/nl/initiative/player/", "en"), "/en/initiative/player/");
-  assert.equal(switchPath("/speler", "en"), "/en/initiative/player/");
+  assert.equal(switchPath("/nl/initiative/", "en"), "/initiative/");
+  assert.equal(switchPath("/initiative/", "nl"), "/nl/initiative/");
+  assert.equal(switchPath("/nl/", "en"), "/", "homepage blijft homepage");
+  assert.equal(switchPath("/", "nl"), "/nl/");
+  assert.equal(switchPath("/nl/initiative/", undefined), "/initiative/", "ongeldige taal: terugval");
+  assert.equal(switchPath("/nl/initiative/", "de"), "/initiative/");
+  assert.equal(switchPath("/nl/initiative/player/", "en"), "/initiative/player/");
+  assert.equal(switchPath("/initiative/player/", "nl"), "/nl/initiative/player/");
+  assert.equal(switchPath("/speler", "nl"), "/nl/initiative/player/");
+  for (const p of ["/", "/initiative/", "/nl/initiative/player/", "/speler", "/xx/a"]) for (const l of [...SUPPORTED, "de", undefined])
+    assert.doesNotMatch(switchPath(p, l), /^\/en(\/|$)/, `${p} → ${l}`);
 });
 
 test("voorkeur: parsePref en prefValue, kapotte of vreemde waarden → null", () => {
@@ -133,38 +133,29 @@ test("prefStore: localStorage-achtig, zonder of met kapotte opslag nooit een fou
   assert.equal(none.get(), null, "Node heeft geen localStorage");
 });
 
-test("homepage (WP30): een kaal taalprefix blijft of wordt de homepage, taalloos / blijft de app (V4)", () => {
-  assert.equal(HOME, true);
-  assert.deepEqual(r({ path: "/en/" }), { lang: "en", source: "path", redirect: null });
-  assert.deepEqual(r({ path: "/nl", search: "?k=ABC234" }), { lang: "nl", source: "path", redirect: null }, "slash: Cloudflare (html_handling)");
-  assert.deepEqual(r({ path: "/EN" }), { lang: "en", source: "path", redirect: "/en/" });
-  assert.equal(r({ path: "/", languages: ["en-US"] }).redirect, "/en/initiative/");
-});
-
-const PATHS = ["/", "", "//", "/EN", "/en", "/nl-be/x", "/nl_BE/", "/js/x", "/xx", "/xx/initiative/", "/de/initiative/player/",
+const PATHS = ["/", "", "//", "/EN", "/en", "/en/", "/nl-be/x", "/nl_BE/", "/js/x", "/xx", "/xx/initiative/", "/de/initiative/player/",
   "/en/initiative/player/", "/initiative/player/index.html", "/speler.html", "/player", "/index.html", "/initiative",
-  "//nl//initiative", "/%2F%2Fevil.com", "/characters/", "/nl/initiative/", "/en/"];
+  "//nl//initiative", "/%2F%2Fevil.com", "/characters/", "/nl/initiative/", "/NL/", "/en//x"];
 
 test("geen lus: een doorverwijzing opnieuw bepalen geeft geen nieuwe doorverwijzing", () => {
-  for (const live of [LIVE, BOTH]) for (const path of PATHS) for (const pref of [null, "nl", "en"]) {
-    const a = resolveLang({ path, pref, live, languages: ["de", "en-US"], search: "?k=ABC234" });
+  for (const path of PATHS) {
+    const a = resolveLang({ path, search: "?k=ABC234" });
     if (!a.redirect) continue;
     const u = new URL(a.redirect, "https://kevs-inn.com");
     assert.equal(u.search, "?k=ABC234", path);
-    const b = resolveLang({ path: u.pathname, pref, live, languages: ["de", "en-US"] });
+    const b = resolveLang({ path: u.pathname });
     assert.equal(b.redirect, null, `${path} → ${a.redirect} → ${b.redirect}`);
     assert.equal(b.lang, a.lang, path);
   }
 });
 
-test("geen open redirect: elke doorverwijzing blijft op dezelfde host onder /{taal}/", () => {
-  for (const path of [...PATHS, "//evil.com", "//evil.com/x", "/\\evil.com", "/NL//evil.com", "/xx//evil.com", "/\\/evil.com"])
-    for (const live of [LIVE, BOTH]) {
-      const { redirect } = resolveLang({ path, live, languages: ["en"] });
-      if (!redirect) continue;
-      assert.match(redirect, /^\/(en|nl)\//, `${path} → ${redirect}`);
-      assert.equal(new URL(redirect, "https://kevs-inn.com").host, "kevs-inn.com", `${path} → ${redirect}`);
-    }
+test("geen open redirect: elke doorverwijzing blijft op dezelfde host", () => {
+  for (const path of [...PATHS, "//evil.com", "//evil.com/x", "/\\evil.com", "/NL//evil.com", "/xx//evil.com", "/\\/evil.com", "/en//evil.com", "/EN///evil.com/x"]) {
+    const { redirect } = resolveLang({ path });
+    if (!redirect) continue;
+    assert.match(redirect, /^\/(?![/\\])/, `${path} → ${redirect}`);
+    assert.equal(new URL(redirect, "https://kevs-inn.com").host, "kevs-inn.com", `${path} → ${redirect}`);
+  }
 });
 
 test("WP22: offered en debugStored: kiezer en automatische keuze uit LIVE, in de debugstand alle talen", async () => {
@@ -180,7 +171,7 @@ test("WP22: offered en debugStored: kiezer en automatische keuze uit LIVE, in de
   assert.equal(debugStored(null), false, "geen opslag = uit");
   assert.equal(debugStored({ getItem() { throw new Error("geblokkeerd"); } }), false, "nooit een fout");
   const boot = await import("../js/i18n/boot.js");
-  assert.equal(boot.DEBUG_KEY, DEBUG_KEY, "één sleutel voor boot en doorverwijzer");
+  assert.equal(boot.DEBUG_KEY, DEBUG_KEY, "één sleutel voor boot en lang.js");
 });
 
 test("WP22: taalkiezer wisselt naar dezelfde pagina in de andere taal, query en hash blijven; voorkeur altijd bewaard", async () => {
@@ -193,9 +184,9 @@ test("WP22: taalkiezer wisselt naar dezelfde pagina in de andere taal, query en 
   const loc = (pathname, search = "", hash = "") => ({ pathname, search, hash, to: null, replace(u) { this.to = u; } });
   let l = loc("/nl/initiative/player/", "?k=ABC234", "#x");
   assert.equal(switchLang("en", { loc: l, store, cur: "nl" }), true);
-  assert.equal(l.to, "/en/initiative/player/?k=ABC234#x");
+  assert.equal(l.to, "/initiative/player/?k=ABC234#x", "WP44: Engels zonder voorvoegsel");
   assert.equal(store.get(), "en");
-  l = loc("/en/initiative/");
+  l = loc("/initiative/");
   assert.equal(switchLang("nl", { loc: l, store, cur: "en" }), true);
   assert.equal(l.to, "/nl/initiative/");
   l = loc("/nl/initiative/");
@@ -207,7 +198,7 @@ test("WP22: taalkiezer wisselt naar dezelfde pagina in de andere taal, query en 
   // geen opslag (privémodus): wisselt toch
   l = loc("/nl/initiative/");
   assert.equal(switchLang("en", { loc: l, store: prefStore(null), cur: "nl" }), true);
-  assert.equal(l.to, "/en/initiative/");
+  assert.equal(l.to, "/initiative/");
   // knoppen: elke taal in haar eigen taal met lang, huidige ingedrukt; label tweetalig, huidige taal eerst
   const h = langSegHtml("nl", ["en", "nl"]);
   assert.match(h, /data-lang="en" lang="en" aria-pressed="false">English</);

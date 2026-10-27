@@ -6,12 +6,16 @@
 <title>{{t:page.home.title}}</title>
 <meta name="description" content="{{t:page.home.desc}}">
 {{seo}}
+<meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#241811" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1d130d" media="(prefers-color-scheme: dark)">
+<!-- Thema (WP44, WB2): een bewuste keuze Licht/Donker in de app (it-theme, js/theme.js) geldt ook hier; zonder keuze of
+     zonder JavaScript volgt de pagina het systeem (CSS hieronder). Inline en vóór de CSS: geen flits, geen extra request.
+     Schakelt mee als de keuze in de app in een ander tabblad verandert (storage-event). tests/wp44.test.js voert het uit. -->
+<script>(function(){var d=document.documentElement,K="it-theme";function f(){var m=null;try{m=localStorage.getItem(K)}catch(e){}if(m!=="light"&&m!=="dark")m=null;if(m)d.setAttribute("data-theme",m);else d.removeAttribute("data-theme");var t=document.querySelectorAll('meta[name="theme-color"]');for(var i=0;i<t.length;i++)t[i].setAttribute("content",(m||(/dark/.test(t[i].getAttribute("media")||"")?"dark":"light"))==="dark"?"#1d130d":"#241811")}f();try{addEventListener("storage",function(e){if(e.key===K||e.key===null)f()})}catch(e){}})()</script>
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icons/icon-180.png">
 <link rel="preload" href="/fonts/newsreader-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<script src="/js/theme.js"></script>
 <!-- Publieke homepage (WP30, huisstijl 2.0 in WP37). Eigen kleine CSS, geen app.css: snel op 3G, geen JavaScript nodig voor de inhoud.
      Kleuren = tokens van css/app.css (licht, donker via systeem of de Weergave-keuze in de app: data-theme; tests/pages.test.js bewaakt de waarden).
      Hero-illustratie: img/hero-tavern-{800,1347}.{avif,webp} uit brand/hero-tavern.png; alt="" (sfeer), niet in de offline-cache:
@@ -102,7 +106,7 @@ footer .facts{margin:0 0 12px;font-size:.875rem;color:var(--fg)}
       <p class="kicker" lang="en">{{t:page.home.tagline}}</p>
       <h1 id="h-hero">{{t:page.home.headline}}</h1>
       <p class="lead">{{t:page.home.lead}}</p>
-      <a class="cta" href="/{{lang}}/initiative/">{{t:page.home.open}}</a>
+      <a class="cta" href="{{base}}/initiative/">{{t:page.home.open}}</a>
       <ul class="facts">
         <li>{{t:page.home.factFree}}</li>
         <li>{{t:page.home.factOffline}}</li>
@@ -112,7 +116,7 @@ footer .facts{margin:0 0 12px;font-size:.875rem;color:var(--fg)}
 
   <section class="wrap tools" aria-labelledby="h-tools">
     <h2 id="h-tools">{{t:page.home.tools}}</h2>
-    <a class="toolcard" href="/{{lang}}/initiative/" aria-labelledby="tc-name tc-sub">
+    <a class="toolcard" href="{{base}}/initiative/" aria-labelledby="tc-name tc-sub">
       <!-- brand/tool-icons/initiative.svg (WP37) --><svg viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 12 46 52M46 12 18 52"/><path d="M12 18 18 12l6 8M40 44l6 8 6-6"/><path d="M10 32h44"/><path d="M14 26h8M42 38h8"/></svg>
       <div>
         <h3 id="tc-name">Kev’s Inn <span>itiative</span></h3>

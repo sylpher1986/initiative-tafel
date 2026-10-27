@@ -3,6 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { initI18n, t, tr } from "../js/i18n/boot.js";
+import { pathFor } from "../js/i18n/lang.js";
 import { toPlayerView, cleanView, logLines } from "../js/playerview.js";
 import { diffLog } from "../js/log.js";
 
@@ -52,7 +53,7 @@ test("Spells-hint: twee zinnen zichtbaar, de rest achter 'More'", async () => {
   assert.equal(t("init.set.spellsRest"), "the rest of the app (conditions, crits, concentration DC) stays 2014.");
   assert.match(t("init.set.spellsMore"), /^Players with a D&D Beyond sheet/);
   for (const l of ["en", "nl"]) {
-    const html = readFileSync(new URL(`../${l}/initiative/index.html`, import.meta.url), "utf8");
+    const html = readFileSync(new URL(`..${pathFor(l, "/initiative/")}index.html`, import.meta.url), "utf8"); // WP44: Engels zonder /en/
     assert.match(html, /<details class="hmore"><summary class="link">[^<]+<\/summary><p class="hint">[^<]+<\/p><\/details>/, l);
   }
 });

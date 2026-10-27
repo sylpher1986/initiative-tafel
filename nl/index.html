@@ -7,9 +7,9 @@
 <title>Kev’s Inn · initiative tracker voor D&amp;D 5e</title>
 <meta name="description" content="Gratis initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities en een spelersscherm op de tv. Werkt offline, zonder account.">
 <link rel="canonical" href="https://kevs-inn.com/nl/">
-<link rel="alternate" hreflang="en" href="https://kevs-inn.com/en/">
+<link rel="alternate" hreflang="en" href="https://kevs-inn.com/">
 <link rel="alternate" hreflang="nl" href="https://kevs-inn.com/nl/">
-<link rel="alternate" hreflang="x-default" href="https://kevs-inn.com/en/">
+<link rel="alternate" hreflang="x-default" href="https://kevs-inn.com/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Kev’s Inn">
 <meta property="og:url" content="https://kevs-inn.com/nl/">
@@ -22,12 +22,16 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Kev’s Inn – Initiative tracker · D&amp;D 5e – kevs-inn.com">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#241811" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1d130d" media="(prefers-color-scheme: dark)">
+<!-- Thema (WP44, WB2): een bewuste keuze Licht/Donker in de app (it-theme, js/theme.js) geldt ook hier; zonder keuze of
+     zonder JavaScript volgt de pagina het systeem (CSS hieronder). Inline en vóór de CSS: geen flits, geen extra request.
+     Schakelt mee als de keuze in de app in een ander tabblad verandert (storage-event). tests/wp44.test.js voert het uit. -->
+<script>(function(){var d=document.documentElement,K="it-theme";function f(){var m=null;try{m=localStorage.getItem(K)}catch(e){}if(m!=="light"&&m!=="dark")m=null;if(m)d.setAttribute("data-theme",m);else d.removeAttribute("data-theme");var t=document.querySelectorAll('meta[name="theme-color"]');for(var i=0;i<t.length;i++)t[i].setAttribute("content",(m||(/dark/.test(t[i].getAttribute("media")||"")?"dark":"light"))==="dark"?"#1d130d":"#241811")}f();try{addEventListener("storage",function(e){if(e.key===K||e.key===null)f()})}catch(e){}})()</script>
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icons/icon-180.png">
 <link rel="preload" href="/fonts/newsreader-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<script src="/js/theme.js"></script>
 <!-- Publieke homepage (WP30, huisstijl 2.0 in WP37). Eigen kleine CSS, geen app.css: snel op 3G, geen JavaScript nodig voor de inhoud.
      Kleuren = tokens van css/app.css (licht, donker via systeem of de Weergave-keuze in de app: data-theme; tests/pages.test.js bewaakt de waarden).
      Hero-illustratie: img/hero-tavern-{800,1347}.{avif,webp} uit brand/hero-tavern.png; alt="" (sfeer), niet in de offline-cache:
@@ -104,7 +108,7 @@ footer .facts{margin:0 0 12px;font-size:.875rem;color:var(--fg)}
 <header class="wrap top">
   <!-- embleem: zelfde tekening als EMBLEM in tools/icons.mjs en de h1 van de app (WP16) -->
   <div class="mark"><svg viewBox="20 2 176 196" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M108 16 181 58v84l-73 42-73-42V58Z" stroke-width="11"/><g transform="translate(0 13)" stroke-width="10"><path d="M100 47v-8q8-10 16 0v8"/><path d="M88 55h40l-8 11H96Z"/><path d="M96 70h24l8 10v42H88V80Z"/><path d="M84 130h48"/></g><path d="M108 102c-9 10-9 19 0 26 9-7 9-16 0-26Z" fill="currentColor" stroke="none"/></svg>Kev’s Inn</div>
-  <nav class="lang" aria-label="Taal"><a href="/en/" hreflang="en" lang="en" aria-label="English (EN)">en</a><a href="/nl/" hreflang="nl" lang="nl" aria-label="Nederlands (NL)" aria-current="page">nl</a></nav>
+  <nav class="lang" aria-label="Taal"><a href="/" hreflang="en" lang="en" aria-label="English (EN)">en</a><a href="/nl/" hreflang="nl" lang="nl" aria-label="Nederlands (NL)" aria-current="page">nl</a></nav>
 </header>
 
 <main>

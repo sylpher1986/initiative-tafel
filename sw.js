@@ -1,19 +1,16 @@
 // Service worker: maakt de app offline bruikbaar. Geregistreerd als /sw.js met scope "/" (js/main.js), dus "./x" = "/x". Verhoog VERSION bij elke release zodat de cache ververst.
 // Gelijk houden aan js/version.js (de test bewaakt dat); dit is ook het nummer dat de app toont.
-const VERSION = "2.2.1";
+const VERSION = "2.3.0";
 const CACHE = "initiative-tafel-" + VERSION;
 // TS1: pdf.js (± 2,5 MB, alleen voor de PDF-import) in een eigen cache op zijn eigen versie: blijft staan bij een
 // app-update, zodat niet elke release hem opnieuw downloadt. Nieuwe pdf.js-versie = nieuwe map en nieuwe naam hier.
 const VENDOR = "initiative-tafel-pdfjs-3.11.174";
 const VENDOR_ASSETS = ["./vendor/pdfjs/pdf.js", "./vendor/pdfjs/pdf.worker.js"];
-// Pagina's (WP21): homepage (WP30) en app per taal plus de taalloze doorverwijzers (/, /speler, /player, /initiative/), die offline moeten
-// werken voor beginscherm-apps en QR-links; tests/pages.test.js bewaakt dat elke gegenereerde pagina hier staat.
+// Pagina's (WP21; WP44: Engels zonder taalcode): homepage (WP30) en app per taal plus de oude spelersadressen (/speler,
+// /player), die offline moeten werken voor beginscherm-apps en QR-links; tests/pages.test.js bewaakt dat elke
+// gegenereerde pagina hier staat. "/initiative/" is de start_url van elk manifest.
 const ASSETS = [
   "./",
-  "./en/",
-  "./en/initiative/",
-  "./en/initiative/player/",
-  "./en/manifest.webmanifest",
   "./initiative/",
   "./initiative/player/",
   "./nl/",
@@ -35,7 +32,6 @@ const ASSETS = [
   "./icons/icon-maskable-512.png",
   "./icons/icon.svg",
   "./icons/ui.svg",
-  "./index.html",
   "./js/backup.js",
   "./js/exportnudge.js",
   "./js/data/monsters.js",
@@ -144,6 +140,9 @@ self.addEventListener("fetch", (e) => {
   // live data: D&D Beyond en de spelersscherm-kamers (/api/room, ook de WebSocket) nooit uit de cache.
   // POST /api/room komt hier al niet (alleen GET); WebSockets gaan niet langs de service worker.
   if (own && url.pathname.startsWith("/api/")) return;
+  // WP44: oud Engels adres (/en, /en/…) → zelfde pad zonder /en, ook offline; gelijk aan enRedirect in worker/index.js
+  const en = own && /^\/en(\/.*)?$/.exec(url.pathname);
+  if (en) { e.respondWith(Response.redirect(url.origin + "/" + (en[1] || "/").replace(/^\/+/, "") + url.search, 301)); return; }
   if (own && url.pathname.startsWith("/vendor/")) { // pdf.js: niet bij install gelukt = bij het eerste gebruik bewaren
     e.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req).then((res) => {
       if (res.ok) { const copy = res.clone(); caches.open(VENDOR).then((c) => c.put(req, copy)); }

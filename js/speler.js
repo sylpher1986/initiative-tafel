@@ -1,6 +1,6 @@
 // Spelersscherm: toont alleen de snapshot die het DM-scherm stuurt (js/playerview.js), nooit eigen data.
 import { initI18n, t, tr, i18n } from "./i18n/boot.js";
-import { adoptExisting } from "./i18n/lang.js";
+import { adoptExisting, joinUrl } from "./i18n/lang.js";
 import { ico } from "./ui/icons.js";
 import { cleanView, headHtml, findMe, meState, buzzFor, dsText, logLines, pushLog, pvName, hsText, tagText } from "./playerview.js";
 import { ORD } from "./rules/spells.js";
@@ -254,7 +254,7 @@ function tvQr() {
   document.body.classList.toggle("qr", on);
   if (!on || qrFor === code) return;
   qrFor = code;
-  const url = `${location.origin}/speler?k=${code}`;
+  const url = joinUrl(location.origin, document.documentElement.lang, code); // WP44: spelersscherm in de taal van de tv
   el.innerHTML = `${qrSvg(url, t("player.qrLabel", { code: code.split("").join(" ") }))}<p>${esc(t("player.qr"))} · <b>${esc(fmtCode(code))}</b></p>`;
 }
 

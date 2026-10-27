@@ -1,5 +1,6 @@
 // Cloudflare Workers: statische bestanden (de app) plus een kleine Worker voor /api/*.
-// run_worker_first: alleen /api/* gaat langs worker/index.js, al het andere serveert Cloudflare direct uit de assets.
+// run_worker_first: alleen /api/* en /en(/…) gaan langs worker/index.js (/en = 301 naar het pad zonder /en, WP44);
+// al het andere serveert Cloudflare direct uit de assets.
 // ROOMS: Durable Object per spelersscherm-kamer (worker/room.js). SQLite-backend: werkt op het gratis plan.
 {
   "name": "initiative-tafel",
@@ -8,7 +9,7 @@
   "assets": {
     "directory": ".",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"],
+    "run_worker_first": ["/api/*", "/en", "/en/*"],
     // Onbekend adres: dichtstbijzijnde 404.html (WP30, tools/pages.mjs), die een ongeldig taalprefix (/xx/…) rechtzet
     "not_found_handling": "404-page"
   },
