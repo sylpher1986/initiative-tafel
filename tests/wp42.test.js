@@ -48,7 +48,7 @@ test("cleanSpellNotes: sleutel uit de naam, rare data weg", () => {
 });
 
 test("export versie 3: spellNotes heen en terug; versie 1 en 2 migreren naar leeg", () => {
-  assert.equal(VERSION, 3);
+  assert.equal(VERSION, 4); // leest t/m 4; zonder 2024-inhoud wordt nog 3 geschreven (WP46)
   const spellNotes = setNote({}, "Hex", "Bonus action");
   const exp = buildExport({ S: { list: [], round: 0, active: null }, party: [], lairs: {}, custom: [], imported: [], encounters: [], spellNotes });
   assert.equal(exp.version, 3);
@@ -62,6 +62,6 @@ test("export versie 3: spellNotes heen en terug; versie 1 en 2 migreren naar lee
   assert.deepEqual(parseImport({ format: FORMAT, version: 3, state: {} }).spellNotes, {});
 });
 
-test("export uit een nieuwere app (versie 4) wordt geweigerd met een melding", () => {
-  assert.throws(() => parseImport({ format: FORMAT, version: 4, state: {} }), (e) => e instanceof Error && e.message.length > 0);
+test("export uit een nieuwere app (versie 5) wordt geweigerd met een melding", () => {
+  assert.throws(() => parseImport({ format: FORMAT, version: 5, state: {} }), (e) => e instanceof Error && e.message.length > 0);
 });

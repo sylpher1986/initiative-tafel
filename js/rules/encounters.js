@@ -1,11 +1,15 @@
 // Encounters vooraf klaarzetten en XP-moeilijkheid (DMG 2014). Puur: geen DOM, geen opslag.
-// Encounter: { id, updatedAt, name, notes, monsters: [{ ref, n, hidden?, anon?, grp? }], lair?: { key, hidden? } }
+// Encounter: { id, updatedAt, name, notes, monsters: [{ ref, n, ed?, hidden?, anon?, grp? }], lair?: { key, hidden? } }
+// ed: alleen "2024" (SRD 5.2-statblock); ontbreekt = eigen > geïmporteerd > SRD 5.1 op naam (G1, WP46).
 // id + updatedAt maken de collectie sync-klaar (fase 2). Hp-modus en initiative worden bewust niet bewaard.
 
 import { APP } from "../version.js";
 import { t } from "../i18n/boot.js";
+import { cleanEd, edField, sameEd, refLabel } from "./edition.js";
 export const ENC_FORMAT = "initiative-tafel-encounter";
-export const ENC_VERSION = 1;
+export const ENC_VERSION = 2; // 2 (2.4.0, WP46): monsterregel met ed "2024"; zonder 2024-inhoud wordt nog versie 1 geschreven
+/** B5: heeft de encounter 2024-inhoud (dan versie 2, zodat een oudere app hem weigert in plaats van als 2014 te lezen) */
+export const encHas2024 = (enc) => !!enc && Array.isArray(enc.monsters) && enc.monsters.some((m) => cleanEd(m.ed));
 export const MAX_N = 50, MAX_ROWS = 40, MAX_TOTAL = 100, MAX_ENCS = 500;
 
 /* ---------- XP (DMG 2014) ---------- */
@@ -129,10 +133,10 @@ export const ratingName = (r) => (r == null ? null : r < 0 ? "Trivial" : RATINGS
 /** Waarom er geen oordeel is: "party", "lvl" of "cr" (null = wel een oordeel); de UI vertaalt de code (WP24) */
 export const noRatingCode = (r) => (r.rating != null ? null : !r.pcs ? "party" : r.noLvl.length ? "lvl" : "cr");
 
-/** Monsters van een encounter als invoer voor difficulty (CR via de bibliotheek) */
-export const encMons = (enc, find) => (enc.monsters || []).map((m) => { const s = find(m.ref); return { name: m.ref, n: m.n, cr: s ? s.cr : null, xp: s ? s.xp : null }; });
+/** Monsters van een encounter als invoer voor difficulty (CR via de bibliotheek; find(ref, ed)) */
+export const encMons = (enc, find) => (enc.monsters || []).map((m) => { const s = find(m.ref, m.ed); return { name: m.ref, n: m.n, cr: s ? s.cr : null, xp: s ? s.xp : null }; });
 /** Monsters in de huidige lijst als invoer voor difficulty (lair telt niet mee) */
-export const listMons = (list, find) => (list || []).filter((c) => c.kind === "monster").map((c) => { const s = c.ref && find(c.ref); return { name: c.ref || c.name, n: 1, cr: s ? s.cr : null, xp: s ? s.xp : null }; });
+export const listMons = (list, find) => (list || []).filter((c) => c.kind === "monster").map((c) => { const s = c.ref && find(c.ref, c.ed); return { name: c.ref || c.name, n: 1, cr: s ? s.cr : null, xp: s ? s.xp : null }; });
 
 /* ---------- maken, opschonen ---------- */
 const str = (v, max) => (v == null ? "" : String(v)).slice(0, max);
@@ -161,8 +165,8 @@ export function fromList(list, { id, name, notes = "", now, all = false }) {
     if (c.kind !== "monster" || !c.ref) continue;
     const k = { ref: c.ref, hidden: !!c.hidden, anon: !!c.anon, g: c.grp || "" };
     const last = monsters.at(-1);
-    if (last && last.n < MAX_N && last.ref === k.ref && !!last.hidden === k.hidden && !!last.anon === k.anon && (last._g || "") === k.g) { last.n++; continue; }
-    monsters.push({ ref: c.ref, n: 1, ...(k.hidden ? { hidden: true } : {}), ...(k.anon ? { anon: true } : {}), ...(k.g ? { grp: true, _g: k.g } : {}) });
+    if (last && last.n < MAX_N && last.ref === k.ref && sameEd(last.ed, c.ed) && !!last.hidden === k.hidden && !!last.anon === k.anon && (last._g || "") === k.g) { last.n++; continue; }
+    monsters.push({ ref: c.ref, n: 1, ...edField(c.ed), ...(k.hidden ? { hidden: true } : {}), ...(k.anon ? { anon: true } : {}), ...(k.g ? { grp: true, _g: k.g } : {}) });
   }
   monsters.forEach((m) => { delete m._g; if (m.grp && m.n < 2) delete m.grp; });
   return cleanEncounter({ id, updatedAt: now, name, notes, monsters, ...(lair ? { lair } : {}), all }, now);
@@ -185,7 +189,7 @@ export function cleanEncounter(o, now = Date.now()) {
     const n = Math.min(MAX_N, left, Math.max(0, Math.trunc(Number(m.n) || 0)));
     if (!ref || n < 1) continue;
     left -= n;
-    monsters.push({ ref, n, ...(m.hidden === true ? { hidden: true } : {}), ...(m.anon === true ? { anon: true } : {}), ...(m.grp === true && n > 1 ? { grp: true } : {}) });
+    monsters.push({ ref, n, ...edField(m.ed), ...(m.hidden === true ? { hidden: true } : {}), ...(m.anon === true ? { anon: true } : {}), ...(m.grp === true && n > 1 ? { grp: true } : {}) });
   }
   const lk = o.lair && typeof o.lair === "object" ? str(o.lair.key, 120).trim() : "";
   const lair = lk ? { key: lk, ...(o.lair.hidden === true ? { hidden: true } : {}) } : null;
@@ -225,23 +229,26 @@ export function duplicate(enc, list, now, word = "kopie") {
 /* ---------- inladen ---------- */
 /**
  * Plan om in te laden: toevoegacties voor wat er op dit apparaat bestaat, plus de namen die ontbreken.
- * has(ref) = statblock bestaat. → { adds: [{ ref, n, hidden, anon, init: "group"|"each" }], missing: [ref], lair }
+ * has(ref, ed) = statblock bestaat (ed "2024": alleen SRD 5.2, B4).
+ * → { adds: [{ ref, n, ed?, hidden, anon, init: "group"|"each" }], missing: [{ ref, ed? }], lair }
  */
 export function loadPlan(enc, has) {
   const adds = [], missing = [];
   for (const m of enc.monsters) {
-    if (!has(m.ref)) { if (!missing.includes(m.ref)) missing.push(m.ref); continue; }
-    adds.push({ ref: m.ref, n: m.n, hidden: !!m.hidden, anon: !!m.anon, init: m.grp ? "group" : "each" });
+    if (!has(m.ref, cleanEd(m.ed))) { if (!missing.some((x) => x.ref === m.ref && sameEd(x.ed, m.ed))) missing.push({ ref: m.ref, ...edField(m.ed) }); continue; }
+    adds.push({ ref: m.ref, n: m.n, ...edField(m.ed), hidden: !!m.hidden, anon: !!m.anon, init: m.grp ? "group" : "each" });
   }
   return { adds, missing, lair: enc.lair || null };
 }
+/** Ontbrekende monsters als tekst voor een melding ("Zombie", "Zombie · 2024") */
+export const missNames = (missing) => missing.map(refLabel);
 
 /* ---------- bestand per encounter ---------- */
 /** Exportbestand: encounter plus eigen/geïmporteerde statblocks en lair actions die erbij horen */
 export function buildEncFile(enc, { own = [], lairs = {} } = {}) {
-  const refs = new Set(enc.monsters.map((m) => m.ref));
+  const refs = new Set(enc.monsters.filter((m) => !cleanEd(m.ed)).map((m) => m.ref)); // SRD 5.2 gaat nooit mee: alleen editie-neutrale refs
   const key = enc.lair && enc.lair.key;
-  return { format: ENC_FORMAT, version: ENC_VERSION, exported: new Date().toISOString(), encounter: enc,
+  return { format: ENC_FORMAT, version: encHas2024(enc) ? ENC_VERSION : 1, exported: new Date().toISOString(), encounter: enc,
     monsters: own.filter((m) => refs.has(m.n)), lairs: key && Array.isArray(lairs[key]) && lairs[key].length ? { [key]: lairs[key] } : {} };
 }
 
@@ -254,7 +261,7 @@ export function parseEncFile(json, now = Date.now()) {
   if (Number(json.version) > ENC_VERSION) throw new Error(t("rules.enc.newer"));
   const enc = cleanEncounter(json.encounter, now);
   if (!enc) throw new Error(t("rules.enc.broken"));
-  const refs = new Set(enc.monsters.map((m) => m.ref));
+  const refs = new Set(enc.monsters.filter((m) => !cleanEd(m.ed)).map((m) => m.ref));
   const seen = new Set(); // elk statblock één keer (eerste wint)
   const monsters = (Array.isArray(json.monsters) ? json.monsters : []).filter((m) => m && typeof m === "object" && refs.has(String(m.n)) && !seen.has(String(m.n)) && seen.add(String(m.n))).slice(0, MAX_ROWS);
   const lairs = {};

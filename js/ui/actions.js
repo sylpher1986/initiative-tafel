@@ -8,6 +8,7 @@ import { M, J } from "../i18n/msg.js";
 import { app, because, addWhy, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, saveSpellNotes, resetBaseline } from "../state.js";
 import { render, ui, openId, mode, atkAc, atkRider, atkTargets, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, hidHint, anonHint, paintAoe, paintDmgSugg, dmgSp, aoeCaster, dmgSlot, dmgDice, dmgLevel, spellSlot, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, edNow, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast } from "./render.js";
 import { PAS, pasVal, cleanPas } from "../rules/passives.js";
+import { cleanEd, edField, rulesField } from "../rules/edition.js";
 import { castSpell, casterDC, spellTargets, castKey } from "../rules/spellcast.js";
 import { DMG_SPELLS } from "../rules/dmgtable.js";
 import { rollDice, diceText, normDice } from "../rules/dmgspells.js";
@@ -28,7 +29,7 @@ import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage, multiSeq, seqAfter } from "../rules/attacks.js";
 import { ufNeed, ufApply, ufInfo, monSave, parseRider, applyRider, riderOutcome, parryOf, canParry, useParry } from "../rules/monrules.js";
 import { castInfo, legInfo, rcInfo, pickList, isConc, edFor, ORD } from "../rules/spells.js";
-import { rulesEd, setRulesEd } from "./spellrules.js";
+import { rulesEd, setRulesEd, spellEd } from "./spellrules.js";
 import { initRoll, setInitRoll } from "./initroll.js";
 import { visNow, setVis } from "./playervis.js";
 import { nextAnon } from "../playerview.js";
@@ -57,7 +58,7 @@ const concNote = (f) => {
  * Geeft de staart voor de melding ("Undead Fortitude CON 19: d20 [17] +3 = 20, blijft op 1 HP") of "".
  */
 function ufRoll(c, was, dealt, info) {
-  const m = c.ref ? findMon(c.ref) : null, need = ufNeed(c, m, was, dealt, info);
+  const m = c.ref ? findMon(c.ref, c.ed) : null, need = ufNeed(c, m, was, dealt, info);
   if (!need) return "";
   const x = need.skip ? null : monSave(c, m, "CON");
   const r = ufApply(c, need, x, x ? rollText(x, 0) : "");
@@ -90,9 +91,10 @@ const apply = (fx) => { if (!fx) return; addWhy(fx.why); show(fx); if (fx.saves)
 /**
  * initmode: "each" (per monster rollen), "group" (één worp) of "fixed" (initiative = fixed, bijv. al aan tafel gerold).
  * hidden: meteen verborgen voor spelers (vóór de eerste render, dus vóór de eerste snapshot).
+ * ed: "2024" = SRD 5.2-statblock (G1); ontbreekt = eigen > geïmporteerd > SRD 5.1.
  */
-export function addMonsters(name, n, hpmode, initmode, silent, fixed = null, hidden = false, anon = false) {
-  const S = app.S, m = findMon(name);
+export function addMonsters(name, n, hpmode, initmode, silent, fixed = null, hidden = false, anon = false, ed) {
+  const S = app.S, m = findMon(name, ed);
   if (!m) return;
   const dx = mod(m.ab ? m.ab[1] : m.dexScore || 10);
   // doornummeren vanaf het hoogste bestaande nummer, zodat "Goblin 2" na verwijderen niet dubbel ontstaat
@@ -107,7 +109,7 @@ export function addMonsters(name, n, hpmode, initmode, silent, fixed = null, hid
     let hp = m.hp;
     if (hpmode === "roll" && m.hd) { const x = rollExpr(m.hd); if (x) hp = Math.max(1, x.total); }
     const label = n > 1 || nums.length ? `${m.n} ${next + i}` : m.n;
-    const c = { id: uid(), name: label, kind: "monster", ref: m.n, ...(grp ? { grp } : {}), ...(hidden ? { hidden: true } : {}), ...(anon ? { anon: nextAnon(S.list) } : {}), init: set ? fixed : r + dx, roll: r, dex: dx, ac: parseInt(m.ac) || 10, hp, max: hp, cond: [], ...legInfo(m), rc: rcInfo(m), casting: castInfo(m) };
+    const c = { id: uid(), name: label, kind: "monster", ref: m.n, ...edField(ed), ...(grp ? { grp } : {}), ...(hidden ? { hidden: true } : {}), ...(anon ? { anon: nextAnon(S.list) } : {}), init: set ? fixed : r + dx, roll: r, dex: dx, ac: parseInt(m.ac) || 10, hp, max: hp, cond: [], ...legInfo(m), rc: rcInfo(m), casting: castInfo(m) };
     S.list.push(c); out.push(c);
     because(J([set ? M("log.w.initSet") : `d20 [${r}] ${sgn(dx)}`, group !== null && n > 1 ? M("log.w.grp") : null, hpmode === "roll" && m.hd ? M("log.w.hpRoll", { hd: m.hd }) : null]), c.id);
   }
@@ -129,7 +131,8 @@ export function normalize(c) {
   c.cond = c.cond || [];
   if (c.kind === "lair") { if (!c.key) c.key = c.name; return; }
   if (!c.ref) return;
-  const m = findMon(c.ref);
+  const m = findMon(c.ref, c.ed);
+  if (!m && cleanEd(c.ed)) return; // G1: SRD 5.2 (nog) niet geladen: niets vastleggen, anders blijven legendary/recharge/spells leeg als de data later komt
   if (c.la === undefined && c.lr === undefined) Object.assign(c, legInfo(m));
   if (c.rc === undefined) c.rc = rcInfo(m);
   if (c.casting === undefined) c.casting = castInfo(m);
@@ -226,13 +229,13 @@ const row = {
     if (!p0) return false;
     if (p0.rage) { if (c.kind !== "pc") return false; ui.rage = { id: c.id, ...rageOpts(c) }; return; } // RE16: eerst de bevestigstap
     // editie per caster: zijn D&D Beyond-sheet, anders de instelling Spells (Barkskin 2024 = geen concentratie)
-    const act = app.S.list.find((x) => x.id === app.S.active), p = presetsFor(edFor(act, p0.n, rulesEd()))[i];
+    const act = app.S.list.find((x) => x.id === app.S.active), p = presetsFor(edFor(act, p0.n, spellEd()))[i];
     if ((p0.conc || p.conc) && !act) { ui.effWho = { id: c.id, i }; return; } // geen beurt: vraag wie cast (de sheet bepaalt de editie)
     return applyEff(c, p, p.conc ? act.id : null);
   },
   effby(c, b) {
     const w = ui.effWho; if (!w || w.id !== c.id || !PRESETS[w.i]) return false;
-    const by = app.S.list.find((x) => x.id === b.dataset.by), p = presetsFor(edFor(by, PRESETS[w.i].n, rulesEd()))[w.i];
+    const by = app.S.list.find((x) => x.id === b.dataset.by), p = presetsFor(edFor(by, PRESETS[w.i].n, spellEd()))[w.i];
     return applyEff(c, p, p.conc ? b.dataset.by : null);
   },
   "effwho-no"() { ui.effWho = null; },
@@ -352,7 +355,7 @@ function sheetKey(k, v) {
   if (k === "mode") { s.mode = +v; return; }
   if (k === "ufx") { s.ufx = !s.ufx; return; } // RE13: schadepaneel kent het type niet; de DM zegt het
   if (k === "parry") { // RE13: Parry van het monster: de aanval van de speler mist, reaction gebruikt
-    const c = app.S.list.find((x) => x.id === s.id), n = c && c.ref ? parryOf(findMon(c.ref)) : 0;
+    const c = app.S.list.find((x) => x.id === s.id), n = c && c.ref ? parryOf(findMon(c.ref, c.ed)) : 0;
     if (!c || !n || !canParry(c, app.S.round)) return;
     because("Parry");
     apply(useParry(c, n));
@@ -399,8 +402,8 @@ function rowData(c, b) {
     const spend = +ds.i < o.left;
     toggle(o, +ds.i);
     ui.castPick = null;
-    if (spend && ds.slot !== undefined && pickList(c, o.lvl, rulesEd()).some((x) => x.conc)) ui.castPick = { id: c.id, lvl: o.lvl, p: ds.slot === "p" };
-    if (spend && ds.daily !== undefined && isConc(o.n, edFor(c, o.n, rulesEd()))) apply(R.startConc(c, o.n.replace(/\(.*?\)/g, "").trim()));
+    if (spend && ds.slot !== undefined && pickList(c, o.lvl, spellEd()).some((x) => x.conc)) ui.castPick = { id: c.id, lvl: o.lvl, p: ds.slot === "p" };
+    if (spend && ds.daily !== undefined && isConc(o.n, edFor(c, o.n, spellEd()))) apply(R.startConc(c, o.n.replace(/\(.*?\)/g, "").trim()));
     return true;
   }
   if (ds.pickspell !== undefined) { if (ds.conc) apply(R.startConc(c, ds.pickspell)); ui.castPick = null; return true; }
@@ -541,14 +544,14 @@ const global = {
   "exp-later"() { snoozeNudge(); render(); focusAfterStrip(); toast(t("init.exp.snoozed", { n: SNOOZE_DAYS })); return false; },
   /** Voorbeeld weg: zelfde als "Alles wissen", met Ongedaan */
   "sample-clear"() {
-    app.S = { list: [], round: 0, active: null, sample: false }; Object.assign(ui, { welcome: false, open: null, panel: null, mode: null, confirmReset: false });
+    app.S = { list: [], round: 0, active: null, sample: false, ...rulesField(app.S) }; Object.assign(ui, { welcome: false, open: null, panel: null, mode: null, confirmReset: false });
     render();
     toastHtml(`${esc(t("init.prep.sampleGone"))} ${undoBtn()}`);
     return false;
   },
   reset() { ui.confirmReset = true; },
   "reset-no"() { ui.confirmReset = false; },
-  "reset-yes"() { app.S = { list: [], round: 0, active: null, sample: false }; ui.confirmReset = false; ui.mode = null; },
+  "reset-yes"() { app.S = { list: [], round: 0, active: null, sample: false, ...rulesField(app.S) }; ui.confirmReset = false; ui.mode = null; },
   spelers() {
     if (!window.open("player/", "it-spelers")) toastBad(t("init.msg.popup")); // relatief: /{taal}/initiative/player/, zelfde taal (WP21)
     return false;
@@ -1319,7 +1322,7 @@ function svDone(c, sid, ok, note, shown, quiet = false, adv = false) {
   addWhy(f.why); // de melding hieronder zegt al wat er gebeurde
   if (f.saves) f.saves.forEach((x) => addSave(app.S, x)); // rider-schade: concentration save
   if (!quiet) render(); // "Rol alle monsters" rendert één keer: één undo-stap
-  const m = c.kind === "monster" && c.ref ? findMon(c.ref) : null;
+  const m = c.kind === "monster" && c.ref ? findMon(c.ref, c.ed) : null;
   const res = s.kind === "conc" ? t(ok ? "init.msg.svConcOk" : "init.msg.svConcFail")
     : s.kind === "rider" ? riderOutcome(s.rd, ok, was - c.hp) + concNote(f)
     : t(ok ? "init.msg.svGone" : "init.msg.svStays", { name: s.n });
@@ -1426,7 +1429,7 @@ function spellField(a, t) {
   return true;
 }
 /** DC van de caster (sheet of statblock), alleen voor spells met een save */
-const spellDC = (a) => { const c = app.S.list.find((x) => x.id === a.by); return c ? casterDC(c, c.ref ? findMon(c.ref) : null) : ""; };
+const spellDC = (a) => { const c = app.S.list.find((x) => x.id === a.by); return c ? casterDC(c, c.ref ? findMon(c.ref, c.ed) : null) : ""; };
 
 /** Spell-tab: klikken. true = afgehandeld */
 function spellClick(a, k, b) {
@@ -1464,7 +1467,7 @@ function spellGo() {
     .map(({ c, p }) => ({ c, m: p.m, ok: !!sp.ab && p.ok, lr: !!sp.ab && p.lr, note: p.roll ? `${sp.ab} save ${rollText(p.roll, dc)}` : "" }));
   if (!picks.length) return;
   const k = spellSlot(a, sp, caster, picks.length); // RE2: zelfde stap
-  const r = castSpell(S.list, sp, caster, picks, { round: S.round, active: S.active, dc: a.sdc, ed: edFor(caster, sp.n, rulesEd()) });
+  const r = castSpell(S.list, sp, caster, picks, { round: S.round, active: S.active, dc: a.sdc, ed: edFor(caster, sp.n, spellEd()) });
   const sl = spendSlot(caster, k, sp.n, sp.lvl, !!a.sslot);
   addWhy([...r.why, ...sl.why]);
   ui.aoe = null;
@@ -1490,7 +1493,7 @@ function chooseDmg(a, sp, sameSpell = false) {
   if (!sp) { a.half = undefined; a.extra = ""; a.alt = ""; a.roll = ""; a.rtot = null; return; }
   if (DTYPES.includes(sp.type)) a.type = ui.aoeLast.type = sp.type;
   a.ab = ui.aoeLast.ab = sp.ab; a.half = sp.half;
-  const dc = c ? casterDC(c, c.ref ? findMon(c.ref) : null) : "";
+  const dc = c ? casterDC(c, c.ref ? findMon(c.ref, c.ed) : null) : "";
   if (dc) a.dc = ui.aoeLast.dc = dc;
   a.extra = sp.x.map((x) => `${x.dice} ${x.type}`).join(", "); a.alt = sp.alt || "";
   if (!sameSpell) Object.values(a.t).forEach((t) => { if (t.save === "half" || t.save === "none") t.save = "fail"; }); // Evasion e.d. blijft bij een andere caster
@@ -1553,7 +1556,7 @@ export function bindAoe() {
       if (!mons.length) { toastBad(t("init.msg.monsFirst")); return; }
       selfToast(mons, a.ab);
       mons.filter((c) => !selfRoll(c, a.ab)).forEach((c) => {
-        const m = findMon(c.ref), sa = saveAdv(c, a.ab, hasMagicRes(m)), x = rollSave(saveBonus(m, a.ab), sa.v, Math.random, saveMods(c, a.ab), sa.why);
+        const m = findMon(c.ref, c.ed), sa = saveAdv(c, a.ab, hasMagicRes(m)), x = rollSave(saveBonus(m, a.ab), sa.v, Math.random, saveMods(c, a.ab), sa.why);
         aoeSet(a, c.id, { roll: x, save: x.tot >= dc ? okSave(a) : "fail", lr: false });
       });
     }
@@ -1566,7 +1569,7 @@ export function bindAoe() {
 
 /** De save-actie achter het paneel opnieuw opzoeken en rollen (monster kan intussen weg zijn) */
 function srcAoe(a) {
-  const c = app.S.list.find((x) => x.id === a.src), A = c && c.ref ? monsterActions(findMon(c.ref)) : null;
+  const c = app.S.list.find((x) => x.id === a.src), A = c && c.ref ? monsterActions(findMon(c.ref, c.ed)) : null;
   const act = A && [...A.main, ...A.other].find((x) => x.n === a.act);
   return act ? actionAoe(act, (e) => rollExpr(e), DTYPES) : null;
 }
@@ -1609,7 +1612,7 @@ function aoeGo() {
   if (!a.src && a.roll) addWhy([{ t: M(a.rtot != null && a.rtot !== n ? "log.w.castAdj" : "log.w.cast", { who: c ? `${c.name} cast ` : "", roll: a.roll, n: String(n), type: a.type ? ` ${a.type}` : "" }), id: (c || L[0]).id }]);
   addWhy(sl.why);
   let conc = "";
-  if (c && sp && isConc(sp.n, edFor(c, sp.n, rulesEd())) && (a.slot || !(c.cond.includes("Concentrating") && c.concSpell === sp.n))) { apply(R.startConc(c, sp.n)); c.concLvl = lv; conc = " · conc"; } // concLvl: herhaalschade op hetzelfde level
+  if (c && sp && isConc(sp.n, edFor(c, sp.n, spellEd())) && (a.slot || !(c.cond.includes("Concentrating") && c.concSpell === sp.n))) { apply(R.startConc(c, sp.n)); c.concLvl = lv; conc = " · conc"; } // concLvl: herhaalschade op hetzelfde level
   // recharge-actie: pas bij toepassen op "op", in dezelfde stap (één keer Ongedaan)
   const src = a.src && app.S.list.find((x) => x.id === a.src), ri = src ? rcIndex(src.rc, a.act) : -1;
   const rcUsed = ri >= 0 && src.rc[ri].ready;
@@ -1625,7 +1628,7 @@ function aoeGo() {
 /* ---------- aanval op één doel (to-hit-knop op de monsterkaart) ---------- */
 /** Aanval opzoeken in het statblock van de aanvaller (op naam) */
 function findAtk(by, name) {
-  const A = by && by.ref ? monsterActions(findMon(by.ref)) : null;
+  const A = by && by.ref ? monsterActions(findMon(by.ref, by.ed)) : null;
   return A && [...A.main, ...A.other].find((a) => a.n === name && a.hit !== null);
 }
 
@@ -1642,7 +1645,7 @@ function openAtk(cid, name, label, laI, from) {
   const o = laI != null && laI !== "" ? laOpts(by)[+laI] : null, laBack = ui.la || by.id; // "*" = paneel met alle monsters
   ui.sheet = null; ui.qadd = null; ui.aoe = null; ui.la = null; ui.sv = false;
   // GV11: volgorde uit de Multiattack ("one with its bite and two with its claws"); niet vanuit het legendary-paneel
-  const seq = o || by.id !== app.S.active ? null : multiSeq(monsterActions(findMon(by.ref))), rest = seqAfter(seq, a.n); // niet bij een opportunity attack
+  const seq = o || by.id !== app.S.active ? null : multiSeq(monsterActions(findMon(by.ref, by.ed))), rest = seqAfter(seq, a.n); // niet bij een opportunity attack
   ui.atk = newAtk(by, a, label, o ? { i: +laI, n: o.n, cost: o.cost, on: true, back: laBack } : null, rest ? { left: rest, i: 1, n: seq.length } : null);
   atkFrom = o ? null : from || null;
   render();
@@ -1698,7 +1701,7 @@ function atkTarget(x, id) {
   }
   x.force = {}; x.rs = null; x.rx = null; // save en "toch raak" horen bij het doel; Parry onthoudt zelf het doel (acp.id)
   // resistance/immuniteit: monster uit het statblock (onvoorwaardelijk), speler uit zijn opgeslagen resistances (SP2)
-  const m = c.ref ? findMon(c.ref) : null;
+  const m = c.ref ? findMon(c.ref, c.ed) : null;
   x.modes = {};
   for (const p of x.parts) if (!(p.type in x.modes)) x.modes[p.type] = targetMode(c, m, p.type).mode;
 }
@@ -1732,7 +1735,7 @@ function atkGo() {
  * Geeft de staart voor de melding.
  */
 function atkRiderGo(x, c, ri) {
-  const m = c.ref ? findMon(c.ref) : null, rd = ri.rd;
+  const m = c.ref ? findMon(c.ref, c.ed) : null, rd = ri.rd;
   const full = { ...rd, n: x.n, by: x.by, roll: x.rroll, mode: rd.dmg ? targetMode(c, m, rd.dmg.type).mode : 1 };
   if (!ri.choice) {
     addSave(app.S, { id: c.id, kind: "rider", n: x.n, ab: rd.ab, dc: rd.dc, rd: full });
@@ -1767,10 +1770,10 @@ export function bindAtk() {
     if (k === "rs") { x.rs = x.rs === b.dataset.v ? null : b.dataset.v; } // RE13: nog eens tikken = weer open (beurtbalk)
     if (k === "rroll") { // monster als doel: save rollen, uitslag zet de seg (blijft om te zetten)
       const c = app.S.list.find((t) => t.id === x.tid), rd = x.rid;
-      if (c && rd) { x.rx = monSave(c, findMon(c.ref), rd.ab); x.rs = x.rx.tot >= rd.dc ? "ok" : "fail"; }
+      if (c && rd) { x.rx = monSave(c, findMon(c.ref, c.ed), rd.ab); x.rs = x.rx.tot >= rd.dc ? "ok" : "fail"; }
     }
     if (k === "parry") { // RE13: Parry van het doelmonster (monster tegen monster): reaction weg, +N AC voor deze aanval
-      const c = app.S.list.find((t) => t.id === x.tid), n = c && c.ref ? parryOf(findMon(c.ref)) : 0;
+      const c = app.S.list.find((t) => t.id === x.tid), n = c && c.ref ? parryOf(findMon(c.ref, c.ed)) : 0;
       if (c && n && canParry(c, app.S.round)) { because("Parry"); apply(useParry(c, n)); x.acp = { id: c.id, n }; render(); toastHtml(`${esc(t("init.msg.parryAc", { name: c.name, n }))} ${undoBtn()}`); focusAtk(); return; }
     }
     if (k === "la") x.la.on = !x.la.on;
@@ -2047,7 +2050,7 @@ export function bindBackup(afterImport) {
   // Spells 2014 | 2024: regels én uitleg (alleen spells; render volgt meteen: presets en concentratie)
   const rseg = $("#rules-seg");
   const showRules = (ed) => rseg.querySelectorAll("[data-rules]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.rules === ed));
-  showRules(rulesEd());
+  showRules(rulesEd()); // bewust de ruwe instelling
   rseg.addEventListener("click", (e) => { const b = e.target.closest("[data-rules]"); if (b) { showRules(setRulesEd(b.dataset.rules)); render(); } });
   // Wat spelers zien: per apparaat; render() maakt een nieuwe snapshot, dus alle spelersschermen volgen meteen
   const vbox = $("#vis-box");

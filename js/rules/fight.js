@@ -44,14 +44,14 @@ export function startFight(S, now) {
 }
 
 /**
- * Samenvatting bij het afronden (vóór stopCombat: S.round is nog de laatste ronde). find(ref) = statblock.
+ * Samenvatting bij het afronden (vóór stopCombat: S.round is nog de laatste ronde). find(ref, ed) = statblock.
  * Monsters: alle, behalve levende verborgen monsters (die heeft de groep niet gezien). xp = null zonder CR/xp.
  * flip = id's die de DM omzette: monster op 0 HP niet meetellen / levend monster (gevlucht) wel; speler wel of niet delen.
  */
 export function endSummary(S, find, now) {
   const f = S.fight;
   const mons = S.list.filter((c) => c.kind === "monster" && (isOut(c) || !c.hidden)).map((c) => {
-    const s = c.ref && find(c.ref), x = s ? crXp(s.cr) ?? (Number.isFinite(s.xp) && s.xp > 0 ? s.xp : null) : null;
+    const s = c.ref && find(c.ref, c.ed), x = s ? crXp(s.cr) ?? (Number.isFinite(s.xp) && s.xp > 0 ? s.xp : null) : null;
     return { id: c.id, name: c.ref || c.name, label: c.name, xp: x, out: isOut(c) };
   });
   const pcs = S.list.filter((c) => c.kind === "pc").map((c) => ({ id: c.id, name: c.name, dead: !!(c.ds && c.ds.dead), up: !!c.max && c.hp > 0 }));

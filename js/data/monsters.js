@@ -2,9 +2,10 @@
 import { HD_RE } from "../rules/dice.js";
 import { withParsed } from "./statparse.js";
 import { M, J } from "../i18n/msg.js";
+import { cleanEd } from "../rules/edition.js";
 
-let srd = [], custom = [], imported = [];
-let list = null, index = null;
+let srd = [], custom = [], imported = [], srd24 = [];
+let list = null, index = null, list24 = null, index24 = null;
 
 export async function loadSrd(url = "/data/monsters.json") {
   const res = await fetch(url);
@@ -17,6 +18,8 @@ export function setLibrary({ custom: c, imported: i }) {
   if (i) imported = i;
   invalidate();
 }
+/** G1: SRD 5.2-bibliotheek (data/monsters-2024.json, laden komt in WP48/49); los van eigen/geïmporteerd, geen ontdubbeling */
+export function setSrd24(l) { srd24 = Array.isArray(l) ? l : []; list24 = index24 = null; }
 export const getCustom = () => custom;
 export const getImported = () => imported;
 
@@ -31,8 +34,11 @@ function build() {
   list = [...seen.values()].sort((a, b) => a.n.localeCompare(b.n));
   index = new Map(list.map((m) => [m.n, m]));
 }
-export const allMonsters = () => { if (!list) build(); return list; };
-export const findMon = (n) => { if (!index) build(); return index.get(n); };
+function build24() { list24 = [...srd24].sort((a, b) => a.n.localeCompare(b.n)); index24 = new Map(list24.map((m) => [m.n, m])); }
+/** Zonder editie: eigen > geïmporteerd > SRD 5.1 (ongewijzigd); ed "2024": alleen SRD 5.2 */
+export const allMonsters = (ed) => { if (cleanEd(ed)) { if (!list24) build24(); return list24; } if (!list) build(); return list; };
+/** B3/B4: ed "2024" zoekt alleen in SRD 5.2, zonder terugval op 2014 en zonder schaduw door eigen monsters */
+export const findMon = (n, ed) => { if (cleanEd(ed)) { if (!index24) build24(); return index24.get(n); } if (!index) build(); return index.get(n); };
 
 /* ---------- zoeken op naam, type en CR ---------- */
 export const TYPES = ["aberration", "beast", "celestial", "construct", "dragon", "elemental", "fey", "fiend", "giant", "humanoid", "monstrosity", "ooze", "plant", "undead"];

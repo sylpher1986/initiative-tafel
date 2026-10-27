@@ -136,7 +136,7 @@ async function boot() {
     if (view) return view;
     const S = app.S;
     if (!S.round) prevTurn = null;
-    view = toPlayerView(S, (c) => (c.ref ? findMon(c.ref)?.meta : ""), visNow(), prevTurn, { pcReact: pcReact() });
+    view = toPlayerView(S, (c) => (c.ref ? findMon(c.ref, c.ed)?.meta : ""), visNow(), prevTurn, { pcReact: pcReact() });
     if (view.active && view.active === S.active) prevTurn = { id: view.active, round: view.round };
     return view;
   };

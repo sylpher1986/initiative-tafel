@@ -122,7 +122,7 @@ test("inladen: plan met ontbrekende statblocks; groep = groepsworp", () => {
   const e = { monsters: [{ ref: "Goblin", n: 3, grp: true, hidden: true }, { ref: "Shadow Hound", n: 2 }, { ref: "Bugbear", n: 1, anon: true }, { ref: "Shadow Hound", n: 1 }], lair: { key: "L" } };
   const p = loadPlan(e, (r) => !!find(r));
   assert.deepEqual(p.adds, [{ ref: "Goblin", n: 3, hidden: true, anon: false, init: "group" }, { ref: "Bugbear", n: 1, hidden: false, anon: true, init: "each" }]);
-  assert.deepEqual(p.missing, ["Shadow Hound"]); assert.deepEqual(p.lair, { key: "L" });
+  assert.deepEqual(p.missing, [{ ref: "Shadow Hound" }]); assert.deepEqual(p.lair, { key: "L" });
 });
 
 test("bestand per encounter: rondreis met eigen statblocks en lair actions; onbetrouwbaar bestand", () => {
@@ -156,7 +156,7 @@ test("import samenvoegen: nieuw, vervangen, als kopie; dupliceren nummert door",
 });
 
 test("backup versie 2+: encounters erbij; versie 1 migreert naar een lege lijst", () => {
-  assert.equal(VERSION, 3);
+  assert.equal(VERSION, 4); // leest t/m 4; zonder 2024-inhoud wordt nog 3 geschreven (WP46)
   const v1 = parseImport({ format: "initiative-tafel", version: 1, state: { list: [] }, party: [] });
   assert.deepEqual(v1.encounters, []);
   const enc = cleanEncounter({ id: "a", name: "Grot", updatedAt: 5, monsters: [{ ref: "Goblin", n: 2 }] }, NOW);

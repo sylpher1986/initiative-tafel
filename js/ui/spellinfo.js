@@ -10,7 +10,7 @@ import { diceify } from "./statblock.js";
 import { ORD } from "../rules/spells.js";
 import { loadSpells, findSpell, spellSrc, normSpell, EDS, pickEd, spellsLoaded } from "../data/spells.js";
 import { rulesDiffer } from "../rules/spellcast.js";
-import { rulesEd } from "./spellrules.js";
+import { spellEd } from "./spellrules.js";
 import { edFor, sheetEd } from "../rules/spells.js";
 import { t } from "../i18n/boot.js";
 
@@ -95,7 +95,7 @@ const noteEdit = (c, has) => `<div class="rnote"><label class="rnlab" for="r-not
 
 function body(c) {
   // de app rekent met de editie op de sheet van de speler (als hij de spell daar heeft), anders met de instelling Spells
-  const who = c.cid && app.S.list.find((x) => x.id === c.cid), pref = edFor(who, c.n, rulesEd());
+  const who = c.cid && app.S.list.find((x) => x.id === c.cid), pref = edFor(who, c.n, spellEd());
   const { ed, eds } = pickEd(c.n, c.ed || pref), s = findSpell(c.n, ed);
   if (s) {
     // andere editie dan waarmee gerekend wordt: alleen een waarschuwing als de app voor deze spell echt anders rekent

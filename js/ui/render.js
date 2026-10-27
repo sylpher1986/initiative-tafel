@@ -28,7 +28,7 @@ import { SPELLS, SPELL_CONDS, customSpell, spellTargets, spellDefault, condImmun
 import { DMG_SPELLS } from "../rules/dmgtable.js";
 import { spellDice, casterLevel, ownDmgSpells, findDmgSpells } from "../rules/dmgspells.js";
 import { slotChoices, defaultSlot, slotLevel, slotName } from "../rules/slots.js";
-import { rulesEd } from "./spellrules.js";
+import { spellEd } from "./spellrules.js";
 import { initRoll } from "./initroll.js";
 import { anonName } from "../playerview.js";
 import { paintEnc, encBanner, encStrip } from "./encounters.js";
@@ -277,7 +277,7 @@ function pips(o, key, label, full = label) {
 
 function defLine(c) {
   if (!c.ref) return "";
-  const m = findMon(c.ref);
+  const m = findMon(c.ref, c.ed);
   if (!m || !m.x) return "";
   const get = (l) => (m.x.find((x) => x[0] === l) || [])[1];
   const parts = [["init.card.defVuln", "Damage Vulnerabilities"], ["init.card.defRes", "Damage Resistances"], ["init.card.defImm", "Damage Immunities"]]
@@ -323,7 +323,7 @@ function castBlock(c) {
   const pp = (o, attr, l) => Array.from({ length: n0(o.max) }, (_, i) => `<button class="pip" ${attr} data-i="${i}" ${pipState(l, i, o)}></button>`).join("");
   const sum = k.slots.length || k.pact ? slotSum(k, " · ") : k.daily.map((g) => esc(g.label)).join(", ");
   const pick = (x, p = false) => ui.castPick && ui.castPick.id === c.id && ui.castPick.lvl === x.lvl && !!ui.castPick.p === p
-    ? `<div class="pick"><span class="hint">${esc(t("init.card.pick"))}</span>${pickList(c, x.lvl, rulesEd()).map((sp) =>
+    ? `<div class="pick"><span class="hint">${esc(t("init.card.pick"))}</span>${pickList(c, x.lvl, spellEd()).map((sp) =>
       `<button class="btn small ${sp.conc ? "conc" : ""}" data-pickspell="${esc(sp.n)}" data-conc="${sp.conc ? 1 : ""}">${esc(sp.n)}${sp.lv < x.lvl ? ` ${t("init.card.upcast", { lv: ORD[sp.lv] || sp.lv })}` : ""}${sp.conc ? ` · ${t("init.card.concShort")}` : ""}</button>`).join("")}<button class="link" data-pickspell="">${esc(t("init.card.pickSkip"))}</button></div>` : "";
   return `<details class="cast" data-cast ${ui.openCast.has(c.id) || ui.castPick?.id === c.id ? "open" : ""}><summary class="link strong">Spells <span style="font-weight:400">(${sum})</span></summary>
     <div class="castbox">${rageOf(c) ? `<p class="hint">${esc(t("init.card.rageNoSpells"))}</p>` : ""}
@@ -529,7 +529,7 @@ function prepFields(c) {
     <input data-pf="${k}" type="number" inputmode="numeric" enterkeyhint="done" value="${esc(val ?? "")}"${ph ? ` placeholder="${ph}"` : ""} aria-label="${esc(`${aria} ${c.name}`)}">${of ? `<span class="of">/${of}</span>` : ""}</span></label>`;
   const hpd = (c.max || 0) - baseMax(c), eff = hpd ? ` <small>${esc(t("init.prep.effDelta", { d: (hpd > 0 ? "+" : "−") + Math.abs(hpd) }))}</small>` : "";
   if (c.kind === "monster") {
-    const hd = c.ref && findMon(c.ref)?.hd;
+    const hd = c.ref && findMon(c.ref, c.ed)?.hd;
     const now = c.max && c.hp < c.max ? `<p class="hint pnow">${esc(t("init.prep.hpNow", { hp: n0(c.hp), max: n0(c.max) }))}</p>` : "";
     return `<div class="pfs two">${fld("init", "Init", c.init, { aria: "Initiative" })}${fld("max", `Max HP${hd ? ` <small class="nocase">${esc(hd)}</small>` : ""}${eff}`, c.max ? baseMax(c) : "", { ph: "?", aria: "Max HP" })}</div>${now}`;
   }
@@ -574,7 +574,7 @@ function atkRow(a, cid, la) {
 /** Monster aan de beurt: aanvallen open (max 4 regels); ander open monster: één ingeklapte regel (opportunity attack, legendary) */
 function atkBlock(c, S) {
   if (c.kind !== "monster" || isOut(c)) return "";
-  const A = c.ref ? monsterActions(findMon(c.ref)) : null;
+  const A = c.ref ? monsterActions(findMon(c.ref, c.ed)) : null;
   if (!A) return "";
   const turn = c.id === S.active, all = ui.atkOpen === c.id;
   const n = A.main.length + A.other.length;
@@ -633,7 +633,7 @@ function row(c, S, down = false) {
   return `<li class="c k ${c.kind === "pc" ? "pc" : "mon"} ${open ? "open" : ""} ${turn ? "turn" : ""} ${isOut(c) ? "out" : ""}${down ? " down" : ""}${fhp ? " fhp" : ""}" data-id="${esc(c.id)}"${down ? ` data-down="1"` : ""}>
     <button class="khead" data-a="open" aria-expanded="${open}"${turn ? ` aria-current="true"` : ""} aria-label="${esc([c.name, t(c.kind === "pc" ? "init.card.kindPc" : "init.card.kindMon"), effAc(c) && !(isOut(c) && c.kind === "monster") ? `AC ${n0(effAc(c))}` : "", t(open ? "init.card.close" : "init.card.open")].filter(Boolean).join(", "))}">
       <span class="i">${c.init == null ? "–" : n0(c.init)}${turn ? `<span class="tri">${ico("turn")}</span>` : ""}</span>
-      <span class="n">${avatar(c, c.ref ? findMon(c.ref)?.meta : "")}<span class="nm">${esc(c.name)}</span></span>
+      <span class="n">${avatar(c, c.ref ? findMon(c.ref, c.ed)?.meta : "")}<span class="nm">${esc(c.name)}</span></span>
       <span class="meta">${isOut(c) && c.kind === "monster" ? esc(t("init.card.down")) : acMeta(c)}</span>
       ${hp && prep ? hpBar(c) : ""}
     </button>${fhp ? hpBtn(c) : ""}
@@ -745,9 +745,9 @@ function paintDock() {
 
 /* ---------- open saves: regels in de beurtbalk (max 2) of één knop met paneel ---------- */
 /** Bonus voor de knop "Rol": statblock-save of ability-modifier (Bless/Bane en cover tellen bij het rollen mee) */
-export const svBonus = (c, ab) => saveBonus(c.ref ? findMon(c.ref) : null, ab);
+export const svBonus = (c, ab) => saveBonus(c.ref ? findMon(c.ref, c.ed) : null, ab);
 /** RE7: monster zonder bekende savebonus (geen statblock/ability score): de DM rolt zelf, de app gokt geen +0 */
-export const selfRoll = (c, ab) => c.kind === "monster" && !saveKnown(c.ref ? findMon(c.ref) : null, ab);
+export const selfRoll = (c, ab) => c.kind === "monster" && !saveKnown(c.ref ? findMon(c.ref, c.ed) : null, ab);
 const SELF = () => ` <span class="tag">${esc(t("init.sv.self"))}</span>`;
 
 /** Eén open save. full = in het paneel "Open saves" (met "einde beurt"); in de beurtbalk kort (RE12: past op 320 px naast Geslaagd/Gefaald) */
@@ -839,7 +839,7 @@ function laBar(S, L) {
 
 /** Opties per monster; zonder statblock-opties één algemene optie (1 LA) */
 export const laOpts = (c) => {
-  const o = c.ref ? laOptions(findMon(c.ref)) : [];
+  const o = c.ref ? laOptions(findMon(c.ref, c.ed)) : [];
   return o.length ? o : [{ n: "Legendary action", cost: 1, text: "", act: null, refs: [] }];
 };
 
@@ -895,7 +895,7 @@ function paintSheet() {
   if (!c) { el.hidden = true; el.innerHTML = ""; return; }
   const v = parseInt(s.val) || 0;
   let preview = "", ufBtn = "";
-  const m = c.ref ? findMon(c.ref) : null;
+  const m = c.ref ? findMon(c.ref, c.ed) : null;
   if (v) {
     const { sim } = sheetPreview(c, s.kind, v, s.mode);
     const hp = (x) => `${n0(x.hp)}${x.temp ? ` (+${n0(x.temp)} temp)` : ""}`;
@@ -1036,7 +1036,7 @@ export const aoeTargets = (ex = null) => sortOrder(app.S.list).filter((c) => c.k
 
 /** Effectieve keuze per doelwit (mode null = volg het statblock voor het gekozen damage type) */
 export function aoePick(a, c) {
-  const m = c.ref ? findMon(c.ref) : null;
+  const m = c.ref ? findMon(c.ref, c.ed) : null;
   return pickFor(a.t[c.id], targetMode(c, m, a.type));
 }
 
@@ -1088,7 +1088,7 @@ export const dmgSlot = (a, c, sp) => (!sp || !c || !sp.lv || !slotChoices(c, sp.
 /** Slot-level van deze cast: bij "run" het level waarop hij gecast werd (c.concLvl), anders uit de keuze */
 export const dmgLevel = (a, c, sp) => { const k = dmgSlot(a, c, sp); return k === "run" ? Math.max(sp.lv, c.concLvl | 0) : slotLevel(c, k, sp.lv); };
 /** Dobbelstenen voor de gekozen spell, caster en slot */
-export const dmgDice = (a, c, sp) => spellDice(sp, dmgLevel(a, c, sp), casterLevel(c, c && c.ref ? findMon(c.ref) : null));
+export const dmgDice = (a, c, sp) => spellDice(sp, dmgLevel(a, c, sp), casterLevel(c, c && c.ref ? findMon(c.ref, c.ed) : null));
 
 /** Segment "Slot: 3rd ·2 | 4th ·1 | Pact ·2 | Zelf" (gedeeld met de tab Spell); ao = data-ao van de knoppen */
 function slotSeg(c, lv, n, k, ao) {
@@ -1118,7 +1118,7 @@ function dmgCastHtml(a) {
       <label class="dq">${esc(t("init.aoe.dmgSpell"))}<input id="a-q" type="search" value="${esc(a.dq || "")}" placeholder="${esc(t("init.aoe.dmgSpellPh"))}" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"></label>
       <div class="dchips" id="a-sugg"></div></div>`;
   }
-  const lvl = casterLevel(c, c && c.ref ? findMon(c.ref) : null);
+  const lvl = casterLevel(c, c && c.ref ? findMon(c.ref, c.ed) : null);
   const meta = [sp.lv ? ORD[dmgLevel(a, c, sp)] : "cantrip", `${sp.ab} ${sp.half ? "½" : "0"}`, sp.type].join(" · ");
   const cant = !sp.lv && sp.cant ? `<p class="hint">${esc(lvl ? t("init.aoe.cantrip", { lvl, dice: dmgDice(a, c, sp) }) : t("init.aoe.cantrip0", { dice: sp.dice }))}</p>` : "";
   const lose = c && sp.conc && c.cond.includes("Concentrating") && c.concSpell && c.concSpell !== sp.n ? c.concSpell : ""; // zoals in de tab Spell
@@ -1185,9 +1185,9 @@ const aoeTabs = (a) => (a.src ? "" : `<div class="seg2 atabs" role="group" aria-
 
 /** Gekozen spell (preset of eigen) */
 /** Editie waarmee een preset rekent voor deze caster: zijn sheet, anders de instelling Spells */
-export const presetEd = (caster, n) => edFor(caster, n, rulesEd());
+export const presetEd = (caster, n) => edFor(caster, n, spellEd());
 /** Tag op een preset-knop: "2024 · sheet" als de sheet van de caster afwijkt van de instelling én de app voor die spell anders rekent, anders "2024" bij een 2024-afwijking */
-const edTag = (caster, n, p) => { const e = rulesDiffer(n) ? sheetEd(caster, n) : ""; return e && e !== rulesEd() ? `${e} · sheet` : p.ed || ""; };
+const edTag = (caster, n, p) => { const e = rulesDiffer(n) ? sheetEd(caster, n) : ""; return e && e !== spellEd() ? `${e} · sheet` : p.ed || ""; };
 /** Gekozen spell (preset of eigen); Sleep alleen als de caster op 2024 uitkomt */
 export const curSpell = (a) => {
   if (a.sp === "own") return customSpell(a.cf || {});
@@ -1198,7 +1198,7 @@ const durName = durShort; // WP27: "1 minuut" i.p.v. "1 minuut (10 rondes)", uit
 
 /** Keuze per doel: wat de DM tikte, anders de standaard (kant van de caster, immuniteit, humanoid) */
 export function spellPick(a, sp, caster, c) {
-  const m = c.ref ? findMon(c.ref) : null, def = spellDefault(sp, caster, c, m), o = a.s[c.id] || {};
+  const m = c.ref ? findMon(c.ref, c.ed) : null, def = spellDefault(sp, caster, c, m), o = a.s[c.id] || {};
   return { ...def, m, sel: o.sel ?? def.sel, ok: !!o.ok, roll: o.roll || null, lr: !!o.lr };
 }
 
@@ -1330,7 +1330,7 @@ function goLabel(dealt, ri, x) {
 
 /** RE13: Parry aanbieden bij monster tegen monster: melee, raak (geen nat 20) en met +N zou het missen */
 const parryOk = (c, x, r, res) => {
-  const n = c.kind === "monster" && c.ref ? parryOf(findMon(c.ref)) : 0;
+  const n = c.kind === "monster" && c.ref ? parryOf(findMon(c.ref, c.ed)) : 0;
   return n > 0 && !(x.acp && x.acp.id === c.id && c.reaction) && x.kind !== "ranged" && res.hit && !x.force.hit && r.nat !== 20 && canParry(c, app.S.round) && r.tot < atkAc(x, c) + n;
 };
 
@@ -1343,7 +1343,7 @@ export const atkAc = (x, c) => (effAc(c) || 0) + (x.acp && x.acp.id === c.id && 
 
 /** RE13: rider van deze aanval tegen dit doel (riderFor in monrules.js); null zonder treffer */
 export function atkRider(x, c, res, sim) {
-  return res.hit ? riderFor(x.rid, c, c.ref ? findMon(c.ref) : null, sim, x.rs) : null;
+  return res.hit ? riderFor(x.rid, c, c.ref ? findMon(c.ref, c.ed) : null, sim, x.rs) : null;
 }
 
 /** Rij "Daarna · STR DC 11 · of Prone" in het aanvalspaneel (alleen bij een treffer) */
@@ -1382,7 +1382,7 @@ function laToggle(x, by) {
 
 function atkTgtRow(c, prev, x, by) {
   const ac = effAc(c), tag = advTag(atkAdv(by, c, x.kind));
-  return `<button type="button" class="xt" data-xa="tgt" data-id="${esc(c.id)}">${avatar(c, c.ref ? findMon(c.ref)?.meta : "")}
+  return `<button type="button" class="xt" data-xa="tgt" data-id="${esc(c.id)}">${avatar(c, c.ref ? findMon(c.ref, c.ed)?.meta : "")}
     <span class="xn">${esc(c.name)}${prev ? ` <span class="tag">${esc(t("init.atk.prev"))}</span>` : ""}</span>
     <span class="xi">${ac ? `AC ${n0(ac)}` : "AC ?"}${c.max ? ` · ${n0(c.hp)}/${n0(c.max)} HP` : ""}${tag ? `<b class="xadvt">${esc(tag)}</b>` : ""}</span></button>`;
 }
@@ -1428,7 +1428,7 @@ function atkRes(x, c, by) {
   if (res.hit) {
     const sim = structuredClone(c), was = c.hp;
     if (c.max) atkDamage(sim, res);
-    const uf = c.max && ufNeed(sim, c.ref ? findMon(c.ref) : null, was, res.dealt, ufInfo(res));
+    const uf = c.max && ufNeed(sim, c.ref ? findMon(c.ref, c.ed) : null, was, res.dealt, ufInfo(res));
     const ri = atkRider(x, c, res, sim);
     const end = !c.max ? "" : sim.ds && sim.ds.dead && !(c.ds && c.ds.dead) ? ` · <b class="bad">${esc(t("init.dmg.dies"))}</b>`
       : uf && uf.dc ? ` · ${esc(t("init.dmg.uf", { dc: uf.dc }))}`
@@ -1441,7 +1441,7 @@ function atkRes(x, c, by) {
       ${ri ? riderRow(x, c, ri) : ""}`;
     const can = c.max && (res.dealt || (ri && ri.act && ri.choice !== "na"));
     const left = shieldOk(c, x, r, res) ? `<button type="button" class="btn" data-xa="shield">Shield +5</button>`
-      : parryOk(c, x, r, res) ? `<button type="button" class="btn" data-xa="parry">Parry +${parryOf(findMon(c.ref))}</button>` : "<span></span>";
+      : parryOk(c, x, r, res) ? `<button type="button" class="btn" data-xa="parry">Parry +${parryOf(findMon(c.ref, c.ed))}</button>` : "<span></span>";
     const nx = !can && x.sq && x.sq.left.length ? x.sq.left[0] : ""; // GV11: niets toe te passen (immuun): wel door
     foot = `${left}${nx ? `<button type="button" class="btn primary qgo" data-xa="next">${esc(t("init.atk.nextAtk", { name: nx }))} ${chev(false)}</button>`
       : `<button type="button" class="btn primary qgo" data-xa="go" ${can ? "" : "disabled"}>${esc(!c.max ? t("init.sp.hpUnknown") : goLabel(res.dealt, ri, x))}</button>`}`;

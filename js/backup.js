@@ -6,7 +6,8 @@ import { sanitizeOwn } from "./data/monsters.js";
 import { CONDS } from "./rules/turns.js";
 import { cleanImg } from "./ui/avatar.js";
 import { dedupeAnon } from "./playerview.js";
-import { cleanEncounters, cleanLvl } from "./rules/encounters.js";
+import { cleanEncounters, cleanLvl, encHas2024 } from "./rules/encounters.js";
+import { cleanEd, rulesOf, rulesField } from "./rules/edition.js";
 import { cleanEnc } from "./rules/fight.js";
 import { cleanDr } from "./rules/aoe.js";
 import { cleanRs, cleanTk } from "./rules/effects.js";
@@ -15,7 +16,9 @@ import { cleanSpellNotes } from "./data/spellnotes.js";
 import { exportLog } from "./log.js";
 
 export const FORMAT = "initiative-tafel";
-export const VERSION = 3; // 2 (1.28.0): encounters erbij; 3 (2.2.0, WP42): spellNotes erbij
+export const VERSION = 4; // 2 (1.28.0): encounters erbij; 3 (2.2.0, WP42): spellNotes erbij; 4 (2.4.0, WP46): 2024-inhoud
+/** B5: 2024-inhoud (regelset of een monster/encounterregel met ed "2024") → versie 4, anders nog 3 (leesbaar voor een oudere app) */
+export const has2024 = (app) => rulesOf(app.S) === "2024" || !!(app.S && Array.isArray(app.S.list) && app.S.list.some((c) => cleanEd(c.ed))) || (app.encounters || []).some(encHas2024);
 
 /** AF11: bestandsnaam in lokale tijd ("kevs-inn-itiative-2026-10-23-21-14.json"; het formaat heet nog "initiative-tafel"), niet UTC */
 export function exportName(t) {
@@ -25,7 +28,7 @@ export function exportName(t) {
 
 export function buildExport(app) {
   return {
-    format: FORMAT, version: VERSION, exported: new Date().toISOString(),
+    format: FORMAT, version: has2024(app) ? VERSION : 3, exported: new Date().toISOString(),
     state: app.S && Array.isArray(app.S.log) ? { ...app.S, log: exportLog(app.S.log) } : app.S, party: app.party, lairs: app.lairs, custom: app.custom, imported: app.imported, encounters: app.encounters || [], spellNotes: app.spellNotes || {},
   };
 }
@@ -136,6 +139,7 @@ export function cleanCombatant(c) {
     atR: obj(c.atR) && Number.isInteger(c.atR.r) && c.atR.r > 0 && Number.isFinite(+c.atR.ai) ? { r: c.atR.r, ai: num(c.atR.ai) } : undefined, // RE9: eigen beurtplek deze ronde
     skipR: Number.isInteger(c.skipR) && c.skipR > 0 ? c.skipR : undefined, // RE9: al geweest, deze ronde overgeslagen
     nextR: obj(c.nextR) && Number.isInteger(c.nextR.r) && c.nextR.r > 0 ? { r: c.nextR.r, after: c.nextR.after ? str(c.nextR.after, 40) : null, ...(Number.isInteger(c.nextR.ai) ? { ai: c.nextR.ai } : {}), ...(c.nextR.done ? { done: 1 } : {}) } : undefined, // RE9: ingeschoven beurt
+    ed: kind === "monster" ? cleanEd(c.ed) : undefined, // G1: SRD 5.2-statblock; ontbreekt = huidig gedrag
     ac: num(c.ac), hp: num(c.hp), max: num(c.max), temp: num(c.temp), reaction: !!c.reaction,
     pid: c.pid ? str(c.pid, 40) : null, lvl: kind === "pc" ? cleanLvl(c.lvl) ?? undefined : undefined, ddbId: /^[1-9]\d{0,11}$/.test(String(c.ddbId)) ? String(c.ddbId) : undefined, race: typeof c.race === "string" ? str(c.race, 120) : undefined, img: (kind === "pc" && cleanImg(c.img)) || undefined, ref: c.ref ? str(c.ref, 120) : undefined, roll: c.roll != null ? num(c.roll) : undefined,
     initBonus: c.initBonus != null ? num(c.initBonus) : undefined, concSpell: c.concSpell ? str(c.concSpell, 120) : null,
@@ -159,6 +163,8 @@ export function cleanCombatant(c) {
 const migrate1to2 = (json) => ({ ...json, version: 2, encounters: [] });
 /** Versie 2 → 3: eigen spell-notities bestonden nog niet */
 const migrate2to3 = (json) => ({ ...json, version: 3, spellNotes: {} });
+/** Versie 3 → 4: alleen nieuwe optionele velden (S.rules, ed); ontbreken = 2014, dus niets om te migreren */
+const migrate3to4 = (json) => ({ ...json, version: 4 });
 
 /** Bestand → schone data, of een Error met een leesbare melding */
 export function parseImport(json) {
@@ -166,12 +172,13 @@ export function parseImport(json) {
   if (num(json.version) > VERSION) throw new Error(t("init.imp.newer"));
   if (!(num(json.version) >= 2)) json = migrate1to2(json);
   if (!(num(json.version) >= 3)) json = migrate2to3(json);
+  if (!(num(json.version) >= 4)) json = migrate3to4(json);
   const S = obj(json.state) || { list: [], round: 0, active: null };
   const lairs = {};
   for (const [k, v] of Object.entries(obj(json.lairs) || {})) lairs[str(k, 120)] = arr(v).map((a) => ({ n: str(a.n, 120), t: str(a.t, 4000) }));
   return {
     S: {
-      list: dedupeAnon(arr(S.list).map(cleanCombatant)), round: Math.max(0, num(S.round)), active: S.active ? str(S.active, 40) : null, ...(Number.isInteger(S.ai) && S.round ? { ai: S.ai } : {}), sample: false, // ai: beurtplek (RE9)
+      list: dedupeAnon(arr(S.list).map(cleanCombatant)), round: Math.max(0, num(S.round)), active: S.active ? str(S.active, 40) : null, ...(Number.isInteger(S.ai) && S.round ? { ai: S.ai } : {}), sample: false, ...rulesField(S), // ai: beurtplek (RE9); rules: regelset van de tafel (G1; ook uit een v3-bestand overgenomen: onschuldig)
       ...(cleanEnc(S.enc).length ? { enc: cleanEnc(S.enc) } : {}), ...(S.allMon === true ? { allMon: true } : {}), // ingeladen encounter (VB2); samenvatting en gevechtsduur gaan niet mee
       log: arr(S.log).slice(-600).filter(obj).map(cleanLog),
     },

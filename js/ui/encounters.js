@@ -167,7 +167,7 @@ function rowHtml(e) {
 /** Lair in Bewerken: die van de encounter, anders (VB5) de eerste met legendary actions ("Lair: Adult Red Dragon") */
 function lairKeyOf(x) {
   if ((x.lair && x.lair.key) || x.lairKey) return (x.lair && x.lair.key) || x.lairKey;
-  const m = x.monsters.find((y) => { const sb = findMon(y.ref); return sb && sb.l && sb.l.length; });
+  const m = x.monsters.find((y) => { const sb = findMon(y.ref, y.ed); return sb && sb.l && sb.l.length; });
   return m ? `Lair: ${m.ref}` : "";
 }
 
@@ -175,7 +175,7 @@ function editHtml() {
   const x = ui.encEdit, lk = lairKeyOf(x);
   const r = E.difficulty(E.encMons(x, findMon), partyNow().who, !!x.all);
   const rows = x.monsters.map((m, i) => {
-    const s = findMon(m.ref);
+    const s = findMon(m.ref, m.ed);
     const tags = [m.hidden && t("init.card.hidden"), m.anon && t("init.card.anon"), m.grp && t("init.enc.grp"), !s && t("init.enc.notHere")].filter(Boolean).join(" · ");
     return `<div class="erow"><span class="en"><b>${esc(m.ref)}</b><small>${s ? `CR ${esc(s.cr || "?")}` : ""}${tags ? `${s ? " · " : ""}${esc(tags)}` : ""}</small></span>
       <span class="step"><button type="button" class="btn" data-enc="n" data-i="${i}" data-v="-1" aria-label="${esc(t(m.n === 1 ? "init.enc.rm" : "init.enc.less", { name: m.ref }))}">−</button><input class="encnum" data-encn="${i}" type="number" inputmode="numeric" min="1" max="${E.MAX_N}" enterkeyhint="done" value="${m.n}" aria-label="${esc(t("init.enc.count", { name: m.ref }))}"><button type="button" class="btn" data-enc="n" data-i="${i}" data-v="1" aria-label="${esc(t("init.enc.more", { name: m.ref }))}" ${E.total(x) >= E.MAX_TOTAL || m.n >= E.MAX_N ? "disabled" : ""}>+</button></span></div>`;
@@ -205,10 +205,10 @@ const repaint = () => paintEnc();
 
 /** Inladen: monsters via addMonsters (HP-keuze uit ui.addOpts, initiative uit de encounter: groep per regel, anders per monster), lair erbij; één undo-stap en één logregel */
 function loadEnc(enc, mode) {
-  const S = app.S, plan = E.loadPlan(enc, (r) => !!findMon(r));
+  const S = app.S, plan = E.loadPlan(enc, (r, ed) => !!findMon(r, ed));
   const lairNew = plan.lair && (mode === "replace" || !hasLair(S.list));
   if (!plan.adds.length && !lairNew) {
-    toastBad(plan.missing.length ? t("init.enc.nothing", { names: plan.missing }) : t("init.enc.lairOnly"));
+    toastBad(plan.missing.length ? t("init.enc.nothing", { names: E.missNames(plan.missing) }) : t("init.enc.lairOnly"));
     return;
   }
   let gone = 0;
@@ -219,7 +219,7 @@ function loadEnc(enc, mode) {
   if (S.round) because(M("log.w.midFight"));
   // HP volgt de keuze bij monsters toevoegen (ui.addOpts); initiative volgt de encounter zelf: groep per regel, anders per monster
   const before = S.list.length, hpmode = ui.addOpts.hp;
-  for (const a of plan.adds) addMonsters(a.ref, a.n, hpmode, a.init === "group" ? "group" : "each", true, null, a.hidden, a.anon);
+  for (const a of plan.adds) addMonsters(a.ref, a.n, hpmode, a.init === "group" ? "group" : "each", true, null, a.hidden, a.anon, a.ed);
   if (lairNew) S.list.push(newLair(plan.lair.key, plan.lair.hidden));
   if (mode === "replace" ? !!enc.all !== !!S.allMon : enc.all && !S.allMon) { if (enc.all) S.allMon = true; else delete S.allMon; } // lage CR toch meetellen volgt de encounter
   addEnc(S, enc, mode === "replace"); // naam boven de lijst, notitie (tactiek) in Gevecht (VB2); zelfde undo-stap
@@ -233,7 +233,7 @@ function loadEnc(enc, mode) {
   if (last) wantSB(last.id); // tablet/desktop: zijkolom toont het ingeladen monster
   render();
   if (last) scrollToCard(last.id, true);
-  const miss = plan.missing.length ? `<br>${esc(t("init.enc.missing", { names: plan.missing }))}` : "";
+  const miss = plan.missing.length ? `<br>${esc(t("init.enc.missing", { names: E.missNames(plan.missing) }))}` : "";
   toastHtml(`${esc(t("init.enc.loaded", { name: enc.name, what }) + (gone ? ` · ${t("init.enc.replaced", { n: gone })}` : ""))}${miss} ${undoBtn()}`);
 }
 
@@ -307,7 +307,7 @@ function importDone(p, mode) {
   const nMon = addLibrary(p);
   app.encounters = E.mergeEnc(app.encounters, p.enc, mode, Date.now(), t("init.enc.copyWord")); saveEncounters();
   ui.encImp = null; repaint();
-  const miss = E.loadPlan(p.enc, (r) => !!findMon(r)).missing;
+  const miss = E.missNames(E.loadPlan(p.enc, (r, ed) => !!findMon(r, ed)).missing);
   toast([t("init.enc.imported", { name: p.enc.name }), nMon ? t("init.enc.impOwn", { n: nMon }) : ""].filter(Boolean).join(" · ") + (miss.length ? `. ${t("init.enc.impMiss", { names: miss })}` : "") + ".");
 }
 async function importFile(file) {
@@ -387,7 +387,7 @@ export function bindEnc() {
     if (p && ui.encEdit) {
       const x = ui.encEdit, ref = p.dataset.eepick;
       if (E.total(x) >= E.MAX_TOTAL) { toastBad(t("init.enc.max", { n: E.MAX_TOTAL })); return; }
-      const m = x.monsters.find((y) => y.ref === ref && !y.hidden && !y.anon);
+      const m = x.monsters.find((y) => y.ref === ref && !y.hidden && !y.anon && !y.ed); // G1: kiezen geeft (nog) geen 2024-monster
       if (m && m.n < E.MAX_N) m.n++;
       else if (x.monsters.length < E.MAX_ROWS) x.monsters.push({ ref, n: 1 });
       x.q = ""; repaint(); $("#ee-q")?.focus();

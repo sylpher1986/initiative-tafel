@@ -2,6 +2,7 @@
 import { $, esc, n0, toastHtml, spellLink, mdLite } from "./util.js";
 import { chev, dsMini } from "./icons.js";
 import { findMon } from "../data/monsters.js";
+import { cleanEd } from "../rules/edition.js";
 import { rollExpr, mod, sgn } from "../rules/dice.js";
 import { ORD, legInfo, castInfo } from "../rules/spells.js";
 import { rollDmg, parseAction, monsterActions } from "../rules/attacks.js";
@@ -67,6 +68,7 @@ export function doDmgRoll(key, label) {
 const sb = {
   follow: false,   // telefoon: de DM opende het paneel zelf, dus volgen
   ref: null,       // naam van het getoonde monster (zelfde monster bij beurtwissel = scroll blijft)
+  ed: undefined,   // G1: editie van het getoonde statblock (alleen geldig samen met ref)
   cid: null,       // id van de getoonde deelnemer (null = niets of placeholder)
   pc: false,       // getoonde deelnemer is een speler: live-blok bij elke render bijwerken
   live: "", turn: "", // laatst geschreven HTML van live-blok en beurtbalkje (alleen schrijven als het verandert)
@@ -138,10 +140,10 @@ export const isPhone = () => phone();
 /** Bovenkant van het open paneel op de telefoon (voor scrollen: wat eronder valt is niet zichtbaar) */
 export const sbTop = () => (phone() && isOpen() ? $("#sbwrap").getBoundingClientRect().top : Infinity);
 
-const hasSB = (c) => c && c.kind === "monster" && c.ref && findMon(c.ref);
+const hasSB = (c) => c && c.kind === "monster" && c.ref && findMon(c.ref, c.ed);
 const showable = (c) => hasSB(c) || (c && c.kind === "pc");
 // getoonde deelnemer bestaat nog én is nog hetzelfde soort (import/undo kan dezelfde id met andere inhoud geven)
-const still = (c) => (c && (sb.pc ? c.kind === "pc" : hasSB(c)?.n === sb.ref) ? c : null);
+const still = (c) => (c && (sb.pc ? c.kind === "pc" : hasSB(c)?.n === sb.ref && cleanEd(c.ed) === sb.ed) ? c : null);
 function show(c, chips, follow) {
   if (c.kind === "pc") showSheet(c, chips); else showSB(c, follow);
 }
@@ -266,17 +268,17 @@ export function sbBody(m, cid = null) {
 }
 
 export function showSB(c, follow = false) {
-  const m = findMon(c.ref);
+  const m = findMon(c.ref, c.ed);
   if (!m) return;
   const cname = c.name;
-  const same = follow && sb.ref === m.n && $("#sbcname");
+  const same = follow && sb.ref === m.n && sb.ed === cleanEd(c.ed) && $("#sbcname"); // Zombie 2014 → 2024 is een ander statblock
   sb.cid = c.id; sb.pc = false; sb.live = ""; sb.prev = null;
   if (same) { // zelfde monster bij een beurtwissel (Goblin 1 → 2): alleen de naam en de aanvaller, scroll blijft
     nameSB(c);
     for (const b of $("#sb").querySelectorAll("[data-atk]")) b.dataset.cid = c.id;
     return open();
   }
-  sb.ref = m.n;
+  sb.ref = m.n; sb.ed = cleanEd(c.ed);
   $("#sb").innerHTML = `<div class="sbhead"><div><h2>${esc(m.n)}</h2><div class="meta">${esc(m.meta || (m.custom ? t("init.sb.custom") : ""))}<span id="sbcname">${cname && cname !== m.n ? ` · ${esc(cname)}` : ""}</span></div></div>
     ${headBtns()}</div><hr><div class="sbnb">${sbBody(m, c.id)}</div>`;
   $("#sb").scrollTop = 0;

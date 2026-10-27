@@ -1,6 +1,6 @@
 # G1 — D&D 5e 2024-regels naast 2014
 
-Plan van 27-10-2026 (stand 2.3.1, commit `4622436`). Status: **gepland, niets gebouwd**. Werkpakketten WP46–WP55; samenvatting in `ROADMAP.md`. Na elk pakket: keuze naar CLAUDE.md ("Gemaakte keuzes"), regel uit dit plan en de roadmap halen. Dit document vervalt als G1 klaar is.
+Plan van 27-10-2026 (stand 2.3.1, commit `4622436`). Status: **WP46 klaar (2.4.0)**, rest gepland. Werkpakketten WP46–WP55; samenvatting in `ROADMAP.md`. Na elk pakket: keuze naar CLAUDE.md ("Gemaakte keuzes"), regel uit dit plan en de roadmap halen. Dit document vervalt als G1 klaar is.
 
 Legenda: **[B]** = bevestigd in de code, **[A]** = aanname, **[?]** = onbekend, eerst controleren.
 
@@ -126,30 +126,10 @@ Omvang: S ≈ één korte sessie (K-formaat), M ≈ één volle sessie, L ≈ gr
 
 ## 4. Werkpakketten
 
-### WP46 — Fundament: regelset per tafel, editievelden en bestandsformaten
-1. **Doel**: `S.rules` en optioneel `ed` op deelnemers en encounterregels bestaan, worden opgeslagen, opgeschoond, geëxporteerd en gedeeld; alle huidige gedrag blijft identiek (regelset altijd 2014, geen UI).
-2. **Huidige stand**: §1.3–1.4; `cleanCombatant`/`parseImport` (`js/backup.js`), `cleanEncounter`/`fromList`/`loadPlan`/`buildEncFile`/`parseEncFile` (`js/rules/encounters.js`), `build`/`findMon` (`js/data/monsters.js`), nieuwe `S` in `actions.js` r. 544/551 en `main.js` r. 130, `rulesEd()`-aanroepers (§1.2).
-3. **Scope**:
-   - Nieuw `js/rules/edition.js` (puur): `EDS`, `rulesOf(S)` (ontbreekt/onzin → `"2014"`), `spellEdOf(rules, setting)` (B2), `cleanEd(v)` (alleen `"2024"` blijft, anders weg).
-   - `S.rules` in `parseImport` (whitelist), behouden in reset/voorbeeld wissen/`main.js`-start en bij "Monsters wissen".
-   - `c.ed` in `cleanCombatant` (alleen monsters); encounterregel `ed` in `cleanEncounter`; `fromList` voegt alleen samen bij gelijke `ed` en kopieert hem; `loadPlan(enc, has)` met `has(ref, ed)` en `missing` als `[{ ref, ed }]`; `buildEncFile`/`parseEncFile` matchen statblocks alleen voor editie-neutrale refs.
-   - B5: lezen accepteert backup t/m v4 en encounterbestand t/m v2 (`migrate3to4` no-op); schrijven `has2024 ? 4 : 3` resp. `has2024 ? 2 : 1`.
-   - `findMon(ref, ed)` en `allMonsters(ed)`-signatuur met een lege SRD 5.2-bibliotheek (`setSrd24(list)`), zonder `ed` exact het oude resultaat. **Elke** `findMon(c.ref)` wordt `findMon(c.ref, c.ed)`, ook `endSummary` (`fight.js` r. 54 via `einde.js` r. 31), `toPlayerView`-meta (`main.js` r. 139) en `js/ui/encounters.js` (r. 170, 178, 208, 299, 310); `encMons`/`listMons` geven `ed` door.
-   - Alle `rulesEd()`-aanroepers via `spellEdOf(rulesOf(app.S), rulesEd())` (gedrag identiek zolang `S.rules` 2014 is).
-4. **Buiten scope**: UI, 2024-data, mechaniek, spelersscherm, teksten.
-5. **Aanpak**: kleine pure helpers, geen nieuwe abstractielaag; `ed` alleen schrijven als het `"2024"` is (bestanden en undo-snapshots van 2014-gebruikers blijven gelijk). Encounters in IndexedDB worden bij laden al door `cleanEncounter` gehaald: geen aparte migratie.
-6. **Afhankelijk van**: —.
-7. **Acceptatie**:
-   - De inline backups v1/v2/v3 in de bestaande tests (`tests/wp42`, `wp43`, `encounters.test.js`) importeren met identieke uitkomst; een export zonder 2024-inhoud schrijft nog `version: 3`, met een `ed: "2024"`-deelnemer `version: 4`.
-   - Encounterbestand v1 importeert; v2 met `ed: "2024"` blijft na `cleanEncounter` behouden; versie 3 → "newer"; een 2014-encounter wordt nog als v1 geschreven.
-   - `grep -n "findMon(c.ref)" js` en `findMon(m.ref)` zonder editie: 0 treffers.
-   - `fromList` met twee `Zombie`'s, één met `ed: "2024"` → twee regels.
-   - `findMon("Zombie")` = SRD 5.1-zombie; `findMon("Zombie", "2024")` zonder geladen 2024-data = `undefined` (geen terugval); eigen monster "Zombie" schaduwt alleen zonder `ed`.
-   - `S.rules` overleeft reset, voorbeeld wissen, export/import en undo; onzin (`"2025"`) wordt 2014.
-8. **Tests**: nieuw `tests/edition.test.js`; uitbreiden `encounters.test.js`, `encounter.test.js`, `monsters.test.js`, backup-roundtrip; `npm test` volledig.
-9. **Klaar als**: tests groen, browsercheck zonder verschil, **volledige developer-review** (formaatwijziging), versie 2.4.0, CLAUDE.md "Opslag en data" (B5, `ed`) bijgewerkt, push.
-10. **Risico's**: vergeten whitelist-plek (sync van partyleden `PKEYS` in `state.js` hoeft `ed` niet: alleen monsters). Undo-snapshot van een oude versie wordt na update al genegeerd (bestaand gedrag).
-11. **Omvang**: M.
+### WP46 — Fundament: klaar in 2.4.0
+Zie CLAUDE.md ("Opslag en data") en `js/rules/edition.js`. Voor latere pakketten: `findMon(ref, ed)`, `allMonsters(ed)`, `setSrd24(list)` (laden in WP48/49), `spellEd()` in `js/ui/spellrules.js`, `addMonsters(…, ed)`, `loadPlan` geeft `missing` als `[{ ref, ed? }]` (tekst via `missNames`).
+
+---
 
 ### WP47 — SRD 5.2-monsterdata: converter en datafile
 1. **Doel**: `data/monsters-2024.json` met de 331 SRD 5.2-monsters in hetzelfde veldformaat als `monsters.json`, reproduceerbaar uit Open5e, met bronvermelding.

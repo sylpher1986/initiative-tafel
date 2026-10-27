@@ -875,6 +875,29 @@ const SCEN = {
     if (last.some((m) => isDutch(m))) throw new Error("nieuwe logregel Nederlands: " + last.join(" | "));
     await tap(page, "#undo"); await page.waitForSelector("#toast .tmsg");
   },
+  // WP46: export versie 4 (regelset 2024, monster met ed "2024" zonder SRD 5.2-data): laden zonder JS-fout, zonder terugval op 2014, regelset overleeft reset
+  async wp46(page) {
+    const v4 = { format: "initiative-tafel", version: 4, state: { round: 0, active: null, rules: "2024", list: [
+      { id: "g", name: "Goblin", kind: "monster", ref: "Goblin", init: 12, dex: 2, ac: 15, hp: 7, max: 7, cond: [] },
+      { id: "z", name: "Zombie", kind: "monster", ref: "Zombie", ed: "2024", init: 6, dex: -2, ac: 8, hp: 15, max: 15, cond: [] } ] },
+      party: [], lairs: {}, custom: [], imported: [], encounters: [{ id: "e1", name: "Graf", updatedAt: 1, monsters: [{ ref: "Zombie", n: 2, ed: "2024" }] }] };
+    await page.locator("#imp-backup").setInputFiles({ name: "wp46.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(v4)) });
+    await page.waitForSelector("#imp-yes", { state: "attached" });
+    await page.$eval("#imp-yes", (b) => b.click());
+    await page.waitForFunction(() => /Zombie/.test(document.querySelector("#order")?.innerText || ""));
+    const st = await page.evaluate(async () => { const { app } = await import("/js/state.js"), { findMon } = await import("/js/data/monsters.js"), z = app.S.list.find((c) => c.id === "z");
+      return { rules: app.S.rules, ed: z.ed, sb: !!findMon(z.ref, z.ed), enc: app.encounters[0]?.monsters[0]?.ed }; });
+    if (st.rules !== "2024" || st.ed !== "2024" || st.sb || st.enc !== "2024") throw new Error("WP46 import: " + JSON.stringify(st));
+    await snap(page, "wp46", "list");
+    // B1: regelset blijft bij "Alles wissen" en bij Ongedaan daarvan
+    const rules = () => page.evaluate(async () => (await import("/js/state.js")).app.S.rules);
+    await tap(page, "#reset"); await page.waitForSelector("#reset-yes"); await tap(page, "#reset-yes");
+    await page.waitForFunction(async () => !(await import("/js/state.js")).app.S.list.length);
+    if ((await rules()) !== "2024") throw new Error("WP46: regelset weg na Alles wissen");
+    await page.evaluate(async () => { const s = await import("/js/state.js"); s.undo(); });
+    await page.waitForFunction(async () => (await import("/js/state.js")).app.S.list.length === 2);
+    if ((await rules()) !== "2024") throw new Error("WP46: regelset weg na Ongedaan");
+  },
   // TA18 (persona-test EN): statblock-knop in de actierij op één regel, hit dice niet in hoofdletters, SRD-markdown als opmaak
   async ta18(page) {
     await SCEN.prep(page);
