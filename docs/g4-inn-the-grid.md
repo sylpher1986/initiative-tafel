@@ -242,6 +242,7 @@ Nummering loopt door op de repo-historie (laatste was WP55). Elk pakket = één 
 **WP63 · Terrein per cel verven** · M
 - Scope: gereedschap Verven met terreintypen (± 8: steen, hout, gras, aarde, water, zand, lava, leegte), penseelgrootte 1/3, gum, vlakvulling binnen kaartrand, vierkant en hex.
 - Niet: vrij tekenen, muren op celranden.
+- Gebaren: in Verven vult slepen met één vinger, muis of Apple Pencil elke cel waar je overheen gaat; twee vingers pannen en zoomen (wens Michiel 28-10-2026, eerder K10; slepen in Plaatsen blijft pannen, WP61).
 - Acceptatie: (1) één veegbeweging = één undo-stap; (2) vlakvulling stopt bij andere terreintypen en de kaartrand (test op beide rasters); (3) 100×100 volverven blijft vloeiend (zie WP66-budget).
 - Grootte M.
 

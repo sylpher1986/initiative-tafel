@@ -6,7 +6,7 @@ Codes: **K** = kleine fix of optimalisatie (één sessie, patch- of minor-versie
 
 ## Kleine fixes en optimalisaties
 
-Volgorde = voorstel. K1–K3 merkt de gebruiker, K4–K7 zijn technisch, K8–K10 zijn wensen met lage prio.
+Volgorde = voorstel. K1–K3 merkt de gebruiker, K4–K7 zijn technisch, K8–K9 zijn wensen met lage prio.
 
 | Code | Wat | Waar | Opmerking |
 |---|---|---|---|
@@ -19,7 +19,6 @@ Volgorde = voorstel. K1–K3 merkt de gebruiker, K4–K7 zijn technisch, K8–K1
 | **K7** | Een sheet die in place wijzigt, wordt bij elke commit opnieuw gestringifyd | `js/histpack.js`, `js/state.js` | Alleen als een meting bij een grote party het rechtvaardigt. |
 | **K8** | Homepage desktop: logo groter, naast de kop en boven de hoofdtekst | `pages/home.html` (eigen inline CSS) | Lage prio. Logo-vorm niet wijzigen; gedeeld bestand, dus Initiative-versie omhoog. |
 | **K9** | Homepage mobiel: heldafbeelding onderaan uitlijnen, bovenkant alleen voor zover er ruimte is (onderkant met taveerne en d20 zegt meer) | `pages/home.html`, `img/hero-tavern-*` | Lage prio. Waarschijnlijk `object-position`/`background-position` op bottom onder een breekpunt. |
-| **K10** | Inn the Grid: vloeren vullen door te slepen (muis ingedrukt of Apple Pencil over de tegels) | `js/maps/ui/input.js`, Plaatsen (WP61) | Lage prio, eventueel. Raakt WP63 (terrein per cel verven): daar meenemen of erna. Let op: slepen = pannen in Plaatsen, en "slepen = objecten schilderen" is in WP61 afgewezen; vraagt een eigen UX-keuze (bijv. alleen Pencil/muis, of een verfmodus). |
 
 ### Op signaal (pas bouwen als het aan tafel nodig blijkt)
 - Delay/Ready-knop (nu: initiative via ⋯ aanpassen, met de RE9-logica).
