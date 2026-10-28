@@ -54,10 +54,17 @@ export default {
   "init.set.reactOn": "Button",
   "init.set.reactOff": "Players", // spelers houden hun reaction zelf bij
   "init.set.reactHint": "Players: they track their own reaction, so player cards have no Reaction button. Monsters keep the button. Surprised and Shield still work.",
+  "init.set.rules": "Rules", // sectie in Instellingen (WP54): regelset van de tafel
+  "init.set.rulesHint": "Which D&D 5e rules this table uses.",
+  "init.set.rulesLock": "You can switch after combat.", // tijdens een gevecht, in plaats van rulesHint
+  "init.set.rulesMore": "With 2024 rules: monster search and stat blocks from SRD 5.2, plus the 2024 rules for exhaustion, surprise, concentration DC, encounter difficulty, condition descriptions and spells. Saved with the table: included in Undo, export and the player view. Players with a D&D Beyond sheet follow their sheet for each spell.",
+  "init.set.rulesToast": "Rules: {ed}.", // melding na wisselen, met Ongedaan; ed = 2014 of 2024
+  "init.set.spells24": "Spells follow the 2024 rules.", // in plaats van de Spells-instelling bij regels 2024
+  "init.set.spells": "Spells", // subinstelling onder Regels (alleen bij 2014) en in de statusregel
   "init.set.spellsHint": "Rules and descriptions for spells: the Barkskin, Haste and Sleep presets (Sleep: 2024 version only), which spells need concentration, and which text the spell panel shows.", // eerste zin; daarna volgt spellsOnly vet
   "init.set.more": "More", // uitklapper onder een lange hint in Instellingen
   "init.set.spellsOnly": "Applies to spells only:", // vet
-  "init.set.spellsRest": "the rest of the app (conditions, crits, concentration DC) stays 2014.",
+  "init.set.spellsRest": "everything else follows the 2014 rules.",
   "init.set.spellsMore": "Players with a D&D Beyond sheet follow the version on their sheet for each spell; monsters, players without a sheet and spells not on the sheet follow this setting. In the spell panel you can view the other version; that doesn't change the rules. Anything already running keeps the rules from when it was cast.",
   "init.set.player": "Player view", // sectie in Instellingen
   "init.set.playerHint": "Players see the order, whose turn it is and player HP. Never stat blocks, notes or anything you hide (monsters via ⋯, the lair on its card).",
@@ -164,11 +171,13 @@ export default {
   "init.empty.pcHint": "Add players with + Player at the bottom.",
   "init.empty.hint": "No one at the table yet. Add players and monsters with the buttons at the bottom.",
   "init.welcome.title": "Welcome to the table",
-  "init.welcome.text": "Track initiative, hit points, conditions and spell slots for D&D 5e (2014). Everything stays on this device and works offline too.",
+  "init.welcome.text": "Track initiative, hit points, conditions and spell slots for D&D 5e, using the 2014 or 2024 rules. Everything stays on this device and works offline too.",
   "init.welcome.sample": "Start with sample",
   "init.welcome.empty": "Start empty", // ook de knop in de strook Voorbeeld-encounter
   "init.welcome.import": "Have an export? Import…",
   "init.welcome.hint": "Sample: 2 players, 2 Goblins and a Hobgoblin. Then try Start combat. Prepare encounters under + Monster.",
+  "init.welcome.hint24": "Sample: 2 players, 2 Goblin Warriors and a Hobgoblin Warrior. Then try Start combat. Prepare encounters under + Monster.", // bij regels 2024 (SRD 5.2)
+  "init.welcome.fail24": "The SRD 5.2 monsters couldn't load. Try again, or choose Start empty.",
   "init.sample.pc1": "Thalia (sample)", // naam in de lijst; daarna inhoud
   "init.sample.pc2": "Brom (sample)",
   "init.exp.banner": "No recent export · your data is only on this device",

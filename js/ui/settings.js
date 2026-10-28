@@ -5,6 +5,9 @@ import { kamerStat } from "./kamer.js";
 import { nudgeState, exportDue, exportStat } from "../exportnudge.js";
 import { mountLangPick, pageLang } from "./langpick.js";
 import { t } from "../i18n/boot.js";
+import { app } from "../state.js";
+import { rulesOf } from "../rules/edition.js";
+import { rulesEd } from "./spellrules.js";
 
 /** Ingedrukte knop in een seg: de waarde uit zijn data-attribuut (niet de tekst: die verschilt per taal, dev-review WP23) */
 const pressedVal = (sel, attr) => $(sel)?.querySelector('[aria-pressed="true"]')?.getAttribute(attr) || "";
@@ -35,12 +38,30 @@ export function paintSetStat() {
       el.classList.remove("warn", "dot");
     }
   } else setStat("look", [themeTxt(), r].filter(Boolean).join(" · "));
-  setStat("spells", pressedVal("#rules-seg", "data-rules"));
+  setStat("rules", paintRules());
   const k = kamerStat();
   setStat("player", k.t, false, k.warn);
   setStat("help", t("init.set.tourStat"));
   const ns = nudgeState();
   setStat("store", exportStat(ns.exp), exportDue(ns));
+}
+
+/**
+ * WP54 (G1, UX-agent): sectie Regels volgt de tafel (S.rules: ook na Ongedaan, import of reset).
+ * Tijdens een gevecht blijft de seg zichtbaar maar uitgeschakeld, met de uitleg in plaats van de gewone hint (B1).
+ * Spells-subinstelling alleen bij 2014 (B2); bij 2024 één regel. Geeft de status voor de kop terug:
+ * "2014", "2014 · Spells 2024" (alleen als spells afwijken) of "2024".
+ */
+export function paintRules() {
+  const seg = $("#ruleset-seg");
+  if (!seg || !app.S) return "";
+  const r = rulesOf(app.S), lock = !!app.S.round, sp = rulesEd();
+  seg.querySelectorAll("[data-ruleset]").forEach((b) => { b.setAttribute("aria-pressed", b.dataset.ruleset === r); b.disabled = lock; });
+  $("#ruleset-hint").textContent = t(lock ? "init.set.rulesLock" : "init.set.rulesHint");
+  $("#spells-sub").hidden = r === "2024";
+  $("#spells-24").hidden = r !== "2024";
+  $("#rules-seg").querySelectorAll("[data-rules]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.rules === sp));
+  return r === "2014" && sp === "2024" ? `2014 · ${t("init.set.spells")} 2024` : r;
 }
 
 /** Bij elke opening van ⚙: de sectie waarvoor de DM waarschijnlijk komt openzetten (andere niet dichtklappen) */

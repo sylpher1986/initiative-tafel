@@ -2,8 +2,8 @@
 // Sleutels beginnen met "page." (tests/i18n.test.js). Zelfde sleutels in elke taal; Engels is de terugval.
 // Na een wijziging: node tools/i18n-build.mjs (maakt locales/<taal>.js, dat de app laadt).
 export default {
-  "page.manifest.desc": "Initiative tracker voor D&D 5e (2014)", // beschrijving van de geïnstalleerde app (manifest, tools/pages.mjs)
-  "page.app.desc": "Initiative tracker voor D&D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.", // meta description van de DM-app
+  "page.manifest.desc": "Initiative tracker voor D&D 5e (regels 2014 en 2024)", // beschrijving van de geïnstalleerde app (manifest, tools/pages.mjs)
+  "page.app.desc": "Initiative tracker voor D&D 5e, regels 2014 of 2024: spelers, SRD-monsters, condities, spell slots en logboek.", // meta description van de DM-app
   "page.err.bar": "Fout (tik om te sluiten):", // foutbalk bovenaan (inline script); daarna volgt de technische fout
   "page.err.notLoaded": "kon niet laden", // foutbalk: "/js/main.js kon niet laden"
   "page.noscript.app": "Kev’s Inn itiative heeft JavaScript nodig.",
@@ -11,7 +11,7 @@ export default {
   "page.noscript.player": "Het spelersscherm heeft JavaScript nodig.",
   // Publieke homepage /nl/ (WP30, pages/home.html). title/desc ook voor Open Graph (tools/pages.mjs seoHead).
   "page.home.title": "Kev’s Inn · initiative tracker voor D&D 5e", // <title> en og:title van de homepage
-  "page.home.desc": "Gratis initiative tracker voor D&D 5e (2014): spelers, SRD-monsters, condities en een spelersscherm op de tv. Werkt offline, zonder account.", // meta description en og:description
+  "page.home.desc": "Gratis initiative tracker voor D&D 5e, regels 2014 of 2024: spelers, SRD-monsters, condities en een spelersscherm op de tv. Werkt offline, zonder account.", // meta description en og:description
   "page.home.ogAlt": "Kev’s Inn – Initiative tracker · D&D 5e – kevs-inn.com", // og:image:alt
   "page.home.tagline": "Your home between adventures", // merkregel, bewust Engels (zie en)
   "page.home.headline": "Bouw. Speel. Ontdek.",

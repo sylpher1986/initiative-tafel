@@ -39,12 +39,11 @@ Volgorde = voorstel. K1–K3 merkt de gebruiker, K4–K7 zijn technisch.
 
 ## G1 D&D 2024-regels: werkpakketten (gepland)
 
-Plan met inventaris, besluiten (B1–B10) en per pakket scope en acceptatiecriteria: [`docs/g1-regels-2024.md`](docs/g1-regels-2024.md). Kern: één regelset per tafel (`S.rules`, alleen buiten een gevecht te wijzigen), monster-editie als data (`ed: "2024"`, ontbreekt = huidig gedrag), SRD 5.2-monsters via Open5e, backup v4 / encounterbestand v2 alleen bij 2024-inhoud. Tot WP54 niets zichtbaar. WP46 (fundament) is klaar in 2.4.0, WP47 (SRD 5.2-monsterdata) in 2.4.1, WP48 (parsers en monster-initiative) in 2.5.0 (CLAUDE.md, "Opslag en data"), WP49 (monsterkeuze per editie) in 2.6.0 (CLAUDE.md, "Voorbereiden"), WP50 (Exhaustion en Rage 2024) in 2.7.0, WP51 (conc-DC, surprise, Grappled) in 2.8.0 (CLAUDE.md, "Gevecht"), WP52 (condities-uitleg 2024, `ed` in de spelerssnapshot) in 2.9.0 (CLAUDE.md, "Gevecht" en "Spelersscherm"), WP53 (moeilijkheid volgens het XP-budget 2024) in 2.10.0 (CLAUDE.md, "Voorbereiden").
+Plan met inventaris, besluiten (B1–B10) en per pakket scope en acceptatiecriteria: [`docs/g1-regels-2024.md`](docs/g1-regels-2024.md). Kern: één regelset per tafel (`S.rules`, alleen buiten een gevecht te wijzigen), monster-editie als data (`ed: "2024"`, ontbreekt = huidig gedrag), SRD 5.2-monsters via Open5e, backup v4 / encounterbestand v2 alleen bij 2024-inhoud. WP46 (fundament) is klaar in 2.4.0, WP47 (SRD 5.2-monsterdata) in 2.4.1, WP48 (parsers en monster-initiative) in 2.5.0 (CLAUDE.md, "Opslag en data"), WP49 (monsterkeuze per editie) in 2.6.0 (CLAUDE.md, "Voorbereiden"), WP50 (Exhaustion en Rage 2024) in 2.7.0, WP51 (conc-DC, surprise, Grappled) in 2.8.0 (CLAUDE.md, "Gevecht"), WP52 (condities-uitleg 2024, `ed` in de spelerssnapshot) in 2.9.0 (CLAUDE.md, "Gevecht" en "Spelersscherm"), WP53 (moeilijkheid volgens het XP-budget 2024) in 2.10.0 (CLAUDE.md, "Voorbereiden"), WP54 (regelkeuze zichtbaar in Instellingen → Regels) in 2.11.0 (CLAUDE.md, "Basis").
 
 | Code | Wat | Na | Omvang |
 |---|---|---|---|
-| **WP54** | Instellingen → Regels 2014 \| 2024 zichtbaar, Spells als subinstelling bij 2014 (UX-agent) | WP46–WP53 | M |
-| **WP55** | Integratie, regressie, documentatie, G1 afsluiten | WP54 | S |
+| **WP55** | Integratie, regressie, documentatie, G1 afsluiten | WP46–WP54 (klaar) | S |
 
 Besloten (27-10): standaard regelset 2014, release stapsgewijs in 2.x, Spells 2024 onder regels 2014 blijft. V4 besloten in WP49: zoekwoord `2014`/`2024` plus regel onder de lijst. Nog open: "4 in Lair" op signaal.
 

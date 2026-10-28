@@ -705,7 +705,7 @@ function emptyState(S, prep) {
     <p>${T("init.welcome.text")}</p>
     <div class="wbtns"><button type="button" class="btn primary tap" id="welcome-sample">${T("init.welcome.sample")}</button><button type="button" class="btn tap" id="welcome-empty">${T("init.welcome.empty")}</button></div>
     <button type="button" class="link wimp" data-impw="1">${T("init.welcome.import")}</button>
-    <p class="hint">${T("init.welcome.hint")}</p></li>`;
+    <p class="hint">${T(rulesOf(app.S) === "2024" ? "init.welcome.hint24" : "init.welcome.hint")}</p></li>`;
   return `<li class="empty">${T("init.empty.hint")}</li>`;
 }
 

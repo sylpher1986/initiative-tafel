@@ -6,10 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kev’s Inn itiative</title>
 <meta name="robots" content="noindex">
-<meta name="description" content="Initiative tracker voor D&amp;D 5e (2014): spelers, SRD-monsters, condities, spell slots en logboek.">
+<meta name="description" content="Initiative tracker voor D&amp;D 5e, regels 2014 of 2024: spelers, SRD-monsters, condities, spell slots en logboek.">
 <meta name="theme-color" content="#241811" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1d130d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="2.10.0">
+<meta name="it-version" content="2.11.0">
 <script src="/js/theme.js"></script>
 
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
@@ -127,15 +127,25 @@
       </div>
       <p class="hint">Spelers zelf: geen Reaction-knop op spelerskaarten. Monsters houden de knop. Verrast en Shield blijven werken.</p>
       </div></details>
-      <details class="setsec" data-sec="spells"><summary><h2 class="sethead" id="rules-head">Spells</h2><span class="sstat" data-sstat="spells"></span><span class="schev" aria-hidden="true"></span></summary>
+      <details class="setsec" data-sec="rules"><summary><h2 class="sethead" id="ruleset-head">Regels</h2><span class="sstat" data-sstat="rules"></span><span class="schev" aria-hidden="true"></span></summary>
       <div class="setbody">
+      <!-- WP54 (G1): regelset van de tafel (S.rules); seg, slot en Spells-subblok tekent js/ui/settings.js paintRules -->
+      <div class="seg" role="group" aria-labelledby="ruleset-head" aria-describedby="ruleset-hint" id="ruleset-seg">
+        <button type="button" data-ruleset="2014" aria-pressed="true">2014</button>
+        <button type="button" data-ruleset="2024" aria-pressed="false">2024</button>
+      </div>
+      <p class="hint" id="ruleset-hint">Welke D&amp;D 5e-regels deze tafel gebruikt.</p>
+      <details class="hmore"><summary class="link">Meer</summary><p class="hint">Bij 2024: monsters zoeken en statblocks uit SRD 5.2, en de 2024-regels voor exhaustion, surprise, concentratie-DC, encounter-moeilijkheid, uitleg van condities en spells. Hoort bij de tafel: gaat mee in Ongedaan, export en het spelersscherm. Spelers met een D&amp;D Beyond-sheet volgen per spell hun sheet.</p></details>
+      <div id="spells-sub">
+      <p class="vlbl" id="rules-head">Spells</p>
       <div class="seg" role="group" aria-labelledby="rules-head" id="rules-seg">
         <button type="button" data-rules="2014" aria-pressed="true">2014</button>
         <button type="button" data-rules="2024" aria-pressed="false">2024</button>
       </div>
-      <!-- Tekst bijwerken zodra er meer dan spells per editie verandert -->
-      <p class="hint">Regels en uitleg van spells: de presets Barkskin, Haste en Sleep (alleen 2024), welke spells concentratie vragen, en welke tekst het spell-paneel toont. <b>Geldt alleen voor spells:</b> de rest van de app (condities, crits, concentratie-DC) blijft 2014.</p>
+      <p class="hint">Regels en uitleg van spells: de presets Barkskin, Haste en Sleep (alleen 2024), welke spells concentratie vragen, en welke tekst het spell-paneel toont. <b>Geldt alleen voor spells:</b> de rest volgt regels 2014.</p>
       <details class="hmore"><summary class="link">Meer</summary><p class="hint">Spelers met een D&amp;D Beyond-sheet volgen per spell de versie op hun sheet; monsters, spelers zonder sheet en spells die niet op de sheet staan, volgen deze instelling. In het spell-paneel kun je de andere versie bekijken; dat verandert niets aan de regels. Wat al loopt, houdt de regels van het moment van casten.</p></details>
+      </div>
+      <p class="hint" id="spells-24" hidden>Spells volgen regels 2024.</p>
       </div></details>
       <details class="setsec" data-sec="player"><summary><h2 class="sethead">Spelersscherm</h2><span class="sstat" data-sstat="player"></span><span class="schev" aria-hidden="true"></span></summary>
       <div class="setbody">

@@ -84,6 +84,7 @@ export default {
   "log.w.enc": "encounter \"{name}\"",
   "log.encLoaded": { one: "Encounter \"{name}\" loaded: {n} monster{lair}", other: "Encounter \"{name}\" loaded: {n} monsters{lair}" }, // lair = ' + lair' or empty
   "log.encLoadedRepl": { one: "Encounter \"{name}\" loaded: {n} monster{lair} (replaces {gone})", other: "Encounter \"{name}\" loaded: {n} monsters{lair} (replaces {gone})" },
+  "log.rules": "Rules {from} → {to}", // WP54: regelset van de tafel gewisseld (2014/2024)
   "log.w.ended": "ended", // DM ended concentration by hand
   "log.w.cast": "{who}{roll}{type}", // who = 'Ayla cast ' or empty
   "log.w.castAdj": "{who}{roll}, adjusted to {n}{type}",

@@ -1,6 +1,6 @@
 # G1 — D&D 5e 2024-regels naast 2014
 
-Plan van 27-10-2026 (stand 2.3.1, commit `4622436`). Status: **WP46 klaar (2.4.0), WP47 klaar (2.4.1), WP48 klaar (2.5.0), WP49 klaar (2.6.0), WP50 klaar (2.7.0)**, rest gepland. Werkpakketten WP46–WP55; samenvatting in `ROADMAP.md`. Na elk pakket: keuze naar CLAUDE.md ("Gemaakte keuzes"), regel uit dit plan en de roadmap halen. Dit document vervalt als G1 klaar is.
+Plan van 27-10-2026 (stand 2.3.1, commit `4622436`). Status: **WP46 klaar (2.4.0), WP47 klaar (2.4.1), WP48 klaar (2.5.0), WP49 klaar (2.6.0), WP50 klaar (2.7.0), WP51 klaar (2.8.0), WP52 klaar (2.9.0), WP53 klaar (2.10.0), WP54 klaar (2.11.0)**, WP55 gepland. Werkpakketten WP46–WP55; samenvatting in `ROADMAP.md`. Na elk pakket: keuze naar CLAUDE.md ("Gemaakte keuzes"), regel uit dit plan en de roadmap halen. Dit document vervalt als G1 klaar is.
 
 Legenda: **[B]** = bevestigd in de code, **[A]** = aanname, **[?]** = onbekend, eerst controleren.
 
@@ -220,18 +220,8 @@ Oorspronkelijk plan:
 3. SRD-voorbeeld 2 (p. 202), vijf spelers level 3 (Moderate 1,125): twee CR 2 + negen CR 1/8 (1,125) → Moderate; één CR 3 + één CR 1/2 + zes CR 1/4 (1,100) → Moderate.
 4. Randen: 0 monsters → Low met 0 XP; level onbekend/geen party/alleen onbekende CR → `null` met code `lvl`/`party`/`cr`; gemengde levels tellen per speler.
 
-### WP54 — Regelkeuze zichtbaar: Instellingen → Regels 2014 | 2024
-1. **Doel**: de DM kiest de regelset; alles uit WP46–52 wordt bereikbaar.
-2. **Huidige stand**: sectie Spells in Instellingen (`pages/initiative.html` r. 130–136, `actions.js` r. 2047, `settings.js` r. 38); hinttekst `init.set.spellsRest`; teksten met "(2014)" (`init.welcome.text`, `page.app.desc`, `page.home.desc`, `page.manifest.desc`).
-3. **Scope**: sectie **Regels** met seg "2014 | 2024" (status in de kop), uitgeschakeld tijdens een gevecht met uitleg; Spells als subinstelling alleen bij 2014 (B2); wisselen = één undo-stap + logregel, alleen de tafel omgerekend via `reExh` (B1; party volgt bij aan tafel zetten); standaard volgens V1; welkomstkaart/rondleiding/pagina-omschrijvingen editie-neutraal; `S.rules` naar het spelersscherm (`ed`); voorbeeld (`loadSample`, `actions.js` r. 606, voegt "Goblin" toe, die in SRD 5.2 niet bestaat) bij 2024 met Goblin Warrior en `ed: "2024"`, bij 2014 ongewijzigd.
-4. **Buiten scope**: nieuwe mechaniek.
-5. **Aanpak**: **senior UX-agent vóór het bouwen** (plek: Instellingen-sectie vs welkomstkaart vs kop; aantal tikken; status zichtbaar in Voorbereiden?). Bestaande `.seg`-patroon, `<details class="setsec">`, geen melding bij opstarten.
-6. **Afhankelijk van**: WP46–WP53.
-7. **Acceptatie**: bestaande gebruiker ziet na update "Regels: 2014" en exact het oude gedrag (incl. Spells 2024 als hij dat had); omzetten naar 2024 verandert zoeken, statblocks, exhaustion, surprise, conc-DC, moeilijkheid, condities-uitleg en spells; tijdens een gevecht is de keuze niet te wijzigen; Ongedaan zet hem terug; export/import neemt hem mee; spelersscherm volgt.
-8. **Tests**: `spellrules.test.js`, `tour.test.js`, `pages.test.js`, i18n; browsercheck-scenario `g1-rules` op 320/360/390 licht/donker, `--lang=nl,en`, `--i18n=xx`.
-9. **Klaar als**: alles groen, UX- en developer-review gemeld, vertaalagent, versie volgens V2, CLAUDE.md "Basis" en "Gevecht" bijgewerkt, push.
-10. **Risico's**: verwarring Regels vs Spells → B2-uitleg in één zin, details onder "Meer".
-11. **Omvang**: M.
+### WP54 — Regelkeuze zichtbaar: klaar in 2.11.0
+Zie CLAUDE.md ("Basis", Regelset): sectie Regels in Instellingen, `setRules(S, ed)`, `paintRules`, voorbeeld 2024. Browsercheck-scenario `g1-rules`, test `tests/wp54.test.js`.
 
 ### WP55 — Integratie, regressie en afronding G1
 1. **Doel**: G1 als geheel geverifieerd en gedocumenteerd.

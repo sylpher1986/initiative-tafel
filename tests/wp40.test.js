@@ -50,7 +50,7 @@ test("teksten: Legendary Resistance, Caster (concentration), None in keuzelijste
 
 test("Spells-hint: twee zinnen zichtbaar, de rest achter 'More'", async () => {
   await lang("en");
-  assert.equal(t("init.set.spellsRest"), "the rest of the app (conditions, crits, concentration DC) stays 2014.");
+  assert.equal(t("init.set.spellsRest"), "everything else follows the 2014 rules."); // WP54
   assert.match(t("init.set.spellsMore"), /^Players with a D&D Beyond sheet/);
   for (const l of ["en", "nl"]) {
     const html = readFileSync(new URL(`..${pathFor(l, "/initiative/")}index.html`, import.meta.url), "utf8"); // WP44: Engels zonder /en/

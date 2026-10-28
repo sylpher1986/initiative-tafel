@@ -5,7 +5,7 @@ import { openSettings } from "./settings.js";
 import { $, esc, n0, toast, toastHtml, closeToast, clearToasts, show, toastBad, tb, undoBtn } from "./util.js";
 import { t } from "../i18n/boot.js";
 import { M, J } from "../i18n/msg.js";
-import { app, because, addWhy, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, saveSpellNotes, resetBaseline } from "../state.js";
+import { app, because, addWhy, logAs, commit, undo, redo as redoStep, canUndo, canRedo, clearRedo, stepNo, saveLairs, saveParty, saveLibrary, saveEncounters, saveSpellNotes, resetBaseline } from "../state.js";
 import { render, ui, openId, mode, atkAc, atkRider, atkTargets, paintLog, paintParty, paintQadd, monListHtml, monLabel, monPrev, addLabel, hidHint, anonHint, paintAoe, paintDmgSugg, dmgSp, aoeCaster, dmgSlot, dmgDice, dmgLevel, spellSlot, paintLa, paintSv, paintAtk, paintInit, laOpts, atkRoll, laCan, svBonus, selfRoll, aoeTargets, aoePick, okSave, editPreview, editKeys, edNow, addBlockHtml, addBlockTap, addHint, addInit, addHp, curSpell, spellPick, paintExpLast, monSearch, edLineHtml } from "./render.js";
 import { PAS, pasVal, cleanPas } from "../rules/passives.js";
 import { cleanEd, edField, rulesField, rulesOf } from "../rules/edition.js";
@@ -19,7 +19,7 @@ import { PRESETS, presetsFor, addEffect, removeEffect, endFightEffects, baseMax,
 import { exhLevel, exhMod, condEd } from "../rules/conditions.js";
 import { openCond, closeCond, condOpen, condSheetClick } from "./condinfo.js";
 import { showSB, showSheet, monCard, doRoll, doDmgRoll, closeSB, phone, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
-import { findMon, parseMonsterFile, findKey, keyRef, withEdWord } from "../data/monsters.js";
+import { findMon, parseMonsterFile, findKey, keyRef, withEdWord, loadSrd24, srd24Status } from "../data/monsters.js";
 import { parseStatText, foundText, hasStructure, withParsed } from "../data/statparse.js";
 import { d, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
 import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant, setInit, durWords, saveWords, initBo, monInit, initModText, initThrow, surWho } from "../rules/turns.js";
@@ -28,7 +28,7 @@ import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes
 import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage, multiSeq, seqAfter } from "../rules/attacks.js";
 import { ufNeed, ufApply, ufInfo, monSave, parseRider, applyRider, riderOutcome, parryOf, canParry, useParry } from "../rules/monrules.js";
 import { castInfo, legInfo, rcInfo, pickList, isConc, edFor, ORD } from "../rules/spells.js";
-import { rulesEd, setRulesEd, spellEd } from "./spellrules.js";
+import { setRulesEd, spellEd } from "./spellrules.js";
 import { initRoll, setInitRoll } from "./initroll.js";
 import { visNow, setVis } from "./playervis.js";
 import { nextAnon } from "../playerview.js";
@@ -537,7 +537,18 @@ const global = {
     render(); scrollToCard(id, true);
     return false;
   },
-  "welcome-sample"() { loadSample(); ui.welcome = false; armTour("p"); },
+  "welcome-sample"() {
+    if (rulesOf(app.S) !== "2024" || srd24Status() === "ok") { loadSample(); ui.welcome = false; armTour("p"); return; }
+    // WP54: voorbeeld bij regels 2024 met SRD 5.2-monsters; eerst laden (B4: nooit terugvallen op 2014)
+    const btn = $("#welcome-sample");
+    if (btn) { btn.disabled = true; btn.textContent = t("init.enc.loading"); }
+    loadSrd24().then((st) => {
+      if (app.S.list.length || !ui.welcome) { render(); return; } // intussen iets anders gekozen
+      if (rulesOf(app.S) === "2024" && st !== "ok") { render(); toastBad(t("init.welcome.fail24")); return; } // terug naar 2014 = gewoon voorbeeld
+      loadSample(); ui.welcome = false; armTour("p"); render();
+    });
+    return false;
+  },
   "welcome-empty"() { ui.welcome = false; armTour("p"); },
   // OB2: rondleiding opnieuw (Instellingen → Hulp): paneel dicht, het deel van de huidige modus start na de render
   "keys-open"() { closePrep(); openKeys(); return false; }, // GV10: Instellingen dicht, overzicht open
@@ -603,14 +614,18 @@ function keepCard(id, y0) {
   if (el.classList.contains("open")) reveal(el);
 }
 
-/** Voorbeeld-encounter: twee spelers (level 3, zodat de moeilijkheid meteen een oordeel geeft: Hard), twee Goblins en een Hobgoblin (één undo-stap) */
+/**
+ * Voorbeeld-encounter: twee spelers (level 3, zodat de moeilijkheid meteen een oordeel geeft), twee Goblins en een
+ * Hobgoblin (één undo-stap). WP54: bij regels 2024 SRD 5.2 (Goblin Warrior, Hobgoblin Warrior, ed "2024"; moet geladen zijn).
+ */
 export function loadSample() {
   app.S.list.push(
     { id: uid(), name: t("init.sample.pc1"), kind: "pc", race: "Elf", lvl: 3, init: 17, dex: 3, ac: 15, hp: 24, max: 24, cond: [] },
     { id: uid(), name: t("init.sample.pc2"), kind: "pc", race: "Dwarf", lvl: 3, init: 9, dex: 0, ac: 18, hp: 31, max: 31, cond: [] },
   );
-  addMonsters("Goblin", 2, "avg", "each", true);
-  addMonsters("Hobgoblin", 1, "avg", "each", true);
+  const ed = rulesOf(app.S) === "2024" ? "2024" : undefined;
+  addMonsters(ed ? "Goblin Warrior" : "Goblin", 2, "avg", "each", true, null, false, false, ed);
+  addMonsters(ed ? "Hobgoblin Warrior" : "Hobgoblin", 1, "avg", "each", true, null, false, false, ed);
   app.S.sample = true;
 }
 
@@ -2065,11 +2080,19 @@ export function bindBackup(afterImport) {
   const showReact = (on) => xseg.querySelectorAll("[data-react]").forEach((b) => b.setAttribute("aria-pressed", (b.dataset.react === "on") === on));
   showReact(pcReact());
   xseg.addEventListener("click", (e) => { const b = e.target.closest("[data-react]"); if (b) { showReact(setPcReact(b.dataset.react)); render(); } });
-  // Spells 2014 | 2024: regels én uitleg (alleen spells; render volgt meteen: presets en concentratie)
-  const rseg = $("#rules-seg");
-  const showRules = (ed) => rseg.querySelectorAll("[data-rules]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.rules === ed));
-  showRules(rulesEd()); // bewust de ruwe instelling
-  rseg.addEventListener("click", (e) => { const b = e.target.closest("[data-rules]"); if (b) { showRules(setRulesEd(b.dataset.rules)); render(); } });
+  // WP54 (G1): Regels 2014 | 2024 van de tafel (S.rules): één undo-stap met logregel, Exhaustion van de tafel omgerekend;
+  // alleen zonder gevecht (knoppen dan uitgeschakeld, paintRules). Seg en Spells-subblok tekent paintRules bij elke render.
+  $("#ruleset-seg").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-ruleset]");
+    const r = b && !b.disabled && R.setRules(app.S, b.dataset.ruleset);
+    if (!r) return;
+    logAs(M("log.rules", { from: r.from, to: r.to }));
+    addWhy(r.why);
+    render();
+    toastHtml(`${esc(t("init.set.rulesToast", { ed: r.to }))} ${undoBtn()}`);
+  });
+  // Spells 2014 | 2024 (alleen bij regels 2014): regels én uitleg; render volgt meteen (presets en concentratie)
+  $("#rules-seg").addEventListener("click", (e) => { const b = e.target.closest("[data-rules]"); if (b) { setRulesEd(b.dataset.rules); render(); } });
   // Wat spelers zien: per apparaat; render() maakt een nieuwe snapshot, dus alle spelersschermen volgen meteen
   const vbox = $("#vis-box");
   const val = (v) => (v === "true" ? true : v === "false" ? false : v);

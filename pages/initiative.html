@@ -8,7 +8,7 @@
 <meta name="description" content="{{t:page.app.desc}}">
 <meta name="theme-color" content="#241811" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1d130d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="2.10.0">
+<meta name="it-version" content="2.11.0">
 <script src="/js/theme.js"></script>
 {{launch}}
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
@@ -126,15 +126,25 @@
       </div>
       <p class="hint">{{t:init.set.reactHint}}</p>
       </div></details>
-      <details class="setsec" data-sec="spells"><summary><h2 class="sethead" id="rules-head">Spells</h2><span class="sstat" data-sstat="spells"></span><span class="schev" aria-hidden="true"></span></summary>
+      <details class="setsec" data-sec="rules"><summary><h2 class="sethead" id="ruleset-head">{{t:init.set.rules}}</h2><span class="sstat" data-sstat="rules"></span><span class="schev" aria-hidden="true"></span></summary>
       <div class="setbody">
+      <!-- WP54 (G1): regelset van de tafel (S.rules); seg, slot en Spells-subblok tekent js/ui/settings.js paintRules -->
+      <div class="seg" role="group" aria-labelledby="ruleset-head" aria-describedby="ruleset-hint" id="ruleset-seg">
+        <button type="button" data-ruleset="2014" aria-pressed="true">2014</button>
+        <button type="button" data-ruleset="2024" aria-pressed="false">2024</button>
+      </div>
+      <p class="hint" id="ruleset-hint">{{t:init.set.rulesHint}}</p>
+      <details class="hmore"><summary class="link">{{t:init.set.more}}</summary><p class="hint">{{t:init.set.rulesMore}}</p></details>
+      <div id="spells-sub">
+      <p class="vlbl" id="rules-head">{{t:init.set.spells}}</p>
       <div class="seg" role="group" aria-labelledby="rules-head" id="rules-seg">
         <button type="button" data-rules="2014" aria-pressed="true">2014</button>
         <button type="button" data-rules="2024" aria-pressed="false">2024</button>
       </div>
-      <!-- Tekst bijwerken zodra er meer dan spells per editie verandert -->
       <p class="hint">{{t:init.set.spellsHint}} <b>{{t:init.set.spellsOnly}}</b> {{t:init.set.spellsRest}}</p>
       <details class="hmore"><summary class="link">{{t:init.set.more}}</summary><p class="hint">{{t:init.set.spellsMore}}</p></details>
+      </div>
+      <p class="hint" id="spells-24" hidden>{{t:init.set.spells24}}</p>
       </div></details>
       <details class="setsec" data-sec="player"><summary><h2 class="sethead">{{t:init.set.player}}</h2><span class="sstat" data-sstat="player"></span><span class="schev" aria-hidden="true"></span></summary>
       <div class="setbody">

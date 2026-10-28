@@ -6,10 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kev’s Inn itiative</title>
 <meta name="robots" content="noindex">
-<meta name="description" content="Initiative tracker for D&amp;D 5e (2014): players, SRD monsters, conditions, spell slots and a combat log.">
+<meta name="description" content="Initiative tracker for D&amp;D 5e (2014 or 2024 rules): players, SRD monsters, conditions, spell slots and a combat log.">
 <meta name="theme-color" content="#241811" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1d130d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="2.10.0">
+<meta name="it-version" content="2.11.0">
 <script src="/js/theme.js"></script>
 <script>(function(){try{var w=window,n=navigator,L=["nl"],q=function(m){try{return w.matchMedia("(display-mode: "+m+")").matches}catch(e){return false}};if(!(n.standalone===true||q("standalone")||q("fullscreen")||q("minimal-ui")))return;var b=function(t){t=String(t||"").toLowerCase().split(/[-_]/)[0];return t==="en"||L.indexOf(t)>=0?t:null},x=null,p=null;try{x=b(sessionStorage.getItem("kevs-lang-tab"))}catch(e){}try{p=b((JSON.parse(localStorage.getItem("kevs-lang"))||{}).lang)}catch(e){}var g=x||p;if(!g){var a=n.languages&&n.languages.length?n.languages:[n.language];for(var i=0;i<a.length&&!g;i++)g=b(a[i])}if(g&&g!=="en")location.replace("/"+g+location.pathname+location.search+location.hash)}catch(e){}})()</script>
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
@@ -127,15 +127,25 @@
       </div>
       <p class="hint">Players: they track their own reaction, so player cards have no Reaction button. Monsters keep the button. Surprised and Shield still work.</p>
       </div></details>
-      <details class="setsec" data-sec="spells"><summary><h2 class="sethead" id="rules-head">Spells</h2><span class="sstat" data-sstat="spells"></span><span class="schev" aria-hidden="true"></span></summary>
+      <details class="setsec" data-sec="rules"><summary><h2 class="sethead" id="ruleset-head">Rules</h2><span class="sstat" data-sstat="rules"></span><span class="schev" aria-hidden="true"></span></summary>
       <div class="setbody">
+      <!-- WP54 (G1): regelset van de tafel (S.rules); seg, slot en Spells-subblok tekent js/ui/settings.js paintRules -->
+      <div class="seg" role="group" aria-labelledby="ruleset-head" aria-describedby="ruleset-hint" id="ruleset-seg">
+        <button type="button" data-ruleset="2014" aria-pressed="true">2014</button>
+        <button type="button" data-ruleset="2024" aria-pressed="false">2024</button>
+      </div>
+      <p class="hint" id="ruleset-hint">Which D&amp;D 5e rules this table uses.</p>
+      <details class="hmore"><summary class="link">More</summary><p class="hint">With 2024 rules: monster search and stat blocks from SRD 5.2, plus the 2024 rules for exhaustion, surprise, concentration DC, encounter difficulty, condition descriptions and spells. Saved with the table: included in Undo, export and the player view. Players with a D&amp;D Beyond sheet follow their sheet for each spell.</p></details>
+      <div id="spells-sub">
+      <p class="vlbl" id="rules-head">Spells</p>
       <div class="seg" role="group" aria-labelledby="rules-head" id="rules-seg">
         <button type="button" data-rules="2014" aria-pressed="true">2014</button>
         <button type="button" data-rules="2024" aria-pressed="false">2024</button>
       </div>
-      <!-- Tekst bijwerken zodra er meer dan spells per editie verandert -->
-      <p class="hint">Rules and descriptions for spells: the Barkskin, Haste and Sleep presets (Sleep: 2024 version only), which spells need concentration, and which text the spell panel shows. <b>Applies to spells only:</b> the rest of the app (conditions, crits, concentration DC) stays 2014.</p>
+      <p class="hint">Rules and descriptions for spells: the Barkskin, Haste and Sleep presets (Sleep: 2024 version only), which spells need concentration, and which text the spell panel shows. <b>Applies to spells only:</b> everything else follows the 2014 rules.</p>
       <details class="hmore"><summary class="link">More</summary><p class="hint">Players with a D&amp;D Beyond sheet follow the version on their sheet for each spell; monsters, players without a sheet and spells not on the sheet follow this setting. In the spell panel you can view the other version; that doesn't change the rules. Anything already running keeps the rules from when it was cast.</p></details>
+      </div>
+      <p class="hint" id="spells-24" hidden>Spells follow the 2024 rules.</p>
       </div></details>
       <details class="setsec" data-sec="player"><summary><h2 class="sethead">Player view</h2><span class="sstat" data-sstat="player"></span><span class="schev" aria-hidden="true"></span></summary>
       <div class="setbody">

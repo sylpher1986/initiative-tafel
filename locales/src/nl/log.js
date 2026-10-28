@@ -83,6 +83,7 @@ export default {
   "log.w.enc": "encounter \"{name}\"",
   "log.encLoaded": { one: "Encounter \"{name}\" ingeladen: {n} monster{lair}", other: "Encounter \"{name}\" ingeladen: {n} monsters{lair}" },
   "log.encLoadedRepl": { one: "Encounter \"{name}\" ingeladen: {n} monster{lair} (vervangt {gone})", other: "Encounter \"{name}\" ingeladen: {n} monsters{lair} (vervangt {gone})" },
+  "log.rules": "Regels {from} → {to}",
   "log.w.ended": "beëindigd",
   "log.w.cast": "{who}{roll}{type}",
   "log.w.castAdj": "{who}{roll}, aangepast naar {n}{type}",

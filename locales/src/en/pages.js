@@ -3,8 +3,8 @@
 // Na een wijziging: node tools/i18n-build.mjs (maakt locales/<taal>.js, dat de app laadt).
 // Engelse tekst: D&D 5e (2014)-termen zoals in de PHB/SRD; nagelezen door de vertaalagent (docs/i18n.md §0, V6).
 export default {
-  "page.manifest.desc": "Initiative tracker for D&D 5e (2014)", // beschrijving van de geïnstalleerde app (manifest, tools/pages.mjs)
-  "page.app.desc": "Initiative tracker for D&D 5e (2014): players, SRD monsters, conditions, spell slots and a combat log.", // meta description van de DM-app
+  "page.manifest.desc": "Initiative tracker for D&D 5e (2014 and 2024 rules)", // beschrijving van de geïnstalleerde app (manifest, tools/pages.mjs)
+  "page.app.desc": "Initiative tracker for D&D 5e (2014 or 2024 rules): players, SRD monsters, conditions, spell slots and a combat log.", // meta description van de DM-app
   "page.err.bar": "Error (tap to close):", // foutbalk bovenaan (inline script); daarna volgt de technische fout
   "page.err.notLoaded": "failed to load", // foutbalk: "/js/main.js kon niet laden"
   "page.noscript.app": "Kev’s Inn itiative needs JavaScript.",
@@ -12,7 +12,7 @@ export default {
   "page.noscript.player": "The player view needs JavaScript.",
   // Public homepage /en/ (WP30, pages/home.html). title/desc also for Open Graph (tools/pages.mjs seoHead).
   "page.home.title": "Kev’s Inn · initiative tracker for D&D 5e", // <title> en og:title van de homepage
-  "page.home.desc": "Free initiative tracker for D&D 5e (2014): players, SRD monsters, conditions and a player view on the TV. Works offline, no account.", // meta description en og:description
+  "page.home.desc": "Free initiative tracker for D&D 5e (2014 or 2024 rules): players, SRD monsters, conditions and a player view on the TV. Works offline, no account.", // meta description en og:description
   "page.home.ogAlt": "Kev’s Inn – Initiative tracker · D&D 5e – kevs-inn.com", // og:image:alt
   "page.home.tagline": "Your home between adventures", // merkregel boven de hero-kop (WP37); bewust Engels in elke taal (ook het spelersscherm), element heeft lang="en"
   "page.home.headline": "Build. Play. Explore.", // h1 van de homepage (Newsreader, WP37)

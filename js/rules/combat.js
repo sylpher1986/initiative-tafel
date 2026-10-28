@@ -7,6 +7,7 @@ import { M, J } from "../i18n/msg.js";
 import { tr } from "../i18n/boot.js";
 import { d } from "./dice.js";
 import { EXH_NAME, isExh, exhLevel } from "./conditions.js";
+import { rulesOf } from "./edition.js";
 
 export const fx = () => ({ msgs: [], why: [] });
 /** Melding: descriptor meteen als tekst in de actieve taal (meldingen worden direct getoond, niet bewaard) */
@@ -267,6 +268,18 @@ export function reExhAll(list, ed) {
     if (c.max !== was) out.why.push({ t: M("rules.exhEd", { n: x, ed: ed === "2024" ? "2024" : "2014", from: String(was), to: String(c.max) }), id: c.id });
   }
   return out;
+}
+
+/**
+ * WP54 (B1): regelset van de tafel wisselen. Alleen zonder lopend gevecht en alleen bij een echte wissel (anders null).
+ * Schrijft alleen "2024" (2014 = veld weg, zodat de stand van een 2014-gebruiker gelijk blijft) en rekent Exhaustion
+ * van de tafel om in dezelfde stap; de party volgt bij aan tafel zetten (seatMember). Geeft { from, to, why }.
+ */
+export function setRules(S, ed) {
+  const to = ed === "2024" ? "2024" : "2014", from = rulesOf(S);
+  if (!S || S.round || to === from) return null;
+  if (to === "2024") S.rules = "2024"; else delete S.rules;
+  return { from, to, why: reExhAll(S.list, to).why };
 }
 
 /** Short of long rest voor een speler (party-lid of deelnemer aan tafel) */

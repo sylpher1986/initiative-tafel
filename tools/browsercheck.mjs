@@ -239,15 +239,15 @@ const SCEN = {
   // WP40 (TA19): Spells-hint in Instellingen ingekort; "More" (44 px) klapt de rest uit. --shots=wp40: dicht en open.
   async wp40(page) {
     await SCEN.settings(page);
-    await page.locator('details[data-sec="spells"] > summary').tap();
-    const sum = page.locator('details[data-sec="spells"] .hmore > summary');
+    await page.locator('details[data-sec="rules"] > summary').tap(); // WP54: Spells staat als subinstelling in Regels
+    const sum = page.locator('#spells-sub .hmore > summary');
     await sum.waitFor({ state: "visible" });
-    if (await page.locator('details[data-sec="spells"] .hmore > p').isVisible()) throw new Error("rest van de Spells-hint staat al open");
+    if (await page.locator('#spells-sub .hmore > p').isVisible()) throw new Error("rest van de Spells-hint staat al open");
     const h = await sum.evaluate((el) => el.getBoundingClientRect().height);
     if (h < 44) throw new Error(`"More" is ${h}px hoog (< 44)`);
     await snap(page, "wp40", "dicht");
     await sum.tap();
-    await page.locator('details[data-sec="spells"] .hmore > p').waitFor({ state: "visible" });
+    await page.locator('#spells-sub .hmore > p').waitFor({ state: "visible" });
     await snap(page, "wp40", "open");
   },
   // WP41 (RE5, RE6a): zonder spelers "Monsters verrast" naast Start (≥ 44 px, Start blijft één tik, geen paneel); daarna
@@ -1045,6 +1045,51 @@ const SCEN = {
     if (r.hd !== "none" || /D/.test(r.hdTxt || "")) throw new Error("hit dice in hoofdletters: " + JSON.stringify(r));
     const md = await page.evaluate(async () => { const { diceify } = await import("/js/ui/statblock.js"); return diceify("12 (15 with _mage armor_) and **Fire Breath.**"); });
     if (!/<i>mage armor<\/i>/.test(md) || !/<b>Fire Breath\.<\/b>/.test(md)) throw new Error("markdown niet omgezet: " + md);
+  },
+  // WP54 (G1): Instellingen → Regels 2014 | 2024. Status in de kop, Spells-subinstelling alleen bij 2014, wisselen = melding
+  // met Ongedaan + logregel, tijdens een gevecht uitgeschakeld; voorbeeld bij 2024 met SRD 5.2 (Goblin Warrior).
+  // --shots=g1-rules: 2014 met Spells 2024, 2024, gevecht.
+  async "g1-rules"(page) {
+    const stat = () => page.locator('[data-sstat="rules"]').textContent();
+    const S = () => page.evaluate(async () => { const { app } = await import("/js/state.js"); return { rules: app.S.rules, log: (app.S.log || []).length, list: app.S.list.map((c) => c.ref + (c.ed ? "·" + c.ed : "")) }; });
+    // regels 2024 op de welkomstkaart (lege lijst): het voorbeeld laadt SRD 5.2
+    await page.waitForSelector("#welcome-sample");
+    await tap(page, '#dock [data-prep="data"]'); await page.waitForSelector("#psheet .sheet", { state: "visible" });
+    await page.locator('details[data-sec="rules"] > summary').tap();
+    if ((await stat()) !== "2014") throw new Error("WP54: status bij de start is niet 2014: " + (await stat()));
+    await tap(page, '#rules-seg [data-rules="2024"]');
+    await page.waitForFunction(() => /^2014 · .+ 2024$/.test(document.querySelector('[data-sstat="rules"]').textContent)); // "Spells" via de catalogus
+    await snap(page, "g1-rules", "spells24");
+    await tap(page, '#ruleset-seg [data-ruleset="2024"]');
+    await page.waitForFunction(() => document.querySelector('[data-sstat="rules"]').textContent === "2024");
+    if (await page.locator("#spells-sub").isVisible() || !(await page.locator("#spells-24").isVisible())) throw new Error("WP54: Spells-subinstelling zichtbaar bij 2024");
+    await page.locator("#toast-undo").first().waitFor({ state: "visible" });
+    await snap(page, "g1-rules", "r2024");
+    if ((await S()).rules !== "2024") throw new Error("WP54: S.rules niet 2024");
+    await tap(page, '#psheet .shead [data-prep="close"]');
+    await tap(page, "#welcome-sample");
+    await page.waitForFunction(async () => (await import("/js/state.js")).app.S.list.some((c) => c.ref === "Goblin Warrior" && c.ed === "2024"), null, { timeout: 15000 });
+    const st = await S();
+    if (st.list.filter((x) => x === "Goblin Warrior·2024").length !== 2 || !st.list.includes("Hobgoblin Warrior·2024")) throw new Error("WP54: voorbeeld 2024: " + JSON.stringify(st));
+    await page.waitForSelector("#start:not([disabled])");
+    // Ongedaan van de wissel zet hem terug (de wissel is de stap vóór het voorbeeld)
+    await page.evaluate(async () => { const s = await import("/js/state.js"), { render } = await import("/js/ui/render.js"); s.undo(); s.undo(); render(); });
+    if ((await S()).rules !== undefined) throw new Error("WP54: Ongedaan zette de regels niet terug");
+    await page.evaluate(async () => { const s = await import("/js/state.js"), { render } = await import("/js/ui/render.js"); s.redo(); render(); });
+    if ((await S()).rules !== "2024") throw new Error("WP54: Opnieuw zette de regels niet terug");
+    // tijdens een gevecht: uitgeschakeld met uitleg
+    await page.evaluate(async () => { const s = await import("/js/state.js"), { render } = await import("/js/ui/render.js"); s.redo(); render(); });
+    await tap(page, "#start");
+    const n = await page.locator('[data-ia="roll"]').count();
+    for (let i = 0; i < n; i++) await page.locator('[data-ia="roll"]').nth(i).tap();
+    if (n) await tap(page, '[data-ia="go"]');
+    await page.waitForSelector("#next");
+    await tap(page, '#modes [data-setmode="prep"]');
+    await tap(page, '#dock [data-prep="data"]'); await page.waitForSelector("#psheet .sheet", { state: "visible" });
+    if (!(await page.locator('details[data-sec="rules"]').evaluate((d) => d.open))) await page.locator('details[data-sec="rules"] > summary').tap();
+    const dis = await page.locator("#ruleset-seg button").evaluateAll((bs) => bs.map((b) => b.disabled));
+    if (dis.some((x) => !x)) throw new Error("WP54: regelkeuze niet uitgeschakeld tijdens een gevecht");
+    await snap(page, "g1-rules", "gevecht");
   },
   async tagline(page) { if (!(await page.locator("#pv-tag").isVisible())) throw new Error("tagline niet zichtbaar in de wachtstand"); },
 };

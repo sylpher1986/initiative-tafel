@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Kev’s Inn itiative",
   "short_name": "Inn itiative",
-  "description": "Initiative tracker for D&D 5e (2014)",
+  "description": "Initiative tracker for D&D 5e (2014 and 2024 rules)",
   "lang": "en",
   "start_url": "/initiative/",
   "scope": "/",
