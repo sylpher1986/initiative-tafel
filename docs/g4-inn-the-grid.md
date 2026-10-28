@@ -2,6 +2,8 @@
 
 Stand: 28-10-2026, op basis van `Sylpher1986/initiative-tafel` `main` @ `52dee49` (Kev's Inn itiative 2.11.1). Status: **D1–D3 besloten (28-10-2026)**; overige aanbevelingen gelden tot een pakket anders beslist.
 
+**Naam (D13, 28-10-2026): Inn the Grid wordt Inn Sight.** De hernoeming zit in WP65 (alles wat de gebruiker ziet) en WP67 (documentatie, besluit over het pad). Tot dan heet de tool in code en documentatie nog Inn the Grid; in dit plan heten de open pakketten al Inn Sight.
+
 Uitgangspunt van Michiel (28-10): basic beginnen, eerst iets functioneels, daarna mooi maken; tot er iets werkt helemaal los van Initiative.
 
 Legenda bij beweringen: **[F]** geverifieerd in de repo · **[C]** conclusie uit die feiten · **[A]** aanbeveling, wacht op besluit · **[?]** open/onbekend.
@@ -253,7 +255,8 @@ Nummering loopt door op de repo-historie (laatste was WP55). Elk pakket = één 
 
 **WP65 · Responsief, touch en eerste gebruik afronden** · M
 - Scope: telefoonindeling (dock), tabletzijpaneel, desktop-sneltoetsen met "?"-overzicht, lege toestanden, korte uitleg bij eerste gebruik (geen pop-up bij opstarten, conform CLAUDE.md), foutmeldingen nalopen. **Actiepunt (melding Michiel 28-10, schermafbeelding Maps 0.4.0):** een foutregel onder een veld in een rij van twee (Kolommen/Rijen, ook Pixels per cel/Cellen in de breedte) duwt het buurveld omlaag, zodat de velden niet meer op één lijn staan en de tekst over twee regels loopt. Oplossing: foutregel buiten het `<label>` en onder de hele rij (één regel over beide kolommen), velden blijven op dezelfde hoogte; geldt voor alle foutregels in paneel Kaart.
-- Acceptatie: (1) kernflow (nieuwe kaart → achtergrond → object → verven → export) op iPhone SE-breedte (320), iPad portret en desktop zonder horizontaal scrollen; (2) alle knoppen hebben `aria-label`, focus zichtbaar; (2b) een foutregel verschuift geen buurveld (browsercheck: velden in een rij houden dezelfde `top` met en zonder fout); (3) Michiel doet de kernflow op zijn telefoon zonder hulp (handmatig).
+- **Hernoemen naar Inn Sight (D13):** alle zichtbare tekst in beide talen (`locales/src/{en,nl}/maps.js`: o.a. `maps.title`, `maps.page.title`, `maps.tab.text`, `maps.exp.title`, `maps.imp.err.format`/`newer`, daarna `node tools/i18n-build.mjs` en `node tools/pages.mjs`), `APP` in `js/maps/version.js` (komt als `app` in het projectbestand) en de exportnaam `fileName` → `inn-sight-<slug>-…json`. Engelse tekst langs de vertaalagent. **Bewust niet hernoemd** (zoals bij Kev’s Inn itiative): `FORMAT` `kevs-inn-maps`, IndexedDB-naam, cachenaam, `maps-*`-sleutels in localStorage, pad `/maps/`, map `js/maps/`, namespace `maps.`. Oude bestanden blijven daardoor importeerbaar (`readFile` kijkt naar `format`, niet naar `app`).
+- Acceptatie: (1) kernflow (nieuwe kaart → achtergrond → object → verven → export) op iPhone SE-breedte (320), iPad portret en desktop zonder horizontaal scrollen; (2) alle knoppen hebben `aria-label`, focus zichtbaar; (2b) een foutregel verschuift geen buurveld (browsercheck: velden in een rij houden dezelfde `top` met en zonder fout); (2c) geen "Inn the Grid" meer in de catalogi of op de pagina (test), een bestand met `app: "Inn the Grid 0.x"` importeert nog (fixture); (3) Michiel doet de kernflow op zijn telefoon zonder hulp (handmatig).
 - Grootte M.
 
 **WP66 · Prestaties en grenzen** · M
@@ -264,13 +267,13 @@ Nummering loopt door op de repo-historie (laatste was WP55). Elk pakket = één 
 - Grootte M.
 
 **WP67 · Uitbrengen losstaande editor** · S
-- Scope: volledige developer-review (x.y.0), README/CLAUDE.md, beslissen over homepage-kaart, eigen manifest/installeerbaar en indexeren (§9.2 stap 8, D7).
+- Scope: volledige developer-review (x.y.0), README/CLAUDE.md (naam Inn Sight in regel 3, subsectie "Gemaakte keuzes → Inn Sight", stap 3 van "Bij elke wijziging", lijst bewust niet hernoemd), ROADMAP en de titel van dit plan, D13 bevestigen dat het pad `/maps/` blijft (advies: houden, padsegmenten zijn functioneel en Engels; een nieuw pad vraagt redirects en een nieuwe sw-scope voor niets), beslissen over homepage-kaart (met de naam Inn Sight), eigen manifest/installeerbaar en indexeren (§9.2 stap 8, D7).
 - Acceptatie: besluiten D7 vastgelegd; live-checklijst afgevinkt.
 
 → **Mijlpaal M2.**
 
 ### Fase 2 — Mooi maken
-**WP68 · Vormgevingsronde Inn the Grid** · M–L (pas na M2; eerst mockup ter goedkeuring zoals CLAUDE.md vraagt). Huisstijl-consistentie, betere ingebouwde assets, onboarding-polish. Op te splitsen na de UX-schets.
+**WP68 · Vormgevingsronde Inn Sight** · M–L (pas na M2; eerst mockup ter goedkeuring zoals CLAUDE.md vraagt). Huisstijl-consistentie, betere ingebouwde assets, onboarding-polish. Op te splitsen na de UX-schets.
 
 ### Fase 3 — Koppeling met Initiative (pas na M2 en akkoord)
 **WP69 · Gedeelde kaartlezer en kaart kiezen bij een encounter** · L — Initiative leest `kevs-inn-maps` alleen-lezen via `js/maps/model/file.js`; kiezen in de encounter-bewerking; terugval bestand importeren. Besluit: verwijzing vs. kopie, en of Initiative-backup naar versie 5 gaat (CLAUDE.md: formaatwijziging = versie + migratie + volledige review). Regressie: volledige `npm test` + G1/WP55-scenario's.
@@ -302,7 +305,8 @@ Kleinste waardevolle eind-tot-eind-release: **M1**.
 ### Aanbevelingen, wachten op akkoord
 | # | Vraag | Advies |
 |---|---|---|
-| D1 | Pad | **Besloten 28-10: `/maps/` en `/nl/maps/`** (code, catalogus en opslag heten ook `maps`; productnaam blijft Inn the Grid) |
+| D1 | Pad | **Besloten 28-10: `/maps/` en `/nl/maps/`** (code, catalogus en opslag heten ook `maps`; de productnaam staat los daarvan, zie D13) |
+| D13 | Naam | **Besloten 28-10: Inn Sight** (was Inn the Grid). Zichtbaar in WP65, documentatie en padbesluit (advies: `/maps/` houden) in WP67 |
 | D2 | Versie | **Besloten 28-10: Inn the Grid krijgt een eigen versienummer**; de bestaande nummers zijn van Inn itiative; de homepage krijgt geen nummer. Uitwerking zie §2.10. Startversie 0.1.0, 1.0.0 bij M2 (WP67). |
 | D3 | Tekentechniek | **Besloten 28-10: Canvas 2D, eigen code, voor nu**; herzien als WP66 daar aanleiding toe geeft |
 | D4 | Projectbestand | **Besloten in WP60 op het advies: optie A, één JSON met base64-assets** (formaat §8) |
@@ -331,7 +335,7 @@ Geen meer: D1–D3 zijn besloten. De rest start op het advies en wordt per pakke
 ---
 
 ## 7. Volgende stap
-WP56–WP60 zijn klaar (28-10-2026): **mijlpaal M1** (Maps 0.5.0). WP61 klaar (Maps 0.6.0). WP62 klaar (Maps 0.7.0; plaatsen met het toetsenbord meegenomen). Volgende: **WP63 · Terrein per cel verven** of **WP64 · Eigen assets** (parallel mogelijk).
+WP56–WP60 zijn klaar (28-10-2026): **mijlpaal M1** (Maps 0.5.0). WP61 klaar (Maps 0.6.0). WP62 klaar (Maps 0.7.0; plaatsen met het toetsenbord meegenomen). Volgende: **WP63 · Terrein per cel verven** of **WP64 · Eigen assets** (parallel mogelijk). De hernoeming naar Inn Sight (D13) volgt in WP65 en WP67.
 
 Oorspronkelijk advies bij de start van G4: **WP56 · Tool-skelet met vierkant raster, pannen en zoomen.**
 Waarom eerst: laagste risico, raakt Initiative niet, legt pad, pagina, catalogus, service worker, tests, browsercheck en het canvas-/gebarenfundament vast waar elk volgend pakket op bouwt. Na WP56 is er al iets op de telefoon te openen.
