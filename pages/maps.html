@@ -17,20 +17,34 @@
 <body class="maps">
 <header class="mtop">
   <a class="mhome" href="{{base}}/" aria-label="{{t:maps.home}}"><!-- embleem: zelfde tekening als EMBLEM in tools/icons.mjs --><svg class="emb" viewBox="20 2 176 196" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M108 16 181 58v84l-73 42-73-42V58Z" stroke-width="11"/><g transform="translate(0 13)" stroke-width="10"><path d="M100 47v-8q8-10 16 0v8"/><path d="M88 55h40l-8 11H96Z"/><path d="M96 70h24l8 10v42H88V80Z"/><path d="M84 130h48"/></g><path d="M108 102c-9 10-9 19 0 26 9-7 9-16 0-26Z" fill="currentColor" stroke="none"/></svg></a>
-  <h1>{{t:maps.title}}</h1>
+  <!-- WP58: in de editor de kaartnaam met daaronder de opslagstatus (altijd zichtbaar); in de lijst "Inn the Grid" -->
+  <div class="mtitle"><h1 id="m-name">{{t:maps.title}}</h1><div class="mstat" id="m-stat" aria-live="off"></div></div>
   <span class="mver" id="m-ver"></span>
 </header>
 <main class="mstage" id="m-stage">
   <canvas id="m-canvas" role="img"></canvas>
 </main>
-<nav class="mdock" aria-label="{{t:maps.dock}}">
+<!-- WP58: Mijn kaarten. Eigen weergave in dezelfde pagina (editor verborgen, history.pushState: terug = editor). Rij-tik
+     opent, ⋯ opent het menu (Hernoemen, Dupliceren, Verwijderen). Lijst en meldingen vult js/maps/main.js. -->
+<main class="mkl" id="m-list" hidden aria-labelledby="m-l-title">
+  <h2 id="m-l-title">{{t:maps.list.title}}</h2>
+  <p class="mwarn" id="m-l-off" hidden>{{t:maps.status.offLong}}</p>
+  <p class="hint" id="m-l-empty" hidden>{{t:maps.list.empty}}</p>
+  <ul class="mkl-rows" id="m-lrows"></ul>
+</main>
+<nav class="mdock" id="m-ldock" aria-label="{{t:maps.list.dock}}" hidden>
+  <button type="button" class="btn" id="m-back">{{t:maps.list.back}}</button>
+  <button type="button" class="btn primary" id="m-new">{{t:maps.list.new}}</button>
+</nav>
+<nav class="mdock" id="m-dock" aria-label="{{t:maps.dock}}">
+  <button type="button" class="btn" id="m-maps" aria-label="{{t:maps.list.open}}"><!-- WP58: lijst-icoon inline (geen gedeeld icoon: icons/ui.svg hoort bij Initiative) --><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg></button>
   <div class="mzoom">
     <button type="button" class="btn" id="m-out" aria-label="{{t:maps.zoom.out}}"><span aria-hidden="true">−</span></button>
     <output id="m-zoom" aria-label="{{t:maps.zoom.level}}" aria-live="polite"></output>
     <button type="button" class="btn" id="m-in" aria-label="{{t:maps.zoom.in}}"><span aria-hidden="true">+</span></button>
   </div>
   <div class="mright">
-    <button type="button" class="btn" id="m-fit">{{t:maps.fit}}</button>
+    <button type="button" class="btn" id="m-fit" aria-label="{{t:maps.fit}}"><span class="mfit-t" aria-hidden="true">{{t:maps.fit}}</span><svg class="li mfit-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
     <button type="button" class="btn" id="m-set" aria-label="{{t:maps.panel.open}}" aria-expanded="false" aria-controls="m-sheet"><svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-gear"/></svg></button>
   </div>
 </nav>
@@ -39,6 +53,8 @@
 <section class="msheet" id="m-sheet" role="dialog" aria-labelledby="m-s-title" tabindex="-1" hidden>
   <div class="grab" aria-hidden="true"></div>
   <div class="shead"><h3 id="m-s-title">{{t:maps.panel.title}}</h3><button type="button" class="link" id="m-close">{{t:maps.panel.close}}</button></div>
+  <!-- WP58: naam, toegepast bij blur/Enter; leeg = vorige naam terug -->
+  <label>{{t:maps.name}}<input id="m-mname" type="text" enterkeyhint="done" autocomplete="off" maxlength="60" spellcheck="false"></label>
   <div class="mfield"><span class="lab" id="m-type-l">{{t:maps.grid.type}}</span>
     <div class="seg" id="m-type" role="group" aria-labelledby="m-type-l"><button type="button" data-v="square">{{t:maps.grid.square}}</button><button type="button" data-v="pointy">{{t:maps.grid.pointy}}</button><button type="button" data-v="flat">{{t:maps.grid.flat}}</button></div></div>
   <div class="f2">
@@ -52,5 +68,11 @@
   <div class="mfield"><span class="lab" id="m-alpha-l">{{t:maps.grid.alpha}}</span>
     <div class="seg" id="m-alpha" role="group" aria-labelledby="m-alpha-l"><button type="button" data-v="25"></button><button type="button" data-v="50"></button><button type="button" data-v="75"></button><button type="button" data-v="100"></button></div></div>
 </section>
+<!-- WP58: menu en hernoemen voor een kaart uit de lijst (modaal, met dim) -->
+<div class="sheet-wrap" id="m-menu" hidden>
+  <div class="dim" data-m="close"></div>
+  <div class="sheet" id="m-menu-s" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="m-menu-t"></div>
+</div>
+<div class="toast" id="m-toast" role="status" aria-live="polite"></div>
 </body>
 </html>

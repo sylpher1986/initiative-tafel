@@ -130,6 +130,7 @@ const DYNAMIC = [
   [{ test: (k) => HS.some((c) => k === `dnd.hs.${c}`) }, "js/playerview.js hsText (HS)"],
   [{ test: (k) => cinfoSet.has(k) }, "js/rules/conditions.js condInfo (CINFO, CINFO24)"],
   [/^dnd\.exh\.s?[1-6]$/, "js/rules/conditions.js, effects.js"],
+  [/^maps\.ago\.(min|hour|day)$/, "js/maps/main.js when() (ago)"],
 ];
 
 test("ongebruikte sleutels zijn een fout (sinds WP33); samengestelde sleutels via DYNAMIC", () => {

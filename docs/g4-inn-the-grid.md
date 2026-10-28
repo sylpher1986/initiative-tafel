@@ -188,7 +188,7 @@ Nummering loopt door op de repo-historie (laatste was WP55). Elk pakket = één 
 - Risico: hex-randen off-by-one → eigenschapstests (punt-in-polygoon).
 - Grootte M: wiskunde + eerste paneel.
 
-**WP58 · Kaarten lokaal bewaren, kaartenlijst, opslagstatus** · L
+**WP58 · Kaarten lokaal bewaren, kaartenlijst, opslagstatus** · L — klaar (28-10-2026, Maps 0.3.0; keuzes in CLAUDE.md → Inn the Grid)
 - Doel: werk gaat nooit stil verloren; meerdere kaarten beheren.
 - Scope: `store.js` (IndexedDB `kevs-inn-maps`, stores `maps`/`assets`, versie-upgrade), `model/map.js` schema v1 (alleen raster + naam), autosave + statusindicator, startscherm "Mijn kaarten" (lege toestand met "Nieuwe kaart"), nieuw/openen/hernoemen/dupliceren/verwijderen (verwijderen met Ongedaan), laatste kaart heropenen, `maps-tab`-bewaking, `storage.persist()`, foutstatus als opslaan mislukt.
 - Niet: afbeeldingen (komt in WP59, store bestaat al), export.
@@ -309,7 +309,7 @@ Kleinste waardevolle eind-tot-eind-release: **M1**.
 | D8 | Koppeling (fase 3) | Zelfde-origin lezen + bestand als terugval |
 | D9 | Reviewers in de functionele fase | Volgens CLAUDE.md; UX-agent alleen bij echte keuzes, vormgeving pas in WP68 |
 | D10 | Grenzen | **Kaart: besloten in WP57 op het advies, max 100×100 cellen**; objecten: 2000 (advies, bijstellen na WP66) |
-| D11 | Tabbladen | Eigen `maps-tab`, nieuwste wint |
+| D11 | Tabbladen | **Besloten in WP58 op het advies: eigen `maps-tab`, nieuwste wint** |
 | D12 | Uploads | ≤ 25 MB invoer, opgeslagen ≤ 4096 px, alleen PNG/JPEG/WebP |
 
 ### Echt blokkerend vóór WP56

@@ -46,6 +46,22 @@ async function idbHas(page, key, ok, ms = 5000) {
   }
 }
 
+/** WP58: wacht tot alle kaarten in IndexedDB "kevs-inn-maps" (js/maps/store.js) ok(lijst) geven. Leest de opslag zelf. */
+async function mapsIdb(page, ok, ms = 5000) {
+  const read = () => page.evaluate(() => new Promise((res) => {
+    const r = indexedDB.open("kevs-inn-maps");
+    r.onerror = () => res(undefined);
+    r.onsuccess = () => { try { const g = r.result.transaction("maps").objectStore("maps").getAll(); g.onsuccess = () => { r.result.close(); res(g.result); }; g.onerror = () => { r.result.close(); res(undefined); }; } catch { r.result.close(); res(undefined); } };
+  }));
+  const end = Date.now() + Math.max(ms, 100);
+  for (;;) {
+    const v = await read();
+    if (v && ok(v)) return v;
+    if (Date.now() > end) throw new Error(`kevs-inn-maps: niet binnen ${ms} ms: ` + JSON.stringify(v)?.slice(0, 300));
+    await page.waitForTimeout(50);
+  }
+}
+
 async function loadPw() {
   for (const p of [process.env.PW_MODULE, "playwright", "/opt/npm-tools/node_modules/playwright", "/opt/node-tools/node_modules/playwright"].filter(Boolean)) {
     try { return p.startsWith("/") ? createRequire(import.meta.url)(p) : await import(p); } catch { /* volgende */ }
@@ -77,7 +93,9 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/" };
+// Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
+const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
 const ONCE = new Set(["i18n-mixed", "i18n-switch", "i18n-offline", "i18n-legacy", "homeen", "wp33", "wp43", "wp44"]);
 // Startpagina in een taal (pathFor: Engels zonder voorvoegsel); /nl/… wordt de pagina in die taal; ONCE blijft zoals het is
@@ -330,11 +348,150 @@ const SCEN = {
     await tap(page, '#m-type [data-v="pointy"]'); await frame();
     one = await oneColor();
     if (one !== 1) throw new Error("raster uit (hex): kleuren binnen de kaart = " + one);
-    const tabs = await page.evaluate(() => [...document.querySelectorAll(".mdock button")].every((b) => b.getAttribute("tabindex") === "-1"));
+    const tabs = await page.evaluate(() => [...document.querySelectorAll("#m-dock button")].every((b) => b.getAttribute("tabindex") === "-1"));
     if (!tabs) throw new Error("dockknoppen bereikbaar met Tab onder het open paneel");
     await page.keyboard.press("Escape"); await frame();
     const cl = await page.evaluate(() => ({ hid: document.getElementById("m-sheet").hidden, foc: document.activeElement?.id, exp: document.getElementById("m-set").getAttribute("aria-expanded") }));
-    if (!cl.hid || cl.foc !== "m-set" || cl.exp !== "false" || await page.evaluate(() => !!document.querySelector(".mdock button[tabindex]"))) throw new Error("sluiten: " + JSON.stringify(cl));
+    if (!cl.hid || cl.foc !== "m-set" || cl.exp !== "false" || await page.evaluate(() => !!document.querySelector("#m-dock button[tabindex]"))) throw new Error("sluiten: " + JSON.stringify(cl));
+  },
+  // WP58 (G4): kaarten bewaren. Eerste start maakt kaart 1 en bewaart hem; wijziging → "Opgeslagen" binnen 1 s (in
+  // IndexedDB, mapsIdb); herladen direct na een wijziging verliest niets (pagehide); opslaan dat faalt (put gooit) toont
+  // "Niet opgeslagen" en blijft dat tonen tot Opnieuw lukt; Mijn kaarten: nieuw, hernoemen, dupliceren, verwijderen +
+  // Ongedaan (zelfde id), terug = editor; laatste kaart heropent; tweede tabblad neemt over (stopscherm), Initiative in
+  // een ander tabblad blijft werken. --shots=wp58: lijst, menu, fout.
+  async wp58(page, base) {
+    const ready = () => page.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);
+    await ready();
+    const frame = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const M = () => page.evaluate(() => ({ map: window.__maps.map(), st: window.__maps.status(), v: window.__maps.view$(), txt: document.getElementById("m-stat").textContent, name: document.getElementById("m-name").textContent }));
+    let m = await M();
+    const id1 = m.map.id;
+    await mapsIdb(page, (all) => all.length === 1 && all[0].id === id1);
+    if (m.st !== "saved" || !m.txt || m.name !== m.map.name) throw new Error("eerste start: " + JSON.stringify(m));
+    // (1) wijziging → binnen 1 s Opgeslagen, en echt in IndexedDB
+    await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    const t0 = Date.now();
+    await tap(page, '#m-type [data-v="pointy"]');
+    if ((await M()).st === "saved") throw new Error("status bleef Opgeslagen na een wijziging");
+    await page.waitForFunction(() => window.__maps.status() === "saved", null, { timeout: 1000 });
+    await mapsIdb(page, (all) => all[0]?.grid.type === "hex", 1000 - (Date.now() - t0) + 200);
+    // (2) naam wijzigen en direct herladen: pagehide bewaart
+    await page.locator("#m-mname").fill("Hinderlaag bij de oude brug"); await page.locator("#m-mname").press("Enter");
+    if ((await M()).name !== "Hinderlaag bij de oude brug") throw new Error("kop volgt de naam niet");
+    await page.locator("#m-cols").fill("33"); await page.locator("#m-cols").press("Enter");
+    await page.reload(); await ready();
+    m = await M();
+    if (m.map.id !== id1 || m.map.grid.cols !== 33 || m.map.name !== "Hinderlaag bij de oude brug" || m.map.grid.type !== "hex") throw new Error("herladen direct na wijziging: " + JSON.stringify(m.map));
+    // (3) opslaan faalt → Niet opgeslagen, blijft staan (ook bij een volgende wijziging), Opnieuw herstelt
+    await page.evaluate(() => { window.__put = IDBObjectStore.prototype.put; IDBObjectStore.prototype.put = function () { throw new DOMException("quota", "QuotaExceededError"); }; });
+    await tap(page, "#m-set"); await tap(page, '#m-type [data-v="square"]');
+    await page.waitForFunction(() => window.__maps.status() === "error", null, { timeout: 2000 });
+    await tap(page, '#m-show [data-v="off"]');
+    await page.waitForTimeout(700);
+    m = await M();
+    const red = await page.evaluate(() => { const s = document.getElementById("m-stat"); return s.classList.contains("bad") && !!s.querySelector("button") && s.querySelector("button").getBoundingClientRect().height >= 44; });
+    if (m.st !== "error" || !red) throw new Error("foutstatus: " + JSON.stringify({ m, red }));
+    await page.keyboard.press("Escape");
+    await tap(page, "#m-stat button");
+    await page.locator("#m-toast .tmsg.bad .tundo").waitFor();
+    await snap(page, "wp58", "fout");
+    await page.evaluate(() => { IDBObjectStore.prototype.put = window.__put; });
+    await tap(page, "#m-toast .tundo");
+    await page.waitForFunction(() => window.__maps.status() === "saved", null, { timeout: 2000 });
+    await mapsIdb(page, (all) => all[0]?.grid.type === "square" && all[0].grid.show === false);
+    // Mijn kaarten: lijst, nieuw, terug (history), hernoemen, dupliceren, verwijderen + Ongedaan
+    await tap(page, "#m-maps");
+    await page.locator("#m-list").waitFor({ state: "visible" }); await page.waitForTimeout(100);
+    if ((await page.locator("#m-lrows .mkl-row").count()) !== 1 || !(await page.locator("#m-lrows .mkl-c").count())) throw new Error("lijst met de open kaart");
+    await tap(page, "#m-new");
+    await page.waitForFunction((id) => window.__maps.view$() === "edit" && window.__maps.map().id !== id, id1);
+    const id2 = (await M()).map.id;
+    await mapsIdb(page, (all) => all.length === 2);
+    await tap(page, "#m-maps"); await page.locator("#m-list").waitFor({ state: "visible" });
+    await page.goBack(); // Android-terugknop: editor
+    await page.waitForFunction(() => window.__maps.view$() === "edit");
+    if ((await M()).map.id !== id2) throw new Error("terug: andere kaart");
+    await tap(page, "#m-maps"); await page.locator("#m-list").waitFor({ state: "visible" });
+    const order = await page.evaluate(() => [...document.querySelectorAll("#m-lrows .mkl-o")].map((b) => b.dataset.id));
+    if (order[0] !== id2 || order[1] !== id1) throw new Error("volgorde: " + order);
+    await snap(page, "wp58", "lijst");
+    await tap(page, `#m-lrows .mkl-m[data-id="${id1}"]`);
+    await page.locator("#m-menu").waitFor({ state: "visible" });
+    await snap(page, "wp58", "menu");
+    await tap(page, '#m-menu [data-m="rename"]');
+    await page.locator("#m-rn").fill("   "); await tap(page, "#m-menu .mrename .btn");
+    if (!(await page.locator("#m-rn-e").isVisible())) throw new Error("lege naam niet geweigerd");
+    await page.locator("#m-rn").fill("Zonder Level"); await tap(page, "#m-menu .mrename .btn");
+    await page.locator("#m-menu").waitFor({ state: "hidden" });
+    await mapsIdb(page, (all) => all.some((x) => x.id === id1 && x.name === "Zonder Level"));
+    await tap(page, `#m-lrows .mkl-m[data-id="${id1}"]`); await tap(page, '#m-menu [data-m="dup"]');
+    await mapsIdb(page, (all) => all.length === 3);
+    await page.waitForFunction(() => document.querySelectorAll("#m-lrows .mkl-row").length === 3 && document.activeElement?.classList.contains("mkl-o"));
+    const dup = await page.evaluate(() => { const b = document.querySelector("#m-lrows .mkl-o"); return { txt: b?.querySelector(".mkl-n")?.textContent, foc: document.activeElement === b }; });
+    if (!/Zonder Level \S/.test(dup.txt || "") || !dup.foc) throw new Error("dupliceren: kopie bovenaan met focus: " + JSON.stringify(dup));
+    // review: de open kaart (id2) hernoemen via het menu wordt echt bewaard
+    await tap(page, `#m-lrows .mkl-m[data-id="${id2}"]`); await tap(page, '#m-menu [data-m="rename"]');
+    await page.locator("#m-rn").fill("Aurelianus Vandermeer"); await tap(page, "#m-menu .mrename .btn");
+    await mapsIdb(page, (all) => all.some((x) => x.id === id2 && x.name === "Aurelianus Vandermeer"));
+    // review: opslaan faalt en dan een andere kaart openen → wissel geweigerd, status blijft rood, niets weg
+    await tap(page, `#m-lrows .mkl-o[data-id="${id2}"]`);
+    await page.waitForFunction(() => window.__maps.view$() === "edit");
+    await page.evaluate(() => { IDBObjectStore.prototype.put = function () { throw new DOMException("quota", "QuotaExceededError"); }; });
+    await tap(page, "#m-set"); await tap(page, '#m-type [data-v="flat"]'); await page.keyboard.press("Escape");
+    await page.waitForFunction(() => window.__maps.status() === "error", null, { timeout: 2000 });
+    await tap(page, "#m-maps"); await page.locator("#m-list").waitFor({ state: "visible" }); await page.waitForTimeout(100);
+    await tap(page, `#m-lrows .mkl-o[data-id="${id1}"]`); await page.waitForTimeout(200);
+    m = await M();
+    if (m.map.id !== id2 || m.st !== "error" || m.v !== "list" || !(await page.locator("#m-toast .tmsg.bad .tundo").count())) throw new Error("wissel na mislukte opslag: " + JSON.stringify({ id: m.map.id, st: m.st, v: m.v }));
+    await page.evaluate(() => { IDBObjectStore.prototype.put = window.__put; });
+    await tap(page, "#m-toast .tundo");
+    await mapsIdb(page, (all) => all.some((x) => x.id === id2 && x.grid.orient === "flat"));
+    // verwijder de open kaart (id2) → in de lijst blijven; Ongedaan zet hem terug met dezelfde id
+    await tap(page, `#m-lrows .mkl-m[data-id="${id2}"]`); await tap(page, '#m-menu [data-m="del"]');
+    await mapsIdb(page, (all) => all.length === 2 && !all.some((x) => x.id === id2));
+    if ((await M()).v !== "list" || (await M()).map !== null) throw new Error("na verwijderen van de open kaart");
+    await tap(page, "#m-toast .tundo");
+    await mapsIdb(page, (all) => all.length === 3 && all.some((x) => x.id === id2));
+    await page.waitForFunction((id) => !!document.querySelector(`#m-lrows .mkl-o[data-id="${id}"]`), id2, { timeout: 2000 }).catch(() => {});
+    if (!(await page.locator(`#m-lrows .mkl-o[data-id="${id2}"]`).count())) throw new Error("Ongedaan: niet terug in de lijst");
+    await tap(page, `#m-lrows .mkl-o[data-id="${id1}"]`);
+    await page.waitForFunction((id) => window.__maps.view$() === "edit" && window.__maps.map().id === id, id1);
+    // laatste kaart heropent na herladen
+    await page.reload(); await ready();
+    if ((await M()).map.id !== id1) throw new Error("laatste kaart niet heropend");
+    // (4) tweede tabblad neemt over; Initiative in een ander tabblad blijft werken
+    const ctx = page.context(), p2 = await ctx.newPage(), p3 = await ctx.newPage();
+    await p2.goto(base + "/nl/maps/"); await p2.waitForFunction(() => window.__maps && window.__maps.map());
+    await page.locator(".tabstop").waitFor({ timeout: 3000 });
+    await p3.goto(base + "/nl/initiative/"); await p3.waitForSelector("#dock");
+    await p3.waitForTimeout(300);
+    const st = { p1: await page.locator(".tabstop").count(), p2: await p2.locator(".tabstop").count(), p3: await p3.locator(".tabstop").count(), foc: await page.evaluate(() => document.activeElement?.closest(".tabstop") !== null) };
+    if (st.p1 !== 1 || st.p2 !== 0 || st.p3 !== 0 || !st.foc) throw new Error("tabbladen: " + JSON.stringify(st));
+    if ((await p2.evaluate(() => window.__maps.map().id)) !== id1) throw new Error("tweede tabblad: niet de laatste kaart");
+    await p2.close(); await p3.close();
+  },
+  // WP58 (G4): privémodus zonder IndexedDB. Duidelijke melding (strook + rode status "wordt niet bewaard"), editor werkt.
+  async wp58priv(page) {
+    await page.waitForFunction(() => window.__maps && window.__maps.map());
+    const st = await page.evaluate(() => ({ s: window.__maps.status(), bad: document.getElementById("m-stat").classList.contains("bad"), toast: document.querySelector("#m-toast .tmsg.bad")?.textContent || "" }));
+    if (st.s !== "off" || !st.bad || st.toast.length < 20) throw new Error("privémodus: " + JSON.stringify(st));
+    await tap(page, "#m-set"); await tap(page, '#m-type [data-v="flat"]');
+    if ((await page.evaluate(() => window.__maps.grid().orient)) !== "flat") throw new Error("editor werkt niet zonder opslag");
+    await page.keyboard.press("Escape");
+    await tap(page, "#m-maps"); await page.locator("#m-list").waitFor({ state: "visible" });
+    if (!(await page.locator("#m-l-off").isVisible()) || (await page.locator("#m-lrows .mkl-row").count()) !== 1) throw new Error("lijst in privémodus");
+    await tap(page, "#m-new");
+    await page.waitForFunction(() => window.__maps.view$() === "edit");
+    await tap(page, "#m-maps"); await page.locator("#m-list").waitFor({ state: "visible" });
+    if ((await page.locator("#m-lrows .mkl-row").count()) !== 2) throw new Error("nieuwe kaart in privémodus");
+    // review: verwijderen, naar de editor, Ongedaan → precies één keer terug in de lijst
+    const gone = await page.evaluate(() => document.querySelectorAll("#m-lrows .mkl-m")[1].dataset.id);
+    await tap(page, `#m-lrows .mkl-m[data-id="${gone}"]`); await tap(page, '#m-menu [data-m="del"]');
+    await tap(page, "#m-back"); await page.waitForFunction(() => window.__maps.view$() === "edit");
+    await tap(page, "#m-toast .tundo");
+    await tap(page, "#m-maps"); await page.locator("#m-list").waitFor({ state: "visible" });
+    const ids = await page.evaluate(() => [...document.querySelectorAll("#m-lrows .mkl-o")].map((b) => b.dataset.id));
+    if (ids.length !== 2 || ids.filter((x) => x === gone).length !== 1) throw new Error("Ongedaan vanuit de editor: " + ids);
   },
   speler: null, // eigen startpagina, zie START
   home: null, homeen: null, notfound: null, // WP30: publieke homepage per taal en de niet-gevonden-pagina (START)
@@ -1241,6 +1398,7 @@ async function main() {
       const mode = lang === "xx" ? "xx" : i18n, pl = lang === "xx" ? "en" : lang;
       const ctx = await browser.newContext({ viewport: { width: w, height: 740 }, hasTouch: true, isMobile: true, colorScheme: scheme, deviceScaleFactor: 2, serviceWorkers: "block" });
       await ctx.addInitScript((m) => { try { localStorage.setItem("it-tour", "pf"); if (m) localStorage.setItem("kevs-i18n-debug", m); } catch { /* geen opslag */ } }, mode);
+      if (INIT[name]) await ctx.addInitScript(INIT[name]);
       const page = await ctx.newPage(), errs = [];
       page.on("pageerror", (e) => errs.push(e.message));
       page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource/.test(m.text())) errs.push(m.text()); });
