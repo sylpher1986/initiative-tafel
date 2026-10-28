@@ -77,7 +77,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/" };
 // Eigen taalopzet: niet per taal herhalen (WP32)
 const ONCE = new Set(["i18n-mixed", "i18n-switch", "i18n-offline", "i18n-legacy", "homeen", "wp33", "wp43", "wp44"]);
 // Startpagina in een taal (pathFor: Engels zonder voorvoegsel); /nl/… wordt de pagina in die taal; ONCE blijft zoals het is
@@ -279,6 +279,62 @@ const SCEN = {
     const sc = await page.evaluate(() => ({ y: scrollY, sh: document.documentElement.scrollHeight, ih: innerHeight, ta: getComputedStyle(document.getElementById("m-canvas")).touchAction, lbl: document.getElementById("m-canvas").getAttribute("aria-label"), ver: document.getElementById("m-ver").textContent }));
     if (sc.y !== 0 || sc.sh > sc.ih || sc.ta !== "none") throw new Error("pagina scrolt of touch-action: " + JSON.stringify(sc));
     if (!/20/.test(sc.lbl || "") || !/^\d+\.\d+\.\d+$/.test(sc.ver)) throw new Error("label/versie: " + JSON.stringify(sc));
+  },
+  // WP57 (G4): paneel Kaart. Opent zonder dim (kaart blijft zichtbaar), velden ≥ 16 px; type wisselen behoudt kolommen/rijen;
+  // 0, 101, leeg en tekst geweigerd met foutregel (raster ongewijzigd); geldig = direct; raster uit = binnen de kaart één
+  // kleur (alleen de rand); Esc sluit en zet de focus terug. --shots=wp57: vierkant, hex punt, hex plat.
+  async wp57(page) {
+    await page.waitForFunction(() => window.__maps && document.getElementById("m-zoom").textContent);
+    const grid = () => page.evaluate(() => window.__maps.grid());
+    const frame = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await tap(page, "#m-set");
+    await page.locator("#m-sheet").waitFor({ state: "visible" });
+    const sh = await page.evaluate(() => { const s = document.getElementById("m-sheet").getBoundingClientRect(); return { top: s.top, ih: innerHeight, fs: parseFloat(getComputedStyle(document.getElementById("m-cols")).fontSize), dim: !!document.querySelector("#m-sheet ~ .dim, .sheet-wrap:not([hidden])"), exp: document.getElementById("m-set").getAttribute("aria-expanded"), cols: document.getElementById("m-cols").value } ; });
+    if (sh.fs < 16 || sh.dim || sh.exp !== "true" || sh.cols !== "20") throw new Error("paneel: " + JSON.stringify(sh));
+    await frame();
+    const fitTop = await page.evaluate(() => { const v = window.__maps.view(), st = document.getElementById("m-stage").getBoundingClientRect(); return { bot: st.top + v.y + 15 * 48 * v.z, sheet: document.getElementById("m-sheet").getBoundingClientRect().top, top: st.top + v.y }; });
+    if (fitTop.bot > fitTop.sheet + 0.5 || fitTop.top < 0) throw new Error("kaart niet passend boven het paneel: " + JSON.stringify(fitTop));
+    await snap(page, "wp57", "vierkant");
+    await tap(page, '#m-type [data-v="pointy"]'); await frame();
+    let g = await grid();
+    if (g.type !== "hex" || g.orient !== "pointy" || g.cols !== 20 || g.rows !== 15) throw new Error("hex punt: " + JSON.stringify(g));
+    await snap(page, "wp57", "hexpunt");
+    await tap(page, '#m-type [data-v="flat"]'); await frame();
+    g = await grid();
+    if (g.orient !== "flat" || g.cols !== 20 || g.rows !== 15) throw new Error("hex plat: " + JSON.stringify(g));
+    await snap(page, "wp57", "hexplat");
+    for (const bad of ["0", "101", "", "abc"]) {
+      await page.locator("#m-cols").fill(bad); await page.locator("#m-cols").press("Enter"); await frame();
+      const st = await page.evaluate(() => ({ inv: document.getElementById("m-cols").getAttribute("aria-invalid"), err: !document.getElementById("m-cols-e").hidden && document.getElementById("m-cols-e").textContent, cols: window.__maps.grid().cols }));
+      if (st.inv !== "true" || !st.err || st.cols !== 20) throw new Error(`ongeldig "${bad}": ` + JSON.stringify(st));
+    }
+    await page.locator("#m-cols").fill("30"); await page.locator("#m-cols").press("Enter");
+    await page.locator("#m-rows").fill("8"); await page.locator("#m-rows").press("Enter"); await frame();
+    g = await grid();
+    if (g.cols !== 30 || g.rows !== 8 || (await page.locator("#m-cols-e").isVisible())) throw new Error("geldig: " + JSON.stringify(g));
+    await tap(page, '#m-type [data-v="square"]'); await tap(page, '#m-show [data-v="off"]'); await frame();
+    g = await grid();
+    if (g.show || g.type !== "square" || g.cols !== 30 || !(await page.locator('#m-color [data-v="gold"]').isDisabled())) throw new Error("raster uit: " + JSON.stringify(g));
+    // binnen de kaart (zonder de rand) maar één kleur: geen rasterlijnen; vierkant én hex
+    const oneColor = () => page.evaluate(() => {
+      const c = document.getElementById("m-canvas"), v = window.__maps.view(), d = window.__maps.size().dpr, s = 48 * v.z * d;
+      const x0 = Math.ceil(v.x * d + 6), y0 = Math.ceil(v.y * d + 6), x1 = Math.floor(v.x * d + 26 * s), y1 = Math.floor(v.y * d + 6 * s);
+      const X0 = Math.max(0, x0), Y0 = Math.max(0, y0), W = Math.min(c.width, x1) - X0, H = Math.min(c.height, y1) - Y0;
+      if (W < 20 || H < 20) return "te klein " + [W, H];
+      const px = c.getContext("2d").getImageData(X0, Y0, W, H).data, set = new Set();
+      for (let i = 0; i < px.length; i += 4) set.add(px[i] + "," + px[i + 1] + "," + px[i + 2]);
+      return set.size;
+    });
+    let one = await oneColor();
+    if (one !== 1) throw new Error("raster uit (vierkant): kleuren binnen de kaart = " + one);
+    await tap(page, '#m-type [data-v="pointy"]'); await frame();
+    one = await oneColor();
+    if (one !== 1) throw new Error("raster uit (hex): kleuren binnen de kaart = " + one);
+    const tabs = await page.evaluate(() => [...document.querySelectorAll(".mdock button")].every((b) => b.getAttribute("tabindex") === "-1"));
+    if (!tabs) throw new Error("dockknoppen bereikbaar met Tab onder het open paneel");
+    await page.keyboard.press("Escape"); await frame();
+    const cl = await page.evaluate(() => ({ hid: document.getElementById("m-sheet").hidden, foc: document.activeElement?.id, exp: document.getElementById("m-set").getAttribute("aria-expanded") }));
+    if (!cl.hid || cl.foc !== "m-set" || cl.exp !== "false" || await page.evaluate(() => !!document.querySelector(".mdock button[tabindex]"))) throw new Error("sluiten: " + JSON.stringify(cl));
   },
   speler: null, // eigen startpagina, zie START
   home: null, homeen: null, notfound: null, // WP30: publieke homepage per taal en de niet-gevonden-pagina (START)

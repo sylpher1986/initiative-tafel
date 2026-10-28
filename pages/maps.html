@@ -29,7 +29,28 @@
     <output id="m-zoom" aria-label="{{t:maps.zoom.level}}" aria-live="polite"></output>
     <button type="button" class="btn" id="m-in" aria-label="{{t:maps.zoom.in}}"><span aria-hidden="true">+</span></button>
   </div>
-  <button type="button" class="btn" id="m-fit">{{t:maps.fit}}</button>
+  <div class="mright">
+    <button type="button" class="btn" id="m-fit">{{t:maps.fit}}</button>
+    <button type="button" class="btn" id="m-set" aria-label="{{t:maps.panel.open}}" aria-expanded="false" aria-controls="m-sheet"><svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-gear"/></svg></button>
+  </div>
 </nav>
+<!-- WP57: paneel Kaart. Geen dim: de kaart blijft erboven zichtbaar en bedienbaar, zodat elke wijziging direct te zien is
+     (max ± 55 % hoogte). Niet-modaal; Esc of Close sluit, focus terug naar de tandwielknop. -->
+<section class="msheet" id="m-sheet" role="dialog" aria-labelledby="m-s-title" tabindex="-1" hidden>
+  <div class="grab" aria-hidden="true"></div>
+  <div class="shead"><h3 id="m-s-title">{{t:maps.panel.title}}</h3><button type="button" class="link" id="m-close">{{t:maps.panel.close}}</button></div>
+  <div class="mfield"><span class="lab" id="m-type-l">{{t:maps.grid.type}}</span>
+    <div class="seg" id="m-type" role="group" aria-labelledby="m-type-l"><button type="button" data-v="square">{{t:maps.grid.square}}</button><button type="button" data-v="pointy">{{t:maps.grid.pointy}}</button><button type="button" data-v="flat">{{t:maps.grid.flat}}</button></div></div>
+  <div class="f2">
+    <label>{{t:maps.grid.cols}}<input id="m-cols" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-describedby="m-cols-e"><span class="ferr" id="m-cols-e" hidden></span></label>
+    <label>{{t:maps.grid.rows}}<input id="m-rows" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-describedby="m-rows-e"><span class="ferr" id="m-rows-e" hidden></span></label>
+  </div>
+  <div class="mfield"><span class="lab" id="m-show-l">{{t:maps.grid.lines}}</span>
+    <div class="seg" id="m-show" role="group" aria-labelledby="m-show-l"><button type="button" data-v="on">{{t:maps.grid.on}}</button><button type="button" data-v="off">{{t:maps.grid.off}}</button></div></div>
+  <div class="mfield"><span class="lab" id="m-color-l">{{t:maps.grid.color}}</span>
+    <div class="seg" id="m-color" role="group" aria-labelledby="m-color-l"><button type="button" data-v="auto">{{t:maps.color.auto}}</button><button type="button" data-v="dark">{{t:maps.color.dark}}</button><button type="button" data-v="light">{{t:maps.color.light}}</button><button type="button" data-v="gold">{{t:maps.color.gold}}</button></div></div>
+  <div class="mfield"><span class="lab" id="m-alpha-l">{{t:maps.grid.alpha}}</span>
+    <div class="seg" id="m-alpha" role="group" aria-labelledby="m-alpha-l"><button type="button" data-v="25"></button><button type="button" data-v="50"></button><button type="button" data-v="75"></button><button type="button" data-v="100"></button></div></div>
+</section>
 </body>
 </html>

@@ -30,7 +30,28 @@
     <output id="m-zoom" aria-label="Zoomniveau" aria-live="polite"></output>
     <button type="button" class="btn" id="m-in" aria-label="Inzoomen"><span aria-hidden="true">+</span></button>
   </div>
-  <button type="button" class="btn" id="m-fit">Hele kaart</button>
+  <div class="mright">
+    <button type="button" class="btn" id="m-fit">Hele kaart</button>
+    <button type="button" class="btn" id="m-set" aria-label="Kaartinstellingen" aria-expanded="false" aria-controls="m-sheet"><svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-gear"/></svg></button>
+  </div>
 </nav>
+<!-- WP57: paneel Kaart. Geen dim: de kaart blijft erboven zichtbaar en bedienbaar, zodat elke wijziging direct te zien is
+     (max ± 55 % hoogte). Niet-modaal; Esc of Close sluit, focus terug naar de tandwielknop. -->
+<section class="msheet" id="m-sheet" role="dialog" aria-labelledby="m-s-title" tabindex="-1" hidden>
+  <div class="grab" aria-hidden="true"></div>
+  <div class="shead"><h3 id="m-s-title">Kaart</h3><button type="button" class="link" id="m-close">Sluiten</button></div>
+  <div class="mfield"><span class="lab" id="m-type-l">Raster</span>
+    <div class="seg" id="m-type" role="group" aria-labelledby="m-type-l"><button type="button" data-v="square">Vierkant</button><button type="button" data-v="pointy">Hex punt</button><button type="button" data-v="flat">Hex plat</button></div></div>
+  <div class="f2">
+    <label>Kolommen<input id="m-cols" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-describedby="m-cols-e"><span class="ferr" id="m-cols-e" hidden></span></label>
+    <label>Rijen<input id="m-rows" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-describedby="m-rows-e"><span class="ferr" id="m-rows-e" hidden></span></label>
+  </div>
+  <div class="mfield"><span class="lab" id="m-show-l">Rasterlijnen</span>
+    <div class="seg" id="m-show" role="group" aria-labelledby="m-show-l"><button type="button" data-v="on">Aan</button><button type="button" data-v="off">Uit</button></div></div>
+  <div class="mfield"><span class="lab" id="m-color-l">Lijnkleur</span>
+    <div class="seg" id="m-color" role="group" aria-labelledby="m-color-l"><button type="button" data-v="auto">Auto</button><button type="button" data-v="dark">Donker</button><button type="button" data-v="light">Licht</button><button type="button" data-v="gold">Goud</button></div></div>
+  <div class="mfield"><span class="lab" id="m-alpha-l">Lijndekking</span>
+    <div class="seg" id="m-alpha" role="group" aria-labelledby="m-alpha-l"><button type="button" data-v="25"></button><button type="button" data-v="50"></button><button type="button" data-v="75"></button><button type="button" data-v="100"></button></div></div>
+</section>
 </body>
 </html>

@@ -178,7 +178,7 @@ Nummering loopt door op de repo-historie (laatste was WP55). Elk pakket = één 
 - Risico's: iOS Safari-gebaren (paginazoom) → `touch-action`, `gesturestart` blokkeren; gedeelde sw-versie → D2.
 - Grootte M: nieuwe pagina-infrastructuur + eerste canvas en gebaren.
 
-**WP57 · Hexraster en rasterinstellingen** · M
+**WP57 · Hexraster en rasterinstellingen** · M — klaar (28-10-2026, Maps 0.2.0; keuzes in CLAUDE.md → Inn the Grid)
 - Doel: kiezen tussen vierkant en hex (pointy/flat), afmetingen, raster tonen/verbergen, kleur en transparantie.
 - Scope: `model/grid.js` hex (axiaal ↔ offset, celpolygoon, `cellAt`, buren), paneel "Kaart" (type, kolommen, rijen 1–100, zichtbaar, kleur uit vaste set, transparantie), wijzigen werkt direct.
 - Niet: opslag, achtergrond.
@@ -308,7 +308,7 @@ Kleinste waardevolle eind-tot-eind-release: **M1**.
 | D7 | Zichtbaarheid | Tot M2 niet op de homepage, niet installeerbaar, `noindex`; besluit in WP67 |
 | D8 | Koppeling (fase 3) | Zelfde-origin lezen + bestand als terugval |
 | D9 | Reviewers in de functionele fase | Volgens CLAUDE.md; UX-agent alleen bij echte keuzes, vormgeving pas in WP68 |
-| D10 | Grenzen | Max 100×100 cellen, 2000 objecten (bijstellen na WP66) |
+| D10 | Grenzen | **Kaart: besloten in WP57 op het advies, max 100×100 cellen**; objecten: 2000 (advies, bijstellen na WP66) |
 | D11 | Tabbladen | Eigen `maps-tab`, nieuwste wint |
 | D12 | Uploads | ≤ 25 MB invoer, opgeslagen ≤ 4096 px, alleen PNG/JPEG/WebP |
 
@@ -328,7 +328,7 @@ Geen meer: D1–D3 zijn besloten. De rest start op het advies en wordt per pakke
 ---
 
 ## 7. Volgende stap
-WP56 is klaar (28-10-2026). Volgende: **WP57 · Hexraster en rasterinstellingen.**
+WP56 en WP57 zijn klaar (28-10-2026). Volgende: **WP58 · Kaarten lokaal bewaren, kaartenlijst, opslagstatus.**
 
 Oorspronkelijk advies bij de start van G4: **WP56 · Tool-skelet met vierkant raster, pannen en zoomen.**
 Waarom eerst: laagste risico, raakt Initiative niet, legt pad, pagina, catalogus, service worker, tests, browsercheck en het canvas-/gebarenfundament vast waar elk volgend pakket op bouwt. Na WP56 is er al iets op de telefoon te openen.

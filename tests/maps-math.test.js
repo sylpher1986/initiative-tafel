@@ -1,16 +1,17 @@
 // Inn the Grid (G4, WP56): rasterwiskunde en viewport (pannen, zoomen, knijpen, passend maken), puur.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { squareGrid, cellAt, cellRect, inside, bounds, visibleLines, LIMITS } from "../js/maps/model/grid.js";
+import { squareGrid, cellAt, cellRect, inside, bounds, visibleLines, LIMITS, cleanGrid, parseCells, cellPoly, cellCenter, neighbors, toAxial, fromAxial, visibleCells, HEX_R } from "../js/maps/model/grid.js";
 import { CELL, ZMIN, ZMAX, KEEP, toScreen, toMap, zoomAt, panBy, pinch, fitView, clampPan, clampZoom, visibleRect, wheelFactor, crisp, zoomPct } from "../js/maps/model/view.js";
 
 const near = (a, b, msg, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, `${msg}: ${a} ≠ ${b}`);
 
 test("squareGrid: standaard 20×15, gehele getallen binnen de grenzen, onzin → standaard", () => {
-  assert.deepEqual(squareGrid(), { type: "square", cols: 20, rows: 15 });
-  assert.deepEqual(squareGrid(0, 500), { type: "square", cols: LIMITS.minCells, rows: LIMITS.maxCells });
-  assert.deepEqual(squareGrid(3.6, "x"), { type: "square", cols: 4, rows: 15 });
-  assert.deepEqual(squareGrid(NaN, -2), { type: "square", cols: 20, rows: 1 });
+  const sz = (g) => ({ type: g.type, cols: g.cols, rows: g.rows });
+  assert.deepEqual(sz(squareGrid()), { type: "square", cols: 20, rows: 15 });
+  assert.deepEqual(sz(squareGrid(0, 500)), { type: "square", cols: LIMITS.minCells, rows: LIMITS.maxCells });
+  assert.deepEqual(sz(squareGrid(3.6, "x")), { type: "square", cols: 4, rows: 15 });
+  assert.deepEqual(sz(squareGrid(NaN, -2)), { type: "square", cols: 20, rows: 1 });
 });
 
 test("cellAt: halfopen cellen, randen, negatieve en buiten-de-kaart-coördinaten", () => {
@@ -128,4 +129,101 @@ test("crisp: lijn op het midden van een apparaatpixel bij DPR 1, 2 en 3", () => 
     assert.ok(Math.abs(X - 0.5 - x * dpr) <= 0.5, "hooguit een halve apparaatpixel verschoven");
   }
   assert.equal(zoomPct({ z: 0.255 }), 26);
+});
+
+// ---- WP57: hex, rasterinstellingen ----
+const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+// punt in convexe veelhoek (met de klok mee in schermcoördinaten, y omlaag): elk kruisproduct ≥ -eps
+const inPoly = (poly, x, y, eps = 1e-9) => poly.every((a, i) => { const b = poly[(i + 1) % poly.length]; return (b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x) >= -eps; });
+
+test("WP57 parseCells: alleen hele getallen 1–100; 0, 101, leeg, tekst, komma en min geweigerd", () => {
+  for (const [v, n] of [["1", 1], ["100", 100], [" 15 ", 15], ["015", 15], [42, 42]]) assert.equal(parseCells(v), n, String(v));
+  for (const v of ["0", "101", "", "  ", "abc", "1.5", "1,5", "-3", "1e2", "12a", null, undefined, "1000"]) assert.equal(parseCells(v), null, String(v));
+});
+
+test("WP57 cleanGrid: standaard, begrensd, onbekende waarden → standaard, dekking op de vaste stappen", () => {
+  assert.deepEqual(cleanGrid(), { type: "square", orient: "pointy", cols: 20, rows: 15, show: true, color: "auto", alpha: 50 });
+  assert.deepEqual(cleanGrid({ type: "hex", orient: "flat", cols: 7, rows: 9, show: false, color: "gold", alpha: 75 }),
+    { type: "hex", orient: "flat", cols: 7, rows: 9, show: false, color: "gold", alpha: 75 });
+  const g = cleanGrid({ type: "tri", orient: "x", cols: 0, rows: 999, color: "pink", alpha: 3, show: "ja", extra: 1 });
+  assert.deepEqual(g, { type: "square", orient: "pointy", cols: 1, rows: 100, show: true, color: "auto", alpha: 25 });
+  const z = cleanGrid({ show: "false", cols: [5], rows: true, alpha: true }); assert.deepEqual([z.show, z.cols, z.rows, z.alpha], [false, 20, 15, 50]);
+  assert.deepEqual([cleanGrid({ cols: "12" }).cols, cleanGrid({ cols: "" }).cols], [12, 20]);
+  assert.equal(cleanGrid({ alpha: 64 }).alpha, 75); assert.equal(cleanGrid({ alpha: "x" }).alpha, 50); assert.equal(cleanGrid({ alpha: 400 }).alpha, 100);
+});
+
+test("WP57 acceptatie 2: wisselen van type behoudt kolommen/rijen (en de hex-oriëntatie)", () => {
+  let g = cleanGrid({ cols: 33, rows: 12 });
+  g = cleanGrid({ ...g, type: "hex", orient: "flat" }); assert.deepEqual([g.cols, g.rows, g.orient], [33, 12, "flat"]);
+  g = cleanGrid({ ...g, type: "square" }); assert.deepEqual([g.type, g.cols, g.rows], ["square", 33, 12]);
+  g = cleanGrid({ ...g, type: "hex" }); assert.equal(g.orient, "flat", "terug naar hex: laatste oriëntatie");
+});
+
+for (const orient of ["pointy", "flat"]) {
+  const g = cleanGrid({ type: "hex", orient, cols: 20, rows: 15 });
+
+  test(`WP57 acceptatie 1 (${orient}): cellAt geeft voor 1000 willekeurige punten de cel waarvan de zeshoek het punt bevat`, () => {
+    const rnd = rng(orient === "pointy" ? 11 : 23), b = bounds(g);
+    for (let i = 0; i < 1000; i++) {
+      const x = rnd() * (b.w + 6) - 3, y = rnd() * (b.h + 6) - 3, { c, r } = cellAt(g, x, y);
+      assert.ok(Number.isInteger(c) && Number.isInteger(r), `${x},${y}`);
+      assert.ok(inPoly(cellPoly(g, c, r), x, y), `${orient} ${x},${y} → ${c},${r}`);
+    }
+  });
+
+  test(`WP57 hex (${orient}): middelpunt en hoekpunten (net binnen) vallen in hun eigen cel, ook negatief en rechtsonder`, () => {
+    for (const [c, r] of [[0, 0], [1, 0], [0, 1], [1, 1], [19, 14], [-1, -1], [-2, 3], [5, -4], [20, 15]]) {
+      const m = cellCenter(g, c, r);
+      assert.deepEqual(cellAt(g, m.x, m.y), { c, r }, `middelpunt ${c},${r}`);
+      for (const p of cellPoly(g, c, r)) {
+        const q = { x: m.x + (p.x - m.x) * 0.999, y: m.y + (p.y - m.y) * 0.999 };
+        assert.deepEqual(cellAt(g, q.x, q.y), { c, r }, `hoek ${c},${r}`);
+      }
+    }
+    assert.ok(!Object.is(cellAt(g, 0.01, 0.3).c, -0), "geen -0");
+  });
+
+  test(`WP57 hex (${orient}): zeshoek met buurafstand 1, cel (0,0) raakt links en boven, bounds omsluit alle cellen precies`, () => {
+    const poly = cellPoly(g, 4, 5);
+    assert.equal(poly.length, 6);
+    for (const p of poly) near(Math.hypot(p.x - cellCenter(g, 4, 5).x, p.y - cellCenter(g, 4, 5).y), HEX_R, "straal");
+    for (const n of neighbors(g, 4, 5)) { const a = cellCenter(g, 4, 5), m = cellCenter(g, n.c, n.r); near(Math.hypot(m.x - a.x, m.y - a.y), 1, `buur ${n.c},${n.r}`, 1e-9); }
+    const b = bounds(g); let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let r = 0; r < g.rows; r++) for (let c = 0; c < g.cols; c++) for (const p of cellPoly(g, c, r)) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }
+    near(x0, 0, "links", 1e-9); near(y0, 0, "boven", 1e-9); near(x1, b.w, "rechts", 1e-9); near(y1, b.h, "onder", 1e-9);
+    for (const [c, r] of [[0, 0], [7, 3], [3, 7]]) { const R = cellRect(g, c, r); for (const p of cellPoly(g, c, r)) assert.ok(p.x >= R.x - 1e-9 && p.x <= R.x + R.w + 1e-9 && p.y >= R.y - 1e-9 && p.y <= R.y + R.h + 1e-9); }
+  });
+
+  test(`WP57 hex (${orient}): offset ↔ axiaal heen en terug; 6 verschillende buren, elk wederzijds`, () => {
+    for (const [c, r] of [[0, 0], [3, 4], [4, 3], [-3, -5], [99, 99]]) {
+      const a = toAxial(g, c, r); assert.deepEqual(fromAxial(g, a.q, a.r), { c, r });
+      const ns = neighbors(g, c, r);
+      assert.equal(new Set(ns.map((n) => n.c + "," + n.r)).size, 6);
+      for (const n of ns) assert.ok(neighbors(g, n.c, n.r).some((m) => m.c === c && m.r === r), `${c},${r} ↔ ${n.c},${n.r}`);
+    }
+  });
+
+  test(`WP57 hex (${orient}): visibleCells dekt elke cel die de viewport raakt, leeg buiten de kaart`, () => {
+    const rnd = rng(5);
+    for (let k = 0; k < 40; k++) {
+      const rect = { x: rnd() * 24 - 2, y: rnd() * 18 - 2, w: rnd() * 8 + 0.1, h: rnd() * 6 + 0.1 }, C = visibleCells(g, rect);
+      for (let r = 0; r < g.rows; r++) for (let c = 0; c < g.cols; c++) {
+        const R = cellRect(g, c, r), hit = R.x < rect.x + rect.w && R.x + R.w > rect.x && R.y < rect.y + rect.h && R.y + R.h > rect.y;
+        if (hit) assert.ok(c >= C.c0 && c <= C.c1 && r >= C.r0 && r <= C.r1, `${JSON.stringify(rect)} mist ${c},${r}`);
+      }
+    }
+    const b = bounds(g);
+    for (const rect of [{ x: b.w + 1, y: 0, w: 3, h: 3 }, { x: -9, y: 0, w: 3, h: 3 }, { x: 0, y: b.h + 1, w: 3, h: 3 }, { x: 0, y: -9, w: 3, h: 3 }]) {
+      const C = visibleCells(g, rect); assert.ok(C.c0 > C.c1 || C.r0 > C.r1, JSON.stringify(rect));
+    }
+  });
+}
+
+test("WP57 hex: één rij/kolom heeft geen halve-cel-uitsprong; vierkant: neighbors en cellPoly", () => {
+  near(bounds(cleanGrid({ type: "hex", orient: "pointy", cols: 5, rows: 1 })).w, 5, "pointy 1 rij");
+  near(bounds(cleanGrid({ type: "hex", orient: "flat", cols: 1, rows: 5 })).h, 5, "flat 1 kolom");
+  const s = squareGrid(4, 4);
+  assert.deepEqual(neighbors(s, 1, 1).map((n) => [n.c, n.r]).sort(), [[0, 1], [1, 0], [1, 2], [2, 1]]);
+  assert.deepEqual(cellPoly(s, 2, 3), [{ x: 2, y: 3 }, { x: 3, y: 3 }, { x: 3, y: 4 }, { x: 2, y: 4 }]);
+  const C = visibleCells(s, { x: 2.5, y: 3, w: 4, h: 2.2 }); assert.deepEqual(C, { c0: 2, c1: 3, r0: 3, r1: 3 });
 });
