@@ -1,0 +1,36 @@
+<!doctype html>
+<!-- Gegenereerd door tools/pages.mjs uit pages/maps.html: wijzig het sjabloon en draai node tools/pages.mjs -->
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Inn the Grid · Kev’s Inn</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#241811" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1d130d" media="(prefers-color-scheme: dark)">
+<script src="/js/theme.js"></script>
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/maps.css">
+<script type="module" src="/js/maps/main.js"></script>
+</head>
+<!-- Inn the Grid (G4, WP56): geen manifest-link en geen it-version (docs/i18n.md §9.2 stap 2; installeren = D7, WP67) -->
+<body class="maps">
+<header class="mtop">
+  <a class="mhome" href="/nl/" aria-label="Homepage van Kev’s Inn"><!-- embleem: zelfde tekening als EMBLEM in tools/icons.mjs --><svg class="emb" viewBox="20 2 176 196" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M108 16 181 58v84l-73 42-73-42V58Z" stroke-width="11"/><g transform="translate(0 13)" stroke-width="10"><path d="M100 47v-8q8-10 16 0v8"/><path d="M88 55h40l-8 11H96Z"/><path d="M96 70h24l8 10v42H88V80Z"/><path d="M84 130h48"/></g><path d="M108 102c-9 10-9 19 0 26 9-7 9-16 0-26Z" fill="currentColor" stroke="none"/></svg></a>
+  <h1>Inn the Grid</h1>
+  <span class="mver" id="m-ver"></span>
+</header>
+<main class="mstage" id="m-stage">
+  <canvas id="m-canvas" role="img"></canvas>
+</main>
+<nav class="mdock" aria-label="Kaartbediening">
+  <div class="mzoom">
+    <button type="button" class="btn" id="m-out" aria-label="Uitzoomen"><span aria-hidden="true">−</span></button>
+    <output id="m-zoom" aria-label="Zoomniveau" aria-live="polite"></output>
+    <button type="button" class="btn" id="m-in" aria-label="Inzoomen"><span aria-hidden="true">+</span></button>
+  </div>
+  <button type="button" class="btn" id="m-fit">Hele kaart</button>
+</nav>
+</body>
+</html>

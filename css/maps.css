@@ -1,0 +1,19 @@
+/* Inn the Grid (G4, WP56): opmaak van de kaartenmaker. Gebruikt de tokens, letters en .btn uit css/app.css; geen hex
+   (kleuren alleen via tokens). Indeling telefoon: kop, canvas vol scherm, dockrij onderaan (docs/g4-inn-the-grid.md §2.7).
+   Vormgeving komt pas in WP68; dit is functioneel. */
+html,body.maps{height:100%;overflow:hidden;overscroll-behavior:none}
+body.maps{display:flex;flex-direction:column;padding:0;height:100dvh} /* zonder dvh (iOS < 15.4) geldt height:100% hierboven, niet 100vh (dock achter de werkbalk) */
+.mtop{display:flex;align-items:center;gap:8px;padding:calc(4px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 4px max(4px,env(safe-area-inset-left,0px));
+  border-bottom:1px solid var(--line);background:var(--surface);flex:0 0 auto;min-width:0}
+.mhome{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;color:var(--act-ink);border-radius:var(--r)}
+.mhome .emb{width:28px;height:28px}
+.mtop h1{font-family:var(--brand);font-size:1.25rem;font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.mver{color:var(--muted);font-size:.85rem;white-space:nowrap}
+.mstage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}
+#m-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab}
+#m-canvas:active{cursor:grabbing}
+.mdock{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:0 0 auto;background:var(--surface);border-top:1px solid var(--line);
+  padding:8px max(12px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+.mzoom{display:flex;align-items:center;gap:4px}
+.mzoom .btn{font-size:1.25rem;line-height:1;padding:0}
+#m-zoom{min-width:4.2em;text-align:center;font-weight:600}

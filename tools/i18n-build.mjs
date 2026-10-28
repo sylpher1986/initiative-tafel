@@ -3,12 +3,16 @@
 // modules op een trage verbinding een rondgang per bestand kosten (dev-review WP20: +0,5 s op 3G bij 8 bestanden).
 // Daarnaast de testtaal locales/xx.js: Engels met accenten, tussen [ ] en ± 35 % langer (alleen via ?i18n=xx).
 // Opnieuw maken na elke wijziging in locales/src/: node tools/i18n-build.mjs (tests/i18n.test.js bewaakt het).
-import { readdirSync, writeFileSync } from "node:fs";
+import { readdirSync, writeFileSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const SRC_LANGS = ["en", "nl"];
 // namespace-bestand → sleutelvoorvoegsel (docs/i18n.md §3.2); volgorde = volgorde in de uitvoer
-export const NS = { common: "common.", initiative: "init.", rules: "rules.", log: "log.", player: "player.", dnd: "dnd.", pages: "page." };
+export const NS = { common: "common.", initiative: "init.", rules: "rules.", log: "log.", player: "player.", dnd: "dnd.", pages: "page.", maps: "maps." };
+// G4 (WP56): namespaces met een eigen catalogusbestand per taal (<map><taal>.js), buiten locales/<taal>.js. Inn the Grid
+// heeft een eigen versie en cache (docs/g4-inn-the-grid.md §2.10): een Maps-tekst mag niet in de Initiative-cache hangen.
+export const OWN = { maps: "locales/maps/" };
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 const MAP = { a: "á", e: "é", i: "í", o: "ö", u: "ü", y: "ý", c: "ç", n: "ñ", A: "Å", E: "É", I: "Í", O: "Ö", U: "Ü", C: "Ç", N: "Ñ" };
@@ -39,8 +43,10 @@ export async function loadSrc(lang, root = ROOT) {
   return out;
 }
 
-/** Namespaces samenvoegen tot één platte catalogus (volgorde van NS) */
-export const merge = (src) => Object.assign({}, ...Object.keys(NS).map((ns) => src[ns] || {}));
+/** Namespaces samenvoegen tot één platte catalogus (volgorde van NS); standaard alle, ook die uit OWN (tests: pariteit) */
+export const merge = (src, list = Object.keys(NS)) => Object.assign({}, ...list.map((ns) => src[ns] || {}));
+/** Catalogus van locales/<taal>.js: alle namespaces behalve die met een eigen bestand (OWN) */
+export const mainCat = (src) => merge(src, Object.keys(NS).filter((ns) => !OWN[ns]));
 
 /** Bestandsinhoud van locales/<taal>.js */
 export function catFile(lang, cat, note = "") {
@@ -55,11 +61,14 @@ export async function build(root = ROOT) {
   const files = {};
   let en = null;
   for (const l of SRC_LANGS) {
-    const cat = merge(await loadSrc(l, root));
-    if (l === "en") en = cat;
-    files[`locales/${l}.js`] = catFile(l, cat);
+    const src = await loadSrc(l, root);
+    if (l === "en") en = src;
+    files[`locales/${l}.js`] = catFile(l, mainCat(src));
+    for (const [ns, dir] of Object.entries(OWN)) files[`${dir}${l}.js`] = catFile(l, src[ns], `locales/src/${l}/${ns}.js`);
   }
-  files["locales/xx.js"] = catFile("xx", pseudo(en), "locales/src/en/ (testtaal, alleen via ?i18n=xx)");
+  const xx = "(testtaal, alleen via ?i18n=xx)";
+  files["locales/xx.js"] = catFile("xx", pseudo(mainCat(en)), `locales/src/en/ ${xx}`);
+  for (const [ns, dir] of Object.entries(OWN)) files[`${dir}xx.js`] = catFile("xx", pseudo(en[ns]), `locales/src/en/${ns}.js ${xx}`);
   return files;
 }
 
@@ -67,6 +76,6 @@ if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
   const extra = readdirSync(`${ROOT}locales/src`).filter((l) => !SRC_LANGS.includes(l));
   if (extra.length) console.warn("Let op: niet in SRC_LANGS:", extra.join(", "));
   const files = await build();
-  for (const [p, s] of Object.entries(files)) writeFileSync(ROOT + p, s);
+  for (const [p, s] of Object.entries(files)) { mkdirSync(dirname(ROOT + p), { recursive: true }); writeFileSync(ROOT + p, s); }
   console.log(Object.keys(files).join(", "));
 }

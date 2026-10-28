@@ -167,7 +167,7 @@ Nummering loopt door op de repo-historie (laatste was WP55). Elk pakket = één 
 
 ### Fase 1 — M1: kale, bruikbare kaart
 
-**WP56 · Tool-skelet met vierkant raster, pannen en zoomen** · M
+**WP56 · Tool-skelet met vierkant raster, pannen en zoomen** · M — **klaar 28-10-2026** (Maps 0.1.0, Initiative 2.11.2; geldende keuzes in CLAUDE.md → Inn the Grid)
 - Doel: `/maps/` en `/nl/maps/` openen een lege editor met een vierkant raster dat je kunt verschuiven en zoomen. Basis voor alles.
 - Scope: sjabloon `pages/maps.html` (regel in `APP_PAGES`, géén manifest-link en géén `it-version` volgens §9.2 stap 2), namespace `maps.` (`NS`, eigen catalogusbestand), `js/maps/main.js`, `model/grid.js` (alleen vierkant), `render/canvas.js` (viewport, transformatie, culling), invoer pan/zoom (muis, wiel, touch: één vinger pan, knijpen zoom), vaste nieuwe kaart 20×15 in het geheugen, `sw.js`-ASSETS, browsercheck `SCEN`/`START`, `auditFiles`/`codeFiles`, grenstest.
 - Niet: opslag, hex, instellingen, homepage-kaart, installeerbare app.
@@ -328,6 +328,8 @@ Geen meer: D1–D3 zijn besloten. De rest start op het advies en wordt per pakke
 ---
 
 ## 7. Volgende stap
-**WP56 · Tool-skelet met vierkant raster, pannen en zoomen.**
+WP56 is klaar (28-10-2026). Volgende: **WP57 · Hexraster en rasterinstellingen.**
+
+Oorspronkelijk advies bij de start van G4: **WP56 · Tool-skelet met vierkant raster, pannen en zoomen.**
 Waarom eerst: laagste risico, raakt Initiative niet, legt pad, pagina, catalogus, service worker, tests, browsercheck en het canvas-/gebarenfundament vast waar elk volgend pakket op bouwt. Na WP56 is er al iets op de telefoon te openen.
 Nodig vóór de start: niets meer (D1–D3 besloten). Start in een nieuw gesprek met push-toegang.

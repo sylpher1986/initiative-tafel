@@ -77,7 +77,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/" };
 // Eigen taalopzet: niet per taal herhalen (WP32)
 const ONCE = new Set(["i18n-mixed", "i18n-switch", "i18n-offline", "i18n-legacy", "homeen", "wp33", "wp43", "wp44"]);
 // Startpagina in een taal (pathFor: Engels zonder voorvoegsel); /nl/… wordt de pagina in die taal; ONCE blijft zoals het is
@@ -233,6 +233,52 @@ const SCEN = {
       return li.slice(1).filter((x, i) => Math.round(x.getBoundingClientRect().top) !== Math.round(li[i].getBoundingClientRect().top) && getComputedStyle(x, "::before").content !== "none").length; });
     if (dot) throw new Error("homepage-voet: regel begint met ·");
     await snap(page, "wp39", "home");
+  },
+  // WP56 (G4, Inn the Grid): /maps/ los van Initiative. Canvas op apparaatgrootte, kaart 20×15 passend in beeld, één vinger
+  // pant, knijpen zoomt rond het midden van de vingers, wiel zoomt rond de cursor, grenzen 25 %–400 % (knoppen uit),
+  // Passend maken herstelt, geen pagina-scroll. Gebaren als echte PointerEvents op het canvas (touch).
+  async maps(page) {
+    await page.waitForFunction(() => window.__maps && document.getElementById("m-zoom").textContent);
+    const st = () => page.evaluate(() => ({ ...window.__maps.view(), ...window.__maps.size() }));
+    const s0 = await st();
+    const geo = await page.evaluate(() => { const c = document.getElementById("m-canvas"), r = c.getBoundingClientRect(); return { cw: c.width, ch: c.height, w: r.width, h: r.height, left: r.left, top: r.top }; });
+    if (Math.abs(geo.cw - Math.round(geo.w * s0.dpr)) > 1 || Math.abs(geo.ch - Math.round(geo.h * s0.dpr)) > 1) throw new Error("canvas niet op apparaatgrootte: " + JSON.stringify(geo));
+    const CELL = 48, mapW = 20 * CELL * s0.z, mapH = 15 * CELL * s0.z;
+    if (s0.x < 15 || s0.y < 15 || s0.x + mapW > s0.w - 15 || s0.y + mapH > s0.h - 15) throw new Error("kaart niet passend: " + JSON.stringify(s0));
+    const touch = (steps) => page.evaluate(({ steps, left, top }) => {
+      const c = document.getElementById("m-canvas");
+      for (const [type, id, x, y] of steps) c.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: "touch", isPrimary: id === 1, clientX: left + x, clientY: top + y, bubbles: true, cancelable: true, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+    }, { steps, left: geo.left, top: geo.top });
+    // één vinger: pannen
+    await touch([["pointerdown", 1, 100, 100], ["pointermove", 1, 130, 90], ["pointermove", 1, 160, 80], ["pointerup", 1, 160, 80]]);
+    await page.waitForTimeout(50);
+    const s1 = await st();
+    if (Math.abs(s1.x - s0.x - 60) > 0.5 || Math.abs(s1.y - s0.y + 20) > 0.5 || s1.z !== s0.z) throw new Error("pannen: " + JSON.stringify([s0, s1]));
+    // knijpen: afstand 80 → 160 = ×2
+    await touch([["pointerdown", 1, 100, 150], ["pointerdown", 2, 180, 150], ["pointermove", 2, 260, 150], ["pointerup", 2, 260, 150], ["pointerup", 1, 100, 150]]);
+    await page.waitForTimeout(50);
+    const s2 = await st();
+    if (Math.abs(s2.z / s1.z - 2) > 0.01) throw new Error("knijpen: " + JSON.stringify([s1, s2]));
+    // wiel: inzoomen rond de cursor, kaartpunt onder de cursor blijft
+    await tap(page, "#m-fit"); await page.waitForTimeout(50);
+    const s3 = await st(), px = 120, py = 140, mx = (px - s3.x) / (CELL * s3.z);
+    await page.mouse.move(geo.left + px, geo.top + py); await page.mouse.wheel(0, -200); await page.waitForTimeout(80);
+    const s4 = await st(), mx2 = (px - s4.x) / (CELL * s4.z);
+    if (!(s4.z > s3.z) || Math.abs(mx2 - mx) > 1e-6) throw new Error("wiel: " + JSON.stringify([s3, s4]));
+    // grenzen: + tot 400 % (knop uit), − tot 25 % (knop uit)
+    const until = (id) => page.evaluate(async (id) => { // klikken tot de knop uitgaat (de stand volgt een frame later)
+      const b = document.getElementById(id), frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      for (let i = 0; i < 30 && !b.disabled; i++) { b.click(); await frame(); }
+      return b.disabled;
+    }, id);
+    if (!(await until("m-in")) || (await st()).z !== 4 || !/400/.test(await page.locator("#m-zoom").textContent())) throw new Error("max 400 %: " + JSON.stringify(await st()));
+    if (!(await until("m-out")) || (await st()).z !== 0.25) throw new Error("min 25 %: " + JSON.stringify(await st()));
+    await tap(page, "#m-fit"); await page.waitForTimeout(50);
+    const s5 = await st();
+    if (Math.abs(s5.z - s0.z) > 1e-9) throw new Error("Passend maken herstelt niet");
+    const sc = await page.evaluate(() => ({ y: scrollY, sh: document.documentElement.scrollHeight, ih: innerHeight, ta: getComputedStyle(document.getElementById("m-canvas")).touchAction, lbl: document.getElementById("m-canvas").getAttribute("aria-label"), ver: document.getElementById("m-ver").textContent }));
+    if (sc.y !== 0 || sc.sh > sc.ih || sc.ta !== "none") throw new Error("pagina scrolt of touch-action: " + JSON.stringify(sc));
+    if (!/20/.test(sc.lbl || "") || !/^\d+\.\d+\.\d+$/.test(sc.ver)) throw new Error("label/versie: " + JSON.stringify(sc));
   },
   speler: null, // eigen startpagina, zie START
   home: null, homeen: null, notfound: null, // WP30: publieke homepage per taal en de niet-gevonden-pagina (START)

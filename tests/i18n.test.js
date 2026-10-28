@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { SUPPORTED, DEFAULT } from "../js/i18n/lang.js";
-import { NS, SRC_LANGS, loadSrc, merge, pseudo, pseudoText, build } from "../tools/i18n-build.mjs";
+import { NS, OWN, SRC_LANGS, loadSrc, merge, mainCat, pseudo, pseudoText, build } from "../tools/i18n-build.mjs";
 import { i18nMode, initI18n, i18nDebug, t as bootT, DEBUG_KEY } from "../js/i18n/boot.js";
 import { CINFO, cinfoKeys } from "../js/rules/conditions.js";
 import { HS } from "../js/playerview.js";
@@ -83,10 +83,16 @@ test("elke vertaling (ook de testtaal) gebruikt dezelfde placeholders als Engels
 
 test("gebouwde catalogi zijn actueel (opnieuw maken: node tools/i18n-build.mjs)", async () => {
   const files = await build();
-  assert.deepEqual(Object.keys(files).sort(), ["locales/en.js", "locales/nl.js", "locales/xx.js"]);
+  assert.deepEqual(Object.keys(files).sort(), ["locales/en.js", "locales/maps/en.js", "locales/maps/nl.js", "locales/maps/xx.js", "locales/nl.js", "locales/xx.js"]);
   for (const [p, s] of Object.entries(files)) assert.equal(readFileSync(ROOT + p, "utf8"), s, p);
-  for (const l of SRC_LANGS) assert.deepEqual(await loadOut(l), cats[l], l);
-  assert.deepEqual(await loadOut("xx"), pseudo(en));
+  // G4 (WP56): namespaces uit OWN staan alleen in hun eigen bestand, niet in locales/<taal>.js (eigen cache)
+  for (const l of SRC_LANGS) assert.deepEqual(await loadOut(l), mainCat(src[l]), l);
+  assert.deepEqual(await loadOut("xx"), pseudo(mainCat(src[DEFAULT])));
+  for (const [ns, dir] of Object.entries(OWN)) {
+    for (const l of SRC_LANGS) assert.deepEqual(await loadOut(`${dir.slice("locales/".length)}${l}`), src[l][ns], `${dir}${l}`);
+    assert.deepEqual(await loadOut(`${dir.slice("locales/".length)}xx`), pseudo(src[DEFAULT][ns]));
+    assert.ok(!Object.keys(await loadOut(DEFAULT)).some((k) => k.startsWith(NS[ns])), `${NS[ns]}* hoort niet in locales/${DEFAULT}.js`);
+  }
 });
 
 // Sleutels in de code: elke string die met een namespace-voorvoegsel begint ("init.fight.next"), ook in lijsten of
@@ -104,7 +110,7 @@ test("scanner voor sleutels in de code: herkent sleutels, slaat bestandsnamen en
 });
 
 const walk = (dir) => readdirSync(ROOT + dir).flatMap((n) => { const p = dir + n; return statSync(ROOT + p).isDirectory() ? walk(p + "/") : [p]; });
-const codeFiles = [...walk("js/").filter((p) => p.endsWith(".js") && !p.startsWith("js/i18n/")), "pages/initiative.html", "pages/player.html"];
+const codeFiles = [...walk("js/").filter((p) => p.endsWith(".js") && !p.startsWith("js/i18n/")), "pages/initiative.html", "pages/player.html", "pages/maps.html"];
 const used = new Map();
 for (const f of codeFiles) for (const k of keysIn(readFileSync(ROOT + f, "utf8"))) used.set(k, f);
 

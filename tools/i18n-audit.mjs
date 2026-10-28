@@ -179,7 +179,7 @@ export function auditFiles(root = ROOT) {
     const p = dir + nm;
     return statSync(root + p).isDirectory() ? walk(p + "/") : [p];
   });
-  return [...walk("js/").filter((p) => p.endsWith(".js")), "pages/initiative.html", "pages/player.html", "pages/home.html"].sort();
+  return [...walk("js/").filter((p) => p.endsWith(".js")), "pages/initiative.html", "pages/player.html", "pages/home.html", "pages/maps.html"].sort();
 }
 
 /** { bestand: aantal } voor alle bestanden met minstens één Nederlandse tekst */

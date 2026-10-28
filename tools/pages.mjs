@@ -5,7 +5,8 @@
 // Adressen (WP44, 2.3.0): Engels zonder taalcode in de root, elke andere taal onder /{taal}/ (pathFor in js/i18n/lang.js).
 // Hieronder staat {base} voor "" (Engels) of "/{taal}" (bijv. "/nl").
 // Uitvoer:
-//   {base}/initiative/index.html, {base}/initiative/player/index.html   app-pagina's uit pages/*.html, per taal in
+//   {base}/initiative/index.html, {base}/initiative/player/index.html, {base}/maps/index.html (Inn the Grid, WP56)
+//                                                  app-pagina's uit pages/*.html, per taal in
 //                                                  SUPPORTED ({{lang}} en {{base}} ingevuld); en en nl live sinds WP33 (1.53.0)
 // Tekst in de sjablonen (WP23): {{t:sleutel}} = catalogustekst, geëscaped voor HTML (tekst en attributen);
 // {{tjs:sleutel}} = binnen een JS-string in een inline script of on…-attribuut (alles wat de string of het attribuut
@@ -26,11 +27,12 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { SUPPORTED, LIVE, DEFAULT, fallbackIn, pathFor, langBase, PREF_KEY, TAB_KEY } from "../js/i18n/lang.js";
+import { OWN } from "./i18n-build.mjs";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 /** App-pagina's: pad na het taalprefix → sjabloon */
-export const APP_PAGES = { "initiative/": "pages/initiative.html", "initiative/player/": "pages/player.html" };
+export const APP_PAGES = { "initiative/": "pages/initiative.html", "initiative/player/": "pages/player.html", "maps/": "pages/maps.html" };
 /** Bestand voor een adres in een taal: dir("en", "initiative/") → "initiative/", dir("nl", "") → "nl/" (WP44) */
 export const dirOf = (lang, rest = "") => pathFor(lang, "/" + rest).slice(1);
 /** Publieke homepage per taal (WP30): "/" (Engels) en "/{taal}/" */
@@ -216,7 +218,9 @@ export function notFoundPage(lang, cat) {
 export async function build(root = ROOT) {
   const out = {};
   for (const lang of SUPPORTED) {
-    const cat = (await import(pathToFileURL(`${root}locales/${lang}.js`).href)).default;
+    // hoofdcatalogus plus de eigen catalogi per tool (OWN, G4: locales/maps/<taal>.js) voor {{t:maps.…}}
+    const cat = Object.assign({}, (await import(pathToFileURL(`${root}locales/${lang}.js`).href)).default,
+      ...await Promise.all(Object.values(OWN).map(async (dir) => (await import(pathToFileURL(`${root}${dir}${lang}.js`).href)).default)));
     for (const [rest, src] of Object.entries(APP_PAGES)) out[`${dirOf(lang, rest)}index.html`] = appPage(readFileSync(root + src, "utf8"), src, lang, cat);
     out[`${dirOf(lang)}index.html`] = appPage(readFileSync(root + HOME_PAGE, "utf8").replace("{{seo}}", () => seoHead(lang, cat)).replace("{{langnav}}", () => langNav(lang, cat)), HOME_PAGE, lang, cat);
     out[`${dirOf(lang)}404.html`] = notFoundPage(lang, cat); // Engels = de taalloze /404.html, ook voor een ongeldig prefix

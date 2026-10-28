@@ -135,7 +135,7 @@ test("Engelse pagina's zonder Nederlandse tekst (paden als src/2014/en tellen ni
 test("pagina's: geen sleutel of plaatshouder zichtbaar, vet deel van een zin per taal", () => {
   for (const rest of Object.keys(APP_PAGES)) {
     const h = files[`nl/${rest}index.html`];
-    assert.doesNotMatch(h, /\{\{|\b(init|player|page|common)\.[a-z]+\.[A-Za-z0-9.]+/, rest);
+    assert.doesNotMatch(h, /\{\{|\b(init|player|page|common|maps)\.[a-z]+\.[A-Za-z0-9.]+/, rest);
   }
   assert.match(files["nl/initiative/index.html"], /<b>Geldt alleen voor spells:<\/b> de rest volgt regels 2014/);
   assert.match(files["initiative/index.html"], /<b>Applies to spells only:<\/b>/);

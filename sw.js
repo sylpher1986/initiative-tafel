@@ -1,11 +1,31 @@
 // Service worker: maakt de app offline bruikbaar. Geregistreerd als /sw.js met scope "/" (js/main.js), dus "./x" = "/x". Verhoog VERSION bij elke release zodat de cache ververst.
 // Gelijk houden aan js/version.js (de test bewaakt dat); dit is ook het nummer dat de app toont.
-const VERSION = "2.11.1";
+const VERSION = "2.11.2";
 const CACHE = "initiative-tafel-" + VERSION;
 // TS1: pdf.js (± 2,5 MB, alleen voor de PDF-import) in een eigen cache op zijn eigen versie: blijft staan bij een
 // app-update, zodat niet elke release hem opnieuw downloadt. Nieuwe pdf.js-versie = nieuwe map en nieuwe naam hier.
 const VENDOR = "initiative-tafel-pdfjs-3.11.174";
 const VENDOR_ASSETS = ["./vendor/pdfjs/pdf.js", "./vendor/pdfjs/pdf.worker.js"];
+// Inn the Grid (G4, WP56; docs/g4-inn-the-grid.md §2.10): eigen versie en eigen cache met alleen de Maps-bestanden.
+// Gelijk houden aan js/maps/version.js (tests/maps-sw.test.js). Een Maps-release verhoogt alleen MAPS_VERSION: CACHE
+// van Initiative heet dan nog hetzelfde en install haalt bestanden die daar al staan niet opnieuw op (en omgekeerd).
+// Gedeeld (css/app.css, fonts, iconen, js/i18n/*, js/theme.js, homepage) staat in ASSETS: wijzigen = Initiative-release.
+const MAPS_VERSION = "0.1.0";
+const MAPS_CACHE = "kevs-inn-maps-" + MAPS_VERSION;
+const MAPS_ASSETS = [
+  "./maps/",
+  "./nl/maps/",
+  "./css/maps.css",
+  "./js/maps/main.js",
+  "./js/maps/version.js",
+  "./js/maps/model/grid.js",
+  "./js/maps/model/view.js",
+  "./js/maps/render/canvas.js",
+  "./js/maps/ui/input.js",
+  "./locales/maps/en.js",
+  "./locales/maps/nl.js",
+  "./locales/maps/xx.js",
+];
 // Pagina's (WP21; WP44: Engels zonder taalcode): homepage (WP30) en app per taal plus de oude spelersadressen (/speler,
 // /player), die offline moeten werken voor beginscherm-apps en QR-links; tests/pages.test.js bewaakt dat elke
 // gegenereerde pagina hier staat. "/initiative/" is de start_url van elk manifest.
@@ -123,16 +143,26 @@ const put = (c, a) => fetch(a, { cache: "reload" }).then((res) => {
   return unredirect(res).then((r) => c.put(a, r));
 });
 
+// Alleen ophalen wat nog niet in deze cache staat: een cache hoort bij één versie (nieuwe versie = nieuwe naam = leeg),
+// dus een treffer is altijd actueel. Zo kost een Maps-release Initiative-gebruikers geen nieuwe download (WP56).
+// soft = best effort per bestand (een fout gooit niet).
+const fill = (name, list, soft) => caches.open(name).then((c) => Promise.all(list.map((a) => {
+  const p = c.match(a).then((hit) => hit || put(c, a));
+  return soft ? p.catch(() => {}) : p;
+})));
+
 self.addEventListener("install", (e) => {
   e.waitUntil(Promise.all([
-    caches.open(CACHE).then((c) => Promise.all(ASSETS.map((a) => put(c, a)))),
+    fill(CACHE, ASSETS),
+    // best effort: een mislukt Maps-bestand mag een Initiative-update niet tegenhouden (D2); de fetch-handler valt terug op het netwerk
+    fill(MAPS_CACHE, MAPS_ASSETS, true).catch(() => {}),
     // best effort: een mislukte pdf.js-download mag de app-update niet tegenhouden; de fetch-handler vult later aan
     caches.open(VENDOR).then((c) => Promise.all(VENDOR_ASSETS.map((a) => c.match(a).then((hit) => hit || put(c, a)).catch(() => {})))),
   ]).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (e) => {
-  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== VENDOR).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== VENDOR && k !== MAPS_CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });
 
 // Eigen bestanden: eerst cache (snel en offline). Extern: netwerk, met cache als terugval (sinds TS1 geen CDN meer).
