@@ -120,7 +120,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
@@ -533,6 +533,13 @@ const SCEN = {
     await tap(page, "#m-lrows .mkl-o"); await page.waitForFunction((id) => window.__maps.view$() === "edit" && window.__maps.map().id !== id, cur);
     await page.waitForFunction(() => window.__maps.bg().img, null, { timeout: 5000 }).catch(() => {});
     if (!(await page.evaluate(() => window.__maps.bg().img))) throw new Error("privémodus: achtergrond in de kopie ontbreekt");
+    // WP60: importeren zonder IndexedDB (kaart en asset in het geheugen)
+    await tap(page, "#m-maps"); await page.locator("#m-list").waitFor({ state: "visible" });
+    const [fi] = await Promise.all([page.waitForEvent("filechooser"), tap(page, "#m-imp")]);
+    await fi.setFiles(join(ROOT, "tests/fixtures/maps/valid.json"));
+    await page.waitForFunction(() => document.querySelectorAll("#m-lrows .mkl-row").length === 4, null, { timeout: 5000 });
+    await tap(page, "#m-lrows .mkl-o"); // bovenaan = de import
+    await page.waitForFunction(() => window.__maps.view$() === "edit" && window.__maps.map().name === "Test fixture" && window.__maps.bg().img, null, { timeout: 5000 });
   },
   // WP59 (G4): achtergrondafbeelding. Kiezen via de echte knop (bestandskiezer); GIF, SVG, HEIC, hernoemd tekstbestand en
   // > 25 MB geven elk een melding (acceptatie 1); testkaart 30×20 à 70 px: startschatting 70 px/cel, Raster passend
@@ -693,6 +700,104 @@ const SCEN = {
     b = await B();
     if (b.bg.ppc !== keep.ppc || b.bg.x !== keep.x || b.bg.w !== 2100) throw new Error("opnieuw kiezen: " + JSON.stringify({ keep, now: b.bg }));
     await page.locator("#m-sheet").evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  },
+  // WP60 (G4): projectbestand. Elk kapot bestand uit tests/fixtures/maps/ (en > 50 MB) via de echte importknop geeft een
+  // eigen foutregel en maakt geen kaart (acceptatie 3), ook opslag vol (put faalt); valid.json → nieuwe kaart bovenaan met focus, melding met
+  // Ongedaan, asset met de sha uit het bestand (5: nooit overschrijven, tweede import = "Test fixture 2"); Ongedaan haalt
+  // hem weg; kwaadaardige naam als tekst; exporteren via het menu (download) → bestand zonder id/URL's → importeren in een
+  // ánder browsercontext geeft dezelfde modeldata en een pixelgelijk canvas (1). --shots=wp60: lijst met fout, editor.
+  async wp60(page, base) {
+    const ready = (p = page) => p.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);
+    await ready();
+    const FX = join(ROOT, "tests/fixtures/maps");
+    const { readdirSync, readFileSync } = await import("node:fs");
+    const toList = async (p = page) => { await tap(p, "#m-maps"); await p.locator("#m-list").waitFor({ state: "visible" }); };
+    const imp = async (file, p = page) => {
+      const [fc] = await Promise.all([p.waitForEvent("filechooser"), tap(p, "#m-imp")]);
+      await fc.setFiles(file);
+      await p.waitForFunction(() => !document.getElementById("m-imp").disabled && !document.getElementById("m-imp").hasAttribute("aria-busy"), null, { timeout: 10000 });
+    };
+    const fxFile = (n) => ({ name: n, mimeType: "application/json", buffer: readFileSync(join(FX, n)) });
+    await toList();
+    if (!(await page.locator("#m-imp").isVisible())) throw new Error("importknop onder de lijst ontbreekt");
+    const n0 = (await mapsIdb(page, (all) => all.length >= 1)).length;
+    // kapotte bestanden: eigen foutregel per soort, geen nieuwe kaart
+    const msgs = new Map();
+    const errs = readdirSync(FX).filter((f) => f.startsWith("err-")).map(fxFile);
+    const big = join((await import("node:os")).tmpdir(), "inn-the-grid-groot.json"); // > 50 MB: Playwright wil dan een pad
+    (await import("node:fs")).writeFileSync(big, Buffer.alloc(35 * 1024 * 1024 + 1, 32)); // FILE_MAX + 1
+    errs.push(big);
+    for (const f of errs) {
+      await imp(f);
+      const e = await page.evaluate(() => ({ vis: !document.getElementById("m-imp-e").hidden, t: document.getElementById("m-imp-e").textContent }));
+      if (!e.vis || e.t.length < 10 || e.t.includes("⟦")) throw new Error(`${f.name || f}: geen foutregel ` + JSON.stringify(e));
+      msgs.set(e.t, f.name || f);
+    }
+    // opslag vol: put faalt → foutregel "store", geen kaart, knop weer bruikbaar
+    await page.evaluate(() => { window.__put = IDBObjectStore.prototype.put; IDBObjectStore.prototype.put = function () { throw new DOMException("vol", "QuotaExceededError"); }; });
+    await imp(fxFile("valid.json"));
+    await page.evaluate(() => { IDBObjectStore.prototype.put = window.__put; });
+    const se = await page.evaluate(() => ({ vis: !document.getElementById("m-imp-e").hidden, t: document.getElementById("m-imp-e").textContent, dis: document.getElementById("m-imp").disabled }));
+    if (!se.vis || se.dis || msgs.has(se.t)) throw new Error("opslag vol: " + JSON.stringify(se));
+    msgs.set(se.t, "store");
+    if ((await mapsIdb(page, () => true)).length !== n0) throw new Error("kapot bestand maakte toch een kaart");
+    // 13 foutbestanden + te groot + opslag vol, codes empty notjson format newer b64 sha missing image badmap big store: 11 teksten
+    if (msgs.size !== 11) throw new Error("foutregels niet per soort verschillend: " + [...msgs.keys()].join(" | "));
+    await snap(page, "wp60", "fout");
+    // geldig bestand: nieuwe kaart bovenaan met focus, melding met Ongedaan, foutregel weg
+    const fxDoc = JSON.parse(readFileSync(join(FX, "valid.json"), "utf8")), sha = Object.keys(fxDoc.assets)[0];
+    await imp(fxFile("valid.json"));
+    const all1 = await mapsIdb(page, (all) => all.length === n0 + 1);
+    const m1 = all1.find((m) => m.name === "Test fixture");
+    if (!m1 || m1.schema !== 2 || m1.bg.asset !== sha || m1.grid.cols !== 2 || m1.id === "import0") throw new Error("import: " + JSON.stringify(m1));
+    const st1 = await page.evaluate(() => ({ e: document.getElementById("m-imp-e").hidden, top: document.querySelector("#m-lrows .mkl-o")?.dataset.id, foc: document.activeElement?.dataset?.id, t: !!document.querySelector("#m-toast .tundo") }));
+    if (!st1.e || st1.top !== m1.id || st1.foc !== m1.id || !st1.t) throw new Error("na import: " + JSON.stringify(st1));
+    if (!(await mapsAssets(page)).some((a) => a.key === sha && a.w === 140 && a.ow === 140)) throw new Error("asset uit het bestand niet bewaard");
+    // nog een keer: nooit overschrijven, unieke naam; Ongedaan haalt alleen de tweede weg
+    await imp(fxFile("valid.json"));
+    const all2 = await mapsIdb(page, (all) => all.length === n0 + 2);
+    const m2 = all2.find((m) => m.name === "Test fixture 2");
+    if (!m2 || m2.id === m1.id || !all2.some((m) => m.id === m1.id && m.name === "Test fixture")) throw new Error("tweede import: " + all2.map((m) => m.name));
+    await tap(page, "#m-toast .tundo");
+    await mapsIdb(page, (all) => all.length === n0 + 1 && !all.some((m) => m.id === m2.id));
+    // kwaadaardige naam: tekst, geen element
+    await imp(fxFile("evil.json"));
+    await mapsIdb(page, (all) => all.length === n0 + 2);
+    if (await page.locator("#m-lrows img").count()) throw new Error("HTML uit de naam is een element geworden");
+    // openen: achtergrond geladen
+    await tap(page, `#m-lrows .mkl-o[data-id="${m1.id}"]`);
+    await page.waitForFunction((id) => window.__maps.view$() === "edit" && window.__maps.map().id === id && window.__maps.bg().img, m1.id, { timeout: 5000 });
+    await snap(page, "wp60", "editor");
+    const frame = (p) => p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const pix = async (p) => { await frame(p); return p.evaluate(() => document.getElementById("m-canvas").toDataURL()); };
+    const pixA = await pix(page), modelA = await page.evaluate(() => window.__maps.map());
+    // exporteren via het menu (Linux-Chromium heeft geen deelmenu; voor de zekerheid uit): download
+    await page.evaluate(() => { try { Object.defineProperty(navigator, "canShare", { value: undefined, configurable: true }); } catch { /* */ } });
+    await toList();
+    await tap(page, `#m-lrows .mkl-m[data-id="${m1.id}"]`);
+    const [dl] = await Promise.all([page.waitForEvent("download"), tap(page, '#m-menu [data-m="exp"]')]);
+    if (!/^inn-the-grid-test-fixture-\d{4}-\d\d-\d\d-\d\d-\d\d\.json$/.test(dl.suggestedFilename())) throw new Error("bestandsnaam: " + dl.suggestedFilename());
+    const text = readFileSync(await dl.path(), "utf8"), doc = JSON.parse(text);
+    if (doc.format !== "kevs-inn-maps" || doc.version !== 1 || "id" in doc.map || /blob:|https?:|indexeddb/i.test(text) || !doc.assets[sha]) throw new Error("exportbestand: " + text.slice(0, 200));
+    await page.locator("#m-menu").waitFor({ state: "hidden" });
+    // ander browsercontext = ander apparaat: lege opslag, importeren, openen, vergelijken
+    const ctx2 = await page.context().browser().newContext({ viewport: page.viewportSize(), hasTouch: true, isMobile: true, colorScheme: await page.evaluate(() => (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")), deviceScaleFactor: 2, serviceWorkers: "block" });
+    try {
+      const dbg = await page.evaluate(() => localStorage.getItem("kevs-i18n-debug")); // zelfde taalstand (xx: langere kop = ander canvas)
+      await ctx2.addInitScript((m) => { try { if (m) localStorage.setItem("kevs-i18n-debug", m); } catch { /* */ } }, dbg);
+      const p2 = await ctx2.newPage();
+      await p2.goto(page.url()); await ready(p2);
+      await toList(p2);
+      await imp({ name: dl.suggestedFilename(), mimeType: "application/json", buffer: Buffer.from(text) }, p2);
+      const got = await mapsIdb(p2, (all) => all.some((m) => m.name === "Test fixture"));
+      const id = got.find((m) => m.name === "Test fixture").id;
+      await tap(p2, `#m-lrows .mkl-o[data-id="${id}"]`);
+      await p2.waitForFunction((i) => window.__maps.view$() === "edit" && window.__maps.map().id === i && window.__maps.bg().img, id, { timeout: 5000 });
+      const modelB = await p2.evaluate(() => window.__maps.map());
+      const strip = ({ id, createdAt, updatedAt, ...r }) => r;
+      if (JSON.stringify(strip(modelA)) !== JSON.stringify(strip(modelB))) throw new Error("modeldata na rondreis: " + JSON.stringify({ a: strip(modelA), b: strip(modelB) }));
+      if ((await pix(p2)) !== pixA) throw new Error("rendering na rondreis niet pixelgelijk");
+    } finally { await ctx2.close(); }
   },
   speler: null, // eigen startpagina, zie START
   home: null, homeen: null, notfound: null, // WP30: publieke homepage per taal en de niet-gevonden-pagina (START)

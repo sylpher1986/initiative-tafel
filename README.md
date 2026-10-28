@@ -25,7 +25,7 @@ js/data/spells.js     spellbibliotheek voor de spell-uitleg (laden bij de eerste
 js/rules/             spelregels, puur en getest (editie 2014/2024 als parameter, `edition.js`)
 js/ui/                tekenen en gebruikersacties
 pages/maps.html       Inn the Grid (kaartenmaker, /maps/): sjabloon; eigen versie js/maps/version.js
-js/maps/              Inn the Grid: model/ (puur: raster, viewport), render/ (canvas), ui/ (invoer); los van Initiative
+js/maps/              Inn the Grid: model/ (puur: raster, viewport, kaart, achtergrond, projectbestand), render/ (canvas), ui/ (invoer, upload, export); los van Initiative
 css/maps.css          opmaak Inn the Grid (tokens uit css/app.css)
 locales/maps/         eigen catalogus per taal voor Inn the Grid (gebouwd uit locales/src/*/maps.js)
 data/monsters.json    SRD 5.1 monsters

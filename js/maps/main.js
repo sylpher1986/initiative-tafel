@@ -4,15 +4,18 @@
 // (rastertype, kolommen/rijen, lijnen, kleur, dekking), werkt direct; WP58: kaarten bewaren (IndexedDB "kevs-inn-maps",
 // js/maps/store.js), autosave met status in de kop, Mijn kaarten (nieuw, openen, hernoemen, dupliceren, verwijderen met
 // Ongedaan), laatste kaart heropenen, één tabblad tegelijk; WP59: achtergrondafbeelding kiezen (controle, verkleinen,
-// assetstore), schaal, raster passend, uitlijnmodus, vervangen/verwijderen met Ongedaan (docs/g4-inn-the-grid.md).
+// assetstore), schaal, raster passend, uitlijnmodus, vervangen/verwijderen met Ongedaan; WP60: projectbestand v1
+// (exporteren in het menu per kaart, importeren onder de lijst als nieuwe kaart) (docs/g4-inn-the-grid.md).
 import { initI18n, t, i18n } from "../i18n/boot.js";
-import { VERSION } from "./version.js";
+import { APP, VERSION } from "./version.js";
 import { cleanGrid, parseCells, bounds, LIMITS } from "./model/grid.js";
 import { clampPan, fitView, zoomAt, zoomPct, ZMIN, ZMAX, CELL } from "./model/view.js";
 import { cleanBg, guessPpc, gridFor, parsePpc, parseAcross, scaleBg, moveBg, across, stepFor, BG } from "./model/bg.js";
 import { IMG } from "./model/image.js";
 import { prepareImage, assetImage } from "./ui/upload.js";
-import { newMap, cleanName, newName, uniqueName, copyMap, sortMaps, pickStart, ago } from "./model/map.js";
+import { newMap, mapId, cleanName, newName, uniqueName, copyMap, sortMaps, pickStart, ago } from "./model/map.js";
+import { FILE_MAX } from "./model/file.js";
+import { exportMap, importFile } from "./ui/export.js";
 import { readColors, fitCanvas, draw } from "./render/canvas.js";
 import { attachInput } from "./ui/input.js";
 import { esc, toast } from "./ui/dom.js";
@@ -403,7 +406,7 @@ async function boot() {
     if (!m) return;
     menuFor = m; menuBack = from;
     menuS.innerHTML = `<div class="grab" aria-hidden="true"></div><div class="shead"><h3 id="m-menu-t">${esc(m.name)}</h3><button type="button" class="link" data-m="close">${esc(t("maps.panel.close"))}</button></div>`
-      + `<div class="mmenu"><button type="button" class="btn" data-m="rename">${esc(t("maps.menu.rename"))}</button><button type="button" class="btn" data-m="dup">${esc(t("maps.menu.duplicate"))}</button><button type="button" class="btn mdel" data-m="del">${esc(t("maps.menu.delete"))}</button></div>`;
+      + `<div class="mmenu"><button type="button" class="btn" data-m="rename">${esc(t("maps.menu.rename"))}</button><button type="button" class="btn" data-m="dup">${esc(t("maps.menu.duplicate"))}</button><button type="button" class="btn" data-m="exp">${esc(t("maps.menu.export"))}</button><button type="button" class="btn mdel" data-m="del">${esc(t("maps.menu.delete"))}</button></div>`;
     menu.hidden = false;
     for (const el of others()) el.inert = true;
     menuS.querySelector('[data-m="rename"]').focus(); // in de tik (iOS)
@@ -476,6 +479,67 @@ async function boot() {
     else if (a === "rename") renameForm();
     else if (a === "dup") doDup();
     else if (a === "del") doDel();
+    else if (a === "exp") doExport();
+  });
+
+  // ---- WP60: projectbestand ----
+  /** Kaart exporteren vanuit het menu. De open kaart uit het geheugen (ook wat nog niet bewaard is), anders uit de opslag. */
+  let exporting = false;
+  const doExport = async () => {
+    const m = menuFor;
+    if (!m || exporting) return; // dubbel tikken opent geen tweede deelmenu
+    exporting = true;
+    try { await exportOne(m); } catch { toast(t("maps.msg.opFail"), { bad: true }); } finally { exporting = false; } // bijv. geheugen of opslagfout
+  };
+  const exportOne = async (m) => {
+    const doc = cur && cur.id === m.id ? cur : saver.status === "off" ? m : await store.getMap(m.id);
+    if (!doc) { toast(t("maps.msg.opFail"), { bad: true }); return; }
+    const assets = new Map();
+    if (doc.bg) { const rec = await assetRec(doc.bg.asset); if (rec) assets.set(doc.bg.asset, rec); }
+    const r = await exportMap(doc, assets, { app: `${APP} ${VERSION}`, title: t("maps.exp.title", { name: doc.name }) });
+    if (r === "missing") { toast(t("maps.exp.missing"), { bad: true }); return; }
+    if (r === "done") { closeMenu(); toast(t("maps.exp.done")); }
+  };
+  // importeren: verborgen input + echte knop onder de lijst; altijd een nieuwe kaart (nieuwe id, naam uniek), nooit
+  // overschrijven. Fout = regel onder de knop (blijft staan tot de volgende poging), gelukt = bovenaan met focus + Ongedaan.
+  const imp = { btn: $("m-imp"), file: $("m-imp-file"), err: $("m-imp-e") };
+  const impErr = (code) => { imp.err.hidden = !code; imp.err.textContent = code ? t("maps.imp.err." + code, { mb: FILE_MAX / 1048576 }) : ""; };
+  let importing = false; // eigen vlag (niet busy): een gekozen bestand wordt nooit stil genegeerd omdat er net een lijstactie loopt
+  imp.btn.addEventListener("click", () => { if (!importing) { impErr(null); imp.file.click(); } });
+  imp.file.addEventListener("change", async () => {
+    const f = imp.file.files && imp.file.files[0];
+    imp.file.value = ""; // hetzelfde bestand nog eens = opnieuw een change
+    if (!f || importing) return;
+    importing = true;
+    const label = imp.btn.textContent;
+    imp.btn.disabled = true; imp.btn.setAttribute("aria-busy", "true"); imp.btn.textContent = t("maps.imp.busy");
+    let res, doc;
+    try {
+      res = await importFile(f);
+      if (res.ok) {
+        const now = Date.now();
+        doc = { ...res.map, id: mapId(), name: uniqueName(res.map.name || newName(t("maps.newBase"), names()), names()), createdAt: now, updatedAt: now };
+        for (const [sha, rec] of res.assets) { // een bestaande asset (zelfde sha = zelfde bytes) blijft zoals hij is, met zijn eigen src
+          if (saver.status === "off") { if (!memAssets.has(sha)) memAssets.set(sha, rec); }
+          else if (!(await store.getAsset(sha)) && !(await store.putAsset(sha, rec))) { res = { ok: false, code: "store" }; break; }
+        }
+        if (res.ok && saver.status !== "off" && !(await store.putMap(doc))) res = { ok: false, code: "store" };
+      }
+    } catch { res = { ok: false, code: "read" }; }
+    imp.btn.disabled = false; imp.btn.removeAttribute("aria-busy"); imp.btn.textContent = label;
+    importing = false;
+    if (!res.ok) { impErr(res.code); return; } // een al bewaarde asset zonder kaart ruimt gcAssets bij de volgende start op
+    if (saver.status === "off") maps.push(doc);
+    await reload(doc.id); // bovenaan (nieuwste) met focus
+    toast(t("maps.imp.done", { name: doc.name }), { btn: { label: t("maps.msg.undo"), run: async () => { // Ongedaan = de nieuwe kaart weer weg
+      // intussen geopend of bewerkt: niet stil weggooien
+      const now = cur && cur.id === doc.id ? cur : saver.status === "off" ? maps.find((x) => x.id === doc.id) : await store.getMap(doc.id);
+      if (!now) return; // al weg
+      if ((cur && cur.id === doc.id) || now.updatedAt !== doc.updatedAt) { toast(t("maps.imp.kept"), { bad: true }); return; }
+      if (saver.status !== "off" && !(await store.deleteMap(doc.id))) { toast(t("maps.msg.opFail"), { bad: true }); return; }
+      maps = maps.filter((x) => x.id !== doc.id);
+      if (viewName === "list") { await reload(); (rows.querySelector(".mkl-o") || $("m-new")).focus(); }
+    } } });
   });
 
   document.addEventListener("keydown", (e) => {

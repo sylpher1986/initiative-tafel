@@ -28,12 +28,16 @@
   <p class="mstrip" id="m-astrip" hidden>Drag the image to line up the grid</p>
 </main>
 <!-- WP58: Mijn kaarten. Eigen weergave in dezelfde pagina (editor verborgen, history.pushState: terug = editor). Rij-tik
-     opent, ⋯ opent het menu (Hernoemen, Dupliceren, Verwijderen). Lijst en meldingen vult js/maps/main.js. -->
+     opent, ⋯ opent het menu (Hernoemen, Dupliceren, Exporteren, Verwijderen). Lijst en meldingen vult js/maps/main.js. -->
 <main class="mkl" id="m-list" hidden aria-labelledby="m-l-title">
   <h2 id="m-l-title">My maps</h2>
   <p class="mwarn" id="m-l-off" hidden>Maps aren’t stored in this browser (private browsing, or storage is turned off). You can still draw, but your map is gone when you close the page.</p>
-  <p class="hint" id="m-l-empty" hidden>No maps yet. Start one with New map.</p>
+  <p class="hint" id="m-l-empty" hidden>No maps yet. Start one with New map, or import a file.</p>
   <ul class="mkl-rows" id="m-lrows"></ul>
+  <!-- WP60: importeren onder de lijst (zelden nodig, buiten duimbereik is goed); altijd een nieuwe kaart. Fout = regel onder de knop. -->
+  <input type="file" id="m-imp-file" accept=".json,application/json" hidden tabindex="-1">
+  <button type="button" class="btn mkl-imp" id="m-imp" data-file>Import map</button>
+  <p class="ferr" id="m-imp-e" role="alert" hidden></p>
 </main>
 <nav class="mdock" id="m-ldock" aria-label="Map list controls" hidden>
   <button type="button" class="btn" id="m-back">Back to map</button>

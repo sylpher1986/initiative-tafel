@@ -302,8 +302,8 @@ Kleinste waardevolle eind-tot-eind-release: **M1**.
 | D1 | Pad | **Besloten 28-10: `/maps/` en `/nl/maps/`** (code, catalogus en opslag heten ook `maps`; productnaam blijft Inn the Grid) |
 | D2 | Versie | **Besloten 28-10: Inn the Grid krijgt een eigen versienummer**; de bestaande nummers zijn van Inn itiative; de homepage krijgt geen nummer. Uitwerking zie §2.10. Startversie 0.1.0, 1.0.0 bij M2 (WP67). |
 | D3 | Tekentechniek | **Besloten 28-10: Canvas 2D, eigen code, voor nu**; herzien als WP66 daar aanleiding toe geeft |
-| D4 | Projectbestand | Optie A: één JSON met base64-assets |
-| D5 | Extensie | `.json` (iOS-bestandskiezer kent die; `format` maakt het herkenbaar) |
+| D4 | Projectbestand | **Besloten in WP60 op het advies: optie A, één JSON met base64-assets** (formaat §8) |
+| D5 | Extensie | **Besloten in WP60 op het advies: `.json`** (iOS-bestandskiezer kent die; `format` maakt het herkenbaar) |
 | D6 | Ingebouwde assets | Eigen eenvoudige SVG's (licentieschoon, zoals "geen niet-SRD content") |
 | D7 | Zichtbaarheid | Tot M2 niet op de homepage, niet installeerbaar, `noindex`; besluit in WP67 |
 | D8 | Koppeling (fase 3) | Zelfde-origin lezen + bestand als terugval |
@@ -318,7 +318,7 @@ Geen meer: D1–D3 zijn besloten. De rest start op het advies en wordt per pakke
 ---
 
 ## 6. Documentatie
-- `docs/g4-inn-the-grid.md` (dit bestand, sinds 28-10-2026): plan en besluiten, zoals `docs/g1-regels-2024.md`; later ook het bestandsformaat v1.
+- `docs/g4-inn-the-grid.md` (dit bestand, sinds 28-10-2026): plan en besluiten, zoals `docs/g1-regels-2024.md`; bestandsformaat v1 in §8 (WP60).
 - Hieronder: wijzigingen die pas met de werkpakketten komen.
 - **CLAUDE.md**: regel 3 aanvullen ("De repo bevat ook Inn the Grid op `/maps/`"); nieuwe subsectie "Gemaakte keuzes → Inn the Grid" die per WP groeit; bij "Bij elke wijziging" stap 3 een zin over `GRID_VERSION` (na D2). Bestaande regels niet herschrijven.
 - **ROADMAP.md**: G4 → "in uitvoering, plan in `docs/g4-inn-the-grid.md`", met de WP-lijst.
@@ -328,8 +328,31 @@ Geen meer: D1–D3 zijn besloten. De rest start op het advies en wordt per pakke
 ---
 
 ## 7. Volgende stap
-WP56 en WP57 zijn klaar (28-10-2026). Volgende: **WP58 · Kaarten lokaal bewaren, kaartenlijst, opslagstatus.**
+WP56–WP60 zijn klaar (28-10-2026): **mijlpaal M1** (Maps 0.5.0). Volgende: **WP61 · Undo/redo-kern en plaatsen uit de ingebouwde bibliotheek.**
 
 Oorspronkelijk advies bij de start van G4: **WP56 · Tool-skelet met vierkant raster, pannen en zoomen.**
 Waarom eerst: laagste risico, raakt Initiative niet, legt pad, pagina, catalogus, service worker, tests, browsercheck en het canvas-/gebarenfundament vast waar elk volgend pakket op bouwt. Na WP56 is er al iets op de telefoon te openen.
 Nodig vóór de start: niets meer (D1–D3 besloten). Start in een nieuw gesprek met push-toegang.
+
+---
+
+## 8. Bestandsformaat v1 (WP60)
+Eén kaart volledig en zelfstandig in één JSON-bestand (`js/maps/model/file.js`, tests `tests/maps-file.test.js`, kapotte en kwaadaardige voorbeelden in `tests/fixtures/maps/`, gemaakt met `tools/maps-fixtures.mjs`).
+
+```json
+{
+  "format": "kevs-inn-maps",
+  "version": 1,
+  "exported": "2026-10-28T12:00:00.000Z",
+  "app": "Inn the Grid 0.5.0",
+  "map": { "schema": 2, "name": "Crypte", "createdAt": 1761600000000, "updatedAt": 1761600000000,
+           "grid": { "type": "square", "orient": "pointy", "cols": 30, "rows": 20, "show": true, "color": "auto", "alpha": 50 },
+           "bg": { "asset": "<sha256>", "w": 2100, "h": 1400, "ppc": 70, "x": 0, "y": 0 } },
+  "assets": { "<sha256>": { "mime": "image/webp", "w": 2100, "h": 1400, "data": "<base64>" } }
+}
+```
+- `map` = het kaartdocument zoals in de opslag (§2.3, `cleanMap`), **zonder `id`**: geen verwijzing naar browseropslag; import geeft altijd een nieuwe id, tijden = nu, naam via `uniqueName` (nooit overschrijven). `bg` en dus `assets` alleen als er een achtergrond is (schema 2); later komen terrein en objecten als optionele velden.
+- `assets` bevat precies de afbeeldingen waar de kaart naar verwijst; sleutel = sha256 (hex) van de bytes in `data`; `w`/`h` = afmetingen van die opgeslagen bytes (≤ 4096 px). `src` (sha256 van het origineel, index in de opslag) gaat bewust niet mee en wordt bij import genegeerd; een bestaande asset met dezelfde sha wordt niet overschreven.
+- Bestandsnaam `inn-the-grid-<kaartnaam>-YYYY-MM-DD-HH-MM.json` (lokale tijd, slug van de naam, max 40 tekens, leeg = `map`).
+- Schrijven: als Blob uit tekststukken (`buildParts`, base64 per 48 KB), nooit één enorme string. Ontbreekt een afbeelding (opslag gewist), dan geen bestand maar een melding.
+- Lezen (`readFile`, volgorde = foutcode `maps.imp.err.<code>`): leeg (`empty`), > 35 MB (`big`, vóór het inlezen), geen JSON (`notjson`), ander `format` of geen geheel `version` ≥ 1 (`format`), `version` > 1 of kaartschema nieuwer dan de app (`newer`), migraties `MIGRATE[v]` per stap (nu leeg), kaart onbruikbaar of `bg` onbruikbaar (`badmap`, een achtergrond gaat nooit stil verloren), afbeelding niet in het bestand (`missing`), kapotte base64 (`b64`), mime buiten PNG/JPEG/WebP, magic bytes ≠ mime, afmetingen uit de kop ≠ `w`/`h` of boven de grenzen (`image`), sha256 ≠ sleutel (`sha`); daarna decodeert de browser de afbeelding (mislukt = `image`) en bewaart asset en kaart (mislukt = `store`). Een versie omhoog = `FILE_VERSION` ophogen en een migratie toevoegen; optionele velden mogen zonder nieuwe versie (een oudere app laat ze via `cleanMap` weg).

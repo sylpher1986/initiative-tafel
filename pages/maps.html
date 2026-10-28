@@ -27,12 +27,16 @@
   <p class="mstrip" id="m-astrip" hidden>{{t:maps.bg.alignHint}}</p>
 </main>
 <!-- WP58: Mijn kaarten. Eigen weergave in dezelfde pagina (editor verborgen, history.pushState: terug = editor). Rij-tik
-     opent, ⋯ opent het menu (Hernoemen, Dupliceren, Verwijderen). Lijst en meldingen vult js/maps/main.js. -->
+     opent, ⋯ opent het menu (Hernoemen, Dupliceren, Exporteren, Verwijderen). Lijst en meldingen vult js/maps/main.js. -->
 <main class="mkl" id="m-list" hidden aria-labelledby="m-l-title">
   <h2 id="m-l-title">{{t:maps.list.title}}</h2>
   <p class="mwarn" id="m-l-off" hidden>{{t:maps.status.offLong}}</p>
   <p class="hint" id="m-l-empty" hidden>{{t:maps.list.empty}}</p>
   <ul class="mkl-rows" id="m-lrows"></ul>
+  <!-- WP60: importeren onder de lijst (zelden nodig, buiten duimbereik is goed); altijd een nieuwe kaart. Fout = regel onder de knop. -->
+  <input type="file" id="m-imp-file" accept=".json,application/json" hidden tabindex="-1">
+  <button type="button" class="btn mkl-imp" id="m-imp" data-file>{{t:maps.imp.btn}}</button>
+  <p class="ferr" id="m-imp-e" role="alert" hidden></p>
 </main>
 <nav class="mdock" id="m-ldock" aria-label="{{t:maps.list.dock}}" hidden>
   <button type="button" class="btn" id="m-back">{{t:maps.list.back}}</button>
