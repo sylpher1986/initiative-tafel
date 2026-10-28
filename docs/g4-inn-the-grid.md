@@ -250,8 +250,8 @@ Nummering loopt door op de repo-historie (laatste was WP55). Elk pakket = één 
 - Grootte M: hergebruikt WP59/WP60.
 
 **WP65 · Responsief, touch en eerste gebruik afronden** · M
-- Scope: telefoonindeling (dock), tabletzijpaneel, desktop-sneltoetsen met "?"-overzicht, lege toestanden, korte uitleg bij eerste gebruik (geen pop-up bij opstarten, conform CLAUDE.md), foutmeldingen nalopen.
-- Acceptatie: (1) kernflow (nieuwe kaart → achtergrond → object → verven → export) op iPhone SE-breedte (320), iPad portret en desktop zonder horizontaal scrollen; (2) alle knoppen hebben `aria-label`, focus zichtbaar; (3) Michiel doet de kernflow op zijn telefoon zonder hulp (handmatig).
+- Scope: telefoonindeling (dock), tabletzijpaneel, desktop-sneltoetsen met "?"-overzicht, lege toestanden, korte uitleg bij eerste gebruik (geen pop-up bij opstarten, conform CLAUDE.md), foutmeldingen nalopen. **Actiepunt (melding Michiel 28-10, schermafbeelding Maps 0.4.0):** een foutregel onder een veld in een rij van twee (Kolommen/Rijen, ook Pixels per cel/Cellen in de breedte) duwt het buurveld omlaag, zodat de velden niet meer op één lijn staan en de tekst over twee regels loopt. Oplossing: foutregel buiten het `<label>` en onder de hele rij (één regel over beide kolommen), velden blijven op dezelfde hoogte; geldt voor alle foutregels in paneel Kaart.
+- Acceptatie: (1) kernflow (nieuwe kaart → achtergrond → object → verven → export) op iPhone SE-breedte (320), iPad portret en desktop zonder horizontaal scrollen; (2) alle knoppen hebben `aria-label`, focus zichtbaar; (2b) een foutregel verschuift geen buurveld (browsercheck: velden in een rij houden dezelfde `top` met en zonder fout); (3) Michiel doet de kernflow op zijn telefoon zonder hulp (handmatig).
 - Grootte M.
 
 **WP66 · Prestaties en grenzen** · M
