@@ -26,8 +26,8 @@ export default {
   "page.home.factNoAccount": "Geen account nodig",
   "page.home.factDevice": "Werkt op elk apparaat",
   "page.home.featLabel": "Wat Initiative kan", // aria-label van de lijst met kenmerken
-  "page.home.featMonsters": "Alle 322 monsters uit SRD 5.1",
-  "page.home.featMonstersText": "Met statblocks. Zoeken, tikken, erin.",
+  "page.home.featMonsters": "Alle SRD-monsters, 2014 en 2024",
+  "page.home.featMonstersText": "322 uit SRD 5.1 en 331 uit SRD 5.2.1, met statblocks. Zoeken, tikken, erin.",
   "page.home.featParty": "Je party in één tik",
   "page.home.featPartyText": "Eén keer invoeren, met de hand of via een D&D Beyond-link.",
   "page.home.featRules": "Regels bij de hand",
@@ -35,7 +35,7 @@ export default {
   "page.home.featScreen": "Spelersscherm via QR-code",
   "page.home.featScreenText": "Zet de beurtvolgorde op de tv of de telefoons van je spelers.",
   "page.home.privacy": "Je gegevens blijven op je eigen apparaat.",
-  "page.home.legalSrd": "Bevat materiaal uit de System Reference Documents 5.1 en 5.2 van Wizards of the Coast LLC, beschikbaar onder", // gevolgd door de link "CC-BY-4.0."
+  "page.home.legalSrd": "Bevat materiaal uit de System Reference Documents 5.1 en 5.2.1 van Wizards of the Coast LLC, beschikbaar onder", // gevolgd door de link "CC-BY-4.0."
   "page.home.legalTm": "Dungeons & Dragons is een handelsmerk van Wizards of the Coast LLC.",
   "page.home.legalFan": "Kev’s Inn is onofficiële fancontent, toegestaan onder de Fan Content Policy. Niet goedgekeurd of gesteund door Wizards. Delen van het gebruikte materiaal zijn eigendom van Wizards of the Coast. ©Wizards of the Coast LLC.",
   // Niet-gevonden-pagina (/404.html, /{taal}/404.html; WP30)

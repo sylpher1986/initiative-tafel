@@ -1,6 +1,6 @@
 # G1 — D&D 5e 2024-regels naast 2014
 
-Plan van 27-10-2026 (stand 2.3.1, commit `4622436`). Status: **WP46 klaar (2.4.0), WP47 klaar (2.4.1), WP48 klaar (2.5.0), WP49 klaar (2.6.0), WP50 klaar (2.7.0), WP51 klaar (2.8.0), WP52 klaar (2.9.0), WP53 klaar (2.10.0), WP54 klaar (2.11.0)**, WP55 gepland. Werkpakketten WP46–WP55; samenvatting in `ROADMAP.md`. Na elk pakket: keuze naar CLAUDE.md ("Gemaakte keuzes"), regel uit dit plan en de roadmap halen. Dit document vervalt als G1 klaar is.
+**Historie. G1 is klaar** (WP46–WP55, 2.4.0 t/m 2.11.1, 28-10-2026). De geldende keuzes staan in CLAUDE.md ("Gemaakte keuzes"), open vervolgpunten in `ROADMAP.md` (Op signaal). Dit document blijft staan voor de inventaris, de besluiten B1–B10 (CLAUDE.md verwijst ernaar) en de dekking van §5; de regelnummers in §1 gelden voor stand 2.3.1 (commit `4622436`) en kloppen niet meer.
 
 Legenda: **[B]** = bevestigd in de code, **[A]** = aanname, **[?]** = onbekend, eerst controleren.
 
@@ -223,33 +223,25 @@ Oorspronkelijk plan:
 ### WP54 — Regelkeuze zichtbaar: klaar in 2.11.0
 Zie CLAUDE.md ("Basis", Regelset): sectie Regels in Instellingen, `setRules(S, ed)`, `paintRules`, voorbeeld 2024. Browsercheck-scenario `g1-rules`, test `tests/wp54.test.js`.
 
-### WP55 — Integratie, regressie en afronding G1
-1. **Doel**: G1 als geheel geverifieerd en gedocumenteerd.
-2. **Huidige stand**: na WP54.
-3. **Scope**: end-to-endtests (oude backup v3 → v4 zonder betekenisverschil; 2024-encounter exporteren → importeren → inladen; gemengde tafel 2024 met een 2014-monster; kamer/spelersscherm met `ed`); volledige browsercheck; CLAUDE.md-keuzes compleet (geen dubbelingen met dit plan); README/home-bronvermelding; `ROADMAP.md` G1 weg; dit document verwijderen of als historie markeren.
-4. **Buiten scope**: nieuwe functies.
-5. **Aanpak**: **volledige developer-review** (x.y.0 en formaatwijzigingen samen).
-6. **Afhankelijk van**: WP46–WP54.
-7. **Acceptatie**: alle punten uit §5 aantoonbaar gedekt door een test of browsercheck; live-check op telefoon (Michiel) in de roadmap onder Operationeel.
-8. **Tests**: `npm test` volledig, browsercheck volledig.
-9. **Klaar als**: bovenstaande, push en deployment geverifieerd.
-11. **Omvang**: S.
+### WP55 — Integratie, regressie en afronding G1: klaar in 2.11.1
+End-to-endtests `tests/wp55.test.js` (backup v3 → v4 → v3, encounter delen en inladen met en zonder SRD 5.2, gemengde tafel, conditie-uitleg op het spelersscherm, precache) en `tests/room.test.js` ("G1"); volledige browsercheck; dekking per risico in §5; homepage en README noemen beide SRD's; G1 uit de roadmap, vervolgpunten onder "Op signaal", live-check onder Operationeel.
 
 ---
 
-## 5. Achterwaartse compatibiliteit: risico's en dekking
+## 5. Achterwaartse compatibiliteit: risico's en dekking (geverifieerd in WP55)
 
-| Risico | Dekking |
-|---|---|
-| Bestaande encounter/deelnemer krijgt na 2024-data een ander statblock | B3: zonder `ed` exact oude opzoekvolgorde; test WP46 |
-| Oude app leest een 2024-bestand als 2014 | B5: versie omhoog alleen bij 2024-inhoud, oude app weigert die; 2014-exports blijven leesbaar |
-| Legacy-data zonder regelset | `rulesOf` → 2014 (WP46) |
-| Gebruiker met Spells 2024 verliest gedrag | B2 (WP46/WP54) |
-| Wisselen halverwege een gevecht | B1: alleen zonder gevecht (WP54) |
-| Exhaustion-HP klopt niet na wisselen | idempotente `reExh(c, ed)`; tafel in de wisselstap, party bij aan tafel zetten/sync (B1, WP50/WP54) |
-| 2024-data niet geladen/offline | B4 + B9 |
-| 2014-parseruitkomsten veranderen door normalisatie | byte-gelijk-test over 322 monsters (WP48) |
-| Spelersscherm van een oudere versie | `ed` optioneel; zonder `ed` 2014-uitleg (WP52) |
-| Gedeelde spelerslink/kamer | protocol ongewijzigd (`v: 2`), alleen een extra codeveld |
+| Risico | Maatregel | Test of browsercheck |
+|---|---|---|
+| Bestaande encounter/deelnemer krijgt na 2024-data een ander statblock | B3: zonder `ed` exact oude opzoekvolgorde | `edition.test.js` (findMon), `wp55.test.js` (oude backup v3), `wp48.test.js` (sha256 2014-parsers) |
+| Oude app leest een 2024-bestand als 2014 | B5: versie omhoog alleen bij 2024-inhoud | `edition.test.js` (backup 3/4, encounterbestand 1/2), `wp55.test.js` (v3 → v4 → v3, v5 geweigerd) |
+| Legacy-data zonder regelset | `rulesOf` → 2014 | `edition.test.js`, `wp55.test.js` (oude backup v3) |
+| Gebruiker met Spells 2024 verliest gedrag | B2: `spellEdOf` | `edition.test.js`, `spellrules.test.js`, `wp54.test.js` (status "2014 · Spells 2024") |
+| Wisselen halverwege een gevecht | B1: alleen zonder gevecht | `wp54.test.js` (setRules), browsercheck `g1-rules` |
+| Exhaustion-HP klopt niet na wisselen | idempotente `reExh`, `reExhAll` in de wisselstap | `wp50.test.js`, `wp54.test.js`, `wp55.test.js` (heen en terug = exact dezelfde tafel) |
+| 2024-data niet geladen/offline | B4 + B9 | `edition.test.js` (geen terugval), `wp48.test.js` (loadSrd24-stand), `wp55.test.js` (encounter zonder SRD 5.2 = "Zombie · 2024"; precache) |
+| 2014-parseruitkomsten veranderen door normalisatie | één parserpad | `wp48.test.js` (sha256 over alle 322 monsters) |
+| Spelersscherm van een oudere versie | `ed` optioneel, `v: 2` | `wp52.test.js`, `wp55.test.js` (uitleg volgt de snapshot) |
+| Gedeelde spelerslink/kamer | protocol ongewijzigd, extra codeveld | `room.test.js` ("G1": `ed` via de kamer, ook voor een laat scherm) |
+| Gemengde tafel (2024-regels met een 2014-monster) | B3: editie per deelnemer | `wp55.test.js` (initiative, moeilijkheid, export, afronden, snapshot) |
 
 Geen datamigratie van inhoud nodig: alleen versienummers met een no-op-migratie.

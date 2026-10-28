@@ -435,3 +435,20 @@ test("SC3: dmnet: nieuw scherm krijgt altijd de status; DM verbindt → on 1; la
   await open(code, token);
   assert.equal(p.ws.dmnet().at(-1), 1);
 });
+
+test("G1 (WP55): snapshot met regels 2024 komt via de kamer ongewijzigd bij het spelersscherm; cleanView houdt ed", async () => {
+  const { toPlayerView, cleanView } = await import("../js/playerview.js");
+  const S = { rules: "2024", round: 1, active: "p", list: [{ id: "p", kind: "pc", name: "Ayla", init: 12, hp: 30, max: 30, cond: [] }] };
+  const { code, token } = await make();
+  const dm = await open(code, token);
+  const p1 = await open(code);
+  await dm.say({ t: "stand", d: toPlayerView(S) });
+  const got = p1.ws.msgs().find((m) => m.t === "stand").d;
+  assert.equal(got.v, 2, "protocol blijft v2");
+  assert.equal(cleanView(got).ed, "2024");
+  const p2 = await open(code); // laat binnen: krijgt de laatste stand, ook met ed
+  await p2.say({ t: "hallo" });
+  assert.equal(cleanView(p2.ws.msgs().find((m) => m.t === "stand").d).ed, "2024");
+  await dm.say({ t: "stand", d: toPlayerView({ ...S, rules: undefined }) });
+  assert.equal(cleanView(p1.ws.msgs().filter((m) => m.t === "stand").at(-1).d).ed, undefined, "terug naar 2014: geen ed");
+});

@@ -3,7 +3,7 @@
 Initiative/encounter tracker voor D&D 5e (regels 2014 of 2024, per tafel) van Michiel (voorheen Initiative Tafel; onderdeel van Kev’s Inn). Eén DM, aan tafel op telefoon of tablet.
 Live: https://kevs-inn.com (canoniek) en https://initiative-tafel.ft4mgzj72j.workers.dev; Cloudflare Workers publiceert automatisch bij push naar `main`.
 
-Dit bestand bevat de geldende regels en keuzes. Open werk staat in `ROADMAP.md`. De volledige historie per pakket (WP1–WP45, met meetwaarden en afwegingen) staat in de git-geschiedenis: CLAUDE.md van commit `4e83db1`.
+Dit bestand bevat de geldende regels en keuzes. Open werk staat in `ROADMAP.md`. De volledige historie per pakket (WP1–WP45, met meetwaarden en afwegingen) staat in de git-geschiedenis: CLAUDE.md van commit `4e83db1`. G1 (2024-regels, WP46–WP55): inventaris, besluiten B1–B10 en de dekking van de compatibiliteitsrisico's in `docs/g1-regels-2024.md` (historie; de geldende keuzes staan hieronder).
 
 ## Communicatie
 - Nederlands, pragmatisch en technisch direct. App-teksten in Engels en Nederlands via de catalogus; in het Nederlands blijven D&D-termen Engels (Concentrating, Recharge, Legendary actions).
@@ -53,7 +53,7 @@ Bij elk nieuw idee of elke wijziging kijken twee rollen mee, waar mogelijk als *
 
 **Senior developer: na het bouwen, vóór de push**
 - Scope: de diff plus wat er direct aan raakt (aanroepers, bijbehorende regels in `js/rules/` en hun tests). Volledige review bij een `x.y.0`- of `x.0.0`-versie, een formaatwijziging in `js/backup.js`, of op verzoek. `npm test` draait altijd volledig.
-- Logica tegen de 5e 2014-regels en randgevallen (0 HP, dood, lege lijst, undo, import van oude of rare data); dekken de tests het?
+- Logica tegen de regels van de editie (5e 2014, en SRD 5.2.1 waar de code `ed` meekrijgt) en randgevallen (0 HP, dood, lege lijst, undo, import van oude of rare data); dekken de tests het?
 - Eenvoudigste oplossing: geen dubbele code, geen onnodig werk per tik, regels puur, render zonder bijwerkingen.
 - Veiligheid (escapen, import opschonen) en geen verlies van bestaande functionaliteit.
 - Bij tekst, pagina's of opgeslagen data: checklist `docs/i18n.md` §9.5.
@@ -72,7 +72,7 @@ Geplande bouwtaken: een geplande taak die een **nieuwe sessie** start, krijgt de
 ## Gemaakte keuzes
 
 ### Basis
-- Regels: D&D 5e **2014** (standaard) of **2024**, per tafel te kiezen (zie Regelset); onder 2014 kunnen spells ook 2024 (zie Spells). Data: 322 SRD 5.1-monsters (`data/monsters.json`, Open5e), 319 SRD 5.1-spells (`data/spells.json`, 5e-bits, `tools/spells_srd.py`) en ter uitleg 339 SRD 5.2-spells (`data/spells-2024.json`, Open5e, `tools/spells_srd2024.py`), alle CC-BY-4.0. Voor G1: 331 SRD 5.2-monsters (`data/monsters-2024.json`, WP47, zie Opslag en data). Geen niet-SRD content in de repo.
+- Regels: D&D 5e **2014** (standaard) of **2024**, per tafel te kiezen (zie Regelset); onder 2014 kunnen spells ook 2024 (zie Spells). Data: 322 SRD 5.1-monsters (`data/monsters.json`, Open5e), 319 SRD 5.1-spells (`data/spells.json`, 5e-bits, `tools/spells_srd.py`) en ter uitleg 339 SRD 5.2-spells (`data/spells-2024.json`, Open5e, `tools/spells_srd2024.py`), en 331 SRD 5.2.1-monsters (`data/monsters-2024.json`, WP47, zie Opslag en data), alle CC-BY-4.0; bronvermelding in README, homepage (`page.home.legalSrd`) en per statblock. Geen niet-SRD content in de repo.
 - Local-first zonder accounts (fase 2 = sync, zie roadmap G2). Hosting op Cloudflare Workers: statische assets (`wrangler.jsonc`, uitsluitingen in `.assetsignore`), alleen `/api/*`, `/en`, `/en/*` lopen via `worker/index.js` (`run_worker_first`). Workers gekozen omdat AI later een server-sleutel nodig heeft.
 - Naam **Kev’s Inn itiative** (`APP` in `js/version.js`; manifest `short_name` "Inn itiative"). Bewust **niet** hernoemd: `FORMAT`/`ENC_FORMAT` ("initiative-tafel…"), IndexedDB-naam, `it-*`-sleutels, BroadcastChannel, sw-cachevoorvoegsel, Worker-user-agent, repo/URL.
 - **Regelset (WP54, G1)**: Instellingen → sectie **Regels** (`data-sec="rules"`, eerste na Weergave) met seg 2014 | 2024 = `S.rules` van de tafel; status in de kop "2014", "2014 · Spells 2024" (alleen als spells afwijken) of "2024" (`paintRules` in `js/ui/settings.js`, volgt de stand bij elke render: ook na Ongedaan, import, reset). Wisselen via pure `setRules(S, ed)` (`js/rules/combat.js`): alleen zonder gevecht en bij een echte wissel, 2014 = veld weg, `reExhAll` in dezelfde undo-stap, logregel `log.rules` ("Regels 2014 → 2024"), melding "Regels: 2024." met Ongedaan. Tijdens een gevecht blijft de seg zichtbaar maar uitgeschakeld (gekozen waarde leesbaar) met "Wisselen kan na het gevecht." in plaats van de hint. Spells-subinstelling alleen bij 2014; bij 2024 één regel "Spells volgen regels 2024" (de opgeslagen keuze blijft). Voorbeeld bij 2024: Goblin Warrior ×2 + Hobgoblin Warrior met `ed: "2024"`; "Start met voorbeeld" laadt eerst SRD 5.2 (knop "Laden…", bij een fout `init.welcome.fail24`, nooit terugval op 2014). Welkomstkaart en pagina-omschrijvingen editie-neutraal. UX-agent koos de Instellingen-sectie; afgewezen: keuze op de welkomstkaart (dwingt een besluit vóór beginnen, bestaande gebruikers zien hem nooit), tikbare status in Voorbereiden (fase-aanduiding is bewust niet tikbaar, geen ruimte op 320 px), uitgeschakelde Spells-seg bij 2024.
@@ -115,7 +115,7 @@ Geplande bouwtaken: een geplande taak die een **nieuwe sessie** start, krijgt de
 ### Initiative en beurten
 - Start gevecht met levende spelers opent het initiative-paneel (`#isheet`, eigen cijferpad, Rol = d20 + `initBonus ?? dex`; monsters idem: 2024-statblock geeft `initBonus`, WP48); zonder spelers start het direct. Monsters: **Houden | Opnieuw rollen** (`it-init-reroll`; alleen onaangeroerde worpen). Verrast: **Niemand | Monsters | Spelers**; zonder spelers de schakelaar "Monsters verrast" naast Start. Alles in één undo-stap met de start.
 - Monsters uit het vorige gevecht bij Start: vraag in de dock (Oude wissen en starten / Toch starten).
-- Surprise (PHB 2014): verrasten slaan ronde 1 over (`c.sur`), reaction uit; individueel via ⋯.
+- Surprise (PHB 2014): verrasten slaan ronde 1 over (`c.sur`), reaction uit; individueel via ⋯. Bij regels 2024: disadvantage op initiative (zie Gevecht, WP51).
 - Groepen (`grp`, `groupOf`) zijn **alleen weergave**: elk lid houdt een eigen beurt (recharge, saves, condities). Afgewezen: één groepsbeurt.
 - Initiative wijzigen tijdens een gevecht (`initPlan`, `turnOrder`, `S.ai`): al geweest en naar achteren = deze ronde overgeslagen; zelf aan de beurt = beurt loopt door; nog niet geweest en naar voren = direct na de huidige beurt. Geen Delay/Ready-knop.
 - Verwijderen via ⋯: één tik met Ongedaan; wie aan de beurt is, eindigt eerst zijn beurt (`removeCombatant`). "Uit party" houdt zijn bevestiging (niet in undo).
@@ -142,7 +142,7 @@ Geplande bouwtaken: een geplande taak die een **nieuwe sessie** start, krijgt de
 - Spells 2014 | 2024 (Instellingen → Regels, subinstelling alleen bij regels 2014, `it-spell-rules`): geldt alleen voor spells (presets via `presetsFor(ed)`, concentratie via `isConc`, `js/rules/conclist.js` gegenereerd door `tools/conc_lists.py`); de rest volgt de regelset (bij regels 2024 volgen spells 2024, B2). Regels krijgen de editie als parameter, nooit uit de instelling.
 
 ### Gevecht afronden, undo en logboek
-- Gevecht afronden (`finishFight`, `js/ui/einde.js`): één undo-stap, paneel `#esheet` met rondes, duur, ruwe XP (DMG 2014) per speler, verslagen, gevlucht-chips, condities van spelers wissen; sluit op de telefoon het statblock. Beurtbalk toont "Alle monsters neer · Gevecht afronden". Niet automatisch stoppen.
+- Gevecht afronden (`finishFight`, `js/ui/einde.js`): één undo-stap, paneel `#esheet` met rondes, duur, ruwe XP per speler (XP per CR, gelijk in DMG 2014 en SRD 5.2.1), verslagen, gevlucht-chips, condities van spelers wissen; sluit op de telefoon het statblock. Beurtbalk toont "Alle monsters neer · Gevecht afronden". Niet automatisch stoppen.
 - Undo (`js/state.js`): elke stap in IndexedDB (`h:…`, sheets/portretten apart via `js/histpack.js`), na herladen hersteld tenzij de laatste stap > 6 uur oud is of van een andere versie; max 80. Opnieuw alleen in het geheugen (melding na Ongedaan, ⌘⇧Z). Melding na Ongedaan/Opnieuw beschrijft de stap uit de logregels (`stepText`).
 - Logboek: hele regel tikbaar voor een reden; in Gevecht als paneel `#gsheet` via de kop; ronde 0 heet "Voorbereiding".
 
@@ -185,7 +185,7 @@ Geplande bouwtaken: een geplande taak die een **nieuwe sessie** start, krijgt de
 - SEO: canonical, hreflang (`en` en `x-default` naar `https://kevs-inn.com/`, `nl` naar `/nl/`), Open Graph en sitemap uit `tools/pages.mjs`; app-pagina's `noindex`; `HIDDEN = true` = `robots.txt` `Disallow: /` (site nog verborgen); op `false` komt er géén Disallow, want de `noindex` van de app-pagina's moet leesbaar blijven. 404-pagina's per taal (`not_found_handling: "404-page"`).
 
 ### Gereedschap
-- `tests/`: `npm test` (± 680 tests, ± 10 s), o.a. syntaxcheck van alle JS, contrast, fonts, iconen, tikdoelen, pagina's, i18n, versies.
+- `tests/`: `npm test` (± 755 tests, ± 10 s), end-to-end over G1 in `tests/wp55.test.js` en de kamer-test "G1" in `tests/room.test.js`; o.a. syntaxcheck van alle JS, contrast, fonts, iconen, tikdoelen, pagina's, i18n, versies.
 - `tools/browsercheck.mjs`: matrix 320/360/390 × licht/donker met touch, telt horizontaal scrollen en JS-fouten (FOUT) en tikdoelen < 44 px; `--lang=nl,en,xx`, `--shots=naam` → `shots/` (gitignored). Playwright via `PW_MODULE` of `/opt/npm-tools`, niet in package.json. Na een schrijfactie in IndexedDB pas herladen als de waarde er echt staat (`idbHas`).
 - Gegenereerde bestanden: pagina's/manifests/robots/sitemap (`tools/pages.mjs`), catalogi (`tools/i18n-build.mjs`), iconen (`tools/icons.mjs`), spelldata (`tools/spells_srd*.py`), SRD 5.2-monsters (`tools/monsters_srd2024.py`, invoer Open5e: niet in de tests opnieuw gedraaid, de test controleert inhoud en correcties), concentratielijst (`tools/conc_lists.py`), schade-spells (`tools/dmg_spells.mjs`). Tests bewaken dat ze actueel zijn.
 - Lokaal de kamer testen zonder wrangler: nagebootste runtime in `tests/room.test.js`.

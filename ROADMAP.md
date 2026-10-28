@@ -1,6 +1,6 @@
 # Roadmap
 
-Stand: **2.9.0** (27-10-2026). Alleen open werk staat hier. Wat klaar is, staat in de code, in CLAUDE.md ("Gemaakte keuzes") en in de git-geschiedenis. De oude roadmap met alle afgevinkte punten (codes IN, GV, VB, RE, SP, SC, AF, OB, DA, HS, TA, TS, WB en WP1–WP45) staat in commit `4e83db1`.
+Stand: **2.11.1** (28-10-2026). G1 (2024-regels) is klaar: regelset per tafel onder Instellingen → Regels; keuzes in CLAUDE.md, plan en besluiten als historie in `docs/g1-regels-2024.md`. Alleen open werk staat hier. Wat klaar is, staat in de code, in CLAUDE.md ("Gemaakte keuzes") en in de git-geschiedenis. De oude roadmap met alle afgevinkte punten (codes IN, GV, VB, RE, SP, SC, AF, OB, DA, HS, TA, TS, WB en WP1–WP45) staat in commit `4e83db1`.
 
 Codes: **K** = kleine fix of optimalisatie (één sessie, patch- of minor-versie), **G** = groot project (eerst een eigen plan met inventaris en besluiten). Een afgerond punt gaat hier weg; de keuze komt in CLAUDE.md.
 
@@ -25,6 +25,7 @@ Volgorde = voorstel. K1–K3 merkt de gebruiker, K4–K7 zijn technisch.
 - Undead Fortitude bij rider-schade.
 - D&D Beyond-import: condition immunities en vaste aftrek (Heavy Armor Master).
 - DM-kant "N schermen (was M)": vraagt een scherm-id per tabblad, anders vals alarm.
+- 2024-regels (uit G1): "4 in Lair" / "4/Day in Lair" gebruiken (wordt gelezen, niet toegepast); Incapacitated (disadvantage) en Invisible (advantage) op initiative 2024 automatisch (nu alleen in de uitleg); CR 0-monsters met "XP 0" tellen als 10 XP (`crXp` gaat vóór `xp`); Sphinx of Valor "Roar" heeft drie DC's, de app neemt de eerste; Nederlandse zoeksynoniemen voor meer SRD 5.2-namen.
 
 ### Bekende beperkingen (geaccepteerd)
 - Undead Fortitude: `applyDamage` meldt al "is neer" en laat concentratie vallen vóór de save (zombies concentreren niet).
@@ -34,18 +35,9 @@ Volgorde = voorstel. K1–K3 merkt de gebruiker, K4–K7 zijn technisch.
 ### Operationeel (Michiel, geen code)
 - `*.workers.dev`: doorsturen naar `kevs-inn.com` of uitzetten (besluit V1, nog open).
 - Live check 2.3.0/2.3.1: `kevs-inn.com/en/initiative/` → 301 naar `/initiative/`; `/` = Engelse homepage; geïnstalleerde iPhone-app start in het Nederlands; versie 2.3.1 onderaan Instellingen; app offline openen vanaf het beginscherm.
+- Live check G1 (2.11.x) op de telefoon: Instellingen → Regels → 2024; "Start met voorbeeld" geeft Goblin Warriors; zoek "zombie 2024" en voeg toe; Exhaustion 4 op een speler halveert max HP niet; wisselen tijdens een gevecht kan niet; spelersscherm (QR) legt Grappled uit volgens 2024; export → import houdt "2024" in Instellingen; terug naar 2014 en offline openen werkt.
 - Site vindbaar maken: `HIDDEN = true` in `tools/pages.mjs` (robots `Disallow: /`). Op `false`, `node tools/pages.mjs`, daarna de sitemap in Search Console.
 - Projectinstructies op claude.ai verwijzen naar `claude/werkpakketten.md` en `claude/geplande-taken-werkwijze.md`; die bestaan niet meer. De werkwijze staat in CLAUDE.md (reviewers, geplande bouwtaken).
-
-## G1 D&D 2024-regels: werkpakketten (gepland)
-
-Plan met inventaris, besluiten (B1–B10) en per pakket scope en acceptatiecriteria: [`docs/g1-regels-2024.md`](docs/g1-regels-2024.md). Kern: één regelset per tafel (`S.rules`, alleen buiten een gevecht te wijzigen), monster-editie als data (`ed: "2024"`, ontbreekt = huidig gedrag), SRD 5.2-monsters via Open5e, backup v4 / encounterbestand v2 alleen bij 2024-inhoud. WP46 (fundament) is klaar in 2.4.0, WP47 (SRD 5.2-monsterdata) in 2.4.1, WP48 (parsers en monster-initiative) in 2.5.0 (CLAUDE.md, "Opslag en data"), WP49 (monsterkeuze per editie) in 2.6.0 (CLAUDE.md, "Voorbereiden"), WP50 (Exhaustion en Rage 2024) in 2.7.0, WP51 (conc-DC, surprise, Grappled) in 2.8.0 (CLAUDE.md, "Gevecht"), WP52 (condities-uitleg 2024, `ed` in de spelerssnapshot) in 2.9.0 (CLAUDE.md, "Gevecht" en "Spelersscherm"), WP53 (moeilijkheid volgens het XP-budget 2024) in 2.10.0 (CLAUDE.md, "Voorbereiden"), WP54 (regelkeuze zichtbaar in Instellingen → Regels) in 2.11.0 (CLAUDE.md, "Basis").
-
-| Code | Wat | Na | Omvang |
-|---|---|---|---|
-| **WP55** | Integratie, regressie, documentatie, G1 afsluiten | WP46–WP54 (klaar) | S |
-
-Besloten (27-10): standaard regelset 2014, release stapsgewijs in 2.x, Spells 2024 onder regels 2014 blijft. V4 besloten in WP49: zoekwoord `2014`/`2024` plus regel onder de lijst. Nog open: "4 in Lair" op signaal.
 
 ## Grote projecten (lange termijn)
 
@@ -53,7 +45,6 @@ Nog niet uitgewerkt. Elk project begint met een plan: inventaris in de code, ope
 
 | Code | Project | Open besluiten en afhankelijkheden |
 |---|---|---|
-| **G1** | **D&D 2024-regels** naast 2014. **Uitgewerkt**: zie "G1 D&D 2024-regels: werkpakketten" hierboven en `docs/g1-regels-2024.md`. Weapon mastery valt erbuiten (spelers rollen zelf). | Besloten: één regelset per tafel, wel SRD 5.2-monsters. Nog open: V1–V5 in het plan. |
 | **G2** | **Accounts en sync** (fase 2), local-first blijft de basis. Eerste collectie `encounters` (heeft `id` + `updatedAt`, nieuwste wint). Daarna: delen met een co-DM, vaste kamercode per campagne (`isOwner` in `worker/room.js`), taalvoorkeur in het account (nieuwste keuze wint, nooit midden in een sessie). | Dienst (bijv. Supabase) en kosten; rol van export/import daarna; rate-limit `ROOM_LIMIT` op eigenaar in plaats van IP. |
 | **G3** | **AI-vijanden** (fase 3): voorgestelde actie op basis van statblock, HP, condities en logboek, via de Worker (sleutel nooit in de browser). | Hangt af van G2: login en een limiet per gebruiker vóór het publiek gaat. Elke aanroep krijgt `lang`; voorstellen verwijzen naar id's; gegenereerde tekst is daarna inhoud (`docs/i18n.md` §9). |
 | **G4** | **Battle maps**: bij voorkeur gestructureerde data (grid, muren, terrein) die de app tekent; eventueel als eigen tool "Inn the Grid". | Losse tool of onderdeel van Initiative; handmatig of met AI (G3). |

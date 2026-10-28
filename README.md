@@ -1,8 +1,8 @@
 # Kev’s Inn itiative
 
-**English** · Initiative and encounter tracker for D&D 5e (2014), built for running combat at the table on a phone or tablet. Works offline, keeps all data in your browser, and comes in English and Dutch (`/initiative/`, `/nl/initiative/`; switch under Settings → Display). The rest of this README and the code comments are in Dutch.
+**English** · Initiative and encounter tracker for D&D 5e (2014 or 2024 rules, chosen per table), built for running combat at the table on a phone or tablet. Works offline, keeps all data in your browser, and comes in English and Dutch (`/initiative/`, `/nl/initiative/`; switch under Settings → Display). The rest of this README and the code comments are in Dutch.
 
-**Nederlands** · Voorheen Initiative Tafel; onderdeel van Kev’s Inn ("Your home between adventures."). Initiative tracker voor D&D 5e (2014) om gevechten aan tafel te draaien: spelers (ook via een D&D Beyond-link of PDF), alle 322 SRD-monsters, uitleg van alle SRD-spells (2014 en 2024), condities met duur, spell slots, concentration, death saves, recharge, legendary en lair actions, vaste party, logboek en undo.
+**Nederlands** · Voorheen Initiative Tafel; onderdeel van Kev’s Inn ("Your home between adventures."). Initiative tracker voor D&D 5e om gevechten aan tafel te draaien, met de regels van 2014 of 2024 (per tafel te kiezen onder Instellingen → Regels): spelers (ook via een D&D Beyond-link of PDF), alle SRD-monsters (322 uit SRD 5.1, 331 uit SRD 5.2.1), uitleg van alle SRD-spells (2014 en 2024), condities met duur, spell slots, concentration, death saves, recharge, legendary en lair actions, vaste party, logboek en undo.
 
 Werkt offline als app op je beginscherm (PWA). Alle data staat lokaal in je browser; via **Opslag → Exporteer** maak je een backup of neem je alles mee naar een ander apparaat. Klaargezette encounters deel je los via **+ Monster → Encounters → ⋯ → Delen**.
 
@@ -14,7 +14,7 @@ css/app.css           opmaak (licht en donker)
 js/main.js            opstarten
 js/state.js           toestand, undo, logboek vastleggen, party-sync
 js/storage.js         IndexedDB (met localStorage als terugval)
-js/backup.js          export/import (JSON met versienummer, nu versie 2)
+js/backup.js          export/import (JSON met versienummer: 3, of 4 bij 2024-inhoud)
 js/log.js             logboek: verschil tussen twee stappen
 js/ddb.js             D&D Beyond: PDF-sheets inlezen, online sheet ophalen
 js/ddbjson.js         D&D Beyond character-JSON → sheet (puur, getest)
@@ -22,7 +22,7 @@ worker/index.js       Cloudflare Worker: /api/ddb (alleen D&D Beyond-sheets) en 
 worker/room.js        Durable Object: spelersscherm-kamer (kamercode, WebSocket)
 js/data/monsters.js   monsterbibliotheek en import (Open5e / 5e-bits)
 js/data/spells.js     spellbibliotheek voor de spell-uitleg (laden bij de eerste tik, naam-aliassen)
-js/rules/             spelregels, puur en getest
+js/rules/             spelregels, puur en getest (editie 2014/2024 als parameter, `edition.js`)
 js/ui/                tekenen en gebruikersacties
 data/monsters.json    SRD 5.1 monsters
 data/monsters-2024.json SRD 5.2 monsters (gemaakt met tools/monsters_srd2024.py uit open5e-api, gecontroleerd tegen de SRD 5.2.1-pdf)
@@ -48,7 +48,7 @@ Cloudflare Workers publiceert automatisch bij elke push naar `main` (instellinge
 
 ## Nieuwe versie uitbrengen
 
-Verhoog `VERSION` in `sw.js` én `js/version.js`, anders blijven geïnstalleerde apps de oude bestanden uit hun cache gebruiken.
+Verhoog `VERSION` in `sw.js`, `js/version.js` én `<meta name="it-version">` in `pages/initiative.html` (daarna `node tools/pages.mjs`), anders blijven geïnstalleerde apps de oude bestanden uit hun cache gebruiken.
 
 ## Licentie van de monsterdata
 
