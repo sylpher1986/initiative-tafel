@@ -1,11 +1,15 @@
 // Inn the Grid (G4, WP58): kaartdocument, schema v1, puur (geen DOM, Node-testbaar). Eén kaart = één record in de
-// IndexedDB-store "maps" (js/maps/store.js). v1 bevat alleen naam en raster; achtergrond, terrein en objecten komen in
-// latere pakketten als optionele velden (docs/g4-inn-the-grid.md §2.3). Alles wat uit de opslag (of later een bestand)
-// komt is onbetrouwbaar: altijd via cleanMap.
+// IndexedDB-store "maps" (js/maps/store.js). v1 bevat naam en raster; v2 (WP59) voegt de optionele achtergrond `bg` toe
+// (js/maps/model/bg.js). Terrein en objecten komen later als optionele velden (docs/g4-inn-the-grid.md §2.3). Alles wat
+// uit de opslag (of later een bestand) komt is onbetrouwbaar: altijd via cleanMap.
+// Schema alleen omhoog als de inhoud het nodig heeft (zoals has2024 in Initiative): een kaart zonder achtergrond blijft
+// v1, zodat een oudere Maps-versie (ander tabblad, oude cache) hem gewoon leest; een kaart mét achtergrond is v2 en die
+// laat een oudere versie onaangeroerd in plaats van de achtergrond bij het opslaan stil weg te gooien.
 import { cleanGrid } from "./grid.js";
+import { cleanBg } from "./bg.js";
 
-/** Schemaversie van het kaartdocument. Hoger dan bekend = niet aanraken (gemaakt door een nieuwere versie). */
-export const SCHEMA = 1;
+/** Hoogste schemaversie die deze versie kent. Hoger = niet aanraken (gemaakt door een nieuwere versie). */
+export const SCHEMA = 2;
 /** Langste kaartnaam (tekens) */
 export const NAME_MAX = 60;
 
@@ -23,7 +27,7 @@ export function cleanName(v) {
 
 /** Nieuwe kaart (schema v1). name moet al gekozen zijn (newName); grid optioneel. */
 export function newMap({ id = mapId(), name = "", grid, now = Date.now() } = {}) {
-  return { id, schema: SCHEMA, name: cleanName(name), createdAt: now, updatedAt: now, grid: cleanGrid(grid) };
+  return { id, schema: 1, name: cleanName(name), createdAt: now, updatedAt: now, grid: cleanGrid(grid) };
 }
 
 /** Kaartdocument opschonen: bekende velden getypeerd en begrensd, onbekende weg. null = onbruikbaar (geen geldige id,
@@ -36,7 +40,10 @@ export function cleanMap(raw) {
   const time = (v) => (Number.isFinite(v) && v > 0 ? Math.round(v) : 0);
   const updatedAt = time(raw.updatedAt), createdAt = time(raw.createdAt) || updatedAt;
   const grid = raw.grid && typeof raw.grid === "object" && !Array.isArray(raw.grid) ? raw.grid : {};
-  return { id: raw.id, schema: SCHEMA, name: cleanName(raw.name), createdAt, updatedAt, grid: cleanGrid(grid) };
+  const out = { id: raw.id, schema: 1, name: cleanName(raw.name), createdAt, updatedAt, grid: cleanGrid(grid) };
+  const bg = cleanBg(raw.bg);
+  if (bg) { out.bg = bg; out.schema = 2; }
+  return out;
 }
 
 const key = (s) => s.toLocaleLowerCase();

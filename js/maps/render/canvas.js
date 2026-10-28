@@ -5,6 +5,7 @@
 // want het raster ligt later ook over een achtergrondafbeelding en moet daar per kaart passen, niet per thema.
 import { bounds, visibleLines, visibleCells, cellCenter, cellPoly, HEX_R } from "../model/grid.js";
 import { CELL, toScreen, visibleRect, crisp } from "../model/view.js";
+import { bgRect } from "../model/bg.js";
 
 /** Kleuren uit de CSS-tokens (opnieuw lezen bij een themawissel) */
 export function readColors(el = document.documentElement) {
@@ -24,8 +25,9 @@ export function fitCanvas(cv, w, h, dpr) {
   return true;
 }
 
-/** Kaart tekenen. map = { grid }, v = view, w/h = CSS-grootte, dpr, col = readColors() */
-export function draw(cv, map, v, w, h, dpr, col) {
+/** Kaart tekenen. map = { grid, bg? }, v = view, w/h = CSS-grootte, dpr, col = readColors(); img = tekenbare
+ *  achtergrond (of null: geen, laadt nog of ontbreekt), align = uitlijnmodus (WP59: afbeelding helemaal zichtbaar) */
+export function draw(cv, map, v, w, h, dpr, col, { img = null, align = false } = {}) {
   const g = cv.getContext("2d"), grid = map.grid, b = bounds(grid);
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.fillStyle = col.page;
@@ -34,6 +36,16 @@ export function draw(cv, map, v, w, h, dpr, col) {
   const X0 = Math.round(p0.x * dpr), Y0 = Math.round(p0.y * dpr), X1 = Math.round(p1.x * dpr), Y1 = Math.round(p1.y * dpr);
   g.fillStyle = col.map;
   g.fillRect(X0, Y0, X1 - X0, Y1 - Y0);
+  if (img && map.bg) { // WP59: achtergrond onder het raster; buiten de kaart gedimd, in de uitlijnmodus volledig
+    const r = bgRect(map.bg), q0 = toScreen(v, r.x, r.y), q1 = toScreen(v, r.x + r.w, r.y + r.h);
+    const bx = q0.x * dpr, by = q0.y * dpr, bw = (q1.x - q0.x) * dpr, bh = (q1.y - q0.y) * dpr;
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = "high";
+    g.globalAlpha = align ? 1 : 0.35;
+    g.drawImage(img, bx, by, bw, bh);
+    g.globalAlpha = 1;
+    if (!align) { g.save(); g.beginPath(); g.rect(X0, Y0, X1 - X0, Y1 - Y0); g.clip(); g.drawImage(img, bx, by, bw, bh); g.restore(); }
+  }
   if (grid.show) {
     g.beginPath();
     if (grid.type === "hex") hexPath(g, grid, v, w, h, dpr);

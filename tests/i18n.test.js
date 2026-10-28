@@ -122,6 +122,7 @@ test("elke sleutel in js/ en de pagina's bestaat in de Engelse catalogus", () =>
 // waar de sleutel ontstaat; een patroon dat niets meer dekt is zelf een fout (geen dode uitzonderingen).
 const cinfoSet = new Set(Object.keys(CINFO).flatMap((id) => [...cinfoKeys(id, "2014"), ...cinfoKeys(id, "2024")])); // WP52: ook CINFO24
 const DYNAMIC = [
+  [/^maps\.bg\.err\./, "js/maps/main.js bgErr"],
   [/^init\.custom\.f\.(act|re|la|tr)$/, "js/data/statparse.js n()"],
   [/^rules\.dur\.\w+S$/, "js/rules/turns.js durShort"],
   [/^rules\.sv\.(ok|fail)(Note)?$/, "js/rules/saves.js"],

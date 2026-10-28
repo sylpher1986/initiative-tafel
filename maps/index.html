@@ -24,6 +24,8 @@
 </header>
 <main class="mstage" id="m-stage">
   <canvas id="m-canvas" role="img"></canvas>
+  <!-- WP59: strook bovenin zolang de uitlijnmodus aan staat -->
+  <p class="mstrip" id="m-astrip" hidden>Drag the image to line up the grid</p>
 </main>
 <!-- WP58: Mijn kaarten. Eigen weergave in dezelfde pagina (editor verborgen, history.pushState: terug = editor). Rij-tik
      opent, ⋯ opent het menu (Hernoemen, Dupliceren, Verwijderen). Lijst en meldingen vult js/maps/main.js. -->
@@ -49,6 +51,17 @@
     <button type="button" class="btn" id="m-set" aria-label="Map settings" aria-expanded="false" aria-controls="m-sheet"><svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-gear"/></svg></button>
   </div>
 </nav>
+<!-- WP59: uitlijnmodus. Vervangt de dock: één vinger sleept de afbeelding, de pijlen schuiven per stap, Gereed = terug
+     naar paneel Kaart. Twee vingers en het wiel zoomen/pannen zoals altijd. -->
+<nav class="mdock" id="m-adock" aria-label="Alignment controls" hidden>
+  <div class="marrows">
+    <button type="button" class="btn" data-nudge="left" aria-label="Move image left"><span aria-hidden="true">◀</span></button>
+    <button type="button" class="btn" data-nudge="up" aria-label="Move image up"><span aria-hidden="true">▲</span></button>
+    <button type="button" class="btn" data-nudge="down" aria-label="Move image down"><span aria-hidden="true">▼</span></button>
+    <button type="button" class="btn" data-nudge="right" aria-label="Move image right"><span aria-hidden="true">▶</span></button>
+  </div>
+  <button type="button" class="btn primary" id="m-adone">Done</button>
+</nav>
 <!-- WP57: paneel Kaart. Geen dim: de kaart blijft erboven zichtbaar en bedienbaar, zodat elke wijziging direct te zien is
      (max ± 55 % hoogte). Niet-modaal; Esc of Close sluit, focus terug naar de tandwielknop. -->
 <section class="msheet" id="m-sheet" role="dialog" aria-labelledby="m-s-title" tabindex="-1" hidden>
@@ -68,6 +81,27 @@
     <div class="seg" id="m-color" role="group" aria-labelledby="m-color-l"><button type="button" data-v="auto">Auto</button><button type="button" data-v="dark">Dark</button><button type="button" data-v="light">Light</button><button type="button" data-v="gold">Gold</button></div></div>
   <div class="mfield"><span class="lab" id="m-alpha-l">Line opacity</span>
     <div class="seg" id="m-alpha" role="group" aria-labelledby="m-alpha-l"><button type="button" data-v="25"></button><button type="button" data-v="50"></button><button type="button" data-v="75"></button><button type="button" data-v="100"></button></div></div>
+  <!-- WP59: achtergrond. Drie standen (alleen hidden wisselt): geen afbeelding, wel (schaal, raster passend, Uitlijnen,
+       Vervangen/Verwijderen), ontbreekt (opslag gewist: Opnieuw kiezen houdt schaal en verschuiving). -->
+  <div class="mbg" id="m-bg" role="group" aria-labelledby="m-bg-l"><span class="lab" id="m-bg-l">Background</span>
+    <input type="file" id="m-bg-file" accept="image/png,image/jpeg,image/webp" hidden tabindex="-1">
+    <p class="mwarn" id="m-bg-miss" hidden>Background image missing (browser storage was cleared).</p>
+    <div class="mbg-set" id="m-bg-set" hidden>
+      <div class="f2">
+        <label>Pixels per cell<input id="m-ppc" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-ppc-e"><span class="ferr" id="m-ppc-e" hidden></span></label>
+        <label>Cells across<input id="m-across" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-across-e"><span class="ferr" id="m-across-e" hidden></span></label>
+      </div>
+      <button type="button" class="btn" id="m-bg-fit" hidden></button>
+      <button type="button" class="btn" id="m-bg-align">Align</button>
+    </div>
+    <button type="button" class="btn" id="m-bg-pick" data-file>Choose background</button>
+    <p class="hint" id="m-bg-hint"></p>
+    <div class="mbg-row" id="m-bg-row" hidden>
+      <button type="button" class="btn" id="m-bg-rep" data-file>Replace</button>
+      <button type="button" class="btn mdel" id="m-bg-del">Remove</button>
+    </div>
+    <p class="ferr" id="m-bg-e" role="alert" hidden></p>
+  </div>
 </section>
 <!-- WP58: menu en hernoemen voor een kaart uit de lijst (modaal, met dim) -->
 <div class="sheet-wrap" id="m-menu" hidden>

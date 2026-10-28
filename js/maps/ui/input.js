@@ -4,8 +4,10 @@
 // Geen pagina-scroll of iOS-paginazoom: touch-action:none op het canvas (css/maps.css) en gesture* geblokkeerd.
 import { panBy, pinch, zoomAt, wheelFactor } from "../model/view.js";
 
-/** Invoer aan het canvas hangen. get() = huidige view, set(v) = nieuwe view toepassen (begrenzen + tekenen). */
-export function attachInput(cv, { get, set }) {
+/** Invoer aan het canvas hangen. get() = huidige view, set(v) = nieuwe view toepassen (begrenzen + tekenen).
+ *  WP59: drag(dx, dy) (CSS-px) krijgt de beweging van één vinger/muis zolang dragging() waar is (uitlijnmodus: de
+ *  afbeelding slepen); knijpen en wiel blijven zoomen/pannen. */
+export function attachInput(cv, { get, set, drag = null, dragging = () => false }) {
   const pts = new Map(); // pointerId → { x, y } (CSS-px binnen het canvas)
   const at = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
 
@@ -21,7 +23,7 @@ export function attachInput(cv, { get, set }) {
     const prev = pts.get(e.pointerId);
     if (!prev) return;
     const now = at(e);
-    if (pts.size === 1) set(panBy(get(), now.x - prev.x, now.y - prev.y));
+    if (pts.size === 1) { if (drag && dragging()) drag(now.x - prev.x, now.y - prev.y); else set(panBy(get(), now.x - prev.x, now.y - prev.y)); }
     else {
       const [other] = [...pts].filter(([id]) => id !== e.pointerId).map(([, p]) => p);
       set(pinch(get(), prev, other, now, other));

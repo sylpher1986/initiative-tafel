@@ -23,6 +23,8 @@
 </header>
 <main class="mstage" id="m-stage">
   <canvas id="m-canvas" role="img"></canvas>
+  <!-- WP59: strook bovenin zolang de uitlijnmodus aan staat -->
+  <p class="mstrip" id="m-astrip" hidden>{{t:maps.bg.alignHint}}</p>
 </main>
 <!-- WP58: Mijn kaarten. Eigen weergave in dezelfde pagina (editor verborgen, history.pushState: terug = editor). Rij-tik
      opent, ⋯ opent het menu (Hernoemen, Dupliceren, Verwijderen). Lijst en meldingen vult js/maps/main.js. -->
@@ -48,6 +50,17 @@
     <button type="button" class="btn" id="m-set" aria-label="{{t:maps.panel.open}}" aria-expanded="false" aria-controls="m-sheet"><svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-gear"/></svg></button>
   </div>
 </nav>
+<!-- WP59: uitlijnmodus. Vervangt de dock: één vinger sleept de afbeelding, de pijlen schuiven per stap, Gereed = terug
+     naar paneel Kaart. Twee vingers en het wiel zoomen/pannen zoals altijd. -->
+<nav class="mdock" id="m-adock" aria-label="{{t:maps.bg.dock}}" hidden>
+  <div class="marrows">
+    <button type="button" class="btn" data-nudge="left" aria-label="{{t:maps.bg.left}}"><span aria-hidden="true">◀</span></button>
+    <button type="button" class="btn" data-nudge="up" aria-label="{{t:maps.bg.up}}"><span aria-hidden="true">▲</span></button>
+    <button type="button" class="btn" data-nudge="down" aria-label="{{t:maps.bg.down}}"><span aria-hidden="true">▼</span></button>
+    <button type="button" class="btn" data-nudge="right" aria-label="{{t:maps.bg.right}}"><span aria-hidden="true">▶</span></button>
+  </div>
+  <button type="button" class="btn primary" id="m-adone">{{t:maps.bg.done}}</button>
+</nav>
 <!-- WP57: paneel Kaart. Geen dim: de kaart blijft erboven zichtbaar en bedienbaar, zodat elke wijziging direct te zien is
      (max ± 55 % hoogte). Niet-modaal; Esc of Close sluit, focus terug naar de tandwielknop. -->
 <section class="msheet" id="m-sheet" role="dialog" aria-labelledby="m-s-title" tabindex="-1" hidden>
@@ -67,6 +80,27 @@
     <div class="seg" id="m-color" role="group" aria-labelledby="m-color-l"><button type="button" data-v="auto">{{t:maps.color.auto}}</button><button type="button" data-v="dark">{{t:maps.color.dark}}</button><button type="button" data-v="light">{{t:maps.color.light}}</button><button type="button" data-v="gold">{{t:maps.color.gold}}</button></div></div>
   <div class="mfield"><span class="lab" id="m-alpha-l">{{t:maps.grid.alpha}}</span>
     <div class="seg" id="m-alpha" role="group" aria-labelledby="m-alpha-l"><button type="button" data-v="25"></button><button type="button" data-v="50"></button><button type="button" data-v="75"></button><button type="button" data-v="100"></button></div></div>
+  <!-- WP59: achtergrond. Drie standen (alleen hidden wisselt): geen afbeelding, wel (schaal, raster passend, Uitlijnen,
+       Vervangen/Verwijderen), ontbreekt (opslag gewist: Opnieuw kiezen houdt schaal en verschuiving). -->
+  <div class="mbg" id="m-bg" role="group" aria-labelledby="m-bg-l"><span class="lab" id="m-bg-l">{{t:maps.bg.title}}</span>
+    <input type="file" id="m-bg-file" accept="image/png,image/jpeg,image/webp" hidden tabindex="-1">
+    <p class="mwarn" id="m-bg-miss" hidden>{{t:maps.bg.missing}}</p>
+    <div class="mbg-set" id="m-bg-set" hidden>
+      <div class="f2">
+        <label>{{t:maps.bg.ppc}}<input id="m-ppc" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-ppc-e"><span class="ferr" id="m-ppc-e" hidden></span></label>
+        <label>{{t:maps.bg.across}}<input id="m-across" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-across-e"><span class="ferr" id="m-across-e" hidden></span></label>
+      </div>
+      <button type="button" class="btn" id="m-bg-fit" hidden></button>
+      <button type="button" class="btn" id="m-bg-align">{{t:maps.bg.align}}</button>
+    </div>
+    <button type="button" class="btn" id="m-bg-pick" data-file>{{t:maps.bg.choose}}</button>
+    <p class="hint" id="m-bg-hint"></p>
+    <div class="mbg-row" id="m-bg-row" hidden>
+      <button type="button" class="btn" id="m-bg-rep" data-file>{{t:maps.bg.replace}}</button>
+      <button type="button" class="btn mdel" id="m-bg-del">{{t:maps.bg.remove}}</button>
+    </div>
+    <p class="ferr" id="m-bg-e" role="alert" hidden></p>
+  </div>
 </section>
 <!-- WP58: menu en hernoemen voor een kaart uit de lijst (modaal, met dim) -->
 <div class="sheet-wrap" id="m-menu" hidden>

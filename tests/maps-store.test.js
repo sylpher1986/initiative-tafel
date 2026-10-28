@@ -27,7 +27,7 @@ test("cleanName: stuurtekens, witruimte, lengte per codepunt, geen tekst → lee
 
 test("newMap en cleanMap: schema v1, raster opgeschoond, onbekende velden weg", () => {
   const m = newMap({ id: "abcdef1", name: " Kaart 1 ", now: 1000, grid: { cols: 500, type: "hex" } });
-  assert.deepEqual({ ...m, grid: undefined }, { id: "abcdef1", schema: SCHEMA, name: "Kaart 1", createdAt: 1000, updatedAt: 1000, grid: undefined });
+  assert.deepEqual({ ...m, grid: undefined }, { id: "abcdef1", schema: 1, name: "Kaart 1", createdAt: 1000, updatedAt: 1000, grid: undefined });
   assert.equal(m.grid.cols, 100);
   assert.equal(m.grid.type, "hex");
   const c = cleanMap({ ...m, evil: "<img onerror>", __proto__: { x: 1 }, grid: { ...m.grid, junk: 1 } });
@@ -37,7 +37,7 @@ test("newMap en cleanMap: schema v1, raster opgeschoond, onbekende velden weg", 
 });
 
 test("cleanMap: onbruikbaar = null, nieuwer schema niet aanraken, rare velden → standaard", () => {
-  for (const bad of [null, 5, "x", [], {}, { id: "AB" }, { id: "ab" }, { id: "a b c d e" }, { id: "abcdef1", schema: 2 }, { id: "abcdef1", schema: 0 }]) assert.equal(cleanMap(bad), null, JSON.stringify(bad));
+  for (const bad of [null, 5, "x", [], {}, { id: "AB" }, { id: "ab" }, { id: "a b c d e" }, { id: "abcdef1", schema: SCHEMA + 1 }, { id: "abcdef1", schema: 0 }]) assert.equal(cleanMap(bad), null, JSON.stringify(bad));
   const c = cleanMap({ id: "abcdef1", name: ["x"], updatedAt: "gisteren", createdAt: -5, grid: [1, 2] });
   assert.equal(c.name, "");
   assert.equal(c.updatedAt, 0);

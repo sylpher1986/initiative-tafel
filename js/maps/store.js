@@ -1,11 +1,13 @@
 // Inn the Grid (G4, WP58): opslag in een eigen IndexedDB "kevs-inn-maps", los van Initiative ("initiative-tafel").
-// Stores: "maps" (kaartdocument, sleutel = id) en "assets" (afbeeldingen, sleutel = sha256; leeg tot WP59). Geen
+// Stores: "maps" (kaartdocument, sleutel = id) en "assets" (afbeeldingen, WP59: sleutel = sha256 van de opgeslagen bytes,
+// record { data: ArrayBuffer, mime, w, h, ow, oh, src }; index "src" = sha256 van het originele bestand, zodat dezelfde
+// upload twee keer één asset blijft zonder opnieuw te decoderen; versie 2). Geen
 // localStorage-terugval: een kaart hoort niet in 5 MB tekst; zonder IndexedDB (privémodus) werkt de editor in het
 // geheugen en zegt de status "wordt niet bewaard" (js/maps/main.js). Laatst geopende kaart in localStorage (LAST_KEY).
 // Alles wat gelezen wordt gaat door cleanMap (js/maps/model/map.js); records van een nieuwer schema blijven onaangeroerd.
 import { cleanMap, sortMaps } from "./model/map.js";
 
-export const DB = "kevs-inn-maps", DB_VERSION = 1, LAST_KEY = "maps-last";
+export const DB = "kevs-inn-maps", DB_VERSION = 2, LAST_KEY = "maps-last";
 let dbp = null, dbo = null; // dbo = open database: transacties dan synchroon starten (pagehide, zie tx)
 
 /** Database openen (één keer). Faalt als IndexedDB ontbreekt of geblokkeerd is (privémodus, instelling). */
@@ -18,6 +20,7 @@ export function openDb() {
     req.onupgradeneeded = (e) => { // versie-upgrade per stap; elke nieuwe versie voegt alleen toe
       const db = req.result;
       if (e.oldVersion < 1) { db.createObjectStore("maps", { keyPath: "id" }); db.createObjectStore("assets"); }
+      if (e.oldVersion < 2) req.transaction.objectStore("assets").createIndex("src", "src", { unique: false }); // WP59
     };
     req.onsuccess = () => {
       const db = req.result;
@@ -77,6 +80,61 @@ export async function putMap(doc) {
 export async function deleteMap(id) {
   if (!mayWrite()) return true;
   try { await tx("maps", "readwrite", (s) => s.delete(id)); return true; } catch { return false; }
+}
+
+// ---- WP59: afbeeldingen ----
+const SHA = /^[0-9a-f]{64}$/;
+const cleanAsset = (r) => (r && typeof r === "object" && r.data instanceof ArrayBuffer && typeof r.mime === "string" && r.w > 0 && r.h > 0 ? r : null);
+
+/** Asset bewaren onder zijn sha256. false als het niet lukte (opslag vol, geblokkeerd, gestopt tabblad telt als gelukt). */
+export async function putAsset(sha, rec) {
+  if (!mayWrite()) return true;
+  if (!SHA.test(sha) || !cleanAsset(rec)) return false;
+  try { await tx("assets", "readwrite", (s) => s.put(rec, sha)); return true; } catch { return false; }
+}
+
+/** Asset (record) of null. Ook bij een (tijdelijke) leesfout null: de editor toont de achtergrond dan als ontbrekend tot
+ *  de kaart opnieuw geopend wordt; dat is bewust (geen herhaalpogingen in een lus). */
+export async function getAsset(sha) {
+  if (!SHA.test(String(sha))) return null;
+  try { return cleanAsset(await tx("assets", "readonly", (s) => s.get(sha))); } catch { return null; }
+}
+
+/** Bestaande asset bij hetzelfde originele bestand: { sha, rec } of null */
+export async function findAsset(src) {
+  if (!SHA.test(String(src))) return null;
+  try {
+    const key = await tx("assets", "readonly", (s) => s.index("src").getKey(src));
+    if (typeof key !== "string") return null;
+    const rec = await getAsset(key);
+    return rec ? { sha: key, rec } : null;
+  } catch { return null; }
+}
+
+/**
+ * Opruimen bij het opstarten: assets waar geen enkele kaart meer naar verwijst. Alleen bij de start, zodat Ongedaan na
+ * vervangen, verwijderen of kaart verwijderen de afbeelding in deze sessie nog terug kan zetten. Leest de ruwe records
+ * (ook van een nieuwer schema): elke tekst in bg.asset telt als verwijzing. Geeft het aantal verwijderde assets, of -1.
+ */
+export async function gcAssets() {
+  if (!mayWrite()) return 0;
+  try {
+    // één readwrite-transactie over beide stores: een putAsset/putMap die intussen start, wacht tot het opruimen klaar is
+    const db = await openDb();
+    return await new Promise((resolve, reject) => {
+      const t = db.transaction(["maps", "assets"], "readwrite");
+      let n = 0;
+      const gm = t.objectStore("maps").getAll();
+      gm.onsuccess = () => {
+        const keep = new Set((gm.result || []).map((m) => m && m.bg && m.bg.asset).filter((a) => typeof a === "string"));
+        const as = t.objectStore("assets"), gk = as.getAllKeys();
+        gk.onsuccess = () => { for (const k of gk.result || []) if (!keep.has(k)) { as.delete(k); n++; } };
+      };
+      t.oncomplete = () => resolve(n);
+      t.onerror = () => reject(t.error);
+      t.onabort = () => reject(t.error || new Error("aborted"));
+    });
+  } catch { return -1; }
 }
 
 /** Laatst geopende kaart (id of null) */

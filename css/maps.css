@@ -63,3 +63,17 @@ body.maps{display:flex;flex-direction:column;padding:0;height:100dvh} /* zonder 
 .maps .toast{bottom:calc(68px + env(safe-area-inset-bottom,0px))}
 @media (max-width:379px){ /* WP58: vijf bedieningsdelen in de dock op 320 px */
   .mdock{gap:6px}.mzoom{gap:2px}.mright{gap:4px}#m-zoom{min-width:3.4em}#m-fit,#m-set,#m-maps{padding:0}}
+/* WP59: achtergrond in paneel Kaart en de uitlijnmodus */
+.mbg{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.mbg-set{display:grid;gap:8px}
+.mbg-row{display:flex;gap:8px}
+.mbg-row .btn{flex:1 1 0}
+.mbg .mdel{color:var(--bad)}
+.mbg .hint{margin:0}
+.mbg .ferr{margin:0}
+#m-bg-pick[aria-busy="true"]{cursor:progress}
+.mstrip{position:absolute;top:8px;left:50%;transform:translateX(-50%);margin:0;max-width:calc(100% - 24px);box-sizing:border-box;
+  background:var(--surface);color:var(--fg);border:1px solid var(--sel);border-radius:999px;padding:6px 14px;font-size:.9rem;font-weight:600;text-align:center;pointer-events:none;box-shadow:var(--shadow-pop)}
+.mstrip[hidden]{display:none}
+.marrows{display:flex;gap:4px}
+.marrows .btn{min-width:48px;padding:0;font-size:1rem}

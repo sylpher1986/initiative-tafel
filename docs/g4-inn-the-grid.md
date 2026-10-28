@@ -310,7 +310,7 @@ Kleinste waardevolle eind-tot-eind-release: **M1**.
 | D9 | Reviewers in de functionele fase | Volgens CLAUDE.md; UX-agent alleen bij echte keuzes, vormgeving pas in WP68 |
 | D10 | Grenzen | **Kaart: besloten in WP57 op het advies, max 100×100 cellen**; objecten: 2000 (advies, bijstellen na WP66) |
 | D11 | Tabbladen | **Besloten in WP58 op het advies: eigen `maps-tab`, nieuwste wint** |
-| D12 | Uploads | ≤ 25 MB invoer, opgeslagen ≤ 4096 px, alleen PNG/JPEG/WebP |
+| D12 | Uploads | **Besloten in WP59 op het advies: ≤ 25 MB invoer, opgeslagen ≤ 4096 px, alleen PNG/JPEG/WebP** (daarbij: weigeren boven 16384 px per zijde of 36 MP, vóór het decoderen) |
 
 ### Echt blokkerend vóór WP56
 Geen meer: D1–D3 zijn besloten. De rest start op het advies en wordt per pakket bevestigd.

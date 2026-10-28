@@ -62,6 +62,33 @@ async function mapsIdb(page, ok, ms = 5000) {
   }
 }
 
+/** WP59: alle assets in "kevs-inn-maps" als { key, mime, w, h, ow, oh, exif } (leest de opslag zelf) */
+const mapsAssets = (page) => page.evaluate(() => new Promise((res) => {
+  const r = indexedDB.open("kevs-inn-maps");
+  r.onerror = () => res(null);
+  r.onsuccess = () => {
+    const out = [], c = r.result.transaction("assets").objectStore("assets").openCursor();
+    c.onsuccess = () => {
+      const k = c.result;
+      if (!k) { r.result.close(); res(out); return; }
+      const v = k.value, b = new Uint8Array(v.data), s = String.fromCharCode(...b.subarray(0, Math.min(b.length, 4096)));
+      out.push({ key: k.key, mime: v.mime, w: v.w, h: v.h, ow: v.ow, oh: v.oh, exif: s.includes("Exif") });
+      k.continue();
+    };
+    c.onerror = () => { r.result.close(); res(null); };
+  };
+}));
+/** WP59: testafbeelding in de pagina tekenen (OffscreenCanvas) en als bytes teruggeven: w×h, raster om de cell px */
+const fixture = (page, w, h, cell, type = "image/png") => page.evaluate(async ([w, h, cell, type]) => {
+  const c = new OffscreenCanvas(w, h), g = c.getContext("2d");
+  g.fillStyle = "#c9b48a"; g.fillRect(0, 0, w, h);
+  g.strokeStyle = "#3a281e"; g.lineWidth = 2; g.beginPath();
+  for (let x = 0; x <= w; x += cell) { g.moveTo(x, 0); g.lineTo(x, h); }
+  for (let y = 0; y <= h; y += cell) { g.moveTo(0, y); g.lineTo(w, y); }
+  g.stroke(); g.fillStyle = "#8a1d14"; g.fillRect(0, 0, cell, cell);
+  return [...new Uint8Array(await (await c.convertToBlob({ type, quality: 0.9 })).arrayBuffer())];
+}, [w, h, cell, type]).then((a) => Buffer.from(a));
+
 async function loadPw() {
   for (const p of [process.env.PW_MODULE, "playwright", "/opt/npm-tools/node_modules/playwright", "/opt/node-tools/node_modules/playwright"].filter(Boolean)) {
     try { return p.startsWith("/") ? createRequire(import.meta.url)(p) : await import(p); } catch { /* volgende */ }
@@ -93,7 +120,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
@@ -492,6 +519,180 @@ const SCEN = {
     await tap(page, "#m-maps"); await page.locator("#m-list").waitFor({ state: "visible" });
     const ids = await page.evaluate(() => [...document.querySelectorAll("#m-lrows .mkl-o")].map((b) => b.dataset.id));
     if (ids.length !== 2 || ids.filter((x) => x === gone).length !== 1) throw new Error("Ongedaan vanuit de editor: " + ids);
+    // WP59-review: achtergrond zonder IndexedDB (assets in het geheugen), ook in een gedupliceerde kaart
+    await tap(page, `#m-lrows .mkl-o[data-id="${ids[0]}"]`); await page.waitForFunction(() => window.__maps.view$() === "edit");
+    await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    const [fc] = await Promise.all([page.waitForEvent("filechooser"), tap(page, "#m-bg-pick")]);
+    await fc.setFiles({ name: "grot.png", mimeType: "image/png", buffer: await fixture(page, 700, 490, 70) });
+    await page.waitForFunction(() => window.__maps.bg().state === "set" && window.__maps.bg().img, null, { timeout: 10000 });
+    await page.keyboard.press("Escape");
+    const cur = await page.evaluate(() => window.__maps.map().id);
+    await tap(page, "#m-maps"); await page.locator("#m-list").waitFor({ state: "visible" });
+    await tap(page, `#m-lrows .mkl-m[data-id="${cur}"]`); await tap(page, '#m-menu [data-m="dup"]');
+    await page.waitForFunction(() => document.querySelectorAll("#m-lrows .mkl-row").length === 3);
+    await tap(page, "#m-lrows .mkl-o"); await page.waitForFunction((id) => window.__maps.view$() === "edit" && window.__maps.map().id !== id, cur);
+    await page.waitForFunction(() => window.__maps.bg().img, null, { timeout: 5000 }).catch(() => {});
+    if (!(await page.evaluate(() => window.__maps.bg().img))) throw new Error("privémodus: achtergrond in de kopie ontbreekt");
+  },
+  // WP59 (G4): achtergrondafbeelding. Kiezen via de echte knop (bestandskiezer); GIF, SVG, HEIC, hernoemd tekstbestand en
+  // > 25 MB geven elk een melding (acceptatie 1); testkaart 30×20 à 70 px: startschatting 70 px/cel, Raster passend
+  // 30 × 20 in één tik (3); in IndexedDB schema 2 + één asset, zelfde afbeelding = één asset (5); uitlijnmodus: pijl = 3
+  // bronpixels, slepen schuift, Gereed = paneel; velden gekoppeld; herladen = precies gelijk (4); verwijderen + Ongedaan;
+  // groot bestand → opgeslagen ≤ 4096 px, WebP, geen EXIF (2); ongebruikte asset weg na herladen; ontbrekende asset →
+  // Opnieuw kiezen houdt schaal en verschuiving. --shots=wp59: paneel, uitlijnen.
+  async wp59(page, base) {
+    const ready = () => page.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);
+    await ready();
+    // review: upgrade van een bestaande v1-database (WP58) naar v2: kaart blijft, index "src" komt erbij
+    const here = page.url();
+    await page.goto(base + "/nl/404.html");
+    await page.evaluate(() => new Promise((res, rej) => {
+      const d = indexedDB.deleteDatabase("kevs-inn-maps");
+      d.onsuccess = d.onerror = d.onblocked = () => {
+        const r = indexedDB.open("kevs-inn-maps", 1);
+        r.onupgradeneeded = () => { r.result.createObjectStore("maps", { keyPath: "id" }); r.result.createObjectStore("assets"); };
+        r.onsuccess = () => {
+          const t = r.result.transaction("maps", "readwrite");
+          t.objectStore("maps").put({ id: "upgrade01", schema: 1, name: "Zonder Level", createdAt: 1, updatedAt: Date.now(), grid: { type: "square", cols: 20, rows: 15 } });
+          t.oncomplete = () => { r.result.close(); localStorage.setItem("maps-last", "upgrade01"); res(); };
+        };
+        r.onerror = () => rej(r.error);
+      };
+    }));
+    await page.goto(here); await ready();
+    const up = await page.evaluate(() => new Promise((res) => { const r = indexedDB.open("kevs-inn-maps"); r.onsuccess = () => { const db = r.result; res({ v: db.version, idx: [...db.transaction("assets").objectStore("assets").indexNames], id: window.__maps.map().id }); db.close(); }; }));
+    if (up.v !== 2 || !up.idx.includes("src") || up.id !== "upgrade01") throw new Error("upgrade v1 → v2: " + JSON.stringify(up));
+    const frame = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const B = () => page.evaluate(() => ({ ...window.__maps.bg(), bg: window.__maps.map().bg || null, grid: window.__maps.grid() }));
+    const choose = async (sel, file) => {
+      const [fc] = await Promise.all([page.waitForEvent("filechooser"), tap(page, sel)]);
+      await fc.setFiles(file);
+    };
+    await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    if (!(await page.locator("#m-bg-pick").isVisible()) || !(await page.locator("#m-bg-hint").textContent()).includes("25")) throw new Error("geen afbeelding: kiesknop + hint");
+    const bad = [
+      ["kaart.gif", "image/gif", Buffer.from("GIF89a\x01\x00\x01\x00\x00\x00\x00;", "latin1")],
+      ["kaart.svg", "image/svg+xml", Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')],
+      ["IMG_0001.HEIC", "image/heic", Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from("ftypheic"), Buffer.alloc(40)])],
+      ["kaart.png", "image/png", Buffer.from("Dit is eigenlijk tekst, hernoemd naar .png")],
+      ["groot.png", "image/png", Buffer.alloc(25 * 1024 * 1024 + 1)],
+    ];
+    const msgs = new Set();
+    for (const [name, mimeType, buffer] of bad) {
+      await choose("#m-bg-pick", { name, mimeType, buffer });
+      await page.waitForFunction(() => !document.getElementById("m-bg-e").hidden && !document.getElementById("m-bg-pick").disabled, null, { timeout: 5000 });
+      const st = await page.evaluate(() => ({ e: document.getElementById("m-bg-e").textContent, s: window.__maps.bg().state }));
+      if (st.s !== "none" || st.e.length < 10 || st.e.includes("⟦")) throw new Error(`${name}: ` + JSON.stringify(st));
+      msgs.add(st.e);
+    }
+    if (msgs.size !== bad.length) throw new Error("meldingen niet per soort verschillend: " + [...msgs].join(" | "));
+    // testkaart 30×20 vakken à 70 px
+    const map30 = await fixture(page, 2100, 1400, 70);
+    const t0 = Date.now();
+    await choose("#m-bg-pick", { name: "grot.png", mimeType: "image/png", buffer: map30 });
+    await page.waitForFunction(() => window.__maps.bg().state === "set" && window.__maps.bg().img, null, { timeout: 10000 });
+    let b = await B();
+    if (b.bg.ppc !== 70 || b.bg.x !== 0 || b.bg.w !== 2100 || (await page.locator("#m-bg-e").isVisible())) throw new Error("startschatting: " + JSON.stringify(b));
+    if (!(await page.locator("#m-bg-fit").textContent()).includes("30×20")) throw new Error("knop Raster passend: " + await page.locator("#m-bg-fit").textContent());
+    if ((await page.evaluate(() => document.activeElement?.id)) !== "m-bg-align") throw new Error("focus na kiezen niet op Uitlijnen");
+    await tap(page, "#m-bg-fit"); await frame();
+    b = await B();
+    if (b.grid.cols !== 30 || b.grid.rows !== 20 || await page.locator("#m-bg-fit").isVisible()) throw new Error("raster passend: " + JSON.stringify(b.grid));
+    if (Date.now() - t0 > 60000) throw new Error("uitlijnen duurde > 1 minuut");
+    // het raster ligt precies op de getekende lijnen: pixel net naast een rasterlijn = achtergrond (geen dim), rode hoekcel
+    await snap(page, "wp59", "paneel");
+    const ids = await mapsIdb(page, (all) => all[0]?.schema === 2 && all[0].bg?.asset && all[0].grid.cols === 30);
+    let as = await mapsAssets(page);
+    if (as.length !== 1 || as[0].key !== ids[0].bg.asset) throw new Error("asset: " + JSON.stringify(as));
+    // zelfde afbeelding via Vervangen = één asset; melding met Ongedaan
+    await choose("#m-bg-rep", { name: "grot-kopie.png", mimeType: "image/png", buffer: map30 });
+    await page.locator("#m-toast .tundo").waitFor();
+    as = await mapsAssets(page);
+    if (as.length !== 1) throw new Error("zelfde afbeelding twee keer ≠ één asset: " + as.length);
+    // velden gekoppeld: 35 px per cel → 60 cellen; 30 cellen → 70 px
+    await page.locator("#m-ppc").fill("35"); await page.locator("#m-ppc").press("Enter");
+    if ((await page.locator("#m-across").inputValue()) !== "60") throw new Error("cellen volgt ppc niet: " + await page.locator("#m-across").inputValue());
+    await page.locator("#m-across").fill("30"); await page.locator("#m-across").press("Enter");
+    if ((await page.locator("#m-ppc").inputValue()) !== "70" || (await B()).bg.ppc !== 70) throw new Error("ppc volgt cellen niet");
+    await page.locator("#m-ppc").fill("2"); await page.locator("#m-ppc").press("Enter");
+    if (!(await page.locator("#m-ppc-e").isVisible()) || (await B()).bg.ppc !== 70) throw new Error("ppc 2 niet geweigerd");
+    await page.locator("#m-ppc").fill("70"); await page.locator("#m-ppc").press("Enter");
+    // uitlijnmodus
+    await tap(page, "#m-bg-align");
+    await page.locator("#m-adock").waitFor({ state: "visible" });
+    const am = await page.evaluate(() => ({ sheet: document.getElementById("m-sheet").hidden, dock: document.getElementById("m-dock").hidden, strip: !document.getElementById("m-astrip").hidden, align: window.__maps.bg().align, foc: document.activeElement?.id }));
+    if (!am.sheet || !am.dock || !am.strip || !am.align || am.foc !== "m-adone") throw new Error("uitlijnmodus: " + JSON.stringify(am));
+    const z = (await page.evaluate(() => window.__maps.view())).z;
+    const step = Math.max(1, Math.round((2 / (48 * z)) * 70)) / 70;
+    await tap(page, '#m-adock [data-nudge="right"]'); await tap(page, '#m-adock [data-nudge="down"]');
+    b = await B();
+    if (Math.abs(b.bg.x - step) > 1e-3 || Math.abs(b.bg.y - step) > 1e-3) throw new Error(`pijlen: ${b.bg.x},${b.bg.y} ≠ ${step}`);
+    const st = await page.locator("#m-stage").boundingBox(), cx = st.x + st.width / 2, cy = st.y + st.height / 2;
+    const v0 = await page.evaluate(() => window.__maps.view());
+    await page.mouse.move(cx, cy); await page.mouse.down(); await page.mouse.move(cx + 24, cy, { steps: 4 }); await page.mouse.move(cx + 48 * z, cy, { steps: 4 }); await page.mouse.up();
+    b = await B();
+    const v1 = await page.evaluate(() => window.__maps.view());
+    if (Math.abs(b.bg.x - step - 1) > 0.02 || v1.x !== v0.x) throw new Error("slepen schuift de afbeelding niet (of pant): " + JSON.stringify({ x: b.bg.x, v0, v1 }));
+    await snap(page, "wp59", "uitlijnen");
+    await page.keyboard.press("ArrowLeft");
+    if (Math.abs((await B()).bg.x - 1) > 0.02) throw new Error("pijltjestoets");
+    await tap(page, "#m-adone");
+    await page.locator("#m-sheet").waitFor({ state: "visible" });
+    if ((await page.evaluate(() => document.activeElement?.id)) !== "m-bg-align" || !(await page.locator("#m-dock").isVisible())) throw new Error("Gereed: terug naar paneel");
+    // herladen: alles precies gelijk (acceptatie 4)
+    const before = (await B()).bg;
+    await page.waitForFunction(() => window.__maps.status() === "saved", null, { timeout: 3000 });
+    await page.reload(); await ready();
+    await page.waitForFunction(() => window.__maps.bg().img, null, { timeout: 5000 });
+    b = await B();
+    if (JSON.stringify(b.bg) !== JSON.stringify(before) || b.grid.cols !== 30) throw new Error("na herladen: " + JSON.stringify({ before, after: b.bg }));
+    // verwijderen + Ongedaan
+    await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    await tap(page, "#m-bg-del");
+    if ((await B()).state !== "none" || (await page.evaluate(() => document.activeElement?.id)) !== "m-bg-pick") throw new Error("verwijderen");
+    await tap(page, "#m-toast .tundo");
+    await page.waitForFunction(() => window.__maps.bg().state === "set" && window.__maps.bg().img);
+    if (JSON.stringify((await B()).bg) !== JSON.stringify(before)) throw new Error("Ongedaan na verwijderen");
+    // groot bestand → ≤ 4096 px, WebP, geen EXIF (acceptatie 2); oude asset weg na herladen
+    const big = await fixture(page, 5000, 1000, 100, "image/jpeg");
+    await choose("#m-bg-rep", { name: "groot.jpg", mimeType: "image/jpeg", buffer: big });
+    await page.waitForFunction(() => window.__maps.map().bg?.w === 5000 && window.__maps.bg().img, null, { timeout: 15000 });
+    b = await B();
+    if (b.bg.ppc !== 100) throw new Error("startschatting groot: " + b.bg.ppc);
+    as = await mapsAssets(page);
+    const nw = as.find((a) => a.key === b.bg.asset);
+    if (!nw || nw.w !== 4096 || nw.h !== 819 || nw.ow !== 5000 || nw.mime !== "image/webp" || nw.exif) throw new Error("opgeslagen versie: " + JSON.stringify(nw));
+    await page.waitForFunction(() => window.__maps.status() === "saved", null, { timeout: 3000 });
+    await page.reload(); await ready();
+    await page.waitForFunction(() => window.__maps.bg().img, null, { timeout: 5000 });
+    await page.waitForTimeout(200);
+    as = await mapsAssets(page);
+    if (as.length !== 1 || as[0].key !== b.bg.asset) throw new Error("opruimen: " + JSON.stringify(as.map((a) => a.key.slice(0, 8))));
+    // review: dupliceren deelt de asset; het origineel verwijderen laat hem staan (de kopie verwijst ernaar)
+    const orig = (await page.evaluate(() => window.__maps.map())).id;
+    await tap(page, "#m-maps"); await page.locator("#m-list").waitFor({ state: "visible" });
+    await tap(page, `#m-lrows .mkl-m[data-id="${orig}"]`); await tap(page, '#m-menu [data-m="dup"]');
+    await mapsIdb(page, (all) => all.length === 2 && all.every((x) => x.bg?.asset === b.bg.asset));
+    await tap(page, `#m-lrows .mkl-m[data-id="${orig}"]`); await tap(page, '#m-menu [data-m="del"]');
+    await mapsIdb(page, (all) => all.length === 1 && all[0].id !== orig);
+    await page.reload(); await ready();
+    await page.waitForFunction(() => window.__maps.bg().img, null, { timeout: 5000 });
+    await page.waitForTimeout(200);
+    as = await mapsAssets(page);
+    if (as.length !== 1 || as[0].key !== b.bg.asset) throw new Error("asset van de kopie opgeruimd: " + as.length);
+    // ontbrekende asset (opslag gewist): melding, Opnieuw kiezen houdt schaal en verschuiving
+    await page.evaluate(() => new Promise((res) => { const r = indexedDB.open("kevs-inn-maps"); r.onsuccess = () => { const t = r.result.transaction("assets", "readwrite"); t.objectStore("assets").clear(); t.oncomplete = () => { r.result.close(); res(); }; }; }));
+    await page.reload(); await ready();
+    await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    await page.waitForFunction(() => window.__maps.bg().state === "missing", null, { timeout: 5000 });
+    if (!(await page.locator("#m-bg-miss").isVisible()) || (await page.locator("#m-bg-rep").isVisible()) || !(await page.locator("#m-bg-del").isVisible())) throw new Error("ontbreekt: knoppen");
+    await page.evaluate(() => { window.__maps.flush(); });
+    const keep = (await B()).bg;
+    await choose("#m-bg-pick", { name: "grot.png", mimeType: "image/png", buffer: map30 });
+    await page.waitForFunction(() => window.__maps.bg().state === "set" && window.__maps.bg().img, null, { timeout: 10000 });
+    b = await B();
+    if (b.bg.ppc !== keep.ppc || b.bg.x !== keep.x || b.bg.w !== 2100) throw new Error("opnieuw kiezen: " + JSON.stringify({ keep, now: b.bg }));
+    await page.locator("#m-sheet").evaluate((el) => { el.scrollTop = el.scrollHeight; });
   },
   speler: null, // eigen startpagina, zie START
   home: null, homeen: null, notfound: null, // WP30: publieke homepage per taal en de niet-gevonden-pagina (START)

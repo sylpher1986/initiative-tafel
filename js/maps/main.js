@@ -3,11 +3,15 @@
 // js/ui/, state.js, storage.js of tablock.js (tests/maps-boundary.test.js). WP56: pannen en zoomen; WP57: paneel Kaart
 // (rastertype, kolommen/rijen, lijnen, kleur, dekking), werkt direct; WP58: kaarten bewaren (IndexedDB "kevs-inn-maps",
 // js/maps/store.js), autosave met status in de kop, Mijn kaarten (nieuw, openen, hernoemen, dupliceren, verwijderen met
-// Ongedaan), laatste kaart heropenen, één tabblad tegelijk (docs/g4-inn-the-grid.md).
+// Ongedaan), laatste kaart heropenen, één tabblad tegelijk; WP59: achtergrondafbeelding kiezen (controle, verkleinen,
+// assetstore), schaal, raster passend, uitlijnmodus, vervangen/verwijderen met Ongedaan (docs/g4-inn-the-grid.md).
 import { initI18n, t, i18n } from "../i18n/boot.js";
 import { VERSION } from "./version.js";
 import { cleanGrid, parseCells, bounds, LIMITS } from "./model/grid.js";
-import { clampPan, fitView, zoomAt, zoomPct, ZMIN, ZMAX } from "./model/view.js";
+import { clampPan, fitView, zoomAt, zoomPct, ZMIN, ZMAX, CELL } from "./model/view.js";
+import { cleanBg, guessPpc, gridFor, parsePpc, parseAcross, scaleBg, moveBg, across, stepFor, BG } from "./model/bg.js";
+import { IMG } from "./model/image.js";
+import { prepareImage, assetImage } from "./ui/upload.js";
 import { newMap, cleanName, newName, uniqueName, copyMap, sortMaps, pickStart, ago } from "./model/map.js";
 import { readColors, fitCanvas, draw } from "./render/canvas.js";
 import { attachInput } from "./ui/input.js";
@@ -26,7 +30,11 @@ async function boot() {
   const cv = $("m-canvas"), wrap = $("m-stage");
   // cur = de geopende kaart (document zoals in de opslag) of null (verwijderd, lijst open); map = wat de render tekent
   let cur = null;
-  const map = { grid: cleanGrid() };
+  const map = { grid: cleanGrid(), bg: null };
+  // WP59: tekenbare achtergronden per asset (sha → afbeelding; null = ontbreekt in de opslag), assets in het geheugen als
+  // er geen opslag is (privémodus), en de uitlijnmodus
+  const imgs = new Map(), memAssets = new Map();
+  let aligning = false;
   let view = { x: 0, y: 0, z: 1 }, w = 0, h = 0, dpr = 1, col = readColors(), fitted = false, auto = false, queued = false;
   let gone = false, viewName = "edit";
 
@@ -54,7 +62,7 @@ async function boot() {
   const paint = () => {
     queued = false;
     fitCanvas(cv, w, h, dpr);
-    draw(cv, map, view, w, h, dpr, col);
+    draw(cv, map, view, w, h, dpr, col, { img: (map.bg && imgs.get(map.bg.asset)) || null, align: aligning });
     const n = zoomPct(view), z = $("m-zoom");
     if (z.dataset.n !== String(n)) { z.dataset.n = n; z.textContent = t("maps.zoom.pct", { n }); } // aria-live: alleen bij een ander percentage
     $("m-out").disabled = view.z <= ZMIN;
@@ -77,7 +85,7 @@ async function boot() {
   const label = () => cv.setAttribute("aria-label", t(map.grid.type === "hex" ? "maps.canvasHex" : "maps.canvas", { cols: map.grid.cols, rows: map.grid.rows }));
   const head = () => { $("m-name").textContent = viewName === "list" ? t("maps.title") : cur?.name || t("maps.title"); };
   $("m-ver").textContent = VERSION;
-  attachInput(cv, { get: () => view, set: user });
+  attachInput(cv, { get: () => view, set: user, drag: (dx, dy) => dragBg(dx, dy), dragging: () => aligning });
   $("m-in").addEventListener("click", () => user(zoomAt(view, ZOOM_STEP, w / 2, h / 2)));
   $("m-out").addEventListener("click", () => user(zoomAt(view, 1 / ZOOM_STEP, w / 2, h / 2)));
   $("m-fit").addEventListener("click", fit);
@@ -95,7 +103,7 @@ async function boot() {
   const update = (patch) => { // nieuwe rasterwaarden toepassen: opschonen, begrenzen, tekenen, bewaren
     map.grid = cleanGrid({ ...map.grid, ...patch });
     if (cur) cur.grid = map.grid;
-    label(); syncPanel(); changed();
+    label(); syncPanel(); syncBg(); changed();
     if (auto) fit(); else set(view);
   };
   const fields = { "m-cols": "cols", "m-rows": "rows" };
@@ -137,6 +145,7 @@ async function boot() {
     syncPanel();
     sheet.hidden = false; btnSet.setAttribute("aria-expanded", "true");
     dockFocus(false);
+    syncBg();
     sheet.focus(); // in de tik (iOS)
     if (auto) fit();
   };
@@ -150,11 +159,160 @@ async function boot() {
   btnSet.addEventListener("click", () => (sheet.hidden ? openPanel() : closePanel()));
   $("m-close").addEventListener("click", () => closePanel());
 
+  // ---- WP59: achtergrond ----
+  const bgSec = { set: $("m-bg-set"), miss: $("m-bg-miss"), pick: $("m-bg-pick"), hint: $("m-bg-hint"), row: $("m-bg-row"), rep: $("m-bg-rep"), del: $("m-bg-del"), fit: $("m-bg-fit"), align: $("m-bg-align"), err: $("m-bg-e"), file: $("m-bg-file") };
+  const bgState = () => (!map.bg ? "none" : imgs.get(map.bg.asset) === null ? "missing" : "set");
+  const fmt = (n) => i18n().num(n, { maximumFractionDigits: 2, useGrouping: false }); // geen duizendtalscheiding: het veld moet zijn eigen waarde weer kunnen lezen
+  const bgFields = { "m-ppc": "ppc", "m-across": "across" };
+  const bgFieldErr = (inp, bad) => {
+    const e = $(inp.id + "-e");
+    inp.setAttribute("aria-invalid", String(bad));
+    e.hidden = !bad;
+    // grenzen als tekst zonder duizendtalpunt ("16.384" zou het veld zelf als 16,384 lezen)
+    e.textContent = !bad ? "" : inp.id === "m-ppc" ? t("maps.bg.numBad", { min: String(BG.minPpc), max: String(Math.min(BG.maxPpc, Math.max(map.bg.w, map.bg.h))) }) : t("maps.bg.numBad", { min: "1", max: String(LIMITS.maxCells) });
+  };
+  /** Sectie Achtergrond bijwerken (zichtbaarheid, velden die niet in bewerking zijn, knop Raster passend) */
+  function syncBg() {
+    const st = bgState(), b = map.bg;
+    bgSec.set.hidden = st !== "set";
+    bgSec.miss.hidden = st !== "missing";
+    bgSec.pick.hidden = st === "set";
+    bgSec.hint.hidden = st === "set";
+    bgSec.row.hidden = st === "none";
+    bgSec.rep.hidden = st !== "set";
+    if (!bgSec.pick.getAttribute("aria-busy")) bgSec.pick.textContent = t(st === "missing" ? "maps.bg.again" : "maps.bg.choose");
+    bgSec.hint.textContent = t("maps.bg.hint", { mb: IMG.maxBytes / 1048576 });
+    if (st !== "set") return;
+    const vals = { "m-ppc": fmt(b.ppc), "m-across": fmt(across(b)) };
+    for (const [id, v] of Object.entries(vals)) if (document.activeElement !== $(id)) { $(id).value = v; bgFieldErr($(id), false); }
+    const g = gridFor(b, map.grid);
+    bgSec.fit.hidden = g.cols === map.grid.cols && g.rows === map.grid.rows;
+    bgSec.fit.textContent = t("maps.bg.fit", { cols: g.cols, rows: g.rows });
+  }
+  function bgErr(code) {
+    bgSec.err.hidden = !code;
+    bgSec.err.textContent = code ? t("maps.bg.err." + code, { mb: IMG.maxBytes / 1048576, max: IMG.maxInSide }) : "";
+  }
+  /** Asset ophalen (geheugen of opslag) en als tekenbare afbeelding in imgs zetten; null = ontbreekt */
+  const assetRec = async (sha) => memAssets.get(sha) || (saver.status !== "off" ? await store.getAsset(sha) : null);
+  /** Bestaande asset bij hetzelfde originele bestand (geheugen of opslag): { sha, rec } of null */
+  const findRec = async (src) => {
+    for (const [sha, rec] of memAssets) if (rec.src === src) return { sha, rec };
+    return saver.status !== "off" ? store.findAsset(src) : null;
+  };
+  /** Geheugen (oude iPad: een 4096²-afbeelding is ± 64 MB): alleen de afbeelding van de huidige achtergrond vasthouden.
+   *  Ongedaan of terug naar een kaart laadt hem opnieuw uit de opslag; "ontbreekt" (null) mag blijven staan. */
+  const trimImgs = () => {
+    const keep = map.bg && map.bg.asset;
+    for (const [sha, d] of imgs) if (d && sha !== keep) { if (d.close) d.close(); imgs.delete(sha); }
+  };
+  const loading = new Set();
+  async function loadBg() {
+    const sha = map.bg && map.bg.asset;
+    if (!sha || imgs.has(sha) || loading.has(sha)) return;
+    loading.add(sha);
+    const rec = await assetRec(sha);
+    const d = rec ? await assetImage(rec) : null;
+    loading.delete(sha);
+    imgs.set(sha, d);
+    if (map.bg && map.bg.asset === sha) { syncBg(); later(); }
+  }
+  /** Nieuwe achtergrond (of null) op de open kaart: tekenen en bewaren */
+  const setBg = (next) => {
+    const was = map.bg && map.bg.asset;
+    map.bg = next ? cleanBg(next) : null;
+    if (cur) { if (map.bg) cur.bg = map.bg; else delete cur.bg; }
+    if ((map.bg && map.bg.asset) !== was) trimImgs();
+    changed();
+    if (!sheet.hidden) syncBg(); // slepen in de uitlijnmodus: paneel dicht, geen DOM-werk per pointermove (openPanel synct)
+    later();
+  };
+  const restoreBg = (id, prev) => () => { if (cur && cur.id === id) { setBg(prev); loadBg(); } }; // Ongedaan: asset staat tot de volgende start in de opslag
+  for (const id of Object.keys(bgFields)) {
+    const inp = $(id);
+    const parse = () => (id === "m-ppc" ? parsePpc(inp.value, map.bg) : parseAcross(inp.value, map.bg));
+    const commitBg = () => {
+      if (!map.bg) return;
+      const p = parse();
+      bgFieldErr(inp, p === null);
+      if (p !== null && Math.abs(p - map.bg.ppc) > 1e-6) { setBg(scaleBg(map.bg, p)); }
+      // het andere veld volgt meteen (syncBg slaat het veld met focus over)
+      const o = id === "m-ppc" ? $("m-across") : $("m-ppc");
+      o.value = id === "m-ppc" ? fmt(across(map.bg)) : fmt(map.bg.ppc); bgFieldErr(o, false);
+      if (p !== null) inp.value = id === "m-ppc" ? fmt(map.bg.ppc) : fmt(across(map.bg));
+    };
+    inp.addEventListener("input", () => bgFieldErr(inp, inp.value.trim() !== "" && parse() === null));
+    inp.addEventListener("change", commitBg);
+    inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); commitBg(); } });
+  }
+  bgSec.fit.addEventListener("click", () => { if (map.bg) { update(gridFor(map.bg, map.grid)); bgSec.align.focus(); } });
+  // kiezen: verborgen input + echte knop (data-file), in de tik openen (iOS)
+  let busyBg = false;
+  for (const b of [bgSec.pick, bgSec.rep]) b.addEventListener("click", () => { if (!busyBg) { bgErr(null); bgSec.file.click(); } });
+  bgSec.file.addEventListener("change", async () => {
+    const f = bgSec.file.files && bgSec.file.files[0];
+    bgSec.file.value = ""; // dezelfde keuze nog eens = opnieuw een change
+    if (!f || busyBg || !cur) return;
+    const id = cur.id, keep = bgState() === "missing", prev = map.bg;
+    busyBg = true;
+    const btn = keep || !prev ? bgSec.pick : bgSec.rep, label = btn.textContent;
+    btn.disabled = true; btn.setAttribute("aria-busy", "true"); btn.textContent = t("maps.bg.busy");
+    let res;
+    try {
+      res = await prepareImage(f, { find: findRec });
+      if (res.ok && !res.again) {
+        if (saver.status === "off") memAssets.set(res.sha, res.rec);
+        else if (!(await store.putAsset(res.sha, res.rec))) res = { ok: false, code: "store" };
+      }
+      if (res.ok && !imgs.get(res.sha)) imgs.set(res.sha, await assetImage(res.rec));
+      if (res.ok && !imgs.get(res.sha)) res = { ok: false, code: "broken" };
+    } catch { res = { ok: false, code: "broken" }; }
+    busyBg = false;
+    btn.disabled = false; btn.removeAttribute("aria-busy"); btn.textContent = label;
+    if (!cur || cur.id !== id) { syncBg(); return; } // intussen een andere kaart geopend: niets toepassen, geen foutregel daar
+    if (!res.ok) { bgErr(res.code); syncBg(); return; }
+    const r = res.rec, base = { asset: res.sha, w: r.ow, h: r.oh };
+    setBg(keep ? { ...prev, ...base } : { ...base, ppc: guessPpc(r.ow, r.oh, map.grid.cols), x: 0, y: 0 });
+    bgSec.align.focus();
+    if (prev && !keep) toast(t("maps.bg.replaced"), { btn: { label: t("maps.msg.undo"), run: restoreBg(id, prev) } });
+  });
+  bgSec.del.addEventListener("click", () => {
+    if (!cur || !map.bg) return;
+    const prev = map.bg, id = cur.id;
+    setBg(null); bgErr(null);
+    bgSec.pick.focus();
+    toast(t("maps.bg.removed"), { btn: { label: t("maps.msg.undo"), run: restoreBg(id, prev) } });
+  });
+  // uitlijnmodus: eigen dock, strook bovenin, één vinger sleept de afbeelding; Gereed = terug naar het paneel
+  const adock = $("m-adock"), strip = $("m-astrip");
+  function setAlign(on, back = true) {
+    if (on === aligning) return;
+    aligning = on;
+    adock.hidden = !on; strip.hidden = !on; $("m-dock").hidden = on;
+    if (on) { closePanel(false); $("m-adone").focus(); }
+    else if (back) { openPanel(); bgSec.align.focus(); }
+    later();
+  }
+  bgSec.align.addEventListener("click", () => { if (bgState() === "set") setAlign(true); });
+  $("m-adone").addEventListener("click", () => setAlign(false));
+  const nudge = (dir) => {
+    if (!map.bg) return;
+    const s = stepFor(map.bg, view.z, CELL), d = { left: [-s, 0], right: [s, 0], up: [0, -s], down: [0, s] }[dir];
+    if (d) setBg(moveBg(map.bg, d[0], d[1]));
+  };
+  adock.addEventListener("click", (e) => { const d = e.target.closest("[data-nudge]")?.dataset.nudge; if (d) nudge(d); });
+  const dragBg = (dx, dy) => { if (map.bg) setBg(moveBg(map.bg, dx / (CELL * view.z), dy / (CELL * view.z))); };
+
   // ---- WP58: kaart openen en Mijn kaarten ----
   /** Kaart in de editor zetten (document uit de opslag of net gemaakt) */
   const openDoc = (doc) => {
+    if (aligning) setAlign(false, false);
     cur = doc;
     map.grid = cleanGrid(doc.grid);
+    map.bg = cleanBg(doc.bg);
+    trimImgs();
+    bgErr(null);
+    loadBg(); syncBg();
     store.setLastId(doc.id);
     saver.reset();
     label(); head();
@@ -323,6 +481,11 @@ async function boot() {
   document.addEventListener("keydown", (e) => {
     if (gone) return;
     if (e.key === "Escape" && !menu.hidden) { e.preventDefault(); closeMenu(); return; }
+    if (aligning && menu.hidden) { // WP59: pijltjes schuiven de afbeelding, Esc = Gereed
+      const dir = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" }[e.key];
+      if (e.key === "Escape") { e.preventDefault(); setAlign(false); return; }
+      if (dir && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); nudge(dir); return; }
+    }
     if (e.key === "Escape" && !sheet.hidden) { e.preventDefault(); closePanel(); return; }
     if (viewName !== "edit" || !menu.hidden) return;
     if (e.metaKey || e.ctrlKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
@@ -368,6 +531,7 @@ async function boot() {
     openDoc(doc);
     if (fresh) saver.touch(); // eerste kaart niet bewaard: autosave probeert opnieuw en toont zo nodig "Niet opgeslagen"
     store.persistStorage();
+    store.gcAssets(); // WP59: assets zonder kaart (vervangen, verwijderd) opruimen, alleen bij de start
   } else { // geen IndexedDB (undefined), of lezen mislukt (null: niets aanmaken of overschrijven): alleen in het geheugen
     saver.off();
     const doc = newMap({ name: newName(t("maps.newBase"), []) });
@@ -379,7 +543,8 @@ async function boot() {
   label(); head();
   measure();
   window.__maps = { view: () => ({ ...view }), size: () => ({ w, h, dpr }), grid: () => ({ ...map.grid }), // diagnose (browsercheck), alleen lezen
-    map: () => cur && { ...cur, grid: { ...cur.grid } }, status: () => saver.status, view$: () => viewName, flush: () => saver.flush() };
+    map: () => cur && { ...cur, grid: { ...cur.grid }, ...(cur.bg ? { bg: { ...cur.bg } } : {}) }, status: () => saver.status, view$: () => viewName, flush: () => saver.flush(),
+    bg: () => ({ state: bgState(), align: aligning, img: !!(map.bg && imgs.get(map.bg.asset)) }) };
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
