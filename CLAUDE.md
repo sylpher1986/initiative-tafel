@@ -60,6 +60,8 @@ Bij elk nieuw idee of elke wijziging kijken twee rollen mee, waar mogelijk als *
 
 Meld bij oplevering in één of twee regels wat beide reviewers vonden en besloten.
 
+Uitzondering: een wijziging die alleen documentatie raakt (CLAUDE.md, ROADMAP.md, `docs/`, README) en niets aan de app, krijgt geen reviewer-agent; wel `npm test` vóór de push.
+
 ## Bij elke wijziging
 1. `npm test` (Node 18+, geen installatie); nieuwe regels-logica krijgt een test.
 2. Browsercheck op 320, 360 en 390 px, licht en donker: geen horizontaal scrollen (`node tools/browsercheck.mjs`, per pakket een scenario in `SCEN`).

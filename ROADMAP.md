@@ -37,8 +37,6 @@ Volgorde = voorstel. K1–K3 merkt de gebruiker, K4–K7 zijn technisch.
 - Live check 2.3.0/2.3.1: `kevs-inn.com/en/initiative/` → 301 naar `/initiative/`; `/` = Engelse homepage; geïnstalleerde iPhone-app start in het Nederlands; versie 2.3.1 onderaan Instellingen; app offline openen vanaf het beginscherm.
 - Live check G1 (2.11.x) op de telefoon: Instellingen → Regels → 2024; "Start met voorbeeld" geeft Goblin Warriors; zoek "zombie 2024" en voeg toe; Exhaustion 4 op een speler halveert max HP niet; wisselen tijdens een gevecht kan niet; spelersscherm (QR) legt Grappled uit volgens 2024; export → import houdt "2024" in Instellingen; terug naar 2014 en offline openen werkt.
 - Site vindbaar maken: `HIDDEN = true` in `tools/pages.mjs` (robots `Disallow: /`). Op `false`, `node tools/pages.mjs`, daarna de sitemap in Search Console.
-- Projectinstructies op claude.ai verwijzen naar `claude/werkpakketten.md` en `claude/geplande-taken-werkwijze.md`; die bestaan niet meer. De werkwijze staat in CLAUDE.md (reviewers, geplande bouwtaken).
-
 ## Grote projecten (lange termijn)
 
 Nog niet uitgewerkt. Elk project begint met een plan: inventaris in de code, open besluiten, werkpakketten.
