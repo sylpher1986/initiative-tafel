@@ -26,7 +26,8 @@ import { pathFor, langBase } from "../js/i18n/lang.js";
 import { enRedirect } from "../worker/index.js";
 import { BUILTIN, BUILTIN_IDS } from "../js/maps/model/assets.js";
 import { placeAt } from "../js/maps/model/objects.js";
-import { cleanGrid, cellCenter } from "../js/maps/model/grid.js";
+import { handles } from "../js/maps/model/hit.js";
+import { cleanGrid, cellCenter, cellAt } from "../js/maps/model/grid.js";
 
 process.env.PLAYWRIGHT_BROWSERS_PATH ||= "/opt/pw-browsers";
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -123,7 +124,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
@@ -959,6 +960,178 @@ const SCEN = {
     await tap(page, "#m-toast .tundo"); await page.waitForFunction(() => window.__maps.bg().state === "set", null, { timeout: 5000 });
     m = await M();
     if (m.redo !== false) throw new Error("Ongedaan in de melding = gewone undo (Opnieuw beschikbaar)");
+  },
+  // WP62 (G4): selecteren en bewerken. Tik selecteert (eigen dock, strook), nog eens tikken = het object eronder, tik
+  // ernaast heft op; slepen op het geselecteerde object verplaatst (één stap), ernaast pant; touch-slepen op een niet
+  // geselecteerd object pant; draaigreep en schaalgreep (tik naast het midden van de greep: tikdoel 44 px op 320 px);
+  // dock: draaien, dupliceren, verwijderen + Ongedaan, Meer (paneel Object: breedte, laag, volgorde), Klaar; muis pakt en
+  // sleept in één keer; toetsenbord zonder muis: cursor, Enter, pijltjes (één stap), Shift, R, ], Ctrl+D, Delete, Esc, N,
+  // plaatsen met Enter; hex: pijltje = buurcel; herladen. --shots=wp62: selectie, paneel Object.
+  async wp62(page) {
+    const ready = (p = page) => p.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);
+    await ready();
+    const frame = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const M = () => page.evaluate(() => ({ map: window.__maps.map(), hist: window.__maps.hist(), view: window.__maps.view(), grid: window.__maps.grid(), sel: window.__maps.sel(), kbd: window.__maps.kbd(),
+      odock: !document.getElementById("m-odock").hidden, dock: !document.getElementById("m-dock").hidden, strip: document.getElementById("m-sstrip").hidden ? "" : document.getElementById("m-sstrip").textContent }));
+    const ptr = (steps, kind = "touch") => page.evaluate(({ steps, kind }) => {
+      const c = document.getElementById("m-canvas"), r = c.getBoundingClientRect();
+      for (const [type, id, x, y] of steps) c.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: kind, isPrimary: id === 1, clientX: r.left + x, clientY: r.top + y, bubbles: true, cancelable: true, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+    }, { steps, kind });
+    const scr = async (mx, my) => { const v = (await M()).view; return { x: mx * 48 * v.z + v.x, y: my * 48 * v.z + v.y }; };
+    const tapAt = async (p) => { await ptr([["pointerdown", 1, p.x, p.y], ["pointerup", 1, p.x, p.y]]); await frame(); };
+    const tapMap = async (mx, my) => tapAt(await scr(mx, my));
+    const drag = async (a, b, kind = "touch") => { const st = [["pointerdown", 1, a.x, a.y]]; for (let i = 1; i <= 6; i++) st.push(["pointermove", 1, a.x + ((b.x - a.x) * i) / 6, a.y + ((b.y - a.y) * i) / 6]); st.push(["pointerup", 1, b.x, b.y]); await ptr(st, kind); await frame(); };
+    const obj = async (id) => (await M()).map.objs.find((o) => o.id === id);
+    const pick = async (id) => { await tap(page, `#m-cats [data-v="${BUILTIN[id].cat}"]`); await tap(page, `#m-tiles [data-id="${id}"]`); await page.waitForFunction((id) => window.__maps.tool().active === id, id); };
+    // opbouw: tafel, stoel en een kleed eronder
+    await tap(page, "#m-lib"); await page.locator("#m-lsheet").waitFor({ state: "visible" });
+    await pick("table"); await tapMap(3.3, 2.4);
+    await pick("chair"); await tapMap(8.3, 6.3);
+    await pick("rug"); await tapMap(3.3, 3.3);
+    await tap(page, "#m-lclose");
+    let m = await M();
+    const [T, C, R] = m.map.objs.map((o) => o.id);
+    if (m.map.objs.length !== 3 || m.sel) throw new Error("opbouw: " + JSON.stringify(m.map.objs));
+    // tik selecteert: eigen dock, strook; tikken op het geselecteerde object = het kleed eronder, en weer terug
+    await tapMap(3.2, 2.6);
+    m = await M();
+    if (m.sel !== T || !m.odock || m.dock || !m.strip) throw new Error("selecteren: " + JSON.stringify({ sel: m.sel, odock: m.odock, dock: m.dock, strip: m.strip }));
+    await snap(page, "wp62", "selectie");
+    await tapMap(3.2, 2.6);
+    if ((await M()).sel !== R) throw new Error("nog eens tikken = het object eronder");
+    await tapMap(3.2, 2.6);
+    if ((await M()).sel !== T) throw new Error("en weer het bovenste");
+    // slepen op de selectie = verplaatsen, één stap; Ongedaan zet hem terug
+    const h0 = (await M()).hist.size;
+    await drag(await scr(3, 2.5), await scr(5.2, 2.6));
+    m = await M();
+    let t = await obj(T);
+    if (t.x !== 5 || t.y !== 2.5 || m.hist.size !== h0 + 1 || m.sel !== T) throw new Error("slepen = één stap: " + JSON.stringify({ t, h0, h: m.hist }));
+    await tap(page, "#m-undo"); await frame();
+    if ((await obj(T)).x !== 3) throw new Error("Ongedaan slepen");
+    await tap(page, "#m-redo"); await frame();
+    // slepen ernaast pant (selectie blijft); touch-slepen op een niet-geselecteerd object pant ook
+    let v0 = (await M()).view, p = await scr(8.5, 1.5);
+    await drag(p, { x: p.x - 30, y: p.y + 10 });
+    m = await M();
+    if (Math.abs(m.view.x - v0.x + 30) > 0.5 || m.sel !== T || (await obj(T)).x !== 5) throw new Error("slepen naast de selectie pant: " + JSON.stringify({ v0, v: m.view }));
+    v0 = m.view; p = await scr(8.5, 6.5);
+    await drag(p, { x: p.x + 40, y: p.y });
+    if ((await obj(C)).x !== 8.5 || Math.abs((await M()).view.x - v0.x - 40) > 0.5) throw new Error("touch: niet geselecteerd object slepen = pannen: " + JSON.stringify({ c: await obj(C), v0, v: (await M()).view, sel: (await M()).sel }));
+    // draaien via de dock en met de draaigreep (tik 15 px naast het midden van de greep)
+    await tap(page, "#m-orot"); await frame();
+    t = await obj(T);
+    if (t.rot !== 90 || t.x !== 5.5 || t.y !== 2) throw new Error("draaien 90° op de cellen: " + JSON.stringify(t));
+    let v = (await M()).view, hd = handles(t, v), c0 = await scr(t.x, t.y);
+    await drag({ x: hd.rot.x + 15, y: hd.rot.y }, { x: c0.x, y: c0.y + 120 });
+    if ((await obj(T)).rot !== 180) throw new Error("draaigreep: " + JSON.stringify(await obj(T)));
+    // schaalgreep op de stoel: twee cellen, linksboven blijft staan
+    await tapMap(8.5, 6.5);
+    if ((await M()).sel !== C) throw new Error("stoel selecteren");
+    let ch = await obj(C);
+    v = (await M()).view; hd = handles(ch, v);
+    const cell = 48 * v.z;
+    await drag({ x: hd.size.x - 12, y: hd.size.y + 12 }, { x: hd.size.x - 12 + cell, y: hd.size.y + 12 + cell });
+    ch = await obj(C);
+    if (ch.w !== 2 || ch.h !== 2 || ch.x !== 9 || ch.y !== 7) throw new Error("schaalgreep: " + JSON.stringify(ch));
+    // Meer: paneel Object (breedte, laag, volgorde); Esc sluit het paneel, de selectie blijft
+    await tap(page, "#m-omore"); await page.locator("#m-osheet").waitFor({ state: "visible" });
+    if ((await page.locator("#m-ow").inputValue()) !== "2") throw new Error("breedte in het paneel");
+    await page.locator("#m-ow").fill("3"); await page.locator("#m-ow").press("Enter"); await frame();
+    if ((await obj(C)).w !== 3) throw new Error("breedte toepassen");
+    await page.locator("#m-ow").fill("99"); await page.locator("#m-ow").press("Enter"); await frame();
+    if (await page.locator("#m-ow-e").isHidden() || (await obj(C)).w !== 3) throw new Error("foute breedte: foutregel, niets toegepast");
+    await page.locator("#m-ow").fill("3"); await page.locator("#m-ow").press("Enter");
+    await tap(page, '#m-olayer [data-v="floor"]'); await frame();
+    if ((await obj(C)).layer !== "floor" || !(await page.locator("#m-ofront").isDisabled())) throw new Error("laag vloer: bovenaan in die laag");
+    await tap(page, "#m-oback"); await frame();
+    m = await M();
+    if (m.map.objs[0].id !== C) throw new Error("naar achteren: " + m.map.objs.map((o) => o.id));
+    await snap(page, "wp62", "object");
+    await page.keyboard.press("Escape"); await frame();
+    if (!(await page.locator("#m-osheet").isHidden()) || (await M()).sel !== C) throw new Error("Esc: paneel dicht, selectie blijft");
+    // dupliceren, verwijderen met Ongedaan, Klaar
+    let n = (await M()).map.objs.length;
+    await tap(page, "#m-odup"); await frame();
+    m = await M();
+    if (m.map.objs.length !== n + 1 || m.sel === C || !m.sel) throw new Error("dupliceren selecteert de kopie");
+    await tap(page, "#m-odel"); await frame();
+    m = await M();
+    if (m.map.objs.length !== n || m.sel || !m.dock) throw new Error("verwijderen: " + JSON.stringify({ n: m.map.objs.length, sel: m.sel }));
+    await tap(page, "#m-toast .tundo"); await frame();
+    m = await M();
+    if (m.map.objs.length !== n + 1 || !m.sel) throw new Error("Ongedaan verwijderen zet terug en selecteert");
+    await tap(page, "#m-odone"); await frame();
+    m = await M();
+    if (m.sel || !m.dock || m.odock || m.strip) throw new Error("Klaar");
+    // muis: indrukken op een object selecteert en sleept in één keer
+    await drag(await scr(3, 3.5), await scr(3, 5.6), "mouse");
+    m = await M();
+    const rug = await obj(R);
+    if (m.sel !== R || rug.y !== 5.5) throw new Error("muis: pakken en slepen: " + JSON.stringify({ sel: m.sel, rug }));
+    await page.keyboard.press("Escape"); await frame();
+    // toetsenbord: canvas met focus, cursor, Enter selecteert de tafel, pijltjes (één stap), Shift, R, ], Ctrl+D, Delete, N
+    await page.locator("#m-canvas").focus();
+    await page.keyboard.press("Escape"); // cursor weg
+    t = await obj(T);
+    await page.keyboard.press("ArrowRight"); await frame();
+    let k = (await M()).kbd;
+    if (!k) throw new Error("pijltje zonder selectie: cursor");
+    const goal = { c: Math.floor(t.x), r: Math.floor(t.y) };
+    for (let i = 0; i < 30 && (k.c !== goal.c || k.r !== goal.r); i++) {
+      await page.keyboard.press(k.c < goal.c ? "ArrowRight" : k.c > goal.c ? "ArrowLeft" : k.r < goal.r ? "ArrowDown" : "ArrowUp");
+      k = (await M()).kbd;
+    }
+    await page.keyboard.press("Enter"); await frame();
+    if ((await M()).sel !== T) throw new Error("Enter selecteert het object op de cursor");
+    const h1 = (await M()).hist.size, x1 = (await obj(T)).x;
+    await page.keyboard.press("ArrowLeft"); await page.keyboard.press("ArrowLeft"); await frame();
+    m = await M();
+    if ((await obj(T)).x !== x1 - 2 || m.hist.size !== h1 + 1) throw new Error("pijltjes = één stap: " + JSON.stringify({ x1, t: await obj(T), h: m.hist }));
+    await page.keyboard.press("Shift+ArrowDown"); await frame();
+    if (Math.abs((await obj(T)).y - t.y - 0.1) > 1e-6) throw new Error("Shift+pijl = 0,1 cel");
+    await page.keyboard.press("r"); await frame();
+    if ((await obj(T)).rot !== 270) throw new Error("R draait");
+    n = (await M()).map.objs.length;
+    await page.keyboard.press("Control+d"); await frame();
+    m = await M();
+    if (m.map.objs.length !== n + 1 || m.sel === T) throw new Error("Ctrl+D dupliceert");
+    await page.keyboard.press("Delete"); await frame();
+    m = await M();
+    if (m.map.objs.length !== n || m.sel) throw new Error("Delete verwijdert");
+    await page.locator("#m-canvas").focus();
+    await page.keyboard.press("n"); await frame();
+    if (!(await M()).sel) throw new Error("N selecteert een object");
+    await page.keyboard.press("Escape"); await frame();
+    if ((await M()).sel) throw new Error("Esc heft op");
+    // plaatsen met het toetsenbord: Bibliotheek, tegel, kaart met focus, Enter plaatst op de cursorcel
+    await tap(page, "#m-lib"); await page.locator("#m-lsheet").waitFor({ state: "visible" });
+    await pick("barrel");
+    await page.locator("#m-canvas").focus();
+    n = (await M()).map.objs.length;
+    await page.keyboard.press("ArrowUp"); k = (await M()).kbd;
+    await page.keyboard.press("Enter"); await frame();
+    m = await M();
+    const bar = m.map.objs[m.map.objs.length - 1], cc = cellCenter(cleanGrid(m.grid), k.c, k.r);
+    if (m.map.objs.length !== n + 1 || bar.asset !== "barrel" || bar.x !== cc.x || bar.y !== cc.y || m.sel) throw new Error("Enter plaatst: " + JSON.stringify({ bar, k }));
+    await tap(page, "#m-lclose");
+    // hex: pijltje = buurcel (celmidden)
+    await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    await tap(page, '#m-type [data-v="pointy"]'); await frame();
+    await tap(page, "#m-close");
+    await page.locator("#m-canvas").focus();
+    await page.keyboard.press("n"); await frame();
+    const sid = (await M()).sel, before = await obj(sid);
+    await page.keyboard.press("ArrowRight"); await frame();
+    const g = cleanGrid((await M()).grid), aft = await obj(sid), ca = cellAt(g, aft.x, aft.y), cb = cellAt(g, before.x, before.y), mc = cellCenter(g, ca.c, ca.r);
+    if (Math.abs(aft.x - mc.x) > 1e-3 || Math.abs(aft.y - mc.y) > 1e-3 || ca.r !== cb.r || ca.c !== Math.min(g.cols - 1, cb.c + 1)) throw new Error("hex: pijltje rechts = buurcel: " + JSON.stringify({ before, aft }));
+    await page.keyboard.press("Escape");
+    // herladen: alles staat er nog
+    const doc = (await M()).map;
+    await page.evaluate(() => window.__maps.flush());
+    await mapsIdb(page, (l) => l.some((x) => x.id === doc.id && JSON.stringify(x.objs) === JSON.stringify(doc.objs)));
+    await page.reload(); await ready();
+    if (JSON.stringify((await M()).map.objs) !== JSON.stringify(doc.objs) || (await M()).sel) throw new Error("na herladen");
   },
   speler: null, // eigen startpagina, zie START
   home: null, homeen: null, notfound: null, // WP30: publieke homepage per taal en de niet-gevonden-pagina (START)

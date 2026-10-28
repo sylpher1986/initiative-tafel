@@ -86,3 +86,110 @@ export function drawOrder(objs) {
   if (!o) { const f = objs.filter((x) => x.layer === "floor"); o = { list: [...f, ...objs.filter((x) => x.layer !== "floor")], nf: f.length }; orders.set(objs, o); }
   return o;
 }
+
+// ---- WP62: bewerken (selecteren, verplaatsen, draaien, schalen, laag, volgorde, dupliceren, verwijderen) ----
+// Elke bewerking geeft een NIEUWE lijst met een nieuw object (history vergelijkt objs op identiteit) en laat de
+// oorspronkelijke ongemoeid; een onbekende id = dezelfde lijst (niets veranderd).
+
+const norm = (a) => r4(((a % 360) + 360) % 360) % 360; // eerst afronden, dan pas modulo: nooit 360
+/** Draaiing een veelvoud van 90°? Dan valt de footprint op het raster (90/270: breedte en hoogte wisselen) */
+export const square90 = (o) => o.rot % 90 === 0;
+/** Footprint in cellen (as-evenwijdig) bij een rechte draaiing, anders null */
+export const footprint = (o) => (!square90(o) ? null : o.rot % 180 ? { w: o.h, h: o.w } : { w: o.w, h: o.h });
+
+/**
+ * Middelpunt voor o bij kaartpunt (px, py) (slepen, toetsen, na draaien/schalen). Het punt wordt eerst binnen de kaart
+ * gehouden (een object raakt nooit kwijt naast de kaart). snap aan: vierkant + rechte draaiing = de footprint op de
+ * cellen (oneven: celmidden, even: lijn; bij precies het midden ertussen naar links/boven, zodat twee keer 90° draaien
+ * het object terugzet waar het stond) en binnen de kaart als hij past; vierkant + scheve draaiing = celmidden; hex =
+ * celmidden. snap uit: het punt.
+ */
+export function posAt(grid, o, px, py, snap) {
+  const b = bounds(grid), cx = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  let x = cx(px, b.x, b.x + b.w), y = cx(py, b.y, b.y + b.h);
+  if (snap && grid.type === "hex") {
+    const c = cellAt(grid, x, y), m = cellCenter(grid, cx(c.c, 0, grid.cols - 1), cx(c.r, 0, grid.rows - 1));
+    return { x: r4(m.x), y: r4(m.y) };
+  }
+  if (!snap) return { x: r4(x), y: r4(y) };
+  const f = footprint(o);
+  if (!f) return { x: r4(Math.min(grid.cols - 0.5, Math.floor(x) + 0.5)), y: r4(Math.min(grid.rows - 0.5, Math.floor(y) + 0.5)) };
+  const ax = (p, n) => (Math.round(n) % 2 ? Math.floor(p) + 0.5 : Math.ceil(p - 0.5));
+  x = ax(x, f.w); y = ax(y, f.h);
+  return { x: r4(clamp(x, b.x + f.w / 2, b.x + b.w - f.w / 2)), y: r4(clamp(y, b.y + f.h / 2, b.y + b.h - f.h / 2)) };
+}
+
+/** Lijst met object id vervangen door fn(object) (fn geeft een nieuw object); onbekende id = dezelfde lijst */
+export function mapObj(objs, id, fn) {
+  const i = objs.findIndex((o) => o.id === id);
+  if (i < 0) return objs;
+  const out = objs.slice();
+  out[i] = fn(objs[i]);
+  return out;
+}
+
+/** Verplaatsen naar middelpunt (x, y), via posAt */
+export const moveObj = (grid, o, x, y, snap) => ({ ...o, ...posAt(grid, o, x, y, snap) });
+
+/** Draaien naar rot graden; bij snap opnieuw op het raster (de footprint kan gewisseld zijn) */
+export function rotateObj(grid, o, rot, snap) {
+  const n = { ...o, rot: norm(rot) };
+  return snap ? { ...n, ...posAt(grid, n, n.x, n.y, true) } : n;
+}
+
+/** Eén kwartslag (dir +1 = met de klok mee, -1 = tegen de klok in) naar het volgende veelvoud van 90° */
+export function turn90(grid, o, dir, snap) {
+  const k = dir > 0 ? Math.floor(o.rot / 90 + 1e-9) + 1 : Math.ceil(o.rot / 90 - 1e-9) - 1;
+  return rotateObj(grid, o, k * 90, snap);
+}
+
+/** Grootte in cellen (begrensd, 4 decimalen); bij snap opnieuw op het raster */
+export function sizeObj(grid, o, w, h, snap) {
+  const s = (v, d) => r4(Number.isFinite(v) ? Math.min(OBJ.maxSize, Math.max(OBJ.minSize, v)) : d);
+  const n = { ...o, w: s(w, o.w), h: s(h, o.h) };
+  return snap ? { ...n, ...posAt(grid, n, n.x, n.y, true) } : n;
+}
+
+/** Schalen vanaf een vaste hoek (schaalgreep): de linkerbovenhoek (eigen assen) van o blijft staan, nieuwe grootte
+ *  nw × nh (begrensd); het middelpunt blijft binnen de kaart (zoals posAt) en ligt bij hex met snap op een celmidden. */
+export function resizeFrom(grid, o, nw, nh, snap) {
+  const n = sizeObj(grid, o, nw, nh, false), a = ((o.rot || 0) * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
+  const dx = (n.w - o.w) / 2, dy = (n.h - o.h) / 2; // het middelpunt schuift een halve groei op, in eigen assen
+  const x = o.x + dx * c - dy * s, y = o.y + dx * s + dy * c, b = bounds(grid);
+  if (snap && grid.type === "hex") return { ...n, ...posAt(grid, n, x, y, true) };
+  return { ...n, x: r4(Math.min(b.x + b.w, Math.max(b.x, x))), y: r4(Math.min(b.y + b.h, Math.max(b.y, y))) };
+}
+
+/** Laag wisselen (floor | object); de lijstvolgorde blijft, de tekenvolgorde volgt uit de laag */
+export const layerObj = (o, layer) => (LAYERS.includes(layer) ? { ...o, layer } : o);
+
+/** Naar voren (dir "front": bovenaan binnen zijn laag = achteraan in de lijst) of naar achteren ("back"). Geeft dezelfde
+ *  lijst als het al vooraan/achteraan ligt binnen zijn laag. */
+export function reorder(objs, id, dir) {
+  const i = objs.findIndex((o) => o.id === id);
+  if (i < 0) return objs;
+  const o = objs[i], same = objs.filter((x) => x.layer === o.layer);
+  if ((dir === "front" ? same[same.length - 1] : same[0]) === o) return objs;
+  const rest = objs.filter((x) => x !== o);
+  return dir === "front" ? [...rest, o] : [o, ...rest];
+}
+
+/** Ligt o binnen zijn laag vooraan ("front") of achteraan ("back")? (knop uitzetten) */
+export function atEdge(objs, id, dir) {
+  const o = objs.find((x) => x.id === id);
+  return !o || reorder(objs, id, dir) === objs;
+}
+
+/** Kopie van object id, één cel rechtsonder (past dat niet, linksboven), via posAt; bovenaan zijn laag. Geeft
+ *  { objs, id } of null (onbekend of maximum bereikt). */
+export function dupObj(grid, objs, id, snap, rnd = Math.random) {
+  const o = objs.find((x) => x.id === id);
+  if (!o || objs.length >= OBJ.max) return null;
+  const nid = objId(new Set(objs.map((x) => x.id)), rnd);
+  let p = posAt(grid, o, o.x + 1, o.y + 1, snap);
+  if (p.x === o.x && p.y === o.y) p = posAt(grid, o, o.x - 1, o.y - 1, snap);
+  return { objs: [...objs, { ...o, id: nid, ...p }], id: nid };
+}
+
+/** Lijst zonder object id */
+export const removeObj = (objs, id) => (objs.some((o) => o.id === id) ? objs.filter((o) => o.id !== id) : objs);

@@ -7,11 +7,12 @@ import { bounds, visibleLines, visibleCells, cellCenter, cellPoly, HEX_R } from 
 import { CELL, toScreen, visibleRect, crisp } from "../model/view.js";
 import { bgRect } from "../model/bg.js";
 import { drawOrder } from "../model/objects.js";
+import { corners, handles } from "../model/hit.js";
 
 /** Kleuren uit de CSS-tokens (opnieuw lezen bij een themawissel) */
 export function readColors(el = document.documentElement) {
   const cs = getComputedStyle(el), v = (k, d) => cs.getPropertyValue(k).trim() || d;
-  return { page: v("--sunk", "#f2ebdc"), map: v("--card", "#fffbf3"), line: v("--line-strong", "#8c7d6b"), edge: v("--fg", "#241811") };
+  return { page: v("--sunk", "#f2ebdc"), map: v("--card", "#fffbf3"), line: v("--line-strong", "#8c7d6b"), edge: v("--fg", "#241811"), sel: v("--sel", "#7a5512") };
 }
 
 /** Vaste rasterkleuren (merkpalet: Walnut, Warm Ivory, Lantern); "auto" komt uit readColors */
@@ -30,7 +31,9 @@ export function fitCanvas(cv, w, h, dpr) {
  *  achtergrond (of null: geen, laadt nog of ontbreekt), align = uitlijnmodus (WP59: afbeelding helemaal zichtbaar).
  *  WP61: objecten (art = createArt(), ghost = object dat op de plek van de muis half doorzichtig getekend wordt).
  *  Volgorde: achtergrond → laag floor → raster → laag object → kaartrand (het raster ligt over vloeren, onder meubels). */
-export function draw(cv, map, v, w, h, dpr, col, { img = null, align = false, art = null, ghost = null } = {}) {
+// WP62: sel = geselecteerd object (gedraaid kader in --sel met een lichte rand eromheen, draaigreep met steel en
+// schaalgreep; boven alles, ook boven de kaartrand), cursor = hoekpunten (kaarteenheden) van de toetsenbordcel (gestippeld).
+export function draw(cv, map, v, w, h, dpr, col, { img = null, align = false, art = null, ghost = null, sel = null, cursor = null } = {}) {
   const g = cv.getContext("2d"), grid = map.grid, b = bounds(grid);
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.fillStyle = col.page;
@@ -69,6 +72,38 @@ export function draw(cv, map, v, w, h, dpr, col, { img = null, align = false, ar
   g.strokeStyle = col.edge;
   g.lineWidth = e;
   g.strokeRect(X0 + e / 2, Y0 + e / 2, X1 - X0 - e, Y1 - Y0 - e);
+  if (!align && cursor) drawCursor(g, cursor, v, dpr, col);
+  if (!align && sel) drawSel(g, sel, v, dpr, col);
+}
+
+// Pad door schermpunten (CSS-px) in apparaatpixels
+const poly = (g, pts, dpr) => { g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(p.x * dpr, p.y * dpr) : g.moveTo(p.x * dpr, p.y * dpr))); g.closePath(); };
+
+// Toetsenbordcel: gestippelde omtrek
+function drawCursor(g, pts, v, dpr, col) {
+  poly(g, pts.map((p) => toScreen(v, p.x, p.y)), dpr);
+  g.setLineDash([5 * dpr, 4 * dpr]);
+  g.lineWidth = 2 * dpr;
+  g.strokeStyle = col.sel;
+  g.stroke();
+  g.setLineDash([]);
+}
+
+// Selectie: kader (eerst breed in de kaartkleur, dan smal in --sel: zichtbaar op licht en donker), steel naar de draaigreep,
+// grepen als rondje (draaien) en vierkantje (schalen); getekend formaat kleiner dan het tikdoel (HANDLE)
+function drawSel(g, o, v, dpr, col) {
+  const c = corners(o).map((p) => toScreen(v, p.x, p.y)), hd = handles(o, v), top = { x: (c[0].x + c[1].x) / 2, y: (c[0].y + c[1].y) / 2 };
+  const line = (wd, color) => { g.lineWidth = wd * dpr; g.strokeStyle = color; g.stroke(); };
+  g.save(); // lineJoin en kleuren blijven niet op de context staan
+  g.lineJoin = "round";
+  poly(g, c, dpr); line(5, col.map); line(2, col.sel);
+  g.beginPath(); g.moveTo(top.x * dpr, top.y * dpr); g.lineTo(hd.rot.x * dpr, hd.rot.y * dpr); line(4, col.map); line(2, col.sel);
+  const r = 10 * dpr;
+  g.beginPath(); g.arc(hd.rot.x * dpr, hd.rot.y * dpr, r, 0, Math.PI * 2);
+  g.fillStyle = col.map; g.fill(); line(2.5, col.sel);
+  g.beginPath(); g.rect(hd.size.x * dpr - r, hd.size.y * dpr - r, 2 * r, 2 * r);
+  g.fill(); line(2.5, col.sel);
+  g.restore();
 }
 
 // Vierkant: binnenlijnen van de kaart, alleen het zichtbare deel (de rand tekent de kaartrand)

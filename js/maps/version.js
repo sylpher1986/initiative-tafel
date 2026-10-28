@@ -2,4 +2,4 @@
 // MAPS_VERSION in sw.js (tests/maps-sw.test.js). 0.x tot de MVP (M2, WP67) = 1.0.0. Schema zoals CLAUDE.md:
 // x.y.z kleine aanpassing, x.y.0 grotere, x.0.0 volledig nieuw.
 export const APP = "Inn the Grid";
-export const VERSION = "0.6.0";
+export const VERSION = "0.7.0";

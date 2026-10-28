@@ -125,7 +125,7 @@ const DYNAMIC = [
   [/^maps\.bg\.err\./, "js/maps/main.js bgErr"],
   [/^maps\.imp\.err\./, "js/maps/main.js impErr"],
   [/^maps\.asset\./, "js/maps/main.js assetName (BUILTIN in js/maps/model/assets.js)"],
-  [/^maps\.hist\.(grid|bg|align)$/, "js/maps/main.js stepName"],
+  [/^maps\.hist\.(grid|bg|align|place|move|rotate|size|dup|del|undel|layer|order)$/, "js/maps/main.js stepName (meta.k)"],
   [/^init\.custom\.f\.(act|re|la|tr)$/, "js/data/statparse.js n()"],
   [/^rules\.dur\.\w+S$/, "js/rules/turns.js durShort"],
   [/^rules\.sv\.(ok|fail)(Note)?$/, "js/rules/saves.js"],

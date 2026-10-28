@@ -13,17 +13,23 @@ export const SLOP = 8;
 // WP61: tap(x, y) krijgt een tik (één vinger of de muis, minder dan SLOP bewogen, geen tweede vinger erbij) zolang
 // tapping() waar is (Plaatsen); in die stand pant één vinger pas na SLOP px, zodat een tik de kaart niet verschuift.
 // hover(x, y) volgt een muis zonder ingedrukte knop (spookbeeld op desktop), hover(null) bij verlaten.
-export function attachInput(cv, { get, set, drag = null, dragging = () => false, tap = null, tapping = () => false, hover = null }) {
+// WP62: grab(x, y, kind) wordt bij het neerzetten van de eerste vinger/muis gevraagd of dit gebaar iets oppakt (object,
+// draai- of schaalgreep). Geeft het { move(x, y), end() } terug, dan krijgt dat handvat de beweging (absolute CSS-px,
+// pas voorbij SLOP: een tik verschuift niets) in plaats van pannen; end() bij loslaten, annuleren of een tweede vinger
+// (knijpen zoomt dan zoals altijd). kind = pointerType ("mouse", "touch", "pen").
+export function attachInput(cv, { get, set, drag = null, dragging = () => false, tap = null, tapping = () => false, hover = null, grab = null }) {
   const pts = new Map(); // pointerId → { x, y } (CSS-px binnen het canvas)
-  let start = null, moved = false, multi = false; // huidig gebaar: beginpunt, voorbij SLOP, ooit twee vingers
+  let start = null, moved = false, multi = false, held = null; // huidig gebaar: beginpunt, voorbij SLOP, ooit twee vingers, opgepakt handvat
+  const drop = () => { const h = held; held = null; if (h) h.end(); };
   const at = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
 
   cv.addEventListener("pointerdown", (e) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    if (e.isPrimary) { pts.clear(); start = at(e); moved = false; multi = false; } // nieuw gebaar: een gemiste pointerup laat geen spookvinger achter
+    if (e.isPrimary) { drop(); pts.clear(); start = at(e); moved = false; multi = false; } // nieuw gebaar: een gemiste pointerup laat geen spookvinger achter
     if (pts.size >= 2) return; // een derde vinger doet niets
     pts.set(e.pointerId, at(e));
-    if (pts.size > 1) multi = true;
+    if (pts.size > 1) { multi = true; drop(); } // tweede vinger: niets meer slepen, knijpen zoomt
+    else if (grab && !(drag && dragging())) { const p = at(e); held = grab(p.x, p.y, e.pointerType) || null; }
     try { cv.setPointerCapture(e.pointerId); } catch { /* oude browser */ }
     e.preventDefault();
   });
@@ -33,8 +39,9 @@ export function attachInput(cv, { get, set, drag = null, dragging = () => false,
     const now = at(e);
     if (pts.size === 1) {
       if (!moved && start && Math.hypot(now.x - start.x, now.y - start.y) >= SLOP) moved = true;
-      if (!moved && !multi && tap && tapping()) return; // binnen SLOP: nog een mogelijke tik, niet pannen (prev blijft het beginpunt)
-      if (drag && dragging()) drag(now.x - prev.x, now.y - prev.y); else set(panBy(get(), now.x - prev.x, now.y - prev.y));
+      if (!moved && !multi && (held || (tap && tapping()))) return; // binnen SLOP: nog een mogelijke tik, niet pannen (prev blijft het beginpunt)
+      if (held) held.move(now.x, now.y);
+      else if (drag && dragging()) drag(now.x - prev.x, now.y - prev.y); else set(panBy(get(), now.x - prev.x, now.y - prev.y));
     } else {
       const [other] = [...pts].filter(([id]) => id !== e.pointerId).map(([, p]) => p);
       set(pinch(get(), prev, other, now, other));
@@ -45,14 +52,16 @@ export function attachInput(cv, { get, set, drag = null, dragging = () => false,
   cv.addEventListener("pointerup", (e) => {
     const was = pts.has(e.pointerId), last = pts.size === 1;
     end(e);
+    if (was && last) drop();
     if (was && last && !moved && !multi && tap && tapping()) { const p = at(e); tap(p.x, p.y); }
     if (hover && e.pointerType === "mouse") { const p = at(e); hover(p.x, p.y); }
   });
   if (hover) cv.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") hover(null); });
-  cv.addEventListener("pointercancel", end);
-  cv.addEventListener("lostpointercapture", end);
-  window.addEventListener("blur", () => pts.clear());
-  document.addEventListener("visibilitychange", () => pts.clear());
+  const cancel = (e) => { end(e); if (!pts.size) drop(); };
+  cv.addEventListener("pointercancel", cancel);
+  cv.addEventListener("lostpointercapture", cancel);
+  window.addEventListener("blur", () => { pts.clear(); drop(); });
+  document.addEventListener("visibilitychange", () => { pts.clear(); drop(); });
 
   cv.addEventListener("wheel", (e) => {
     e.preventDefault();

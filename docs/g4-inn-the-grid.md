@@ -231,7 +231,7 @@ Nummering loopt door op de repo-historie (laatste was WP55). Elk pakket = één 
 - Tests: history, catalogus-integriteit, rondreis; browsercheck bibliotheekpaneel.
 - Grootte L: nieuw gereedschapsmodel + eerste assets + undo.
 
-**WP62 · Selecteren, verplaatsen, draaien, schalen, verwijderen** · L
+**WP62 · Selecteren, verplaatsen, draaien, schalen, verwijderen** · L — **klaar (Maps 0.7.0)**; besluiten in CLAUDE.md
 - Scope: `model/hit.js`, selectie met tik/klik, slepen (met snap), draaien per 90° en vrij, schalen in cellen, laag vloer/object, naar voren/achteren, dupliceren, verwijderen met Ongedaan, toetsenbord (pijltjes, Delete, Esc), tekstregel "Geselecteerd: …".
 - Niet: meervoudige selectie (later, op signaal).
 - Uit WP61: Plaatsen heeft nog geen toetsenbordweg (bijv. Enter plaatst op een cursorcel); meenemen met de toetsenbordbediening hier of in WP65.
@@ -330,7 +330,7 @@ Geen meer: D1–D3 zijn besloten. De rest start op het advies en wordt per pakke
 ---
 
 ## 7. Volgende stap
-WP56–WP60 zijn klaar (28-10-2026): **mijlpaal M1** (Maps 0.5.0). WP61 klaar (Maps 0.6.0). Volgende: **WP62 · Selecteren, verplaatsen, draaien, schalen, verwijderen.**
+WP56–WP60 zijn klaar (28-10-2026): **mijlpaal M1** (Maps 0.5.0). WP61 klaar (Maps 0.6.0). WP62 klaar (Maps 0.7.0; plaatsen met het toetsenbord meegenomen). Volgende: **WP63 · Terrein per cel verven** of **WP64 · Eigen assets** (parallel mogelijk).
 
 Oorspronkelijk advies bij de start van G4: **WP56 · Tool-skelet met vierkant raster, pannen en zoomen.**
 Waarom eerst: laagste risico, raakt Initiative niet, legt pad, pagina, catalogus, service worker, tests, browsercheck en het canvas-/gebarenfundament vast waar elk volgend pakket op bouwt. Na WP56 is er al iets op de telefoon te openen.

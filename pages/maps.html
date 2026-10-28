@@ -26,12 +26,16 @@
   </div>
 </header>
 <main class="mstage" id="m-stage">
-  <canvas id="m-canvas" role="img"></canvas>
+  <!-- WP62: focusbaar (toetsenbord: cursorcel, selecteren, verplaatsen, plaatsen); uitleg van de toetsen in #m-khelp -->
+  <canvas id="m-canvas" role="application" tabindex="0" aria-describedby="m-khelp"></canvas>
   <!-- WP59: strook bovenin zolang de uitlijnmodus aan staat -->
   <p class="mstrip" id="m-astrip" hidden>{{t:maps.bg.alignHint}}</p>
   <!-- WP61: strook bovenin zolang Plaatsen aan staat (welk onderdeel; even "Tik binnen de kaart" na een tik ernaast) -->
   <p class="mstrip" id="m-pstrip" hidden></p>
+  <!-- WP62: strook bovenin zolang er een object geselecteerd is (welk object, hoe je het verplaatst) -->
+  <p class="mstrip" id="m-sstrip" hidden></p>
   <p class="vh" id="m-sr" role="status" aria-live="polite"></p>
+  <p class="vh" id="m-khelp">{{t:maps.sel.keys}}</p>
 </main>
 <!-- WP58: Mijn kaarten. Eigen weergave in dezelfde pagina (editor verborgen, history.pushState: terug = editor). Rij-tik
      opent, ⋯ opent het menu (Hernoemen, Dupliceren, Exporteren, Verwijderen). Lijst en meldingen vult js/maps/main.js. -->
@@ -73,6 +77,17 @@
     <button type="button" class="btn" data-nudge="right" aria-label="{{t:maps.bg.right}}"><span aria-hidden="true">▶</span></button>
   </div>
   <button type="button" class="btn primary" id="m-adone">{{t:maps.bg.done}}</button>
+</nav>
+<!-- WP62: dock zolang er een object geselecteerd is (vervangt de gewone dock, zoals de uitlijnmodus): Draaien 90°,
+     Dupliceren, Verwijderen, Meer (paneel Object), Klaar (selectie weg). -->
+<nav class="mdock" id="m-odock" aria-label="{{t:maps.sel.dock}}" hidden>
+  <div class="mobtns">
+    <button type="button" class="btn" id="m-orot" aria-label="{{t:maps.sel.rot}}"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></button>
+    <button type="button" class="btn" id="m-odup" aria-label="{{t:maps.sel.dup}}"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></button>
+    <button type="button" class="btn mdel" id="m-odel" aria-label="{{t:maps.sel.del}}"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+    <button type="button" class="btn" id="m-omore" aria-label="{{t:maps.sel.more}}" aria-expanded="false" aria-controls="m-osheet"><svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-more"/></svg></button>
+  </div>
+  <button type="button" class="btn primary" id="m-odone">{{t:maps.sel.done}}</button>
 </nav>
 <!-- WP57: paneel Kaart. Geen dim: de kaart blijft erboven zichtbaar en bedienbaar, zodat elke wijziging direct te zien is
      (max ± 55 % hoogte). Niet-modaal; Esc of Close sluit, focus terug naar de tandwielknop. -->
@@ -126,6 +141,27 @@
   <div class="mtiles" id="m-tiles"></div>
   <!-- schakelaar onder de tegels (in de kop past hij op 320 px niet naast titel en Sluiten) -->
   <button type="button" class="btn msnap" id="m-snap" aria-pressed="true"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 12h16M12 4v16"/></svg>{{t:maps.lib.snap}}</button>
+</section>
+<!-- WP62: paneel Object (via Meer; zelfde vorm als paneel Kaart, zonder dim). Velden toegepast bij blur/Enter, komma of
+     punt; Sluiten/Esc = terug naar de dock, de selectie blijft. -->
+<section class="msheet" id="m-osheet" role="dialog" aria-labelledby="m-o-t" tabindex="-1" hidden>
+  <div class="grab" aria-hidden="true"></div>
+  <div class="shead"><h3 id="m-o-t"></h3><button type="button" class="link" id="m-oclose">{{t:maps.panel.close}}</button></div>
+  <div class="mfield"><label for="m-orot-v" class="lab">{{t:maps.obj.rot}}</label>
+    <div class="morow"><button type="button" class="btn" id="m-oleft" aria-label="{{t:maps.obj.left}}"><span aria-hidden="true">−90°</span></button>
+      <input id="m-orot-v" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-orot-v-e">
+      <button type="button" class="btn" id="m-oright" aria-label="{{t:maps.obj.right}}"><span aria-hidden="true">+90°</span></button></div>
+    <span class="ferr" id="m-orot-v-e" hidden></span></div>
+  <div class="f2">
+    <label>{{t:maps.obj.w}}<input id="m-ow" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-ow-e"></label>
+    <label>{{t:maps.obj.h}}<input id="m-oh" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-oh-e"></label>
+  </div>
+  <span class="ferr" id="m-ow-e" hidden></span><span class="ferr" id="m-oh-e" hidden></span>
+  <div class="mfield"><span class="lab" id="m-olayer-l">{{t:maps.obj.layer}}</span>
+    <div class="seg" id="m-olayer" role="group" aria-labelledby="m-olayer-l"><button type="button" data-v="floor">{{t:maps.obj.floor}}</button><button type="button" data-v="object">{{t:maps.obj.object}}</button></div></div>
+  <div class="mfield"><span class="lab" id="m-oorder-l">{{t:maps.obj.order}}</span>
+    <div class="mbg-row" role="group" aria-labelledby="m-oorder-l"><button type="button" class="btn" id="m-oback">{{t:maps.obj.back}}</button><button type="button" class="btn" id="m-ofront">{{t:maps.obj.front}}</button></div></div>
+  <button type="button" class="btn msnap" id="m-osnap" aria-pressed="true"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 12h16M12 4v16"/></svg>{{t:maps.lib.snap}}</button>
 </section>
 <!-- WP58: menu en hernoemen voor een kaart uit de lijst (modaal, met dim) -->
 <div class="sheet-wrap" id="m-menu" hidden>
