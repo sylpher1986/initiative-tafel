@@ -235,7 +235,7 @@ test("WP53 set 1: vier spelers level 3 (Low 600, Moderate 900, High 1600)", () =
   assert.equal(difficulty([{ name: "Orc", cr: "1/2", n: 4 }], who).rating, 1, "2014: × 2 = Medium");
   assert.equal(d24([{ name: "Ogre", cr: "2", n: 2 }], who).rating, 1, "900 = precies Moderate");
   assert.equal(d24([{ name: "Ogre", cr: "2", n: 2 }, { name: "Rat", cr: "0", n: 1 }], who).rating, 2, "910 > Moderate");
-  assert.equal(d24([{ name: "Ghoul", cr: "4", n: 1 }], who).rating, 2);
+  assert.equal(d24([{ name: "Ettin", cr: "4", n: 1 }], who).rating, 2);
   assert.equal(d24([{ name: "Troll", cr: "5", n: 1 }], who).rating, 3, "1800 > 1600: boven High");
 });
 
@@ -271,6 +271,10 @@ test("WP53 randen: 0 of 1 monster, onbekende CR, level onbekend, gemengde levels
   assert.deepEqual(mix.th, [550, 825, 1200]); assert.equal(mix.rating, 0);
   assert.equal(d24([{ name: "Weird", cr: "", xp: 75, n: 1 }], pcs(1, 1)).rating, 1, "xp uit het statblock zonder CR telt");
   assert.equal(difficulty([{ cr: "1", n: 1 }], pcs(4, 3), false, "2014").ed, undefined, "2014: geen ed in het resultaat");
+  for (const ed of ["x", 2024, null, undefined]) { // onzin = 2014 (cleanEd)
+    const r = difficulty([{ name: "Orc", cr: "1/2", n: 4 }], pcs(4, 3), false, ed);
+    assert.equal(r.ed, undefined, String(ed)); assert.equal(r.mult, 2, String(ed));
+  }
 });
 
 test("WP53: advies boven High (deadlyTip met ed) brengt naar High", () => {

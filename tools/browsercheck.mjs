@@ -431,6 +431,12 @@ const SCEN = {
     const ok = await page.evaluate(async () => { const { t } = await import("/js/i18n/boot.js"); return ["low", "moderate", "high", "over"].map((k) => t("init.diff." + k)); });
     if (!ok.includes(chip)) throw new Error(`WP53: chip "${chip}" is geen 2024-oordeel`);
     if (/ × /.test(await page.locator(".dbanner .dwhy").textContent())) throw new Error("WP53: multiplier in de 2024-uitleg");
+    const tips = await page.evaluate(async () => { const { deadlyText } = await import("/js/ui/encounters.js"), { t } = await import("/js/i18n/boot.js");
+      const T = [deadlyText({ one: true }, "2024"), deadlyText({ stays: true }, "2024"), deadlyText({ name: "Ogre", rating: 2 }, "2024"), deadlyText({ name: "Ogre", rating: 2 })];
+      return { T, over: t("init.diff.overText"), high: t("init.diff.high"), one: t("init.diff.overOne"), stays: t("init.diff.overStays"), deadly: t("init.diff.deadly") }; });
+    const [one, stays, less, old] = tips.T;
+    if (!one.startsWith(tips.over) || !one.endsWith(tips.one) || !stays.endsWith(tips.stays) || !less.startsWith(tips.over) || !less.includes(tips.high) || !old.startsWith(tips.deadly) || !old.includes("Hard"))
+      throw new Error(`WP53: adviesregels ${JSON.stringify(tips.T)}`);
     await snap(page, "wp53", "uitleg");
   },
   async qadd(page) { await SCEN.fight(page); await tap(page, "#qadd"); await page.fill("#q-q", "gob"); await page.waitForSelector("#q-blk .qrow"); },

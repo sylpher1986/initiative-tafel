@@ -379,7 +379,7 @@ export default {
   "init.diff.overText": "Above High: more XP than the High budget.",
   "init.diff.overOne": "Pick a lower CR for High.",
   "init.diff.overStays": "Even with 1 fewer monster it stays above High.",
-  "init.diff.budget24": "2024 rules: total XP against the budget, no multiplier.",
+  "init.diff.budget24": "2024 rules: total XP vs. the XP budget, no multiplier.",
   "init.diff.weakAll": "Counts toward ×, even with a much lower CR: {who}",
   "init.diff.weakNot": "Not counted toward ×: {who} (XP below 1/10 of the strongest monster)",
   "init.diff.countAnyway": "Count anyway",

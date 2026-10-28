@@ -379,7 +379,7 @@ export default {
   "init.diff.overText": "[Åbövé Hígh: möré XP tháñ thé Hígh büdgét. ···············]",
   "init.diff.overOne": "[Píçk á löwér ÇR för Hígh. ·········]",
   "init.diff.overStays": "[Évéñ wíth 1 féwér möñstér ít stáýs ábövé Hígh. ·················]",
-  "init.diff.budget24": "[2024 rülés: tötál XP ágáíñst thé büdgét, ñö mültíplíér. ····················]",
+  "init.diff.budget24": "[2024 rülés: tötál XP vs. thé XP büdgét, ñö mültíplíér. ···················]",
   "init.diff.weakAll": "[Çöüñts töwárd ×, évéñ wíth á müçh löwér ÇR: {who} ················]",
   "init.diff.weakNot": "[Ñöt çöüñtéd töwárd ×: {who} (XP bélöw 1/10 öf thé ströñgést möñstér) ·······················]",
   "init.diff.countAnyway": "[Çöüñt áñýwáý ·····]",

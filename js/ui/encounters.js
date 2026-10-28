@@ -56,10 +56,9 @@ function diffWhy(r, lair, tog, mons) {
 
 /** AF8: één zin bij Deadly (2024: boven High, WP53), met advies */
 export function deadlyText(d, ed) {
-  const b = cleanEd(ed);
-  const tail = d.one ? t(b ? "init.diff.overOne" : "init.diff.deadlyOne") : d.stays ? t(b ? "init.diff.overStays" : "init.diff.deadlyStays")
-    : t("init.diff.deadlyLess", { name: d.name, rating: rateName(d.rating, ed) });
-  return `${t(b ? "init.diff.overText" : "init.diff.deadly")} ${tail}`;
+  const K = cleanEd(ed) ? ["init.diff.overText", "init.diff.overOne", "init.diff.overStays"] : ["init.diff.deadly", "init.diff.deadlyOne", "init.diff.deadlyStays"];
+  const tail = d.one ? t(K[1]) : d.stays ? t(K[2]) : t("init.diff.deadlyLess", { name: d.name, rating: rateName(d.rating, ed) });
+  return `${t(K[0])} ${tail}`;
 }
 
 /**
