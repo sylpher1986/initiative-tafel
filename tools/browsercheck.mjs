@@ -24,6 +24,9 @@ import { extname, join, normalize } from "node:path";
 import { isDutch } from "./i18n-audit.mjs";
 import { pathFor, langBase } from "../js/i18n/lang.js";
 import { enRedirect } from "../worker/index.js";
+import { BUILTIN, BUILTIN_IDS } from "../js/maps/model/assets.js";
+import { placeAt } from "../js/maps/model/objects.js";
+import { cleanGrid, cellCenter } from "../js/maps/model/grid.js";
 
 process.env.PLAYWRIGHT_BROWSERS_PATH ||= "/opt/pw-browsers";
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -120,7 +123,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
@@ -136,7 +139,7 @@ function startFor(name, lang) {
 // Wat scenario's zelf intypen (gebruikersinhoud: wordt nooit vertaald)
 const OWN = ["Hinderlaag bij de oude brug", "Aurelianus Vandermeer", "Zonder Level", "Vrije regel zonder punt"];
 const noPaths = (l) => l.replace(/\S*\/\S*/g, " "); // paden en URL's (src/2014/en, /speler?k=) zijn geen tekst, zoals in tests/pages.test.js
-const tap = (page, sel) => page.locator(sel).first().tap();
+const tap = (page, sel) => page.locator(sel).first().tap().catch((e) => { throw new Error(`tik ${sel}: ${String(e.message).split("\n")[0]}`); }); // WP61: welke tik
 let SHOTS = new Set(); // --shots=…, gezet in main()
 // WP35: extra screenshot midden in een scenario (alleen 320 px en alleen met --shots=<scenario>)
 async function snap(page, name, part) {
@@ -305,7 +308,7 @@ const SCEN = {
     const s2 = await st();
     if (Math.abs(s2.z / s1.z - 2) > 0.01) throw new Error("knijpen: " + JSON.stringify([s1, s2]));
     // wiel: inzoomen rond de cursor, kaartpunt onder de cursor blijft
-    await tap(page, "#m-fit"); await page.waitForTimeout(50);
+    await tap(page, "#m-zoom"); await page.waitForTimeout(50);
     const s3 = await st(), px = 120, py = 140, mx = (px - s3.x) / (CELL * s3.z);
     await page.mouse.move(geo.left + px, geo.top + py); await page.mouse.wheel(0, -200); await page.waitForTimeout(80);
     const s4 = await st(), mx2 = (px - s4.x) / (CELL * s4.z);
@@ -318,7 +321,7 @@ const SCEN = {
     }, id);
     if (!(await until("m-in")) || (await st()).z !== 4 || !/400/.test(await page.locator("#m-zoom").textContent())) throw new Error("max 400 %: " + JSON.stringify(await st()));
     if (!(await until("m-out")) || (await st()).z !== 0.25) throw new Error("min 25 %: " + JSON.stringify(await st()));
-    await tap(page, "#m-fit"); await page.waitForTimeout(50);
+    await tap(page, "#m-zoom"); await page.waitForTimeout(50);
     const s5 = await st();
     if (Math.abs(s5.z - s0.z) > 1e-9) throw new Error("Passend maken herstelt niet");
     const sc = await page.evaluate(() => ({ y: scrollY, sh: document.documentElement.scrollHeight, ih: innerHeight, ta: getComputedStyle(document.getElementById("m-canvas")).touchAction, lbl: document.getElementById("m-canvas").getAttribute("aria-label"), ver: document.getElementById("m-ver").textContent }));
@@ -798,6 +801,164 @@ const SCEN = {
       if (JSON.stringify(strip(modelA)) !== JSON.stringify(strip(modelB))) throw new Error("modeldata na rondreis: " + JSON.stringify({ a: strip(modelA), b: strip(modelB) }));
       if ((await pix(p2)) !== pixA) throw new Error("rendering na rondreis niet pixelgelijk");
     } finally { await ctx2.close(); }
+  },
+  // WP61 (G4): undo/redo en plaatsen. Ongedaan/Opnieuw in de kop (uit zolang er niets is) over rasterwijzigingen; paneel
+  // Bibliotheek zonder dim, 4 categorieën; tegel kiezen = Plaatsen (strook), tik plaatst op de cel (snap), slepen pant
+  // zonder te plaatsen, tik naast de kaart plaatst niets, snap uit = tikpunt; het onderdeel is echt getekend (pixel);
+  // elk ingebouwd onderdeel op vierkant en hex op de verwachte plek, ook na herladen en na export → import (acceptatie 1);
+  // Ctrl+Z / Ctrl+Shift+Z; achtergrond kiezen/verwijderen en één uitlijnsessie = één stap, knoppen uit tijdens uitlijnen
+  // (acceptatie 2). --shots=wp61: bibliotheek, kaart met objecten.
+  async wp61(page) {
+    const ready = (p = page) => p.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);
+    await ready();
+    const frame = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const M = () => page.evaluate(() => ({ map: window.__maps.map(), hist: window.__maps.hist(), tool: window.__maps.tool(), view: window.__maps.view(), grid: window.__maps.grid(),
+      undo: document.getElementById("m-undo").disabled, redo: document.getElementById("m-redo").disabled }));
+    const touch = (steps) => page.evaluate((steps) => {
+      const c = document.getElementById("m-canvas"), r = c.getBoundingClientRect();
+      for (const [type, id, x, y] of steps) c.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: "touch", isPrimary: id === 1, clientX: r.left + x, clientY: r.top + y, bubbles: true, cancelable: true, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+    }, steps);
+    const scr = async (mx, my) => { const v = (await M()).view; return { x: mx * 48 * v.z + v.x, y: my * 48 * v.z + v.y }; };
+    const tapMap = async (mx, my) => { const p = await scr(mx, my); await touch([["pointerdown", 1, p.x, p.y], ["pointerup", 1, p.x, p.y]]); await frame(); };
+    const field = async (sel, v) => { await page.locator(sel).fill(v); await page.locator(sel).press("Enter"); await frame(); };
+    let m = await M();
+    if (!m.undo || !m.redo) throw new Error("Ongedaan/Opnieuw niet uit bij een verse kaart");
+    // raster: twee stappen, Ongedaan/Opnieuw via de kop
+    await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    await field("#m-cols", "10"); await field("#m-rows", "8");
+    m = await M();
+    if (m.grid.cols !== 10 || m.grid.rows !== 8 || m.hist.size !== 2 || m.undo) throw new Error("raster als stappen: " + JSON.stringify(m.hist));
+    await tap(page, "#m-undo"); await frame();
+    m = await M();
+    if (m.grid.rows !== 15 || m.redo || (await page.locator("#m-rows").inputValue()) !== "15") throw new Error("Ongedaan raster (veld volgt): " + JSON.stringify(m.grid));
+    await tap(page, "#m-redo"); await frame();
+    if ((await M()).grid.rows !== 8) throw new Error("Opnieuw raster");
+    // bibliotheek (dockknop; het paneel Kaart ligt over de dock en gaat eerst dicht), zonder dim
+    await tap(page, "#m-close");
+    await tap(page, "#m-lib"); await page.locator("#m-lsheet").waitFor({ state: "visible" });
+    const lib = await page.evaluate(() => ({ kaart: document.getElementById("m-sheet").hidden, dim: [...document.querySelectorAll(".dim")].some((d) => d.offsetParent), cats: document.querySelectorAll("#m-cats button").length,
+      tiles: document.querySelectorAll("#m-tiles .mtile").length, exp: document.getElementById("m-lib").getAttribute("aria-expanded"), snap: document.getElementById("m-snap").getAttribute("aria-pressed") }));
+    if (!lib.kaart || lib.dim || lib.cats !== 4 || lib.tiles < 1 || lib.exp !== "true" || lib.snap !== "true") throw new Error("bibliotheek: " + JSON.stringify(lib));
+    const pick = async (id) => {
+      await tap(page, `#m-cats [data-v="${BUILTIN[id].cat}"]`);
+      await tap(page, `#m-tiles [data-id="${id}"]`);
+      await page.waitForFunction((id) => window.__maps.tool().active === id, id);
+    };
+    await pick("table");
+    if (!(await page.locator("#m-pstrip").isVisible()) || !(await M()).tool.placing) throw new Error("Plaatsen niet aan na een tegel");
+    await snap(page, "wp61", "bibliotheek");
+    await tapMap(3.3, 2.4);
+    m = await M();
+    if (m.map.objs?.length !== 1 || m.map.objs[0].x !== 3 || m.map.objs[0].y !== 2.5 || m.map.objs[0].asset !== "table") throw new Error("tik plaatst op de cel: " + JSON.stringify(m.map.objs));
+    // echt getekend: pixel in het tafelblad (#9b6a3c) zodra de tekening geladen is
+    const px = async (mx, my) => { const p = await scr(mx, my); return page.evaluate(({ x, y }) => { const c = document.getElementById("m-canvas"), d = window.__maps.size().dpr; return [...c.getContext("2d").getImageData(Math.round(x * d), Math.round(y * d), 1, 1).data]; }, p); };
+    const near = (a, b) => a.slice(0, 3).every((v, i) => Math.abs(v - b[i]) < 30);
+    let ok = false;
+    for (let i = 0; i < 40 && !ok; i++) { await frame(); ok = near(await px(2.5, 2.2), [155, 106, 60]); }
+    if (!ok) throw new Error("tafel niet getekend: " + (await px(2.5, 2.2)));
+    // slepen pant, plaatst niets
+    const v0 = (await M()).view, p0 = await scr(5, 4);
+    await touch([["pointerdown", 1, p0.x, p0.y], ["pointermove", 1, p0.x + 4, p0.y], ["pointermove", 1, p0.x + 30, p0.y + 10], ["pointerup", 1, p0.x + 30, p0.y + 10]]); await frame();
+    m = await M();
+    if (m.map.objs.length !== 1 || Math.abs(m.view.x - v0.x - 30) > 0.5) throw new Error("slepen in Plaatsen: " + JSON.stringify({ n: m.map.objs.length, v0, v: m.view }));
+    await page.locator("#m-lsheet").focus(); await page.keyboard.press("0"); await frame(); // Hele kaart (toets 0; de dock ligt onder het paneel)
+    // naast de kaart: niets, strook zegt het
+    const vx = (await M()).view.x, strip = () => page.evaluate(() => document.getElementById("m-pstrip").textContent);
+    if (!(vx > 8)) throw new Error("geen ruimte naast de kaart na Hele kaart: " + vx);
+    const pre = await strip();
+    await touch([["pointerdown", 1, vx - 4, 60], ["pointerup", 1, vx - 4, 60]]); await frame();
+    const st = await strip();
+    if ((await M()).map.objs.length !== 1 || !st || st === pre) throw new Error("tik naast de kaart: " + JSON.stringify({ pre, st }));
+    // snap uit: het tikpunt; weer aan
+    await tap(page, "#m-snap");
+    await pick("chair");
+    await tapMap(5.3, 4.6);
+    m = await M();
+    const ch = m.map.objs[m.map.objs.length - 1];
+    if (m.map.objs.length !== 2 || Math.abs(ch.x - 5.3) > 0.05 || Math.abs(ch.y - 4.6) > 0.05) throw new Error("snap uit: " + JSON.stringify(ch));
+    await tap(page, "#m-snap");
+    if (!(await M()).tool.snap) throw new Error("snap weer aan");
+    // elk ingebouwd onderdeel op vierkant en hex, op de verwachte plek
+    const all = async () => {
+      const g = cleanGrid((await M()).grid), exp = [];
+      for (let i = 0; i < BUILTIN_IDS.length; i++) {
+        const id = BUILTIN_IDS[i], c = cellCenter(g, i % 10, Math.floor(i / 10) * 3 + 1), x = c.x + 0.12, y = c.y - 0.1;
+        await pick(id);
+        await tapMap(x, y);
+        exp.push({ asset: id, ...placeAt(g, x, y, BUILTIN[id].w, BUILTIN[id].h, true) });
+      }
+      const got = (await M()).map.objs.slice(-BUILTIN_IDS.length).map((o) => ({ asset: o.asset, x: o.x, y: o.y }));
+      if (JSON.stringify(got) !== JSON.stringify(exp)) throw new Error("plek per onderdeel: " + JSON.stringify({ got, exp }));
+    };
+    await all();
+    // Ctrl+Z / Ctrl+Shift+Z buiten een tekstveld
+    await page.locator("#m-lsheet").focus();
+    const n1 = (await M()).map.objs.length;
+    await page.keyboard.press("Control+z"); await frame();
+    if ((await M()).map.objs.length !== n1 - 1) throw new Error("Ctrl+Z");
+    await page.keyboard.press("Control+Shift+Z"); await frame();
+    if ((await M()).map.objs.length !== n1) throw new Error("Ctrl+Shift+Z");
+    // hex (punt): nog eens alles; het tandwiel (ligt onder het paneel: via click()) sluit de bibliotheek
+    await page.locator("#m-set").evaluate((b) => b.click());
+    await page.locator("#m-sheet").waitFor({ state: "visible" });
+    if (!(await page.locator("#m-lsheet").isHidden())) throw new Error("twee panelen tegelijk");
+    await tap(page, '#m-type [data-v="pointy"]'); await frame();
+    await tap(page, "#m-close");
+    await tap(page, "#m-lib"); await page.locator("#m-lsheet").waitFor({ state: "visible" });
+    await all();
+    await tap(page, "#m-lclose");
+    if ((await M()).tool.placing || !(await page.locator("#m-pstrip").isHidden())) throw new Error("Sluiten stopt Plaatsen");
+    await snap(page, "wp61", "kaart");
+    // herladen: alles op dezelfde plek
+    const before = (await M()).map;
+    await page.evaluate(() => window.__maps.flush());
+    await mapsIdb(page, (l) => l.some((x) => x.id === before.id && x.objs?.length === before.objs.length && x.schema === 3));
+    await page.reload(); await ready();
+    const after = (await M()).map;
+    if (JSON.stringify(after.objs) !== JSON.stringify(before.objs)) throw new Error("na herladen andere objecten");
+    if (!(await M()).undo) throw new Error("geschiedenis hoort niet in de opslag");
+    // export → import (nieuwe kaart) → openen: zelfde objecten
+    await page.evaluate(() => { try { Object.defineProperty(navigator, "canShare", { value: undefined, configurable: true }); } catch { /* */ } });
+    await tap(page, "#m-maps"); await page.locator("#m-list").waitFor({ state: "visible" });
+    await tap(page, `#m-lrows .mkl-m[data-id="${before.id}"]`);
+    const [dl] = await Promise.all([page.waitForEvent("download"), tap(page, '#m-menu [data-m="exp"]')]);
+    const { readFileSync } = await import("node:fs");
+    const text = readFileSync(await dl.path(), "utf8"), doc = JSON.parse(text);
+    if (doc.map.schema !== 3 || JSON.stringify(doc.map.objs) !== JSON.stringify(before.objs) || Object.keys(doc.assets || {}).length) throw new Error("export: " + text.slice(0, 300));
+    await page.locator("#m-menu").waitFor({ state: "hidden" });
+    const [fc] = await Promise.all([page.waitForEvent("filechooser"), tap(page, "#m-imp")]);
+    await fc.setFiles({ name: dl.suggestedFilename(), mimeType: "application/json", buffer: Buffer.from(text) });
+    const lst = await mapsIdb(page, (l) => l.length >= 2);
+    const imp = lst.find((x) => x.id !== before.id);
+    await tap(page, `#m-lrows .mkl-o[data-id="${imp.id}"]`);
+    await page.waitForFunction((id) => window.__maps.view$() === "edit" && window.__maps.map().id === id, imp.id);
+    m = await M();
+    if (JSON.stringify(m.map.objs) !== JSON.stringify(before.objs) || JSON.stringify(m.grid) !== JSON.stringify(before.grid)) throw new Error("na import andere objecten");
+    if (!m.undo || !m.redo) throw new Error("andere kaart: lege geschiedenis");
+    // achtergrond: kiezen en verwijderen als stap; uitlijnen (pijltjes + slepen) = één stap; knoppen uit tijdens uitlijnen
+    await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    const [fb] = await Promise.all([page.waitForEvent("filechooser"), tap(page, "#m-bg-pick")]);
+    await fb.setFiles({ name: "grot.png", mimeType: "image/png", buffer: await fixture(page, 700, 560, 70) });
+    await page.waitForFunction(() => window.__maps.bg().state === "set" && window.__maps.bg().img, null, { timeout: 10000 });
+    const s0 = (await M()).hist.size;
+    await tap(page, "#m-bg-align"); await page.locator("#m-adock").waitFor({ state: "visible" });
+    if (!(await M()).undo) throw new Error("Ongedaan aan tijdens uitlijnen");
+    for (let i = 0; i < 3; i++) await tap(page, '#m-adock [data-nudge="right"]');
+    const q = await scr(2, 2);
+    await touch([["pointerdown", 1, q.x, q.y], ["pointermove", 1, q.x + 20, q.y], ["pointermove", 1, q.x + 40, q.y + 12], ["pointerup", 1, q.x + 40, q.y + 12]]);
+    await tap(page, "#m-adone"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    m = await M();
+    if (m.hist.size !== s0 + 1 || !(m.map.bg.x > 0)) throw new Error("uitlijnsessie = één stap: " + JSON.stringify({ s0, h: m.hist, bg: m.map.bg }));
+    await tap(page, "#m-undo"); await frame();
+    if ((await M()).map.bg.x !== 0) throw new Error("Ongedaan uitlijnen");
+    await tap(page, "#m-undo"); await frame();
+    if ((await M()).map.bg) throw new Error("Ongedaan achtergrond kiezen");
+    await tap(page, "#m-redo"); await page.waitForFunction(() => window.__maps.bg().state === "set" && window.__maps.bg().img, null, { timeout: 5000 });
+    await tap(page, "#m-bg-del"); await frame();
+    if ((await M()).map.bg) throw new Error("verwijderen");
+    await tap(page, "#m-toast .tundo"); await page.waitForFunction(() => window.__maps.bg().state === "set", null, { timeout: 5000 });
+    m = await M();
+    if (m.redo !== false) throw new Error("Ongedaan in de melding = gewone undo (Opnieuw beschikbaar)");
   },
   speler: null, // eigen startpagina, zie START
   home: null, homeen: null, notfound: null, // WP30: publieke homepage per taal en de niet-gevonden-pagina (START)

@@ -26,13 +26,13 @@ test("alle Maps-bestanden in MAPS_ASSETS en niet in ASSETS; geen Initiative-best
   const files = await_files();
   for (const f of files) assert.ok(maps.includes("./" + f), `${f} ontbreekt in MAPS_ASSETS`);
   assert.deepEqual(maps.filter((a) => init.includes(a)), [], "dubbel in beide caches");
-  const own = (a) => /^\.\/((nl\/)?maps\/|css\/maps\.css$|js\/maps\/|locales\/maps\/)/.test(a);
+  const own = (a) => /^\.\/((nl\/)?maps\/|css\/maps\.css$|js\/maps\/|locales\/maps\/|data\/maps-assets\/)/.test(a);
   assert.deepEqual(maps.filter((a) => !own(a)), [], "gedeeld bestand hoort in ASSETS (Initiative-versie)");
   assert.deepEqual(init.filter(own), [], "Maps-bestand in de Initiative-cache");
 });
 function await_files() {
   const gen = ["maps/", "nl/maps/"];
-  return [...gen, "css/maps.css", ...walk("js/maps/"), ...walk("locales/maps/")].map((f) => f.replace(/index\.html$/, ""));
+  return [...gen, "css/maps.css", ...walk("js/maps/"), ...walk("locales/maps/"), ...walk("data/maps-assets/")].map((f) => f.replace(/index\.html$/, ""));
 }
 
 test("gegenereerde Maps-pagina's bestaan (pages.mjs) en staan in MAPS_ASSETS", async () => {

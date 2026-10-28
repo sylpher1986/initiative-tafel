@@ -1,15 +1,17 @@
 // Inn the Grid (G4, WP58): kaartdocument, schema v1, puur (geen DOM, Node-testbaar). Eén kaart = één record in de
 // IndexedDB-store "maps" (js/maps/store.js). v1 bevat naam en raster; v2 (WP59) voegt de optionele achtergrond `bg` toe
-// (js/maps/model/bg.js). Terrein en objecten komen later als optionele velden (docs/g4-inn-the-grid.md §2.3). Alles wat
+// (js/maps/model/bg.js). Objecten (`objs`) sinds WP61, terrein komt later als optioneel veld (docs/g4-inn-the-grid.md §2.3). Alles wat
 // uit de opslag (of later een bestand) komt is onbetrouwbaar: altijd via cleanMap.
 // Schema alleen omhoog als de inhoud het nodig heeft (zoals has2024 in Initiative): een kaart zonder achtergrond blijft
 // v1, zodat een oudere Maps-versie (ander tabblad, oude cache) hem gewoon leest; een kaart mét achtergrond is v2 en die
-// laat een oudere versie onaangeroerd in plaats van de achtergrond bij het opslaan stil weg te gooien.
+// laat een oudere versie onaangeroerd in plaats van de achtergrond bij het opslaan stil weg te gooien. v3 (WP61) = er
+// staan objecten op (`objs`, js/maps/model/objects.js); zelfde redenering: Maps 0.5.0 laat zo'n kaart met rust.
 import { cleanGrid } from "./grid.js";
 import { cleanBg } from "./bg.js";
+import { cleanObjs } from "./objects.js";
 
 /** Hoogste schemaversie die deze versie kent. Hoger = niet aanraken (gemaakt door een nieuwere versie). */
-export const SCHEMA = 2;
+export const SCHEMA = 3;
 /** Langste kaartnaam (tekens) */
 export const NAME_MAX = 60;
 
@@ -43,6 +45,8 @@ export function cleanMap(raw) {
   const out = { id: raw.id, schema: 1, name: cleanName(raw.name), createdAt, updatedAt, grid: cleanGrid(grid) };
   const bg = cleanBg(raw.bg);
   if (bg) { out.bg = bg; out.schema = 2; }
+  const objs = cleanObjs(raw.objs);
+  if (objs.length) { out.objs = objs; out.schema = 3; }
   return out;
 }
 

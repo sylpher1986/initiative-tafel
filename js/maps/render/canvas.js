@@ -6,6 +6,7 @@
 import { bounds, visibleLines, visibleCells, cellCenter, cellPoly, HEX_R } from "../model/grid.js";
 import { CELL, toScreen, visibleRect, crisp } from "../model/view.js";
 import { bgRect } from "../model/bg.js";
+import { drawOrder } from "../model/objects.js";
 
 /** Kleuren uit de CSS-tokens (opnieuw lezen bij een themawissel) */
 export function readColors(el = document.documentElement) {
@@ -25,9 +26,11 @@ export function fitCanvas(cv, w, h, dpr) {
   return true;
 }
 
-/** Kaart tekenen. map = { grid, bg? }, v = view, w/h = CSS-grootte, dpr, col = readColors(); img = tekenbare
- *  achtergrond (of null: geen, laadt nog of ontbreekt), align = uitlijnmodus (WP59: afbeelding helemaal zichtbaar) */
-export function draw(cv, map, v, w, h, dpr, col, { img = null, align = false } = {}) {
+/** Kaart tekenen. map = { grid, bg?, objs? }, v = view, w/h = CSS-grootte, dpr, col = readColors(); img = tekenbare
+ *  achtergrond (of null: geen, laadt nog of ontbreekt), align = uitlijnmodus (WP59: afbeelding helemaal zichtbaar).
+ *  WP61: objecten (art = createArt(), ghost = object dat op de plek van de muis half doorzichtig getekend wordt).
+ *  Volgorde: achtergrond → laag floor → raster → laag object → kaartrand (het raster ligt over vloeren, onder meubels). */
+export function draw(cv, map, v, w, h, dpr, col, { img = null, align = false, art = null, ghost = null } = {}) {
   const g = cv.getContext("2d"), grid = map.grid, b = bounds(grid);
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.fillStyle = col.page;
@@ -46,6 +49,9 @@ export function draw(cv, map, v, w, h, dpr, col, { img = null, align = false } =
     g.globalAlpha = 1;
     if (!align) { g.save(); g.beginPath(); g.rect(X0, Y0, X1 - X0, Y1 - Y0); g.clip(); g.drawImage(img, bx, by, bw, bh); g.restore(); }
   }
+  const { list: objs, nf } = map.objs && map.objs.length ? drawOrder(map.objs) : { list: [], nf: 0 };
+  const things = (from, to) => { for (let i = from; i < to; i++) drawObj(g, objs[i], v, w, h, dpr, col, art); };
+  if (!align) things(0, nf);
   if (grid.show) {
     g.beginPath();
     if (grid.type === "hex") hexPath(g, grid, v, w, h, dpr);
@@ -56,6 +62,8 @@ export function draw(cv, map, v, w, h, dpr, col, { img = null, align = false } =
     g.stroke();
     g.globalAlpha = 1;
   }
+  if (!align) things(nf, objs.length);
+  if (ghost && !align) { g.globalAlpha = 0.5; drawObj(g, ghost, v, w, h, dpr, col, art); g.globalAlpha = 1; }
   // kaartrand: 2 apparaatpixels binnen de kaart (hele pixels, dus scherp)
   const e = Math.max(2, Math.round(dpr * 1.5));
   g.strokeStyle = col.edge;
@@ -92,4 +100,24 @@ function hexPath(g, grid, v, w, h, dpr) {
     for (let i = 1; i < 6; i++) g.lineTo(X + off[i][0], Y + off[i][1]);
     g.closePath();
   }
+}
+
+// Eén object: bitmap van het onderdeel (art) op zijn middelpunt, geschaald naar w × h cellen en gedraaid; buiten beeld
+// overgeslagen (culling op de omsluitende cirkel). Onbekend, nog niet geladen of mislukt: plaatshouder (gestippelde rechthoek).
+function drawObj(g, o, v, w, h, dpr, col, art) {
+  const s = CELL * v.z, p = toScreen(v, o.x, o.y), rad = (Math.hypot(o.w, o.h) / 2) * s;
+  if (p.x + rad < 0 || p.y + rad < 0 || p.x - rad > w || p.y - rad > h) return;
+  const ow = o.w * s * dpr, oh = o.h * s * dpr, bmp = art ? art.get(o.asset, s * dpr) : null;
+  g.save();
+  g.translate(p.x * dpr, p.y * dpr);
+  if (o.rot) g.rotate((o.rot * Math.PI) / 180);
+  if (bmp) { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = "high"; g.drawImage(bmp, -ow / 2, -oh / 2, ow, oh); }
+  else {
+    const inset = Math.min(ow, oh) * 0.08;
+    g.setLineDash([4 * dpr, 3 * dpr]);
+    g.lineWidth = Math.max(1, dpr);
+    g.strokeStyle = col.line;
+    g.strokeRect(-ow / 2 + inset, -oh / 2 + inset, ow - 2 * inset, oh - 2 * inset);
+  }
+  g.restore();
 }

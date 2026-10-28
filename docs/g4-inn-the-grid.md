@@ -73,7 +73,7 @@ tests/maps-*.test.js
 - **Raster**: `{ type: "square" | "hex", orient: "pointy" | "flat" (hex), cols, rows, show, color, alpha }`. Hex-cellen in axiale coördinaten intern, opgeslagen als offset-kolom/rij (eenvoudiger te begrenzen).
 - **Achtergrond**: `{ asset, x, y, scale, rot? }` — positie/schaal in kaarteenheden, zodat een geüploade battle map op het raster uitgelijnd kan worden.
 - **Terrein**: schaarse celkaart `{ "c,r": terrainId }` (verven per cel).
-- **Objecten**: `[{ id, asset, x, y, w, h, rot, layer, z, props? }]`, `layer` ∈ `floor | object` (MVP); later `token | dm | fog`.
+- **Objecten** (WP61, `objs`): `[{ id, asset, x, y, w, h, rot, layer }]`, x/y = middelpunt, w/h in cellen, `layer` ∈ `floor | object` (MVP); later `token | dm | fog`. Geen `z`: de lijstvolgorde is de tekenvolgorde binnen een laag.
 - **Assets**: `{ id: { kind: "builtin", ref } | { kind: "custom", mime, w, h, sha256, name } }`; bytes los in de assetstore, niet in het kaartdocument.
 - Id's en codes in opslag, geen labels (CLAUDE.md, Meertaligheid). Gebruikersinhoud (kaartnaam, objectnamen) wordt nooit vertaald.
 - Lagen die later DM-only worden (`dm`, `fog`) bestaan in het schema vanaf v1 als lege, optionele velden, zodat de spelersweergave later een **expliciete whitelist** kan zijn, net als `toPlayerView` **[F/C]**.
@@ -234,6 +234,7 @@ Nummering loopt door op de repo-historie (laatste was WP55). Elk pakket = één 
 **WP62 · Selecteren, verplaatsen, draaien, schalen, verwijderen** · L
 - Scope: `model/hit.js`, selectie met tik/klik, slepen (met snap), draaien per 90° en vrij, schalen in cellen, laag vloer/object, naar voren/achteren, dupliceren, verwijderen met Ongedaan, toetsenbord (pijltjes, Delete, Esc), tekstregel "Geselecteerd: …".
 - Niet: meervoudige selectie (later, op signaal).
+- Uit WP61: Plaatsen heeft nog geen toetsenbordweg (bijv. Enter plaatst op een cursorcel); meenemen met de toetsenbordbediening hier of in WP65.
 - Acceptatie: (1) hit-test kiest het bovenste object, ook bij gedraaide objecten (test); (2) één sleepbeweging = één undo-stap; (3) alles bedienbaar zonder muis op desktop; (4) op 320 px blijven handgrepen ≥ 44 px tikbaar.
 - Risico: verwarring pannen vs. slepen op touch → modus-indicator, slepen alleen op een geselecteerd object.
 - Grootte L.
@@ -257,6 +258,7 @@ Nummering loopt door op de repo-historie (laatste was WP55). Elk pakket = één 
 **WP66 · Prestaties en grenzen** · M
 - Scope: meetscenario 100×100 + 2000 objecten + achtergrond 4096 px; offscreen-buffers, culling, tekenen alleen bij verandering (`requestAnimationFrame`), `LIMITS` centraal, geheugenmeting.
 - Acceptatie: (1) pannen/zoomen ≥ 30 fps op Michiels oudste iPad, ≥ 50 fps desktop (meetscript); (2) openen van de meetkaart < 2 s op desktop; (3) grenzen gehandhaafd met melding.
+- Uit WP61: `render/art.js` begrenst de bitmap op 256 px per cel (onscherp bij dpr 3 en 400 %): meten en zo nodig 512 voor kleine onderdelen.
 - Risico: tegenvallende iPad → lagere grens voor gratis versie (D10).
 - Grootte M.
 
@@ -304,7 +306,7 @@ Kleinste waardevolle eind-tot-eind-release: **M1**.
 | D3 | Tekentechniek | **Besloten 28-10: Canvas 2D, eigen code, voor nu**; herzien als WP66 daar aanleiding toe geeft |
 | D4 | Projectbestand | **Besloten in WP60 op het advies: optie A, één JSON met base64-assets** (formaat §8) |
 | D5 | Extensie | **Besloten in WP60 op het advies: `.json`** (iOS-bestandskiezer kent die; `format` maakt het herkenbaar) |
-| D6 | Ingebouwde assets | Eigen eenvoudige SVG's (licentieschoon, zoals "geen niet-SRD content") |
+| D6 | Ingebouwde assets | **Besloten in WP61 op het advies: eigen eenvoudige SVG's** (licentieschoon, zoals "geen niet-SRD content"), 24 stuks in `data/maps-assets/` |
 | D7 | Zichtbaarheid | Tot M2 niet op de homepage, niet installeerbaar, `noindex`; besluit in WP67 |
 | D8 | Koppeling (fase 3) | Zelfde-origin lezen + bestand als terugval |
 | D9 | Reviewers in de functionele fase | Volgens CLAUDE.md; UX-agent alleen bij echte keuzes, vormgeving pas in WP68 |
@@ -328,7 +330,7 @@ Geen meer: D1–D3 zijn besloten. De rest start op het advies en wordt per pakke
 ---
 
 ## 7. Volgende stap
-WP56–WP60 zijn klaar (28-10-2026): **mijlpaal M1** (Maps 0.5.0). Volgende: **WP61 · Undo/redo-kern en plaatsen uit de ingebouwde bibliotheek.**
+WP56–WP60 zijn klaar (28-10-2026): **mijlpaal M1** (Maps 0.5.0). WP61 klaar (Maps 0.6.0). Volgende: **WP62 · Selecteren, verplaatsen, draaien, schalen, verwijderen.**
 
 Oorspronkelijk advies bij de start van G4: **WP56 · Tool-skelet met vierkant raster, pannen en zoomen.**
 Waarom eerst: laagste risico, raakt Initiative niet, legt pad, pagina, catalogus, service worker, tests, browsercheck en het canvas-/gebarenfundament vast waar elk volgend pakket op bouwt. Na WP56 is er al iets op de telefoon te openen.
@@ -351,7 +353,7 @@ Eén kaart volledig en zelfstandig in één JSON-bestand (`js/maps/model/file.js
   "assets": { "<sha256>": { "mime": "image/webp", "w": 2100, "h": 1400, "data": "<base64>" } }
 }
 ```
-- `map` = het kaartdocument zoals in de opslag (§2.3, `cleanMap`), **zonder `id`**: geen verwijzing naar browseropslag; import geeft altijd een nieuwe id, tijden = nu, naam via `uniqueName` (nooit overschrijven). `bg` en dus `assets` alleen als er een achtergrond is (schema 2); later komen terrein en objecten als optionele velden.
+- `map` = het kaartdocument zoals in de opslag (§2.3, `cleanMap`), **zonder `id`**: geen verwijzing naar browseropslag; import geeft altijd een nieuwe id, tijden = nu, naam via `uniqueName` (nooit overschrijven). `bg` en dus `assets` alleen als er een achtergrond is (schema 2); objecten (WP61) als optioneel veld `objs` (schema 3, `cleanObjs`; ingebouwde onderdelen alleen als id, niet als afbeelding; een onbekende id blijft bewaard en wordt als plaatshouder getekend); terrein komt later.
 - `assets` bevat precies de afbeeldingen waar de kaart naar verwijst; sleutel = sha256 (hex) van de bytes in `data`; `w`/`h` = afmetingen van die opgeslagen bytes (≤ 4096 px). `src` (sha256 van het origineel, index in de opslag) gaat bewust niet mee en wordt bij import genegeerd; een bestaande asset met dezelfde sha wordt niet overschreven.
 - Bestandsnaam `inn-the-grid-<kaartnaam>-YYYY-MM-DD-HH-MM.json` (lokale tijd, slug van de naam, max 40 tekens, leeg = `map`).
 - Schrijven: als Blob uit tekststukken (`buildParts`, base64 per 48 KB), nooit één enorme string. Ontbreekt een afbeelding (opslag gewist), dan geen bestand maar een melding.

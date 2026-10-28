@@ -5,11 +5,12 @@
 // js/maps/store.js), autosave met status in de kop, Mijn kaarten (nieuw, openen, hernoemen, dupliceren, verwijderen met
 // Ongedaan), laatste kaart heropenen, één tabblad tegelijk; WP59: achtergrondafbeelding kiezen (controle, verkleinen,
 // assetstore), schaal, raster passend, uitlijnmodus, vervangen/verwijderen met Ongedaan; WP60: projectbestand v1
-// (exporteren in het menu per kaart, importeren onder de lijst als nieuwe kaart) (docs/g4-inn-the-grid.md).
+// (exporteren in het menu per kaart, importeren onder de lijst als nieuwe kaart); WP61: undo/redo (kop) over plaatsen,
+// raster en achtergrond, paneel Bibliotheek met ingebouwde onderdelen en Plaatsen (docs/g4-inn-the-grid.md).
 import { initI18n, t, i18n } from "../i18n/boot.js";
 import { APP, VERSION } from "./version.js";
 import { cleanGrid, parseCells, bounds, LIMITS } from "./model/grid.js";
-import { clampPan, fitView, zoomAt, zoomPct, ZMIN, ZMAX, CELL } from "./model/view.js";
+import { clampPan, fitView, zoomAt, zoomPct, toMap, ZMIN, ZMAX, CELL } from "./model/view.js";
 import { cleanBg, guessPpc, gridFor, parsePpc, parseAcross, scaleBg, moveBg, across, stepFor, BG } from "./model/bg.js";
 import { IMG } from "./model/image.js";
 import { prepareImage, assetImage } from "./ui/upload.js";
@@ -17,6 +18,10 @@ import { newMap, mapId, cleanName, newName, uniqueName, copyMap, sortMaps, pickS
 import { FILE_MAX } from "./model/file.js";
 import { exportMap, importFile } from "./ui/export.js";
 import { readColors, fitCanvas, draw } from "./render/canvas.js";
+import { createArt } from "./render/art.js";
+import { createHistory } from "./model/history.js";
+import { CATS, BUILTIN_IDS, builtin, inCat, assetUrl } from "./model/assets.js";
+import { OBJ, placeAt, newObj } from "./model/objects.js";
 import { attachInput } from "./ui/input.js";
 import { esc, toast } from "./ui/dom.js";
 import * as store from "./store.js";
@@ -33,7 +38,7 @@ async function boot() {
   const cv = $("m-canvas"), wrap = $("m-stage");
   // cur = de geopende kaart (document zoals in de opslag) of null (verwijderd, lijst open); map = wat de render tekent
   let cur = null;
-  const map = { grid: cleanGrid(), bg: null };
+  const map = { grid: cleanGrid(), bg: null, objs: [] };
   // WP59: tekenbare achtergronden per asset (sha → afbeelding; null = ontbreekt in de opslag), assets in het geheugen als
   // er geen opslag is (privémodus), en de uitlijnmodus
   const imgs = new Map(), memAssets = new Map();
@@ -65,9 +70,9 @@ async function boot() {
   const paint = () => {
     queued = false;
     fitCanvas(cv, w, h, dpr);
-    draw(cv, map, view, w, h, dpr, col, { img: (map.bg && imgs.get(map.bg.asset)) || null, align: aligning });
+    draw(cv, map, view, w, h, dpr, col, { img: (map.bg && imgs.get(map.bg.asset)) || null, align: aligning, art, ghost });
     const n = zoomPct(view), z = $("m-zoom");
-    if (z.dataset.n !== String(n)) { z.dataset.n = n; z.textContent = t("maps.zoom.pct", { n }); } // aria-live: alleen bij een ander percentage
+    if (z.dataset.n !== String(n)) { z.dataset.n = n; z.textContent = t("maps.zoom.pct", { n }); z.setAttribute("aria-label", t("maps.zoom.fit", { n })); }
     $("m-out").disabled = view.z <= ZMIN;
     $("m-in").disabled = view.z >= ZMAX;
   };
@@ -75,8 +80,9 @@ async function boot() {
   const set = (v) => { view = clampPan(v, bounds(map.grid), w, h); later(); };
   // Passend maken in het deel dat niet onder het paneel Kaart ligt (WP57). auto = de view is nog "passend": dan blijft hij
   // passend bij een ander raster, schermformaat of paneel; elke eigen pan/zoom zet auto uit.
-  const sheetEl = $("m-sheet");
-  const freeH = () => sheetEl.hidden ? h : Math.max(48, Math.min(h, sheetEl.getBoundingClientRect().top - wrap.getBoundingClientRect().top));
+  // WP61: het open paneel (Kaart of Bibliotheek; nooit allebei)
+  const openSheet = () => [$("m-sheet"), $("m-lsheet")].find((el) => !el.hidden) || null;
+  const freeH = () => { const el = openSheet(); return !el ? h : Math.max(48, Math.min(h, el.getBoundingClientRect().top - wrap.getBoundingClientRect().top)); };
   const fit = () => { auto = true; set(fitView(bounds(map.grid), w, freeH())); };
   const user = (v) => { auto = false; set(v); };
   const measure = () => {
@@ -88,10 +94,12 @@ async function boot() {
   const label = () => cv.setAttribute("aria-label", t(map.grid.type === "hex" ? "maps.canvasHex" : "maps.canvas", { cols: map.grid.cols, rows: map.grid.rows }));
   const head = () => { $("m-name").textContent = viewName === "list" ? t("maps.title") : cur?.name || t("maps.title"); };
   $("m-ver").textContent = VERSION;
-  attachInput(cv, { get: () => view, set: user, drag: (dx, dy) => dragBg(dx, dy), dragging: () => aligning });
+  attachInput(cv, { get: () => view, set: user, drag: (dx, dy) => dragBg(dx, dy), dragging: () => aligning,
+    tap: (x, y) => place(x, y), tapping: () => placing(), hover: (x, y) => hoverAt(x, y) });
   $("m-in").addEventListener("click", () => user(zoomAt(view, ZOOM_STEP, w / 2, h / 2)));
   $("m-out").addEventListener("click", () => user(zoomAt(view, 1 / ZOOM_STEP, w / 2, h / 2)));
   $("m-fit").addEventListener("click", fit);
+  $("m-zoom").addEventListener("click", fit); // WP61: het percentage is ook Hele kaart (onder 480 px de enige)
   // ---- WP57: paneel Kaart ----
   const sheet = $("m-sheet"), btnSet = $("m-set");
   const press = (id, v) => { for (const b of $(id).querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.v === v)); };
@@ -103,12 +111,7 @@ async function boot() {
     press("m-alpha", String(g.alpha));
     for (const id of ["m-color", "m-alpha"]) for (const b of $(id).querySelectorAll("button")) b.disabled = !g.show;
   };
-  const update = (patch) => { // nieuwe rasterwaarden toepassen: opschonen, begrenzen, tekenen, bewaren
-    map.grid = cleanGrid({ ...map.grid, ...patch });
-    if (cur) cur.grid = map.grid;
-    label(); syncPanel(); syncBg(); changed();
-    if (auto) fit(); else set(view);
-  };
+  const update = (patch) => edit({ grid: cleanGrid({ ...map.grid, ...patch }) }, { k: "grid" }); // nieuwe rasterwaarden: één undo-stap
   const fields = { "m-cols": "cols", "m-rows": "rows" };
   const fieldErr = (inp, bad) => {
     const e = $(inp.id + "-e");
@@ -141,8 +144,11 @@ async function boot() {
   // het paneel ligt over de dock: zolang het open is, zijn de dockknoppen niet met Tab bereikbaar (geen focus op iets onzichtbaars)
   const dockFocus = (on) => { for (const b of $("m-dock").querySelectorAll("button")) on ? b.removeAttribute("tabindex") : b.setAttribute("tabindex", "-1"); };
   // groeit of krimpt het paneel (foutregel, toetsenbord), dan blijft een passende kaart passend boven het paneel
-  if (window.ResizeObserver) new ResizeObserver(() => { if (auto && !sheet.hidden) fit(); }).observe(sheet);
+  if (window.ResizeObserver) { const ro = new ResizeObserver(() => { if (auto && openSheet()) fit(); }); ro.observe(sheet); ro.observe($("m-lsheet")); }
+  /** Kolommen/rijen in het paneel volgen het raster (na Ongedaan/Opnieuw); een veld in bewerking blijft staan */
+  const syncFields = () => { for (const [id, k] of Object.entries(fields)) if (document.activeElement !== $(id)) { $(id).value = String(map.grid[k]); fieldErr($(id), false); } };
   const openPanel = () => {
+    closeLib(false);
     for (const [id, k] of Object.entries(fields)) { $(id).value = String(map.grid[k]); fieldErr($(id), false); }
     nameInp.value = cur?.name || "";
     syncPanel();
@@ -220,17 +226,12 @@ async function boot() {
     imgs.set(sha, d);
     if (map.bg && map.bg.asset === sha) { syncBg(); later(); }
   }
-  /** Nieuwe achtergrond (of null) op de open kaart: tekenen en bewaren */
-  const setBg = (next) => {
-    const was = map.bg && map.bg.asset;
-    map.bg = next ? cleanBg(next) : null;
-    if (cur) { if (map.bg) cur.bg = map.bg; else delete cur.bg; }
-    if ((map.bg && map.bg.asset) !== was) trimImgs();
-    changed();
-    if (!sheet.hidden) syncBg(); // slepen in de uitlijnmodus: paneel dicht, geen DOM-werk per pointermove (openPanel synct)
-    later();
-  };
-  const restoreBg = (id, prev) => () => { if (cur && cur.id === id) { setBg(prev); loadBg(); } }; // Ongedaan: asset staat tot de volgende start in de opslag
+  /** Nieuwe achtergrond (of null) op de open kaart: tekenen en bewaren, als undo-stap (WP61; group = uitlijnsessie).
+   *  Geeft de stap (teken voor de Ongedaan-knop in een melding). */
+  const setBg = (next, meta = { k: "bg" }, group = null) => edit({ bg: (next && cleanBg(next)) || undefined }, meta, group);
+  // Ongedaan in de melding = de gewone undo als de stap nog de laatste is, anders een nieuwe stap terug naar prev
+  // (de asset staat tot de volgende start in de opslag)
+  const restoreBg = (id, prev, step) => () => { if (!cur || cur.id !== id) return; if (hist.isTop(step) && !aligning) undo(); else setBg(prev); };
   for (const id of Object.keys(bgFields)) {
     const inp = $(id);
     const parse = () => (id === "m-ppc" ? parsePpc(inp.value, map.bg) : parseAcross(inp.value, map.bg));
@@ -275,25 +276,27 @@ async function boot() {
     if (!cur || cur.id !== id) { syncBg(); return; } // intussen een andere kaart geopend: niets toepassen, geen foutregel daar
     if (!res.ok) { bgErr(res.code); syncBg(); return; }
     const r = res.rec, base = { asset: res.sha, w: r.ow, h: r.oh };
-    setBg(keep ? { ...prev, ...base } : { ...base, ppc: guessPpc(r.ow, r.oh, map.grid.cols), x: 0, y: 0 });
+    const step = setBg(keep ? { ...prev, ...base } : { ...base, ppc: guessPpc(r.ow, r.oh, map.grid.cols), x: 0, y: 0 });
     bgSec.align.focus();
-    if (prev && !keep) toast(t("maps.bg.replaced"), { btn: { label: t("maps.msg.undo"), run: restoreBg(id, prev) } });
+    if (prev && !keep) toast(t("maps.bg.replaced"), { btn: { label: t("maps.msg.undo"), run: restoreBg(id, prev, step) } });
   });
   bgSec.del.addEventListener("click", () => {
     if (!cur || !map.bg) return;
     const prev = map.bg, id = cur.id;
-    setBg(null); bgErr(null);
+    const step = setBg(null); bgErr(null);
     bgSec.pick.focus();
-    toast(t("maps.bg.removed"), { btn: { label: t("maps.msg.undo"), run: restoreBg(id, prev) } });
+    toast(t("maps.bg.removed"), { btn: { label: t("maps.msg.undo"), run: restoreBg(id, prev, step) } });
   });
   // uitlijnmodus: eigen dock, strook bovenin, één vinger sleept de afbeelding; Gereed = terug naar het paneel
   const adock = $("m-adock"), strip = $("m-astrip");
+  let alignN = 0, alignGroup = null; // WP61: één uitlijnsessie (slepen + pijltjes tot Klaar) = één undo-stap
   function setAlign(on, back = true) {
     if (on === aligning) return;
     aligning = on;
     adock.hidden = !on; strip.hidden = !on; $("m-dock").hidden = on;
-    if (on) { closePanel(false); $("m-adone").focus(); }
-    else if (back) { openPanel(); bgSec.align.focus(); }
+    if (on) { alignGroup = "align" + ++alignN; closeLib(false); closePanel(false); $("m-adone").focus(); }
+    else { hist.seal(); alignGroup = null; if (back) { openPanel(); bgSec.align.focus(); } }
+    histBtns();
     later();
   }
   bgSec.align.addEventListener("click", () => { if (bgState() === "set") setAlign(true); });
@@ -301,10 +304,147 @@ async function boot() {
   const nudge = (dir) => {
     if (!map.bg) return;
     const s = stepFor(map.bg, view.z, CELL), d = { left: [-s, 0], right: [s, 0], up: [0, -s], down: [0, s] }[dir];
-    if (d) setBg(moveBg(map.bg, d[0], d[1]));
+    if (d) setBg(moveBg(map.bg, d[0], d[1]), { k: "align" }, alignGroup);
   };
   adock.addEventListener("click", (e) => { const d = e.target.closest("[data-nudge]")?.dataset.nudge; if (d) nudge(d); });
-  const dragBg = (dx, dy) => { if (map.bg) setBg(moveBg(map.bg, dx / (CELL * view.z), dy / (CELL * view.z))); };
+  const dragBg = (dx, dy) => { if (map.bg) setBg(moveBg(map.bg, dx / (CELL * view.z), dy / (CELL * view.z)), { k: "align" }, alignGroup); };
+
+  // ---- WP61: undo/redo ----
+  // Elke wijziging aan raster, achtergrond of objecten gaat via edit(): patch toepassen (put) en als stap vastleggen.
+  // Ongedaan/Opnieuw passen de patch van de stap toe. Per geopende kaart, alleen in het geheugen (model/history.js).
+  const hist = createHistory();
+  const docField = (k) => (k === "grid" ? map.grid : k === "bg" ? map.bg || undefined : map.objs.length ? map.objs : undefined);
+  /** Patch toepassen op wat de render tekent en op het document (zonder geschiedenis) */
+  function put(patch) {
+    if ("grid" in patch) { map.grid = cleanGrid(patch.grid); if (cur) cur.grid = map.grid; }
+    if ("bg" in patch) {
+      const was = map.bg && map.bg.asset;
+      map.bg = patch.bg || null;
+      if (cur) { if (map.bg) cur.bg = map.bg; else delete cur.bg; }
+      if ((map.bg && map.bg.asset) !== was) { trimImgs(); loadBg(); }
+    }
+    if ("objs" in patch) { map.objs = patch.objs || []; if (cur) { if (map.objs.length) cur.objs = map.objs; else delete cur.objs; } }
+  }
+  /** Na een patch: panelen, label, bewaren, tekenen, knoppen */
+  function refresh(patch) {
+    if ("grid" in patch) { label(); syncPanel(); if (!sheet.hidden) syncFields(); }
+    // slepen in de uitlijnmodus: paneel dicht, geen DOM-werk per pointermove (openPanel synct)
+    if ("grid" in patch || (!sheet.hidden && "bg" in patch)) syncBg();
+    changed();
+    if ("grid" in patch) { if (auto) fit(); else set(view); } else later();
+    histBtns();
+  }
+  /** Wijziging als undo-stap; geeft de stap (of null als er niets veranderde) */
+  function edit(after, meta, group = null) {
+    const before = {};
+    for (const k of Object.keys(after)) before[k] = docField(k);
+    put(after);
+    const step = hist.record(before, after, group, meta);
+    refresh(after);
+    return step;
+  }
+  const assetName = (id) => (builtin(id) ? t("maps.asset." + id) : id);
+  const stepName = (m) => (!m ? "" : m.k === "place" ? t("maps.hist.place", { name: assetName(m.id) }) : t("maps.hist." + m.k));
+  const undoBtn = $("m-undo"), redoBtn = $("m-redo");
+  function histBtns() {
+    const p = hist.peek(), off = aligning || viewName !== "edit" || !cur, had = document.activeElement;
+    undoBtn.disabled = off || !hist.canUndo; redoBtn.disabled = off || !hist.canRedo;
+    // een knop die uitgaat terwijl hij focus heeft: focus naar de andere knop (of Bibliotheek), niet naar body
+    if ((had === undoBtn || had === redoBtn) && had.disabled) { const o = had === undoBtn ? redoBtn : undoBtn; if (!o.disabled) o.focus(); else if (viewName === "edit") $("m-lib").focus(); }
+    undoBtn.setAttribute("aria-label", p.undo ? t("maps.hist.undoStep", { step: stepName(p.undo) }) : t("maps.hist.undo"));
+    redoBtn.setAttribute("aria-label", p.redo ? t("maps.hist.redoStep", { step: stepName(p.redo) }) : t("maps.hist.redo"));
+  }
+  const srEl = $("m-sr");
+  const sr = (text) => { srEl.textContent = ""; requestAnimationFrame(() => { srEl.textContent = text; }); }; // ook dezelfde zin opnieuw voorlezen
+  function undo() {
+    if (aligning || viewName !== "edit" || !cur) return;
+    const m = hist.peek().undo, p = hist.undo();
+    if (!p) return;
+    put(p); refresh(p);
+    sr(t("maps.hist.undone", { step: stepName(m) }));
+  }
+  function redo() {
+    if (aligning || viewName !== "edit" || !cur) return;
+    const m = hist.peek().redo, p = hist.redo();
+    if (!p) return;
+    put(p); refresh(p);
+    sr(t("maps.hist.redone", { step: stepName(m) }));
+  }
+  undoBtn.addEventListener("click", undo);
+  redoBtn.addEventListener("click", redo);
+
+  // ---- WP61: Bibliotheek en Plaatsen ----
+  // Een tegel kiezen zet Plaatsen aan (tik op de kaart = plaatsen, slepen = pannen); Plaatsen bestaat alleen zolang het
+  // paneel open is. Sluiten of Esc = terug naar Kijken. "Op cel uitlijnen" (snap) staat in de kop van het paneel,
+  // standaard aan, onthouden in localStorage maps-snap.
+  const lsheet = $("m-lsheet"), btnLib = $("m-lib"), tiles = $("m-tiles"), pstrip = $("m-pstrip"), snapBtn = $("m-snap");
+  const art = createArt(() => later());
+  let libCat = CATS[0], active = null, ghost = null, stripT = 0;
+  let snap = true;
+  try { snap = localStorage.getItem("maps-snap") !== "0"; } catch { /* geen opslag: standaard aan */ }
+  const placing = () => !!active && !lsheet.hidden && !aligning && viewName === "edit" && !!cur;
+  const pressTiles = () => { for (const b of tiles.querySelectorAll(".mtile")) b.setAttribute("aria-pressed", String(b.dataset.id === active)); };
+  function paintTiles() {
+    press("m-cats", libCat);
+    snapBtn.setAttribute("aria-pressed", String(snap));
+    tiles.innerHTML = inCat(libCat).map((id) => `<button type="button" class="mtile" data-id="${esc(id)}" aria-pressed="${id === active}"><img src="${esc(assetUrl(id))}" alt="" width="40" height="40"><span>${esc(assetName(id))}</span></button>`).join("");
+  }
+  function paintStrip() {
+    if (stripT) return; // de korte melding "Tik binnen de kaart" staat er nog
+    const on = placing();
+    pstrip.hidden = !on;
+    if (on) pstrip.textContent = t("maps.lib.placing", { name: assetName(active) });
+  }
+  const stripMsg = (text) => { clearTimeout(stripT); pstrip.hidden = false; pstrip.textContent = text; stripT = setTimeout(() => { stripT = 0; paintStrip(); }, 2000); };
+  const setActive = (id) => { active = id; ghost = null; pressTiles(); paintStrip(); later(); };
+  function openLib() {
+    closePanel(false);
+    lsheet.hidden = false; btnLib.setAttribute("aria-expanded", "true");
+    dockFocus(false);
+    paintTiles();
+    art.preload(BUILTIN_IDS);
+    lsheet.focus(); // in de tik (iOS)
+    paintStrip();
+    if (auto) fit();
+  }
+  function closeLib(focus = true) {
+    if (lsheet.hidden) return;
+    lsheet.hidden = true; btnLib.setAttribute("aria-expanded", "false");
+    dockFocus(true);
+    active = null; ghost = null;
+    clearTimeout(stripT); stripT = 0;
+    paintStrip();
+    if (focus) btnLib.focus();
+    if (auto) fit(); else later();
+  }
+  btnLib.addEventListener("click", () => (lsheet.hidden ? openLib() : closeLib()));
+  $("m-lclose").addEventListener("click", () => closeLib());
+  $("m-cats").addEventListener("click", (e) => { const v = e.target.closest("button")?.dataset.v; if (v && v !== libCat) { libCat = v; paintTiles(); } });
+  tiles.addEventListener("click", (e) => { const id = e.target.closest(".mtile")?.dataset.id; if (id) setActive(active === id ? null : id); });
+  snapBtn.addEventListener("click", () => {
+    snap = !snap;
+    snapBtn.setAttribute("aria-pressed", String(snap));
+    try { localStorage.setItem("maps-snap", snap ? "1" : "0"); } catch { /* alleen deze sessie */ }
+  });
+  /** Tik op de kaart in Plaatsen: het actieve onderdeel daar neerzetten (één undo-stap) */
+  function place(sx, sy) {
+    if (!placing()) return;
+    const d = builtin(active), p = toMap(view, sx, sy), at = placeAt(map.grid, p.x, p.y, d.w, d.h, snap);
+    if (!at) { stripMsg(t("maps.lib.outside")); return; } // naast de kaart: niets plaatsen (niet stil naar de rand klemmen)
+    if (map.objs.length >= OBJ.max) { toast(t("maps.lib.max", { n: i18n().num(OBJ.max) }), { bad: true }); return; }
+    edit({ objs: [...map.objs, newObj(active, at, map.objs)] }, { k: "place", id: active });
+    sr(t("maps.lib.placed", { name: assetName(active) }));
+  }
+  /** Muis boven de kaart in Plaatsen: spookbeeld op de plek waar een klik het onderdeel zet */
+  function hoverAt(sx, sy) {
+    let g = null;
+    if (sx != null && placing()) {
+      const d = builtin(active), p = toMap(view, sx, sy), at = placeAt(map.grid, p.x, p.y, d.w, d.h, snap);
+      if (at) g = { asset: active, x: at.x, y: at.y, w: d.w, h: d.h, rot: 0, layer: d.layer };
+    }
+    const same = g && ghost && g.asset === ghost.asset && g.x === ghost.x && g.y === ghost.y;
+    if (!same && (g || ghost)) { ghost = g; later(); } // alleen tekenen als het spookbeeld echt verschuift
+  }
 
   // ---- WP58: kaart openen en Mijn kaarten ----
   /** Kaart in de editor zetten (document uit de opslag of net gemaakt) */
@@ -313,6 +453,9 @@ async function boot() {
     cur = doc;
     map.grid = cleanGrid(doc.grid);
     map.bg = cleanBg(doc.bg);
+    map.objs = doc.objs || [];
+    hist.clear(); histBtns(); // WP61: geschiedenis hoort bij één kaart
+    ghost = null;
     trimImgs();
     bgErr(null);
     loadBg(); syncBg();
@@ -346,10 +489,11 @@ async function boot() {
     list.hidden = !isList; ldock.hidden = !isList;
     wrap.hidden = isList; $("m-dock").hidden = isList;
     head();
+    histBtns(); paintStrip();
     if (!isList) { fitted = false; requestAnimationFrame(measure); } // terug van de lijst: maat opnieuw (canvas was verborgen)
   };
   const showList = async () => {
-    closePanel(false);
+    closePanel(false); closeLib(false);
     if (viewName !== "list") { try { history.pushState({ mapsList: 1 }, ""); } catch { /* geen history */ } }
     setView("list");
     $("m-l-off").hidden = saver.status !== "off";
@@ -456,13 +600,13 @@ async function boot() {
   const doDel = async () => {
     const m = menuFor, wasCur = cur && cur.id === m.id;
     const doc = wasCur ? { ...cur } : { ...m };
-    if (wasCur) { await saver.flush(); cur = null; saver.reset(); }
+    if (wasCur) { await saver.flush(); cur = null; saver.reset(); histBtns(); }
     if (saver.status !== "off" && !(await store.deleteMap(m.id))) {
-      if (wasCur) { cur = doc; saver.touch(); } // niet weg: weer de open kaart, en opnieuw bewaren
+      if (wasCur) { cur = doc; saver.touch(); histBtns(); } // niet weg: weer de open kaart (met zijn geschiedenis), en opnieuw bewaren
       toast(t("maps.msg.opFail"), { bad: true }); return;
     }
     if (saver.status === "off") maps = maps.filter((x) => x.id !== m.id);
-    if (wasCur) store.setLastId(null);
+    if (wasCur) { store.setLastId(null); hist.clear(); histBtns(); } // pas na gelukt verwijderen
     closeMenu(false);
     await reload();
     (rows.querySelector(".mkl-o") || $("m-new")).focus();
@@ -551,8 +695,17 @@ async function boot() {
       if (dir && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); nudge(dir); return; }
     }
     if (e.key === "Escape" && !sheet.hidden) { e.preventDefault(); closePanel(); return; }
+    if (e.key === "Escape" && !lsheet.hidden) { e.preventDefault(); closeLib(); return; } // WP61: Plaatsen stoppen
     if (viewName !== "edit" || !menu.hidden) return;
-    if (e.metaKey || e.ctrlKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    const field = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
+    // WP61: ⌘Z/Ctrl+Z ongedaan, ⌘⇧Z/Ctrl+Shift+Z/Ctrl+Y opnieuw; niet in een tekstveld (eigen undo) en niet tijdens uitlijnen
+    const k = e.key.toLowerCase();
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && !field && !aligning && (k === "z" || (k === "y" && e.ctrlKey && !e.metaKey))) {
+      e.preventDefault();
+      if (k === "y" || e.shiftKey) redo(); else undo();
+      return;
+    }
+    if (e.metaKey || e.ctrlKey || e.altKey || field) return;
     if (e.key === "+" || e.key === "=") user(zoomAt(view, ZOOM_STEP, w / 2, h / 2));
     else if (e.key === "-" || e.key === "_") user(zoomAt(view, 1 / ZOOM_STEP, w / 2, h / 2));
     else if (e.key === "0") fit();
@@ -607,8 +760,9 @@ async function boot() {
   label(); head();
   measure();
   window.__maps = { view: () => ({ ...view }), size: () => ({ w, h, dpr }), grid: () => ({ ...map.grid }), // diagnose (browsercheck), alleen lezen
-    map: () => cur && { ...cur, grid: { ...cur.grid }, ...(cur.bg ? { bg: { ...cur.bg } } : {}) }, status: () => saver.status, view$: () => viewName, flush: () => saver.flush(),
-    bg: () => ({ state: bgState(), align: aligning, img: !!(map.bg && imgs.get(map.bg.asset)) }) };
+    map: () => cur && { ...cur, grid: { ...cur.grid }, ...(cur.bg ? { bg: { ...cur.bg } } : {}), ...(cur.objs ? { objs: cur.objs.map((o) => ({ ...o })) } : {}) }, status: () => saver.status, view$: () => viewName, flush: () => saver.flush(),
+    bg: () => ({ state: bgState(), align: aligning, img: !!(map.bg && imgs.get(map.bg.asset)) }),
+    hist: () => ({ undo: hist.canUndo, redo: hist.canRedo, size: hist.size }), tool: () => ({ placing: placing(), active, snap, ghost: !!ghost }) };
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});

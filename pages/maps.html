@@ -19,12 +19,19 @@
   <a class="mhome" href="{{base}}/" aria-label="{{t:maps.home}}"><!-- embleem: zelfde tekening als EMBLEM in tools/icons.mjs --><svg class="emb" viewBox="20 2 176 196" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M108 16 181 58v84l-73 42-73-42V58Z" stroke-width="11"/><g transform="translate(0 13)" stroke-width="10"><path d="M100 47v-8q8-10 16 0v8"/><path d="M88 55h40l-8 11H96Z"/><path d="M96 70h24l8 10v42H88V80Z"/><path d="M84 130h48"/></g><path d="M108 102c-9 10-9 19 0 26 9-7 9-16 0-26Z" fill="currentColor" stroke="none"/></svg></a>
   <!-- WP58: in de editor de kaartnaam met daaronder de opslagstatus (altijd zichtbaar); in de lijst "Inn the Grid" -->
   <div class="mtitle"><h1 id="m-name">{{t:maps.title}}</h1><div class="mstat" id="m-stat" aria-live="off"></div></div>
-  <span class="mver" id="m-ver"></span>
+  <!-- WP61: Ongedaan/Opnieuw in de kop (de kop blijft zichtbaar als een paneel de dock afdekt); de versie staat onderaan paneel Kaart -->
+  <div class="mhist">
+    <button type="button" class="btn" id="m-undo" aria-label="{{t:maps.hist.undo}}" disabled><svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-undo"/></svg></button>
+    <button type="button" class="btn" id="m-redo" aria-label="{{t:maps.hist.redo}}" disabled><svg class="li mredo" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-undo"/></svg></button>
+  </div>
 </header>
 <main class="mstage" id="m-stage">
   <canvas id="m-canvas" role="img"></canvas>
   <!-- WP59: strook bovenin zolang de uitlijnmodus aan staat -->
   <p class="mstrip" id="m-astrip" hidden>{{t:maps.bg.alignHint}}</p>
+  <!-- WP61: strook bovenin zolang Plaatsen aan staat (welk onderdeel; even "Tik binnen de kaart" na een tik ernaast) -->
+  <p class="mstrip" id="m-pstrip" hidden></p>
+  <p class="vh" id="m-sr" role="status" aria-live="polite"></p>
 </main>
 <!-- WP58: Mijn kaarten. Eigen weergave in dezelfde pagina (editor verborgen, history.pushState: terug = editor). Rij-tik
      opent, ⋯ opent het menu (Hernoemen, Dupliceren, Exporteren, Verwijderen). Lijst en meldingen vult js/maps/main.js. -->
@@ -46,11 +53,13 @@
   <button type="button" class="btn" id="m-maps" aria-label="{{t:maps.list.open}}"><!-- WP58: lijst-icoon inline (geen gedeeld icoon: icons/ui.svg hoort bij Initiative) --><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg></button>
   <div class="mzoom">
     <button type="button" class="btn" id="m-out" aria-label="{{t:maps.zoom.out}}"><span aria-hidden="true">−</span></button>
-    <output id="m-zoom" aria-label="{{t:maps.zoom.level}}" aria-live="polite"></output>
+    <!-- WP61: het percentage is ook de knop Hele kaart (onder 480 px de enige: daar is de losse knop weg voor Bibliotheek) -->
+    <button type="button" class="btn mzpct" id="m-zoom"></button>
     <button type="button" class="btn" id="m-in" aria-label="{{t:maps.zoom.in}}"><span aria-hidden="true">+</span></button>
   </div>
   <div class="mright">
-    <button type="button" class="btn" id="m-fit" aria-label="{{t:maps.fit}}"><span class="mfit-t" aria-hidden="true">{{t:maps.fit}}</span><svg class="li mfit-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button type="button" class="btn" id="m-fit" aria-label="{{t:maps.fit}}"><span class="mfit-t" aria-hidden="true">{{t:maps.fit}}</span></button>
+    <button type="button" class="btn" id="m-lib" aria-label="{{t:maps.lib.title}}" aria-expanded="false" aria-controls="m-lsheet"><!-- WP61: bibliotheek-icoon inline --><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><circle cx="17.5" cy="6.5" r="3.5"/><path d="M6.5 14 10 20H3Z"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
     <button type="button" class="btn" id="m-set" aria-label="{{t:maps.panel.open}}" aria-expanded="false" aria-controls="m-sheet"><svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-gear"/></svg></button>
   </div>
 </nav>
@@ -105,6 +114,18 @@
     </div>
     <p class="ferr" id="m-bg-e" role="alert" hidden></p>
   </div>
+  <p class="hint mver">{{t:maps.title}} <span id="m-ver"></span></p>
+</section>
+<!-- WP61: paneel Bibliotheek. Zelfde vorm als paneel Kaart (geen dim, kaart blijft bedienbaar). Een tegel kiezen zet
+     Plaatsen aan (tik op de kaart = plaatsen, slepen = pannen); Plaatsen bestaat alleen zolang dit paneel open is.
+     Tegels vult js/maps/main.js per categorie. -->
+<section class="msheet" id="m-lsheet" role="dialog" aria-labelledby="m-l-t" tabindex="-1" hidden>
+  <div class="grab" aria-hidden="true"></div>
+  <div class="shead"><h3 id="m-l-t">{{t:maps.lib.title}}</h3><button type="button" class="link" id="m-lclose">{{t:maps.panel.close}}</button></div>
+  <div class="seg" id="m-cats" role="group" aria-labelledby="m-l-t"><button type="button" data-v="floor">{{t:maps.cat.floor}}</button><button type="button" data-v="build">{{t:maps.cat.build}}</button><button type="button" data-v="furniture">{{t:maps.cat.furniture}}</button><button type="button" data-v="nature">{{t:maps.cat.nature}}</button></div>
+  <div class="mtiles" id="m-tiles"></div>
+  <!-- schakelaar onder de tegels (in de kop past hij op 320 px niet naast titel en Sluiten) -->
+  <button type="button" class="btn msnap" id="m-snap" aria-pressed="true"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 12h16M12 4v16"/></svg>{{t:maps.lib.snap}}</button>
 </section>
 <!-- WP58: menu en hernoemen voor een kaart uit de lijst (modaal, met dim) -->
 <div class="sheet-wrap" id="m-menu" hidden>

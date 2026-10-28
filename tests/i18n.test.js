@@ -124,6 +124,8 @@ const cinfoSet = new Set(Object.keys(CINFO).flatMap((id) => [...cinfoKeys(id, "2
 const DYNAMIC = [
   [/^maps\.bg\.err\./, "js/maps/main.js bgErr"],
   [/^maps\.imp\.err\./, "js/maps/main.js impErr"],
+  [/^maps\.asset\./, "js/maps/main.js assetName (BUILTIN in js/maps/model/assets.js)"],
+  [/^maps\.hist\.(grid|bg|align)$/, "js/maps/main.js stepName"],
   [/^init\.custom\.f\.(act|re|la|tr)$/, "js/data/statparse.js n()"],
   [/^rules\.dur\.\w+S$/, "js/rules/turns.js durShort"],
   [/^rules\.sv\.(ok|fail)(Note)?$/, "js/rules/saves.js"],

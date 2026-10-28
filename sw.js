@@ -10,7 +10,7 @@ const VENDOR_ASSETS = ["./vendor/pdfjs/pdf.js", "./vendor/pdfjs/pdf.worker.js"];
 // Gelijk houden aan js/maps/version.js (tests/maps-sw.test.js). Een Maps-release verhoogt alleen MAPS_VERSION: CACHE
 // van Initiative heet dan nog hetzelfde en install haalt bestanden die daar al staan niet opnieuw op (en omgekeerd).
 // Gedeeld (css/app.css, fonts, iconen, js/i18n/*, js/theme.js, homepage) staat in ASSETS: wijzigen = Initiative-release.
-const MAPS_VERSION = "0.5.0";
+const MAPS_VERSION = "0.6.0";
 const MAPS_CACHE = "kevs-inn-maps-" + MAPS_VERSION;
 const MAPS_ASSETS = [
   "./maps/",
@@ -32,6 +32,34 @@ const MAPS_ASSETS = [
   "./js/maps/ui/upload.js",
   "./js/maps/model/file.js",
   "./js/maps/ui/export.js",
+  "./js/maps/model/history.js",
+  "./js/maps/model/assets.js",
+  "./js/maps/model/objects.js",
+  "./js/maps/render/art.js",
+  "./data/maps-assets/altar.svg",
+  "./data/maps-assets/barrel.svg",
+  "./data/maps-assets/bed.svg",
+  "./data/maps-assets/bush.svg",
+  "./data/maps-assets/campfire.svg",
+  "./data/maps-assets/chair.svg",
+  "./data/maps-assets/chest.svg",
+  "./data/maps-assets/crate.svg",
+  "./data/maps-assets/door.svg",
+  "./data/maps-assets/dirt.svg",
+  "./data/maps-assets/flagstone.svg",
+  "./data/maps-assets/planks.svg",
+  "./data/maps-assets/log.svg",
+  "./data/maps-assets/pillar.svg",
+  "./data/maps-assets/pond.svg",
+  "./data/maps-assets/rock.svg",
+  "./data/maps-assets/rug.svg",
+  "./data/maps-assets/shelf.svg",
+  "./data/maps-assets/stairs.svg",
+  "./data/maps-assets/table.svg",
+  "./data/maps-assets/tent.svg",
+  "./data/maps-assets/trapdoor.svg",
+  "./data/maps-assets/tree.svg",
+  "./data/maps-assets/wall.svg",
   "./locales/maps/en.js",
   "./locales/maps/nl.js",
   "./locales/maps/xx.js",
