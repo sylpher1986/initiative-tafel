@@ -2,7 +2,7 @@ import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { noRatingCode, crXp, multiplier, clsLevel, pcLevel, partyFor, difficulty, ratingName, fromList, cleanEncounter, cleanEncounters, loadPlan,
-  buildEncFile, parseEncFile, mergeEnc, duplicate, total, listMons, encMons, ENC_FORMAT, MAX_TOTAL } from "../js/rules/encounters.js";
+  buildEncFile, parseEncFile, mergeEnc, duplicate, total, listMons, encMons, ENC_FORMAT, MAX_TOTAL, BUDGET24, THRESH, deadlyTip } from "../js/rules/encounters.js";
 import { parseImport, VERSION, buildExport } from "../js/backup.js";
 
 const NOW = 1_760_000_000_000;
@@ -209,4 +209,76 @@ test("encounter-bestand: hetzelfde statblock dubbel = één keer", () => {
   const enc = { id: "e1", name: "Grot", monsters: [{ ref: "Gloomwing", n: 1 }] };
   const r = parseEncFile({ format: ENC_FORMAT, version: 1, encounter: enc, monsters: [{ n: "Gloomwing", hp: 1 }, { n: "Gloomwing", hp: 2 }] }, NOW);
   assert.deepEqual(r.monsters, [{ n: "Gloomwing", hp: 1 }]);
+});
+
+/* ---------- WP53: moeilijkheid volgens 2024 (XP-budget SRD 5.2.1 p. 202; testsets uit docs/g1-regels-2024.md) ---------- */
+const pcs = (n, lvl) => Array.from({ length: n }, (_, i) => ({ name: "p" + i, lvl }));
+const d24 = (mons, who, all = false) => difficulty(mons, who, all, "2024");
+
+test("WP53: budgettabel volledig (level 1–20, oplopend) en 2014-tabel ongemoeid", () => {
+  assert.equal(BUDGET24.length, 21); assert.equal(BUDGET24[0], null);
+  for (let l = 1; l <= 20; l++) {
+    const [lo, mo, hi] = BUDGET24[l];
+    assert.ok(lo < mo && mo < hi, `level ${l}`);
+    if (l > 1) BUDGET24[l].forEach((v, i) => assert.ok(v > BUDGET24[l - 1][i], `level ${l} kolom ${i}`));
+  }
+  assert.deepEqual(BUDGET24[3], [150, 225, 400]); assert.deepEqual(BUDGET24[20], [6400, 13200, 22000]);
+  assert.deepEqual(THRESH[3], [75, 150, 225, 400]);
+});
+
+test("WP53 set 1: vier spelers level 3 (Low 600, Moderate 900, High 1600)", () => {
+  const who = pcs(4, 3);
+  const one2 = d24([{ name: "Ogre", cr: "2", n: 1 }], who);
+  assert.deepEqual(one2.th, [600, 900, 1600]); assert.equal(one2.adj, 450); assert.equal(one2.mult, 1); assert.equal(one2.rating, 0); assert.equal(one2.ed, "2024");
+  const four = d24([{ name: "Orc", cr: "1/2", n: 4 }], who);
+  assert.equal(four.adj, 400); assert.equal(four.rating, 0, "geen multiplier");
+  assert.equal(difficulty([{ name: "Orc", cr: "1/2", n: 4 }], who).rating, 1, "2014: × 2 = Medium");
+  assert.equal(d24([{ name: "Ogre", cr: "2", n: 2 }], who).rating, 1, "900 = precies Moderate");
+  assert.equal(d24([{ name: "Ogre", cr: "2", n: 2 }, { name: "Rat", cr: "0", n: 1 }], who).rating, 2, "910 > Moderate");
+  assert.equal(d24([{ name: "Ghoul", cr: "4", n: 1 }], who).rating, 2);
+  assert.equal(d24([{ name: "Troll", cr: "5", n: 1 }], who).rating, 3, "1800 > 1600: boven High");
+});
+
+test("WP53 set 2 en 3: de voorbeelden uit SRD 5.2.1 p. 202", () => {
+  const lvl1 = pcs(4, 1); // Low 200
+  assert.equal(d24([{ name: "Bugbear Warrior", cr: "1", n: 1 }], lvl1).rating, 0);
+  assert.equal(d24([{ name: "Giant Rat", cr: "1/8", n: 6 }], lvl1).adj, 150);
+  assert.equal(d24([{ name: "Giant Rat", cr: "1/8", n: 6 }], lvl1).rating, 0);
+  const lvl3 = pcs(5, 3); // Moderate 1125
+  const a = d24([{ name: "Druid", cr: "2", n: 2 }, { name: "Stirge", cr: "1/8", n: 9 }], lvl3);
+  assert.equal(a.th[1], 1125); assert.equal(a.adj, 1125); assert.equal(a.rating, 1);
+  const b = d24([{ name: "Wight", cr: "3", n: 1 }, { name: "Warhorse Skeleton", cr: "1/2", n: 1 }, { name: "Skeleton", cr: "1/4", n: 6 }], lvl3);
+  assert.equal(b.adj, 1100); assert.equal(b.rating, 1);
+});
+
+test("WP53: geen 'lage CR telt niet' en geen partygrootte-correctie bij 2024", () => {
+  const r = d24([{ name: "Young Green Dragon", cr: "8", n: 1 }, { name: "Kobold", cr: "1/8", n: 4 }], pcs(4, 5), false);
+  assert.deepEqual(r.weak, []); assert.equal(r.all, false); assert.equal(r.nm, 5); assert.equal(r.adj, 3900 + 100);
+  assert.equal(d24([{ name: "Ogre", cr: "2", n: 1 }], pcs(2, 3)).adj, 450, "kleine party: geen stap hoger");
+  assert.equal(d24([{ name: "Ogre", cr: "2", n: 1 }], pcs(7, 3)).th[0], 1050);
+});
+
+test("WP53 randen: 0 of 1 monster, onbekende CR, level onbekend, gemengde levels", () => {
+  const zero = d24([], pcs(4, 3));
+  assert.equal(zero.n, 0); assert.equal(zero.adj, 0); assert.equal(zero.rating, 0);
+  assert.equal(d24([{ name: "Lich", cr: "21", n: 1 }], pcs(4, 3)).rating, 3);
+  const cr = d24([{ name: "Eigen", cr: "", n: 2 }], pcs(4, 3));
+  assert.equal(cr.rating, null); assert.equal(noRatingCode(cr), "cr");
+  const lv = d24([{ name: "Goblin", cr: "1/4", n: 2 }], [{ name: "Thalia", lvl: null }, { name: "Brom", lvl: 3 }]);
+  assert.equal(lv.rating, null); assert.equal(lv.th, null); assert.equal(noRatingCode(lv), "lvl"); assert.equal(lv.adj, 100);
+  assert.equal(noRatingCode(d24([{ cr: "1", n: 1 }], [])), "party");
+  const mix = d24([{ name: "Ogre", cr: "2", n: 1 }], [{ name: "a", lvl: 1 }, { name: "b", lvl: 5 }]);
+  assert.deepEqual(mix.th, [550, 825, 1200]); assert.equal(mix.rating, 0);
+  assert.equal(d24([{ name: "Weird", cr: "", xp: 75, n: 1 }], pcs(1, 1)).rating, 1, "xp uit het statblock zonder CR telt");
+  assert.equal(difficulty([{ cr: "1", n: 1 }], pcs(4, 3), false, "2014").ed, undefined, "2014: geen ed in het resultaat");
+});
+
+test("WP53: advies boven High (deadlyTip met ed) brengt naar High", () => {
+  const who = pcs(4, 3);
+  assert.equal(deadlyTip([{ name: "Ogre", cr: "2", n: 3 }], who, false, "2024"), null, "1350 = High: geen advies");
+  assert.deepEqual(deadlyTip([{ name: "Ogre", cr: "2", n: 4 }], who, false, "2024"), { name: "Ogre", rating: 2 });
+  assert.deepEqual(deadlyTip([{ name: "Troll", cr: "5", n: 1 }], who, false, "2024"), { one: true });
+  assert.deepEqual(deadlyTip([{ name: "Ogre", cr: "2", n: 12 }], who, false, "2024"), { stays: true });
+  assert.deepEqual(deadlyTip([{ name: "Ogre", cr: "2", n: 3 }, { name: "Goblin", cr: "1/4", n: 6 }], who, false, "2024"), { name: "Goblin", rating: 2 },
+    "1650 → zonder ogre 1200, zonder goblin 1600: High met de meeste XP");
 });

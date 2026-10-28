@@ -1,4 +1,4 @@
-// Encounters vooraf klaarzetten en XP-moeilijkheid (DMG 2014). Puur: geen DOM, geen opslag.
+// Encounters vooraf klaarzetten en XP-moeilijkheid (DMG 2014; bij regels 2024 het XP-budget uit SRD 5.2.1). Puur: geen DOM, geen opslag.
 // Encounter: { id, updatedAt, name, notes, monsters: [{ ref, n, ed?, hidden?, anon?, grp? }], lair?: { key, hidden? } }
 // ed: alleen "2024" (SRD 5.2-statblock); ontbreekt = eigen > geïmporteerd > SRD 5.1 op naam (G1, WP46).
 // id + updatedAt maken de collectie sync-klaar (fase 2). Hp-modus en initiative worden bewust niet bewaard.
@@ -22,6 +22,14 @@ export const THRESH = [null, [25, 50, 75, 100], [50, 100, 150, 200], [75, 150, 2
   [800, 1600, 2400, 3600], [1000, 2000, 3000, 4500], [1100, 2200, 3400, 5100], [1250, 2500, 3800, 5700], [1400, 2800, 4300, 6400],
   [1600, 3200, 4800, 7200], [2000, 3900, 5900, 8800], [2100, 4200, 6300, 9500], [2400, 4900, 7300, 10900], [2800, 5700, 8500, 12700]];
 export const RATINGS = ["Easy", "Medium", "Hard", "Deadly"];
+/**
+ * WP53 (G1): XP-budget per speler per level, [low, moderate, high]. SRD 5.2.1 p. 202, "XP Budget per Character"
+ * (Gameplay Toolbox → Combat Encounters). Budget = som over de spelers; het budget is een plafond ("without going over").
+ */
+export const BUDGET24 = [null, [50, 75, 100], [100, 150, 200], [150, 225, 400], [250, 375, 500], [500, 750, 1100],
+  [600, 1000, 1400], [750, 1300, 1700], [1000, 1700, 2100], [1300, 2000, 2600], [1600, 2300, 3100],
+  [1900, 2900, 4100], [2200, 3700, 4700], [2600, 4200, 5400], [2900, 4900, 6200], [3300, 5400, 7800],
+  [3800, 6100, 9800], [4500, 7200, 11700], [5000, 8700, 14200], [5500, 10700, 17200], [6400, 13200, 22000]];
 const STEPS = [0.5, 1, 1.5, 2, 2.5, 3, 4, 5];
 
 const CRV = { "1/8": 0.125, "1/4": 0.25, "1/2": 0.5 };
@@ -72,14 +80,17 @@ export function partyFor(list, party) {
 export const WEAK = 10;
 
 /**
- * Moeilijkheid. mons = [{ cr, n, name }], who = [{ name, lvl }], all = toch alle monsters meetellen.
+ * Moeilijkheid. mons = [{ cr, n, name }], who = [{ name, lvl }], all = toch alle monsters meetellen, ed = regels van de tafel.
  * → { n, nm, weak: [{ name, n }], all, xp, mult, adj, th: [e,m,h,d] | null, rating: -1..3 | null, noLvl: [namen], noXp: [namen], pcs }
  * rating -1 = Trivial (onder Easy); null = niet te bepalen (geen party of level onbekend).
+ * ed "2024" (WP53): XP-budget (SRD 5.2.1), geen multiplier en geen "lage CR telt niet" (weak leeg, mult 1, adj = xp);
+ * th = [low, moderate, high], rating 0 Low (xp ≤ low), 1 Moderate, 2 High, 3 boven High; geen -1. Resultaat krijgt ed: "2024".
  * DMG 2014: monsters met een veel lagere CR tellen niet mee voor de multiplier (nm = aantal dat wel telt), hun XP wel.
  * Vergeleken met het sterkste monster, niet met het gemiddelde: dat verwatert bij veel zwakke monsters. De DM kan
  * ze toch laten meetellen (all: "dragen flink bij"). Zonder XP (geen CR) telt een monster gewoon mee.
  */
-export function difficulty(mons, who, all = false) {
+export function difficulty(mons, who, all = false, ed) {
+  const r24 = !!cleanEd(ed);
   let n = 0, xp = 0, top = 0;
   const noXp = [], rows = [];
   for (const m of mons || []) {
@@ -90,37 +101,39 @@ export function difficulty(mons, who, all = false) {
     if (x == null) { if (!noXp.includes(m.name)) noXp.push(m.name); } else { xp += x * k; top = Math.max(top, x); rows.push({ name: m.name, k, x }); }
   }
   const weak = [];
-  for (const r of rows) if (r.x * WEAK < top) {
+  if (!r24) for (const r of rows) if (r.x * WEAK < top) {
     const w = weak.find((o) => o.name === r.name);
     if (w) w.n += r.k; else weak.push({ name: r.name, n: r.k });
   }
   const nm = all ? n : n - weak.reduce((a, w) => a + w.n, 0);
   const pcs = (who || []).length;
-  const mult = multiplier(nm, pcs), adj = Math.round(xp * mult);
+  const mult = r24 ? 1 : multiplier(nm, pcs), adj = Math.round(xp * mult);
   const noLvl = (who || []).filter((p) => !cleanLvl(p.lvl)).map((p) => p.name);
   let th = null, rating = null;
   if (pcs && !noLvl.length && !(n && !xp && noXp.length)) { // alleen monsters zonder CR: geen oordeel ("Trivial" zou misleiden)
-    th = [0, 0, 0, 0];
-    for (const p of who) THRESH[p.lvl].forEach((v, i) => (th[i] += v));
-    rating = -1;
-    th.forEach((v, i) => { if (adj >= v) rating = i; });
+    const T = r24 ? BUDGET24 : THRESH;
+    th = T[1].map(() => 0);
+    for (const p of who) T[cleanLvl(p.lvl)].forEach((v, i) => (th[i] += v));
+    if (r24) { rating = th.findIndex((v) => adj <= v); if (rating < 0) rating = 3; } // plafond: tot en met het budget
+    else { rating = -1; th.forEach((v, i) => { if (adj >= v) rating = i; }); }
   }
-  return { n, nm, weak, all: !!all && weak.length > 0, xp, mult, adj, th, rating, noLvl, noXp, pcs };
+  return { n, nm, weak, all: !!all && weak.length > 0, xp, mult, adj, th, rating, noLvl, noXp, pcs, ...(r24 ? { ed: "2024" } : {}) };
 }
 /**
- * AF8: advies bij Deadly. Per monstersoort één exemplaar weghalen en opnieuw rekenen (zelfde party, zelfde "Toch meetellen").
- * → null (niet Deadly), { one: true } (één monster), { name, rating } (soort die het laagst-maar-dichtst bij Hard brengt:
- * Hard met de meeste overgebleven XP, anders het beste lagere oordeel), of { stays: true } (blijft Deadly).
+ * AF8: advies bij Deadly (2024: boven High, WP53). Per monstersoort één exemplaar weghalen en opnieuw rekenen (zelfde party,
+ * zelfde "Toch meetellen", zelfde regels). → null (niet Deadly), { one: true } (één monster), { name, rating } (soort die het
+ * laagst-maar-dichtst bij Hard/High brengt: rating 2 met de meeste overgebleven XP, anders het beste lagere oordeel), of
+ * { stays: true } (blijft Deadly).
  */
-export function deadlyTip(mons, who, all = false) {
-  const r = difficulty(mons, who, all);
+export function deadlyTip(mons, who, all = false, ed) {
+  const r = difficulty(mons, who, all, ed);
   if (r.rating !== 3) return null;
   if (r.n <= 1) return { one: true };
   let best = null;
   for (const name of [...new Set((mons || []).filter((m) => m.n > 0).map((m) => m.name))]) {
     let done = false;
     const M = mons.map((m) => (!done && m.name === name && m.n > 0 ? ((done = true), { ...m, n: m.n - 1 }) : m));
-    const x = difficulty(M, who, all);
+    const x = difficulty(M, who, all, ed);
     if (x.rating == null || x.rating >= 3) continue;
     // liefst Hard (2), en daarbinnen de meeste XP (het minst afgezwakte gevecht); anders het hoogste lagere oordeel
     if (!best || x.rating > best.rating || (x.rating === best.rating && x.adj > best.adj)) best = { name, rating: x.rating, adj: x.adj };
@@ -129,7 +142,6 @@ export function deadlyTip(mons, who, all = false) {
 }
 
 export const ratingName = (r) => (r == null ? null : r < 0 ? "Trivial" : RATINGS[r]);
-/** Waarom er geen oordeel is: "level onbekend", "geen party", "CR onbekend"; null = er is een oordeel */
 /** Waarom er geen oordeel is: "party", "lvl" of "cr" (null = wel een oordeel); de UI vertaalt de code (WP24) */
 export const noRatingCode = (r) => (r.rating != null ? null : !r.pcs ? "party" : r.noLvl.length ? "lvl" : "cr");
 

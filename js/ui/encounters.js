@@ -24,34 +24,42 @@ const hasLair = (L) => L.some((c) => c.kind === "lair");
 
 /* ---------- moeilijkheid ---------- */
 const partyNow = () => E.partyFor(app.S.list, app.party);
-export const diffList = () => E.difficulty(E.listMons(app.S.list, findMon), partyNow().who, !!app.S.allMon);
-const diffEnc = (enc) => E.difficulty(E.encMons(enc, findMon), partyNow().who, !!enc.all);
+// WP53: regels van de tafel (2024 = XP-budget SRD 5.2.1); ook "Toch meetellen" bestaat alleen bij 2014 (weak blijft leeg)
+export const diffList = () => E.difficulty(E.listMons(app.S.list, findMon), partyNow().who, !!app.S.allMon, rulesOf(app.S));
+const diffEnc = (enc) => E.difficulty(E.encMons(enc, findMon), partyNow().who, !!enc.all, rulesOf(app.S));
 
+/** Naam van een oordeel: 2014 de DMG-termen (RATINGS, ook in het Nederlands Engels), 2024 via de catalogus */
+const R24 = ["init.diff.low", "init.diff.moderate", "init.diff.high", "init.diff.over"];
+const rateName = (rating, ed) => (rating == null ? null : cleanEd(ed) ? t(R24[rating]) : E.ratingName(rating));
 /** Korte tekst voor de chip: "Hard", "level onbekend", "geen party" */
 const NO_RATING = { party: "init.diff.noParty", lvl: "init.diff.noLvl", cr: "init.diff.noCr" };
-const chipLbl = (r) => E.ratingName(r.rating) || t(NO_RATING[E.noRatingCode(r)]);
+const chipLbl = (r) => rateName(r.rating, r.ed) || t(NO_RATING[E.noRatingCode(r)]);
 const chipCls = (r) => (r.rating == null ? "unk" : `r${r.rating + 1}`);
 
-/** Uitleg: ruwe XP × multiplier = aangepaste XP, party, drempels */
+/** Uitleg: ruwe XP × multiplier = aangepaste XP (2024: alleen de XP), party, drempels of budget */
 function diffWhy(r, lair, tog, mons) {
   const P = partyNow();
-  const tip = r.rating === 3 && mons ? E.deadlyTip(mons, P.who, r.all) : null; // AF8: eerste regel bij Deadly
+  const tip = r.rating === 3 && mons ? E.deadlyTip(mons, P.who, r.all, r.ed) : null; // AF8: eerste regel bij Deadly / boven High
   const T = (k, p) => esc(t(k, p)); // regels hieronder zijn HTML
   const cnt = r.nm < r.n ? t("init.diff.counted", { nm: r.nm, n: r.n }) : t("init.diff.mons", { n: r.n });
-  const lines = [`${fmt(r.xp)} XP × ${multTxt(r.mult)} (${esc(cnt)}${r.pcs ? `, ${T("init.diff.pcs", { n: r.pcs })}` : ""}) = <b>${fmt(r.adj)} XP</b>`];
+  const who = `${esc(cnt)}${r.pcs ? `, ${T("init.diff.pcs", { n: r.pcs })}` : ""}`;
+  const lines = [r.ed ? `<b>${fmt(r.adj)} XP</b> (${who})` : `${fmt(r.xp)} XP × ${multTxt(r.mult)} (${who}) = <b>${fmt(r.adj)} XP</b>`];
   if (!r.pcs) lines.push(T("init.diff.noPcs"));
   else lines.push(T(P.src === "list" ? "init.diff.atTable" : "init.diff.saved", { lv: P.who.map((p) => p.lvl || "?").join(", ") }));
-  if (r.th) lines.push(E.RATINGS.map((k, i) => `${k} ${fmt(r.th[i])}`).join(" · "));
+  if (r.th) lines.push(r.th.map((v, i) => `${esc(rateName(i, r.ed))} ${fmt(v)}`).join(" · "));
+  if (r.th && r.ed) lines.push(T("init.diff.budget24"));
   if (r.noXp.length) lines.push(T("init.diff.withoutCr", { names: r.noXp.join(", ") }));
-  if (r.pcs && (r.pcs < 3 || r.pcs >= 6)) lines.push(T(r.pcs < 3 ? "init.diff.small" : "init.diff.big"));
+  if (!r.ed && r.pcs && (r.pcs < 3 || r.pcs >= 6)) lines.push(T(r.pcs < 3 ? "init.diff.small" : "init.diff.big"));
   if (lair) lines.push(T("init.diff.lair"));
-  return `<div class="dwhy">${tip ? `<p class="dtip">${esc(deadlyText(tip))}</p>` : ""}${lvlRows(P.who)}${lines.map((l) => `<p>${l}</p>`).join("")}${weakRow(r, tog)}</div>`;
+  return `<div class="dwhy">${tip ? `<p class="dtip">${esc(deadlyText(tip, r.ed))}</p>` : ""}${lvlRows(P.who)}${lines.map((l) => `<p>${l}</p>`).join("")}${weakRow(r, tog)}</div>`;
 }
 
-/** AF8: één zin bij Deadly, met advies */
-export function deadlyText(d) {
-  const tail = d.one ? t("init.diff.deadlyOne") : d.stays ? t("init.diff.deadlyStays") : t("init.diff.deadlyLess", { name: d.name, rating: E.ratingName(d.rating) });
-  return `${t("init.diff.deadly")} ${tail}`;
+/** AF8: één zin bij Deadly (2024: boven High, WP53), met advies */
+export function deadlyText(d, ed) {
+  const b = cleanEd(ed);
+  const tail = d.one ? t(b ? "init.diff.overOne" : "init.diff.deadlyOne") : d.stays ? t(b ? "init.diff.overStays" : "init.diff.deadlyStays")
+    : t("init.diff.deadlyLess", { name: d.name, rating: rateName(d.rating, ed) });
+  return `${t(b ? "init.diff.overText" : "init.diff.deadly")} ${tail}`;
 }
 
 /**
@@ -183,7 +191,7 @@ function lairKeyOf(x) {
 
 function editHtml() {
   const x = ui.encEdit, lk = lairKeyOf(x);
-  const r = E.difficulty(E.encMons(x, findMon), partyNow().who, !!x.all);
+  const r = diffEnc(x);
   const rows = x.monsters.map((m, i) => {
     const s = findMon(m.ref, m.ed), re = rowEd(m, s), wait = !s && cleanEd(m.ed) && srd24Status() === "loading";
     const ed = re && (re !== rulesOf(app.S) || (!s && !wait)) ? re : ""; // editie als die afwijkt, of bij een ontbrekend 2024-statblock

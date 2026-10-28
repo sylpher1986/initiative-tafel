@@ -421,6 +421,18 @@ const SCEN = {
     await page.$eval('#psheet [data-prep="close"]', (b) => b.click()); await page.waitForSelector("#psheet", { state: "hidden" });
     await tap(page, '[data-enc="difftog"]'); await page.waitForSelector(".dwhy [data-dlvl]");
   },
+  // WP53 (G1): moeilijkheid volgens 2024 (XP-budget; de keuze komt in WP54, hier via de stand); levels gezet, uitleg open
+  async wp53(page) {
+    await SCEN.prep(page);
+    await page.evaluate(async () => { const { app } = await import("/js/state.js"), { render } = await import("/js/ui/render.js");
+      app.S.rules = "2024"; for (const c of app.S.list) if (c.kind === "pc") c.lvl = 3; for (const m of app.party) m.lvl = 3; render(); });
+    await tap(page, '[data-enc="difftog"]'); await page.waitForSelector(".dbanner .dwhy");
+    const chip = (await page.locator(".dbanner .dchip").textContent()).trim();
+    const ok = await page.evaluate(async () => { const { t } = await import("/js/i18n/boot.js"); return ["low", "moderate", "high", "over"].map((k) => t("init.diff." + k)); });
+    if (!ok.includes(chip)) throw new Error(`WP53: chip "${chip}" is geen 2024-oordeel`);
+    if (/ × /.test(await page.locator(".dbanner .dwhy").textContent())) throw new Error("WP53: multiplier in de 2024-uitleg");
+    await snap(page, "wp53", "uitleg");
+  },
   async qadd(page) { await SCEN.fight(page); await tap(page, "#qadd"); await page.fill("#q-q", "gob"); await page.waitForSelector("#q-blk .qrow"); },
   // WP25: Gevecht-panelen uit de catalogus (AoE/Spell, aanvalspaneel, initiative, logboek, sneltoetsen, open kaart met ⋯)
   async aoe(page) { await SCEN.fight(page); await tap(page, "#aoe"); await page.waitForSelector("#asheet .asheet"); await page.fill("#a-dmg", "28"); await page.locator("#a-dmg").blur(); },

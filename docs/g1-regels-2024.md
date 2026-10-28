@@ -177,7 +177,12 @@ Zie CLAUDE.md ("Gevecht: kaarten en panelen", "Spelersscherm"). Voor latere pakk
 - WP54: het spelersscherm legt Exhaustion uit volgens de tafel (`ed` in de snapshot), de DM-kant volgens het effect (`condEd`). Gelijk zolang de regelwissel `reExhAll` in dezelfde stap draait; zo niet, dan de editie per tag meesturen.
 - Op signaal: Incapacitated (disadvantage) en Invisible (advantage) op initiative 2024 staan alleen in de uitleg.
 
-### WP53 — Moeilijkheid en XP volgens 2024
+### WP53 — Moeilijkheid en XP volgens 2024: klaar in 2.10.0
+Zie CLAUDE.md ("Voorbereiden", "Moeilijkheid per editie"). Voor latere pakketten:
+- WP54: niets extra; `diffList`/`diffEnc` lezen `rulesOf(app.S)`. `S.allMon`/`enc.all` blijven bewaard maar doen bij 2024 niets.
+- Op signaal: CR 0-monsters met "XP 0" in het statblock (3 in SRD 5.2) tellen als 10 XP, omdat `crXp` vóór `xp` gaat (bestaand gedrag, ook 2014).
+
+Oorspronkelijk plan:
 1. **Doel**: de moeilijkheidsuitleg in Voorbereiden rekent met de regels van de tafel.
 2. **Huidige stand**: R6–R7; `difficulty`, `deadlyTip`, `noRatingCode`, UI `js/ui/encounters.js` r. 27–38 en 176.
 3. **Scope**: `difficulty(mons, who, all, ed)`: bij 2024 XP-budget per level uit SRD 5.2.1 (Low/Moderate/High, geen multiplier, geen "lage CR telt niet"), zelfde uitvoervorm met `rating` 0–2 en een "boven High"-stand; tip "wat weg moet voor High" (generalisatie van `deadlyTip`); labels via catalogus; "Toch meetellen" alleen bij 2014; XP-label in het afrondpaneel zonder "DMG 2014" bij 2024.
@@ -189,6 +194,31 @@ Zie CLAUDE.md ("Gevecht: kaarten en panelen", "Spelersscherm"). Voor latere pakk
 9. **Klaar als**: tests groen, developer-review, versie, push.
 10. **Risico's**: tabel niet in SRD 5.2.1 → dan geen 2024-oordeel tonen (code `"cr"`-achtig "niet beschikbaar"), niet terugvallen op 2014.
 11. **Omvang**: M.
+
+**Uitgewerkt vóór het bouwen (28-10-2026)**: de tabel staat in SRD 5.2.1, p. 202 ("XP Budget per Character", Gameplay Toolbox → Combat Encounters), gelezen uit `SRD_CC_v5.2.1.pdf` (open5e-api, `data/raw_sources/srd_5_2/`). Het risico van punt 10 vervalt.
+
+| Level | Low | Moderate | High | | Level | Low | Moderate | High |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 50 | 75 | 100 | | 11 | 1,900 | 2,900 | 4,100 |
+| 2 | 100 | 150 | 200 | | 12 | 2,200 | 3,700 | 4,700 |
+| 3 | 150 | 225 | 400 | | 13 | 2,600 | 4,200 | 5,400 |
+| 4 | 250 | 375 | 500 | | 14 | 2,900 | 4,900 | 6,200 |
+| 5 | 500 | 750 | 1,100 | | 15 | 3,300 | 5,400 | 7,800 |
+| 6 | 600 | 1,000 | 1,400 | | 16 | 3,800 | 6,100 | 9,800 |
+| 7 | 750 | 1,300 | 1,700 | | 17 | 4,500 | 7,200 | 11,700 |
+| 8 | 1,000 | 1,700 | 2,100 | | 18 | 5,000 | 8,700 | 14,200 |
+| 9 | 1,300 | 2,000 | 2,600 | | 19 | 5,500 | 10,700 | 17,200 |
+| 10 | 1,600 | 2,300 | 3,100 | | 20 | 6,400 | 13,200 | 22,000 |
+
+- **Rekenregel**: budget = som per speler van de waarde bij zijn level (SRD: waarde × aantal spelers; bij gemengde levels per speler optellen). XP = som van de monster-XP, geen multiplier, geen "lage CR telt niet".
+- **Oordeel**: het budget is een plafond ("spend as much … as you can without going over", p. 202). XP ≤ Low = **Low** (0), ≤ Moderate = **Moderate** (1), ≤ High = **High** (2), daarboven **Boven High** (3). Er is geen stand onder Low (de SRD kent geen Trivial). Zonder party, level of CR: dezelfde codes als 2014 (`noRatingCode`).
+- **XP per CR**: SRD 5.2.1 p. 256 is gelijk aan de 2014-tabel (CR 0 = "0 or 10"), dus `crXp` blijft; het afrondpaneel heeft geen "DMG 2014"-label, er hoeft niets te veranderen.
+
+**Testsets** (verwacht oordeel, in `tests/encounters.test.js`):
+1. Vier spelers level 3 (budget Low 600, Moderate 900, High 1,600): één CR 2 (450) → Low; vier CR 1/2 (400) → Low (2014: Medium door × 2); twee CR 2 (900, precies het budget) → Moderate; één CR 4 (1,100) → High; één CR 5 (1,800) → Boven High.
+2. SRD-voorbeeld 1 (p. 202), vier spelers level 1 (Low 200): één CR 1 (200) → Low; zes CR 1/8 (150) → Low.
+3. SRD-voorbeeld 2 (p. 202), vijf spelers level 3 (Moderate 1,125): twee CR 2 + negen CR 1/8 (1,125) → Moderate; één CR 3 + één CR 1/2 + zes CR 1/4 (1,100) → Moderate.
+4. Randen: 0 monsters → Low met 0 XP; level onbekend/geen party/alleen onbekende CR → `null` met code `lvl`/`party`/`cr`; gemengde levels tellen per speler.
 
 ### WP54 — Regelkeuze zichtbaar: Instellingen → Regels 2014 | 2024
 1. **Doel**: de DM kiest de regelset; alles uit WP46–52 wordt bereikbaar.

@@ -320,6 +320,14 @@ export default {
   "init.diff.deadlyOne": "Kies een lagere CR voor Hard.",
   "init.diff.deadlyStays": "Ook met 1 monster minder blijft het Deadly.",
   "init.diff.deadlyLess": "Met 1 {name} minder wordt het {rating}.",
+  "init.diff.low": "Low", // oordeel 2024 (SRD 5.2.1), D&D-term
+  "init.diff.moderate": "Moderate",
+  "init.diff.high": "High",
+  "init.diff.over": "Boven High", // 2024: meer XP dan het High-budget
+  "init.diff.overText": "Boven High: meer XP dan het budget voor High.",
+  "init.diff.overOne": "Kies een lagere CR voor High.",
+  "init.diff.overStays": "Ook met 1 monster minder blijft het boven High.",
+  "init.diff.budget24": "Regels 2024: totale XP tegen het budget, geen multiplier.",
   "init.diff.weakAll": "Telt mee voor ×, ook met veel lagere CR: {who}",
   "init.diff.weakNot": "Niet meegeteld voor ×: {who} (XP onder 1/10 van het sterkste monster)",
   "init.diff.countAnyway": "Toch meetellen",
