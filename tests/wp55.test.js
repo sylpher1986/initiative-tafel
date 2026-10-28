@@ -74,7 +74,8 @@ test("G1 e2e: v3 → regels 2024 → v4 → import → terug naar 2014 → weer 
   assert.deepEqual(json(imp4.S.list), before, "terug naar 2014 = exact de oude tafel (reExh idempotent)");
   assert.equal(buildExport(app0(imp4.S, { party: imp4.party, encounters: imp4.encounters })).version, 3);
   // een oudere app (leest t/m 3) weigert de v4; deze app leest v4 maar niet v5
-  assert.throws(() => parseImport({ ...x4, version: 5 }), /./);
+  const newer = (() => { try { parseImport({ format: "initiative-tafel", version: 99 }); } catch (e) { return e.message; } })();
+  assert.ok(newer); assert.throws(() => parseImport({ ...x4, version: 5 }), (e) => e.message === newer, "melding: nieuwer bestand");
 });
 
 test("G1 e2e: 2024-encounter exporteren → importeren → inladen; zonder SRD 5.2 expliciet ontbrekend", async () => {

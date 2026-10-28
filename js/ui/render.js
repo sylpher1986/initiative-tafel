@@ -886,7 +886,7 @@ export function paintLa() {
 export function sheetPreview(c, kind, v, mode) {
   const sim = structuredClone(c);
   let fx;
-  if (kind === "dmg") fx = R.applyDamage(sim, v, mode);
+  if (kind === "dmg") fx = R.applyDamage(sim, v, mode, false, rulesOf(app.S));
   else if (kind === "heal") fx = R.heal(sim, v);
   else fx = R.giveTemp(sim, v);
   return { sim, fx };
@@ -1461,7 +1461,7 @@ function atkRes(x, c, by) {
   if (x.acp && x.acp.id === c.id && c.reaction) hints.unshift(`Parry: AC ${ac - x.acp.n} + ${x.acp.n} = ${ac}`);
   if (res.hit) {
     const sim = structuredClone(c), was = c.hp;
-    if (c.max) atkDamage(sim, res);
+    if (c.max) atkDamage(sim, res, rulesOf(app.S));
     const uf = c.max && ufNeed(sim, c.ref ? findMon(c.ref, c.ed) : null, was, res.dealt, ufInfo(res));
     const ri = atkRider(x, c, res, sim);
     const end = !c.max ? "" : sim.ds && sim.ds.dead && !(c.ds && c.ds.dead) ? ` · <b class="bad">${esc(t("init.dmg.dies"))}</b>`

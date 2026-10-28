@@ -1737,7 +1737,7 @@ function atkGo() {
   if (!by || !c || !c.max || isOut(c)) return;
   const { r } = atkRoll(x, by, c), ac = atkAc(x, c), res = atkResult(r, ac, x.parts, x.modes, x.force);
   if (!res.hit) return;
-  const sim = structuredClone(c); atkDamage(sim, res);
+  const sim = structuredClone(c); atkDamage(sim, res, rulesOf(app.S));
   const ri = atkRider(x, c, res, sim); // RE13: vóór de schade bepaald, zoals het paneel het toonde
   const rOn = ri && ri.act && ri.choice !== "na";
   if (!res.dealt && !rOn) return;
