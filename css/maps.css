@@ -170,9 +170,31 @@ body.maps{display:flex;flex-direction:column;padding:0;height:100dvh} /* zonder 
 .mfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .mkeys{min-height:44px;padding:0 4px}
 /* WP65: uitleg in een lege kaart (rustig, niet aanklikbaar) */
-.mempty{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);margin:0;width:calc(100% - 48px);max-width:280px;box-sizing:border-box;
-  text-align:center;color:var(--muted);font-size:.95rem;line-height:1.4;pointer-events:none;background:var(--surface);border:1.5px dashed var(--line-strong);border-radius:var(--r);padding:10px 14px} /* WP68a: lege toestand gestippeld */ /* leesbaar boven de rasterlijnen */
+.mempty{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);margin:0;width:calc(100% - 40px);max-width:300px;box-sizing:border-box;
+  color:var(--fg);font-size:.9rem;line-height:1.3;pointer-events:none;background:var(--surface);border:1.5px dashed var(--line-strong);border-radius:var(--r);padding:12px 14px;display:grid;gap:8px} /* WP68b: gestippelde kaart met drie regels (leesbaar boven de rasterlijnen) */
+.mempty-t{margin:0;font-weight:700;text-align:center}
+.mempty-l{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.mempty-l li{display:flex;gap:10px;align-items:center}
+.mempty-l .li{width:22px;height:22px;flex:0 0 auto}
+.mempty-l li>span{display:grid;min-width:0}
+.mempty-l li>span>span{color:var(--muted);font-size:.85rem}
 .mempty[hidden]{display:none}
+/* WP68b: raster-chip linksonder op het canvas: info (opent Instellingen) | rasterlijnen aan/uit. Vanaf 768 px linksonder in
+   het vrije deel (het zijpaneel ligt rechts). */
+.mgchip{position:absolute;left:max(8px,env(safe-area-inset-left,0px));bottom:8px;display:flex;align-items:stretch;max-width:calc(100% - 16px);
+  background:var(--surface);border:1px solid var(--btn-line);border-radius:var(--r);box-shadow:var(--shadow-pop);overflow:hidden}
+.mgchip[hidden]{display:none}
+.mgchip button{min-height:44px;border:0;background:none;color:var(--fg);font:inherit;cursor:pointer;display:flex;align-items:center}
+.mgc-i{gap:6px;padding:0 10px;font-size:.85rem;font-weight:600;white-space:nowrap;min-width:0}
+.mgc-i>span:last-child{overflow:hidden;text-overflow:ellipsis}
+.mgc-g{display:inline-flex;color:var(--muted)}
+.mgc-g .mkl-g{width:auto;height:auto;background:none} /* zelfde teken als in Mijn kaarten, zonder vlak */
+.mgc-g .li{width:18px;height:18px}
+.mgchip .mgc-t{width:44px;justify-content:center;border-left:1px solid var(--btn-line)}
+.mgc-t .li{width:22px;height:22px}
+.mgc-t[aria-pressed="true"]{background:var(--act-soft);box-shadow:inset 0 -3px 0 var(--sel)}
+.mgc-t[aria-pressed="false"] .li{opacity:.45}
+.mgchip button:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
 #m-terr-h{margin:0}
 #m-terr-h[hidden]{display:none}
 /* WP65: sneltoetsenoverzicht */

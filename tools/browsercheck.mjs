@@ -124,7 +124,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/", wp68: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/", wp68: "/nl/maps/", wp68b: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
@@ -1468,6 +1468,59 @@ const SCEN = {
     const l = await page.evaluate(() => ({ eye: document.getElementById("m-eye").hidden, g: document.querySelectorAll("#m-lrows .mkl-g svg").length, rows: document.querySelectorAll("#m-lrows .mkl-row").length }));
     if (!l.eye) throw new Error("bovenregel zichtbaar in de lijst");
     if (l.g !== l.rows || !l.rows) throw new Error("rastertype-teken per rij ontbreekt: " + JSON.stringify(l));
+  },
+  // WP68b (Maps 1.2.0): uitleg in een lege kaart (drie regels met het woord van de dockknop, niet aanklikbaar) en de
+  // raster-chip linksonder: verborgen zolang de uitleg staat, info opent Instellingen met de focus op het rastertype,
+  // lijnen aan/uit = één undo-stap, verborgen onder een paneel van onderen en in de lijst, volgt het raster.
+  async wp68b(page) {
+    await page.waitForFunction(() => window.__maps && document.getElementById("m-zoom").textContent);
+    const vis = (sel) => page.evaluate((s) => { const e = document.querySelector(s); return !!e && !e.closest("[hidden]") && e.getBoundingClientRect().height > 0; }, sel);
+    const e0 = await page.evaluate(() => { const e = document.getElementById("m-empty"); return { rows: e.querySelectorAll("li").length, pe: getComputedStyle(e).pointerEvents, bs: getComputedStyle(e).borderTopStyle,
+      words: [...e.querySelectorAll("li b")].map((b) => b.textContent), dock: [...document.querySelectorAll("#m-dock .mdl")].map((l) => l.textContent) }; });
+    if (!(await vis("#m-empty")) || e0.rows !== 3 || e0.pe !== "none" || e0.bs !== "dashed") throw new Error("uitleg: " + JSON.stringify(e0));
+    for (const w of e0.words) if (!e0.dock.includes(w)) throw new Error("uitleg noemt een woord dat niet in de dock staat: " + w);
+    if (await vis("#m-gchip")) throw new Error("chip zichtbaar naast de uitleg");
+    await tap(page, "#m-lib"); await page.waitForTimeout(100);
+    await tap(page, "#m-tiles .mtile"); await page.waitForTimeout(100);
+    const bb = await page.locator("#m-canvas").boundingBox();
+    await page.touchscreen.tap(bb.x + bb.width * 0.4, bb.y + bb.height * 0.25); await page.waitForTimeout(100);
+    if (await vis("#m-gchip")) throw new Error("chip zichtbaar onder een paneel van onderen");
+    await page.keyboard.press("Escape"); await page.waitForTimeout(100);
+    if (!(await vis("#m-gchip"))) throw new Error("chip ontbreekt met inhoud op de kaart");
+    const c1 = await page.evaluate(() => { const i = document.getElementById("m-ginfo"), l = document.getElementById("m-glines"), r1 = i.getBoundingClientRect(), r2 = l.getBoundingClientRect();
+      return { txt: document.getElementById("m-gtext").textContent, name: i.getAttribute("aria-label"), p: l.getAttribute("aria-pressed"), h: Math.min(r1.height, r2.height), w: r2.width }; });
+    if (!c1.txt.endsWith(" · 20×15") || !c1.name.includes(c1.txt) || c1.p !== "true" || c1.h < 44 || c1.w < 44) throw new Error("chip: " + JSON.stringify(c1));
+    const steps = await page.evaluate(() => window.__maps.hist().size);
+    await tap(page, "#m-glines"); await page.waitForTimeout(100);
+    const c2 = await page.evaluate(() => ({ show: window.__maps.grid().show, p: document.getElementById("m-glines").getAttribute("aria-pressed"), size: window.__maps.hist().size }));
+    if (c2.show || c2.p !== "false" || c2.size !== steps + 1) throw new Error("lijnen uit = één stap: " + JSON.stringify(c2));
+    await tap(page, "#m-undo"); await page.waitForTimeout(100);
+    if (!(await page.evaluate(() => window.__maps.grid().show && document.getElementById("m-glines").getAttribute("aria-pressed") === "true"))) throw new Error("Ongedaan zet de lijnen niet terug");
+    await tap(page, "#m-ginfo"); await page.waitForTimeout(150);
+    const f = await page.evaluate(() => ({ open: !document.getElementById("m-sheet").hidden, foc: document.activeElement?.closest("#m-type") && document.activeElement.getAttribute("aria-pressed") }));
+    if (!f.open || f.foc !== "true") throw new Error("info opent Instellingen met focus op het rastertype: " + JSON.stringify(f));
+    await tap(page, '#m-type [data-v="pointy"]'); await page.waitForTimeout(100);
+    await page.keyboard.press("Escape"); await page.waitForTimeout(100);
+    const t2 = await page.evaluate(() => document.getElementById("m-gtext").textContent);
+    if (t2 === c1.txt || !t2.endsWith(" · 20×15")) throw new Error("chip volgt het raster niet: " + t2);
+    // lijnen uit, naar de lijst, een kopie openen: de chip volgt de geopende kaart
+    await tap(page, "#m-glines"); await page.waitForTimeout(100);
+    await tap(page, "#m-maps"); await page.waitForTimeout(150);
+    if (await vis("#m-gchip")) throw new Error("chip zichtbaar in de lijst");
+    await tap(page, "#m-new"); await page.waitForTimeout(300);
+    const nw = await page.evaluate(() => ({ p: document.getElementById("m-glines").getAttribute("aria-pressed"), show: window.__maps.grid().show, txt: document.getElementById("m-gtext").textContent }));
+    if (nw.p !== String(nw.show) || !nw.txt.endsWith(" · 20×15")) throw new Error("chip volgt een andere kaart niet: " + JSON.stringify(nw));
+    // vanaf 768 px: chip blijft naast het zijpaneel (dan staat er wel iets op de kaart nodig: de nieuwe kaart is leeg)
+    const vp = page.viewportSize();
+    await page.setViewportSize({ width: 768, height: 1024 }); await page.waitForTimeout(200);
+    await tap(page, "#m-lib"); await page.waitForTimeout(100);
+    await tap(page, "#m-tiles .mtile"); await page.waitForTimeout(100);
+    const b2 = await page.locator("#m-canvas").boundingBox();
+    await page.touchscreen.tap(b2.x + 120, b2.y + 120); await page.waitForTimeout(150);
+    const sd = await page.evaluate(() => { const c = document.getElementById("m-gchip").getBoundingClientRect(), p = document.getElementById("m-lsheet").getBoundingClientRect(); return { h: c.height, right: c.right, pl: p.left }; });
+    if (!(await vis("#m-gchip")) || sd.right > sd.pl) throw new Error("chip naast het zijpaneel: " + JSON.stringify(sd));
+    await page.keyboard.press("Escape"); await page.waitForTimeout(100);
+    await page.setViewportSize(vp); await page.waitForTimeout(150);
   },
   async wp66(page, base) {
     const ready = () => page.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);

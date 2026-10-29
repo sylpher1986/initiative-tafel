@@ -115,13 +115,29 @@ async function boot() {
 
   // WP65: zijpaneel open (strook en uitleg in het vrije deel) en de uitleg in een lege kaart (geen pop-up: alleen tekst
   // in het canvas, weg zodra er iets op staat of een paneel open is)
-  const emptyEl = $("m-empty");
+  // WP68a: teken van het rastertype (lijstrij en raster-chip; alleen beeld)
+  const glyph = (d) => `<span class="mkl-g" aria-hidden="true"><svg class="li" viewBox="0 0 24 24" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">${d}</svg></span>`;
+  const GLYPH = { square: glyph('<rect x="3" y="3" width="18" height="18" rx="1"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>'),
+    pointy: glyph('<path d="M12 2.5 20.5 7.4v9.2L12 21.5 3.5 16.6V7.4Z"/>'), flat: glyph('<path d="M2.5 12 7.4 3.5h9.2l4.9 8.5-4.9 8.5H7.4Z"/>') };
+  const emptyEl = $("m-empty"), chip = $("m-gchip");
   function chrome() {
     const open = !!openSheet();
     document.body.classList.toggle("mside", open && side());
     const empty = viewName === "edit" && !!cur && !open && !aligning && !map.bg && !map.objs.length && !map.terr;
     if (emptyEl.hidden === empty) emptyEl.hidden = !empty;
+    // WP68b: raster-chip niet in de lijst, tijdens uitlijnen, onder een paneel van onderen, naast de uitleg of in de meetstand
+    const showChip = viewName === "edit" && !!cur && !aligning && !(open && !side()) && emptyEl.hidden && BENCH_MODE === null; // ook niet in de meetstand
+    if (chip.hidden === showChip) chip.hidden = !showChip;
   }
+  /** WP68b: inhoud van de raster-chip (na elke rasterwijziging en bij het openen van een kaart) */
+  const paintChip = () => {
+    const g = map.grid, k = g.type === "hex" ? g.orient : "square";
+    const info = t("maps.chip.info", { type: t("maps.grid." + k), cols: g.cols, rows: g.rows });
+    $("m-gglyph").innerHTML = GLYPH[k] || GLYPH.square;
+    $("m-gtext").textContent = info;
+    $("m-ginfo").setAttribute("aria-label", t("maps.chip.open", { info }));
+    $("m-glines").setAttribute("aria-pressed", String(!!g.show));
+  };
   const label = () => cv.setAttribute("aria-label", t(map.grid.type === "hex" ? "maps.canvasHex" : "maps.canvas", { cols: map.grid.cols, rows: map.grid.rows }));
   const head = () => { $("m-name").textContent = viewName === "list" ? t("maps.title") : cur?.name || t("maps.title"); $("m-eye").hidden = viewName === "list"; }; // WP68a: bovenregel "Inn Sight" alleen in de editor (in de lijst is de kop zelf de toolnaam)
   $("m-ver").textContent = VERSION;
@@ -169,6 +185,9 @@ async function boot() {
   nameInp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); commitName(); nameInp.blur(); } });
   for (const b of $("m-alpha").querySelectorAll("button")) b.textContent = t("maps.alpha.pct", { n: b.dataset.v });
   $("m-type").addEventListener("click", (e) => { const v = e.target.closest("button")?.dataset.v; if (v) update(v === "square" ? { type: "square" } : { type: "hex", orient: v }); });
+  // WP68b: raster-chip. Info opent Instellingen met de focus op het rastertype; de schakelaar zet de lijnen aan/uit (één stap)
+  $("m-ginfo").addEventListener("click", () => { openPanel(); $("m-type").querySelector('[aria-pressed="true"]')?.focus(); });
+  $("m-glines").addEventListener("click", () => update({ show: !map.grid.show }));
   $("m-show").addEventListener("click", (e) => { const v = e.target.closest("button")?.dataset.v; if (v) update({ show: v === "on" }); });
   $("m-color").addEventListener("click", (e) => { const v = e.target.closest("button")?.dataset.v; if (v) update({ color: v }); });
   $("m-alpha").addEventListener("click", (e) => { const v = e.target.closest("button")?.dataset.v; if (v) update({ alpha: +v }); });
@@ -367,7 +386,7 @@ async function boot() {
   }
   /** Na een patch: panelen, label, bewaren, tekenen, knoppen */
   function refresh(patch) {
-    if ("grid" in patch) { label(); syncPanel(); if (!sheet.hidden) syncFields(); }
+    if ("grid" in patch) { label(); syncPanel(); paintChip(); if (!sheet.hidden) syncFields(); }
     // slepen in de uitlijnmodus: paneel dicht, geen DOM-werk per pointermove (openPanel synct)
     if ("grid" in patch || (!sheet.hidden && "bg" in patch)) syncBg();
     changed();
@@ -1011,7 +1030,7 @@ async function boot() {
     loadBg(); syncBg();
     store.setLastId(doc.id);
     saver.reset();
-    label(); head(); chrome();
+    label(); head(); paintChip(); chrome();
     if (!sheet.hidden) { nameInp.value = doc.name; syncPanel(); }
     auto = true; fitted = false; measure();
   };
@@ -1019,10 +1038,6 @@ async function boot() {
   let maps = []; // laatst gelezen lijst (opgeschoond, gesorteerd)
   const names = (except) => maps.filter((m) => m.id !== except).map((m) => m.name);
   const when = (ts) => { const a = ago(ts); if (!a) return i18n().date(ts, { day: "numeric", month: "short", ...(new Date(ts).getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) }); return a.k === "now" ? t("maps.ago.now") : t("maps.ago." + a.k, { n: a.n }); };
-  // WP68a: teken van het rastertype per rij (alleen beeld; de ondertitel noemt het type al)
-  const glyph = (d) => `<span class="mkl-g" aria-hidden="true"><svg class="li" viewBox="0 0 24 24" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">${d}</svg></span>`;
-  const GLYPH = { square: glyph('<rect x="3" y="3" width="18" height="18" rx="1"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>'),
-    pointy: glyph('<path d="M12 2.5 20.5 7.4v9.2L12 21.5 3.5 16.6V7.4Z"/>'), flat: glyph('<path d="M2.5 12 7.4 3.5h9.2l4.9 8.5-4.9 8.5H7.4Z"/>') };
   const fill = (focusId) => {
     if (cur && saver.status !== "off") { const i = maps.findIndex((m) => m.id === cur.id); if (i >= 0) maps[i] = { ...cur }; } // wat nog niet bewaard is, toont al de nieuwste naam
     maps = sortMaps(maps);

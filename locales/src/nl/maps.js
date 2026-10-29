@@ -256,7 +256,12 @@ export default {
   "maps.exp.big": "Exporteren kan niet: met alle afbeeldingen wordt deze kaart groter dan {mb} MB, te groot om weer te importeren. Haal een paar eigen afbeeldingen van de kaart.",
   "maps.exp.missingOwn": "Exporteren kan niet: een eigen afbeelding op deze kaart ontbreekt op dit apparaat.",
   // WP65
-  "maps.empty": "Lege kaart. Kies onderdelen of terrein in de Bibliotheek. Raster en achtergrond staan onder het tandwiel.",
+  "maps.empty.title": "Lege kaart", // WP68b: uitleg in een lege kaart, drie regels met het woord van de dockknop
+  "maps.empty.lib": "Onderdelen, terrein en eigen afbeeldingen",
+  "maps.empty.set": "Raster, grootte en achtergrond",
+  "maps.empty.list": "Al je kaarten, importeren en exporteren",
+  "maps.chip.info": "{type} · {cols}×{rows}", // WP68b: raster-chip op het canvas
+  "maps.chip.open": "Raster: {info}. Kaartinstellingen openen", // bevat de zichtbare tekst (label-in-name)
   "maps.paint.hint": "Kies een terrein en veeg of tik op de kaart.",
   "maps.keys.btn": "Sneltoetsen",
   "maps.keys.title": "Sneltoetsen",

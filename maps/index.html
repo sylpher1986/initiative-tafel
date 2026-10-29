@@ -40,7 +40,22 @@
   <p class="vh" id="m-khelp">Keyboard: arrow keys move the cursor, or the selected object (hold Shift for smaller steps). Enter selects, places or paints. N selects the next object. R rotates, Delete deletes it, Esc deselects.</p>
   <!-- WP65: rustige uitleg in een lege kaart (geen objecten, terrein of achtergrond), zonder sluitknop; weg zodra er iets
        op staat of een paneel open is. Geen pop-up bij het opstarten. -->
-  <p class="mempty" id="m-empty" hidden>Empty map. Pick objects or terrain in the Library. Grid and background are under the gear icon.</p>
+  <!-- WP68b: gestippelde kaart met drie regels, elk met het icoon en het woord van de dockknop (niet aanklikbaar: de dock
+       is de enige weg; knoppen op het canvas zouden tikken en pannen afvangen) -->
+  <div class="mempty" id="m-empty" hidden>
+    <p class="mempty-t">Empty map</p>
+    <ul class="mempty-l">
+      <li><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><circle cx="17.5" cy="6.5" r="3.5"/><path d="M6.5 14 10 20H3Z"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span><b>Library</b><span>Objects, terrain and custom images</span></span></li>
+      <li><svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-gear"/></svg><span><b>Settings</b><span>Grid, size and background</span></span></li>
+      <li><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg><span><b>My maps</b><span>All your maps, import and export</span></span></li>
+    </ul>
+  </div>
+  <!-- WP68b: raster-chip linksonder: rastertype en maat (opent Instellingen) | rasterlijnen aan/uit (één undo-stap). Weg in
+       de lijst, tijdens uitlijnen, bij een open onderpaneel (< 768 px) en zolang de uitleg in een lege kaart staat. -->
+  <div class="mgchip" id="m-gchip" hidden>
+    <button type="button" class="mgc-i" id="m-ginfo"><span class="mgc-g" id="m-gglyph" aria-hidden="true"></span><span id="m-gtext"></span></button>
+    <button type="button" class="mgc-t" id="m-glines" aria-label="Grid lines" aria-pressed="true"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v18M16 3v18M3 8h18M3 16h18"/></svg></button>
+  </div>
 </main>
 <!-- WP58: Mijn kaarten. Eigen weergave in dezelfde pagina (editor verborgen, history.pushState: terug = editor). Rij-tik
      opent, ⋯ opent het menu (Hernoemen, Dupliceren, Exporteren, Verwijderen). Lijst en meldingen vult js/maps/main.js. -->

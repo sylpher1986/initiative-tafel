@@ -257,7 +257,12 @@ export default {
   "maps.exp.big": "Can’t export: with all its images this map would be larger than {mb} MB, too big to import again. Remove some custom images from the map.",
   "maps.exp.missingOwn": "Can’t export: a custom image on this map is missing from this device.",
   // WP65: lege kaart, sneltoetsenoverzicht, Terrein zonder keuze
-  "maps.empty": "Empty map. Pick objects or terrain in the Library. Grid and background are under the gear icon.",
+  "maps.empty.title": "Empty map", // WP68b: uitleg in een lege kaart, drie regels met het woord van de dockknop
+  "maps.empty.lib": "Objects, terrain and custom images",
+  "maps.empty.set": "Grid, size and background",
+  "maps.empty.list": "All your maps, import and export",
+  "maps.chip.info": "{type} · {cols}×{rows}", // WP68b: raster-chip op het canvas
+  "maps.chip.open": "Grid: {info}. Open map settings", // bevat de zichtbare tekst (label-in-name)
   "maps.paint.hint": "Pick a terrain, then swipe or tap the map.",
   "maps.keys.btn": "Keyboard shortcuts",
   "maps.keys.title": "Keyboard shortcuts",
