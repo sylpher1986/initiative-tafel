@@ -9,7 +9,8 @@
 // raster en achtergrond, paneel Bibliotheek met ingebouwde onderdelen en Plaatsen; WP62: objecten selecteren (tik),
 // slepen, draaien en schalen met handgrepen, eigen dock en paneel Object, toetsenbord met cursorcel; WP63: terrein per cel
 // verven (tab Terrein in paneel Bibliotheek: penseel, breed, vullen, wissen); WP64: eigen assets (tab Eigen: Mijn assets,
-// toevoegen, plaatsen, hernoemen, verwijderen, mee in export en import) (docs/g4-inn-the-grid.md).
+// toevoegen, plaatsen, hernoemen, verwijderen, mee in export en import); WP65: zijpaneel vanaf 768 px, sneltoetsenoverzicht
+// (?), uitleg in een lege kaart, verven met het toetsenbord, naam Inn Sight (docs/g4-inn-the-grid.md).
 import { initI18n, t, i18n } from "../i18n/boot.js";
 import { APP, VERSION } from "./version.js";
 import { cleanGrid, parseCells, bounds, LIMITS, cellAt, cellCenter, cellPoly, inside } from "./model/grid.js";
@@ -90,15 +91,28 @@ async function boot() {
   // passend bij een ander raster, schermformaat of paneel; elke eigen pan/zoom zet auto uit.
   // WP61: het open paneel (Kaart of Bibliotheek; nooit allebei)
   const openSheet = () => [$("m-sheet"), $("m-lsheet"), $("m-osheet")].find((el) => !el.hidden) || null; // WP62: ook paneel Object
-  const freeH = () => { const el = openSheet(); return !el ? h : Math.max(48, Math.min(h, el.getBoundingClientRect().top - wrap.getBoundingClientRect().top)); };
-  const fit = () => { auto = true; set(fitView(bounds(map.grid), w, freeH())); };
+  // WP65: vanaf 768 px is een paneel een zijpaneel rechts (css/maps.css): dan is het vrije deel links ervan, anders erboven
+  const sideMq = matchMedia("(min-width:768px)"), side = () => sideMq.matches;
+  const freeH = () => { const el = openSheet(); return !el || side() ? h : Math.max(48, Math.min(h, el.getBoundingClientRect().top - wrap.getBoundingClientRect().top)); };
+  const freeW = () => { const el = openSheet(); return !el || !side() ? w : Math.max(48, Math.min(w, el.getBoundingClientRect().left - wrap.getBoundingClientRect().left)); };
+  const fit = () => { auto = true; set(fitView(bounds(map.grid), freeW(), freeH())); };
   const user = (v) => { auto = false; set(v); };
   const measure = () => {
     const r = wrap.getBoundingClientRect();
     w = Math.max(1, r.width); h = Math.max(1, r.height); dpr = window.devicePixelRatio || 1;
+    if (r.height > 0) { const bs = document.body.style; bs.setProperty("--m-top", r.top + "px"); bs.setProperty("--m-bot", Math.max(0, document.documentElement.clientHeight - r.bottom) + "px"); } // WP65: zijpaneel tussen kop en dock
     if ((!fitted || auto) && w > 50 && h > 50) { fitted = true; fit(); } else set(view); // 0×0 (tabblad op de achtergrond, lijst open): later passend maken
   };
 
+  // WP65: zijpaneel open (strook en uitleg in het vrije deel) en de uitleg in een lege kaart (geen pop-up: alleen tekst
+  // in het canvas, weg zodra er iets op staat of een paneel open is)
+  const emptyEl = $("m-empty");
+  function chrome() {
+    const open = !!openSheet();
+    document.body.classList.toggle("mside", open && side());
+    const empty = viewName === "edit" && !!cur && !open && !aligning && !map.bg && !map.objs.length && !map.terr;
+    if (emptyEl.hidden === empty) emptyEl.hidden = !empty;
+  }
   const label = () => cv.setAttribute("aria-label", t(map.grid.type === "hex" ? "maps.canvasHex" : "maps.canvas", { cols: map.grid.cols, rows: map.grid.rows }));
   const head = () => { $("m-name").textContent = viewName === "list" ? t("maps.title") : cur?.name || t("maps.title"); };
   $("m-ver").textContent = VERSION;
@@ -162,8 +176,9 @@ async function boot() {
     nameInp.value = cur?.name || "";
     syncPanel();
     sheet.hidden = false; btnSet.setAttribute("aria-expanded", "true");
-    dockFocus(false);
+    dockFocus(side()); // WP65: naast een zijpaneel blijft de dock bereikbaar
     syncBg();
+    chrome();
     sheet.focus(); // in de tik (iOS)
     if (auto) fit();
   };
@@ -171,6 +186,7 @@ async function boot() {
     if (sheet.hidden) return;
     sheet.hidden = true; btnSet.setAttribute("aria-expanded", "false");
     dockFocus(true);
+    chrome();
     if (focus) btnSet.focus();
     if (auto) fit();
   };
@@ -307,7 +323,7 @@ async function boot() {
     if (on === aligning) return;
     aligning = on;
     if (on) select(null, false); // WP62
-    adock.hidden = !on; strip.hidden = !on; docks();
+    adock.hidden = !on; strip.hidden = !on; docks(); chrome();
     if (on) { alignGroup = "align" + ++alignN; closeLib(false); closePanel(false); $("m-adone").focus(); }
     else { hist.seal(); alignGroup = null; if (back) { openPanel(); bgSec.align.focus(); } }
     histBtns();
@@ -346,6 +362,7 @@ async function boot() {
     // slepen in de uitlijnmodus: paneel dicht, geen DOM-werk per pointermove (openPanel synct)
     if ("grid" in patch || (!sheet.hidden && "bg" in patch)) syncBg();
     changed();
+    if ("bg" in patch || "objs" in patch || "terr" in patch) chrome(); // WP65: uitleg weg zodra er iets op de kaart staat
     if ("grid" in patch) { if (kbd) kbd = clampCell(kbd); if (auto) fit(); else set(view); } else later();
     if ("objs" in patch) { if (selId && !selObj()) select(null, false); else if (!osheet.hidden) syncObj(); } // WP62: na Ongedaan kan het object weg zijn
     if ("objs" in patch && !lsheet.hidden && libTab === "own") paintMyRow(); // WP64: gebruik in de beheerrij (plaatsen, Ongedaan)
@@ -423,6 +440,7 @@ async function boot() {
     tiles.innerHTML = inCat(libCat).map((id) => `<button type="button" class="mtile" data-id="${esc(id)}" aria-pressed="${id === active}"><img src="${esc(assetUrl(id))}" alt="" width="40" height="40"><span>${esc(assetName(id))}</span></button>`).join("");
   }
   function paintStrip() {
+    $("m-terr-h").hidden = !(libTab === "terrain" && !lsheet.hidden && !mat); // WP65: uitleg tot er een terrein gekozen is
     if (stripT) return; // de korte melding "Tik binnen de kaart" staat er nog
     const on = placing(), pt = painting();
     pstrip.hidden = !on && !pt;
@@ -456,7 +474,8 @@ async function boot() {
     select(null, false); // WP62: Plaatsen en selecteren gaan niet samen
     closePanel(false);
     lsheet.hidden = false; btnLib.setAttribute("aria-expanded", "true");
-    dockFocus(false);
+    dockFocus(side());
+    chrome();
     paintTiles();
     art.preload(BUILTIN_IDS);
     lsheet.focus(); // in de tik (iOS)
@@ -467,6 +486,7 @@ async function boot() {
     if (lsheet.hidden) return;
     lsheet.hidden = true; btnLib.setAttribute("aria-expanded", "false");
     dockFocus(true);
+    chrome();
     active = null; ghost = null; mat = null; brushAt = null; renaming = false; // WP63: ook Verven stopt
     clearTimeout(stripT); stripT = 0;
     paintStrip();
@@ -849,11 +869,11 @@ async function boot() {
   }
   // toetsenbord: cursorcel zonder selectie, verplaatsen met selectie (opeenvolgende pijltjes = één stap)
   const clampCell = (c) => ({ c: Math.min(map.grid.cols - 1, Math.max(0, c.c)), r: Math.min(map.grid.rows - 1, Math.max(0, c.r)) });
-  const centerCell = () => { const p = toMap(view, w / 2, freeH() / 2); return clampCell(cellAt(map.grid, p.x, p.y)); };
+  const centerCell = () => { const p = toMap(view, freeW() / 2, freeH() / 2); return clampCell(cellAt(map.grid, p.x, p.y)); };
   /** Kaartpunt in beeld houden (boven een open paneel), anders de kaart verschuiven */
   function reveal(x, y) {
-    const s = toScreen(view, x, y), m = 56, H = freeH();
-    const dx = s.x < m ? m - s.x : s.x > w - m ? w - m - s.x : 0, dy = s.y < m ? m - s.y : s.y > H - m ? H - m - s.y : 0;
+    const s = toScreen(view, x, y), m = 56, H = freeH(), W = freeW();
+    const dx = s.x < m ? m - s.x : s.x > W - m ? W - m - s.x : 0, dy = s.y < m ? m - s.y : s.y > H - m ? H - m - s.y : 0;
     if (dx || dy) user({ ...view, x: view.x + dx, y: view.y + dy });
   }
   function moveCursor(dx, dy) {
@@ -878,6 +898,15 @@ async function boot() {
     if (placing()) { const s = toScreen(view, m.x, m.y); place(s.x, s.y); later(); return; }
     const hit = hitAll(map.objs, m.x, m.y)[0];
     if (hit) select(hit.id); else { sr(t("maps.sel.none")); later(); }
+  }
+  /** WP65: Enter/spatie in Verven: Penseel/Breed verft de cel(len) op de cursor, Vullen vult het gebied; één undo-stap */
+  function paintKey() {
+    if (!kbd) kbd = centerCell();
+    const fill = tool === "fill", meta = terrMeta(fill);
+    const cells = fill ? fillCells(map.grid, map.terr, kbd.c, kbd.r) : footprint(map.grid, [{ c: kbd.c, r: kbd.r }], tool);
+    const next = paintCells(map.terr, cells, matId());
+    if (next !== map.terr) { edit({ terr: next || undefined }, meta); sr(stepName(meta)); }
+    later();
   }
   function nextObj(dir) { // N / Shift+N: objecten aflopen in tekenvolgorde
     const { list } = drawOrder(map.objs);
@@ -908,7 +937,8 @@ async function boot() {
   function openObj() {
     if (!selObj()) return;
     osheet.hidden = false; btnMore.setAttribute("aria-expanded", "true");
-    odockFocus(false);
+    odockFocus(side());
+    chrome();
     syncObj();
     osheet.focus(); // in de tik (iOS)
     if (auto) fit();
@@ -917,6 +947,7 @@ async function boot() {
     if (osheet.hidden) return;
     osheet.hidden = true; btnMore.setAttribute("aria-expanded", "false");
     odockFocus(true);
+    chrome();
     if (focus && !odock.hidden) btnMore.focus();
     if (auto) fit(); else later();
   }
@@ -971,7 +1002,7 @@ async function boot() {
     loadBg(); syncBg();
     store.setLastId(doc.id);
     saver.reset();
-    label(); head();
+    label(); head(); chrome();
     if (!sheet.hidden) { nameInp.value = doc.name; syncPanel(); }
     auto = true; fitted = false; measure();
   };
@@ -1000,7 +1031,7 @@ async function boot() {
     wrap.hidden = isList;
     if (isList) select(null, false); // WP62
     docks();
-    head();
+    head(); chrome();
     histBtns(); paintStrip();
     if (!isList) { fitted = false; requestAnimationFrame(measure); } // terug van de lijst: maat opnieuw (canvas was verborgen)
   };
@@ -1220,8 +1251,46 @@ async function boot() {
     } } });
   });
 
+  // ---- WP65: sneltoetsenoverzicht (? of de link onderaan paneel Kaart; patroon van Initiative js/ui/keys.js, eigen kopie) ----
+  const keysW = $("m-keysw"), MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || ""), MOD = MAC ? "⌘" : "Ctrl";
+  let keysBack = null;
+  const kb = (...k) => k.map((x) => `<kbd>${esc(x)}</kbd>`).join(" ");
+  const or = (...a) => a.join(` ${esc(t("maps.keys.or"))} `);
+  const keyRows = () => [
+    ["maps.keys.grpMap", [[or(kb("+"), kb("−")), "maps.keys.zoom"], [kb("0"), "maps.keys.fit"], [kb(MOD, "Z"), "maps.keys.undo"],
+      [MAC ? kb("⌘", "Shift", "Z") : or(kb("Ctrl", "Y"), kb("Ctrl", "Shift", "Z")), "maps.keys.redo"], [kb("?"), "maps.keys.help"]]],
+    ["maps.keys.grpCursor", [[kb("←", "↑", "↓", "→"), "maps.keys.cursor"], [or(kb("Enter"), kb(t("maps.keys.space"))), "maps.keys.enter"],
+      [or(kb("N"), kb("Shift", "N")), "maps.keys.next"], [kb("Esc"), "maps.keys.esc"]]],
+    ["maps.keys.grpSel", [[kb("←", "↑", "↓", "→"), "maps.keys.move"], [or(kb("R"), kb("Shift", "R")), "maps.keys.rot"], [or(kb("]"), kb("[")), "maps.keys.order"],
+      [kb(MOD, "D"), "maps.keys.dup"], [or(kb("Delete"), kb("Backspace")), "maps.keys.del"]]],
+  ];
+  const keysOpen = () => !keysW.hidden;
+  function openKeys() {
+    if (keysOpen() || gone) return;
+    keysBack = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
+    keysW.innerHTML = `<div class="dim" data-keys="close"></div><div class="sheet mkeysheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="m-k-t">`
+      + `<div class="grab" aria-hidden="true"></div><div class="shead"><h3 id="m-k-t">${esc(t("maps.keys.title"))}</h3><button type="button" class="link" data-keys="close">${esc(t("maps.panel.close"))}</button></div>`
+      + keyRows().map(([g, rows]) => `<h4 class="mkgrp">${esc(t(g))}</h4><dl class="keys">${rows.map(([k, l]) => `<dt>${k}</dt><dd>${esc(t(l))}</dd>`).join("")}</dl>`).join("")
+      + `<p class="hint">${esc(t("maps.keys.hint"))}</p></div>`;
+    keysW.hidden = false;
+    for (const el of document.body.children) if (el !== keysW && !el.matches("script, .toast")) el.inert = true;
+    keysW.querySelector(".sheet").focus({ preventScroll: true });
+  }
+  function closeKeys() {
+    if (!keysOpen()) return;
+    keysW.hidden = true; keysW.innerHTML = "";
+    if (!gone) for (const el of document.body.children) el.inert = false; // alleen te openen zonder kaartmenu (? en de link in paneel Kaart)
+    const f = keysBack && keysBack.isConnected ? keysBack : null;
+    keysBack = null;
+    (f || (viewName === "edit" ? cv : $("m-new"))).focus({ preventScroll: true });
+  }
+  keysW.addEventListener("click", (e) => { if (e.target.closest("[data-keys=close]")) closeKeys(); });
+  $("m-keys").addEventListener("click", openKeys);
+
   document.addEventListener("keydown", (e) => {
     if (gone) return;
+    if (keysOpen()) { if (e.key === "Escape") { e.preventDefault(); closeKeys(); } return; } // WP65: alles eronder is inert
+    if (e.key === "?" && !e.metaKey && !e.ctrlKey && !e.altKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && menu.hidden && !aligning) { e.preventDefault(); openKeys(); return; }
     if (e.key === "Escape" && !menu.hidden) { e.preventDefault(); closeMenu(); return; }
     if (aligning && menu.hidden) { // WP59: pijltjes schuiven de afbeelding, Esc = Gereed
       const dir = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" }[e.key];
@@ -1247,7 +1316,8 @@ async function boot() {
       const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
       let did = true;
       if (dir && onCv) { if (o) nudgeSel(dir[0], dir[1], e.shiftKey); else moveCursor(dir[0], dir[1]); }
-      else if ((e.key === "Enter" || e.key === " " || k === "n") && onCv && painting()) { /* WP63: in Verven niet selecteren (toetsenbordweg: WP65) */ }
+      else if ((e.key === "Enter" || e.key === " ") && onCv && painting()) { if (!e.repeat) paintKey(); } // WP65: verven op de cursorcel (ingedrukt houden verft niet tien keer)
+      else if (k === "n" && onCv && painting()) { /* WP63: in Verven niet selecteren */ }
       else if ((e.key === "Enter" || e.key === " ") && onCv) enterKey();
       else if (k === "n" && onCv) nextObj(e.shiftKey ? -1 : 1);
       else if (o && k === "r") turn(e.shiftKey ? -1 : 1);
@@ -1287,6 +1357,9 @@ async function boot() {
     d.querySelector("button").focus();
   }
 
+  // WP65: draaien of venster smaller/breder over 768 px: zijpaneel ↔ paneel van onderen (dock bereikbaar, passend blijft passend)
+  const onSide = () => { dockFocus(side() || (sheet.hidden && lsheet.hidden)); odockFocus(side() || osheet.hidden); chrome(); if (auto) fit(); else set(view); };
+  try { sideMq.addEventListener("change", onSide); } catch { try { sideMq.addListener(onSide); } catch { /* geen live wissel */ } }
   if (window.ResizeObserver) new ResizeObserver(measure).observe(wrap);
   window.addEventListener("resize", measure);
   // themawissel (systeem): kleuren opnieuw lezen; een vaste keuze zet js/theme.js al vóór de eerste paint
@@ -1329,4 +1402,4 @@ async function boot() {
   }
 }
 
-boot().catch((e) => { console.error("Inn the Grid: boot failed", e); });
+boot().catch((e) => { console.error("Inn Sight: boot failed", e); });

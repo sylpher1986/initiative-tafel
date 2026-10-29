@@ -21,11 +21,11 @@ const MIMES = ["image/png", "image/jpeg", "image/webp"];
 /** Migraties per bestandsversie: MIGRATE[v](doc) maakt van een v-bestand een (v+1)-bestand. Nog leeg (v1 = eerste). */
 export const MIGRATE = {};
 
-/** Bestandsnaam: inn-the-grid-<kaartnaam>-YYYY-MM-DD-HH-MM.json (lokale tijd, zoals Initiative) */
+/** Bestandsnaam: inn-sight-<kaartnaam>-YYYY-MM-DD-HH-MM.json (lokale tijd, zoals Initiative) */
 export function fileName(name, d) {
   const p = (n) => String(n).padStart(2, "0");
   const slug = [...String(name ?? "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "")].slice(0, 40).join("").replace(/-+$/, "") || "map";
-  return `inn-the-grid-${slug}-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}-${p(d.getMinutes())}.json`;
+  return `inn-sight-${slug}-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}-${p(d.getMinutes())}.json`;
 }
 
 /** Bytes → base64 in stukken (geen String.fromCharCode met miljoenen argumenten). Stukgrootte deelbaar door 3. */

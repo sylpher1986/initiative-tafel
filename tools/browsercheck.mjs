@@ -124,7 +124,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
@@ -780,7 +780,7 @@ const SCEN = {
     await toList();
     await tap(page, `#m-lrows .mkl-m[data-id="${m1.id}"]`);
     const [dl] = await Promise.all([page.waitForEvent("download"), tap(page, '#m-menu [data-m="exp"]')]);
-    if (!/^inn-the-grid-test-fixture-\d{4}-\d\d-\d\d-\d\d-\d\d\.json$/.test(dl.suggestedFilename())) throw new Error("bestandsnaam: " + dl.suggestedFilename());
+    if (!/^inn-sight-test-fixture-\d{4}-\d\d-\d\d-\d\d-\d\d\.json$/.test(dl.suggestedFilename())) throw new Error("bestandsnaam: " + dl.suggestedFilename());
     const text = readFileSync(await dl.path(), "utf8"), doc = JSON.parse(text);
     if (doc.format !== "kevs-inn-maps" || doc.version !== 1 || "id" in doc.map || /blob:|https?:|indexeddb/i.test(text) || !doc.assets[sha]) throw new Error("exportbestand: " + text.slice(0, 200));
     await page.locator("#m-menu").waitFor({ state: "hidden" });
@@ -1424,6 +1424,145 @@ const SCEN = {
       const ob = (await p2.evaluate(() => window.__maps.map())).objs.find((x) => x.asset === T);
       if (!near(await pixel(ob.x + 0.125, ob.y + 0.125, p2), [0xc9, 0xb4, 0x8a])) throw new Error("geïmporteerde eigen asset niet getekend");
     } finally { await ctx2.close(); }
+  },
+  // WP65 (Maps 0.10.0): responsief, touch en eerste gebruik. Uitleg in een lege kaart, ?-overzicht (toets en link),
+  // foutregels onder de rij (velden houden dezelfde top), kernflow (achtergrond → object → verven met het toetsenbord →
+  // export), toegankelijke namen, en iPad portret (768) en desktop (1280): zijpaneel rechts tussen kop en dock, dock
+  // bereikbaar, passend maken links van het paneel, geen horizontaal scrollen. --shots=wp65: lege kaart, zijpaneel.
+  async wp65(page) {
+    const ready = () => page.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);
+    await ready();
+    const frame = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const M = () => page.evaluate(() => ({ map: window.__maps.map(), hist: window.__maps.hist(), view: window.__maps.view(), size: window.__maps.size(), paint: window.__maps.paint(), kbd: window.__maps.kbd() }));
+    const vis = (sel) => page.locator(sel).isVisible();
+    // uitleg in een lege kaart, geen melding bij het opstarten
+    if (!(await vis("#m-empty")) || (await page.locator("#m-toast .tmsg").count())) throw new Error("lege kaart: uitleg zichtbaar, geen melding");
+    await snap(page, "wp65", "leeg");
+    // toegankelijke namen: elke zichtbare knop heeft tekst of aria-label
+    const noName = () => page.evaluate(() => [...document.querySelectorAll("button")].filter((b) => b.offsetParent && !(b.getAttribute("aria-label") || b.textContent).trim()).map((b) => b.id || b.className));
+    let nn = await noName();
+    if (nn.length) throw new Error("knop zonder naam: " + nn.join(", "));
+    // ? opent het overzicht, Esc sluit, focus terug
+    await page.locator("#m-canvas").focus();
+    await page.keyboard.press("?");
+    await page.locator("#m-keysw .keys").first().waitFor({ state: "visible" });
+    if ((await page.locator("#m-keysw dl.keys").count()) !== 3 || !(await page.evaluate(() => document.getElementById("m-stage").inert))) throw new Error("overzicht: 3 groepen, rest inert");
+    await page.keyboard.press("ArrowRight"); // geblokkeerd zolang het overzicht open is
+    if ((await M()).kbd) throw new Error("pijltje onder het overzicht verplaatste de cursor");
+    await page.keyboard.press("Escape");
+    await page.locator("#m-keysw").waitFor({ state: "hidden" });
+    if (!(await page.evaluate(() => document.activeElement && document.activeElement.id === "m-canvas" && !document.getElementById("m-stage").inert))) throw new Error("Esc: focus terug op de kaart");
+    // paneel Kaart: link Sneltoetsen (≥ 44 px), foutregel onder de rij
+    await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    if (await vis("#m-empty")) throw new Error("uitleg weg zolang een paneel open is");
+    const kb = await page.locator("#m-keys").boundingBox();
+    if (!kb || kb.height < 44) throw new Error("link Sneltoetsen < 44 px");
+    await tap(page, "#m-keys"); await page.locator("#m-keysw .sheet").waitFor({ state: "visible" });
+    await tap(page, '#m-keysw .shead [data-keys="close"]'); await page.locator("#m-keysw").waitFor({ state: "hidden" });
+    if (!(await page.evaluate(() => document.activeElement && document.activeElement.id === "m-keys"))) throw new Error("sluiten: focus terug op de link");
+    // ten opzichte van het rastertype erboven (het paneel kan intussen scrollen)
+    const tops = () => page.evaluate(() => ["m-cols", "m-rows"].map((id) => Math.round(document.getElementById(id).getBoundingClientRect().top - document.getElementById("m-type").getBoundingClientRect().top)));
+    const t0 = await tops();
+    await page.locator("#m-cols").fill("0");
+    if (!(await vis("#m-cols-e"))) throw new Error("foutregel kolommen");
+    const t1 = await tops();
+    if (t0[0] !== t0[1] || t1[0] !== t1[1] || t1[0] !== t0[0]) throw new Error("foutregel verschuift een veld: " + JSON.stringify([t0, t1]));
+    const eb = await page.locator("#m-cols-e").boundingBox(), rb = await page.locator("#m-rows").boundingBox();
+    if (eb.y < rb.y + rb.height) throw new Error("foutregel niet onder de hele rij");
+    await page.locator("#m-rows").fill("999"); // twee fouten = één regel
+    if (!(await vis("#m-cols-e")) || (await vis("#m-rows-e"))) throw new Error("twee fouten: één regel");
+    for (const [sel, v] of [["#m-cols", "10"], ["#m-rows", "8"]]) { await page.locator(sel).fill(v); await page.locator(sel).press("Enter"); }
+    if ((await vis("#m-cols-e")) || (await vis("#m-rows-e"))) throw new Error("geldig: foutregels weg");
+    // kernflow: achtergrond
+    await page.locator("#m-bg-file").setInputFiles({ name: "kaart.png", mimeType: "image/png", buffer: await fixture(page, 700, 560, 70) });
+    await page.waitForFunction(() => window.__maps.bg().state === "set", null, { timeout: 5000 });
+    const p0 = await page.locator("#m-ppc").boundingBox(), a0 = await page.locator("#m-across").boundingBox();
+    await page.locator("#m-ppc").fill("2");
+    const p1 = await page.locator("#m-ppc").boundingBox(), a1 = await page.locator("#m-across").boundingBox();
+    if (!(await vis("#m-ppc-e")) || Math.round(p1.y) !== Math.round(a1.y) || Math.round(p0.y) !== Math.round(p1.y) || Math.round(a0.y) !== Math.round(a1.y)) throw new Error("foutregel pixels per cel verschuift een veld");
+    await page.locator("#m-ppc").fill("70"); await page.locator("#m-ppc").press("Enter");
+    await tap(page, "#m-close"); await frame();
+    if (await vis("#m-empty")) throw new Error("met een achtergrond: geen uitleg meer");
+    // object plaatsen
+    await tap(page, "#m-lib"); await page.locator("#m-lsheet").waitFor({ state: "visible" });
+    await tap(page, '#m-cats [data-v="furniture"]'); await tap(page, '#m-tiles [data-id="table"]');
+    await page.locator("#m-canvas").focus();
+    await page.keyboard.press("ArrowRight"); await page.keyboard.press("Enter"); await frame();
+    if ((await M()).map.objs?.length !== 1) throw new Error("plaatsen met Enter");
+    // verven met het toetsenbord: tab Terrein, uitleg tot er een terrein gekozen is
+    await tap(page, '#m-ltab [data-v="terrain"]');
+    if (!(await vis("#m-terr-h"))) throw new Error("Terrein zonder keuze: uitleg");
+    await tap(page, '#m-tool [data-v="brush"]'); await tap(page, '#m-terr [data-t="grass"]');
+    if (await vis("#m-terr-h")) throw new Error("terrein gekozen: uitleg weg");
+    await page.locator("#m-canvas").focus();
+    const keys = async (k, n = 1) => { for (let i = 0; i < n; i++) await page.keyboard.press(k); };
+    await keys("ArrowUp", 10); await keys("ArrowLeft", 12); // cursor in de hoek (0, 0): pijltjes klemmen op de kaart
+    let m = await M();
+    if (m.kbd.c !== 0 || m.kbd.r !== 0) throw new Error("cursor in de hoek: " + JSON.stringify(m.kbd));
+    const h0 = m.hist.size;
+    await page.keyboard.press("Enter"); await frame();
+    m = await M();
+    if (m.paint.cells !== 1 || m.hist.size !== h0 + 1) throw new Error("Enter verft de cursorcel: " + JSON.stringify({ cells: m.paint.cells, h: [h0, m.hist.size] }));
+    await keys("ArrowRight"); await page.keyboard.press(" "); await frame();
+    if ((await M()).paint.cells !== 2) throw new Error("spatie verft");
+    await tap(page, '#m-tool [data-v="wide"]'); await page.locator("#m-canvas").focus();
+    await keys("ArrowRight", 3); await keys("ArrowDown", 4); await page.keyboard.press("Enter"); await frame(); // (4, 4): 3×3 helemaal nieuw
+    if ((await M()).paint.cells !== 11) throw new Error("Breed met Enter: 3×3 erbij: " + (await M()).paint.cells);
+    await tap(page, '#m-tool [data-v="fill"]'); await tap(page, '#m-terr [data-t="water"]'); await page.locator("#m-canvas").focus();
+    await keys("ArrowRight", 5); await keys("ArrowDown", 3); // (9, 7): leeg, vult de rest van de 10 × 8
+    await page.keyboard.press("Enter"); await frame();
+    m = await M();
+    if (m.paint.cells !== 80 || !m.paint.ids.includes("water")) throw new Error("Vullen met Enter: " + JSON.stringify(m.paint));
+    await page.keyboard.press("Control+z"); await frame();
+    if ((await M()).paint.cells !== 11) throw new Error("Ongedaan na Vullen met Enter");
+    await page.keyboard.press("Escape"); // Bibliotheek dicht
+    await page.locator("#m-lsheet").waitFor({ state: "hidden" });
+    nn = await noName();
+    if (nn.length) throw new Error("knop zonder naam: " + nn.join(", "));
+    // exporteren
+    await page.evaluate(() => { try { Object.defineProperty(navigator, "canShare", { value: undefined, configurable: true }); } catch { /* */ } });
+    const id = (await M()).map.id;
+    await page.evaluate(() => window.__maps.flush());
+    await tap(page, "#m-maps"); await page.waitForFunction(() => window.__maps.view$() === "list");
+    await tap(page, `#m-lrows .mkl-m[data-id="${id}"]`);
+    const [dl] = await Promise.all([page.waitForEvent("download"), tap(page, '#m-menu [data-m="exp"]')]);
+    if (!/^inn-sight-/.test(dl.suggestedFilename())) throw new Error("bestandsnaam: " + dl.suggestedFilename());
+    const doc = JSON.parse((await import("node:fs")).readFileSync(await dl.path(), "utf8"));
+    if (!/^Inn Sight \d+\.\d+\.\d+$/.test(doc.app) || doc.format !== "kevs-inn-maps" || !doc.map.terr || doc.map.objs.length !== 1 || !doc.map.bg) throw new Error("exportbestand: " + JSON.stringify({ app: doc.app, format: doc.format }));
+    await page.locator("#m-menu").waitFor({ state: "hidden" });
+    await tap(page, "#m-back"); await page.waitForFunction(() => window.__maps.view$() === "edit");
+    // iPad portret en desktop: zijpaneel
+    const orig = page.viewportSize();
+    for (const vp of [{ width: 768, height: 1024 }, { width: 1280, height: 800 }]) {
+      await page.setViewportSize(vp); await frame(); await frame();
+      const hs = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      if (hs > 0) throw new Error(`${vp.width}: horizontaal scrollen ${hs}px`);
+      await page.keyboard.press("0"); await frame();
+      await tap(page, "#m-lib"); await page.locator("#m-lsheet").waitFor({ state: "visible" }); await frame(); await frame();
+      const g = await page.evaluate(() => {
+        const r = (id) => document.getElementById(id).getBoundingClientRect();
+        return { s: r("m-lsheet"), top: r("m-stage").top, dock: r("m-dock").top, tab: [...document.querySelectorAll("#m-dock button")].some((b) => b.getAttribute("tabindex") === "-1"),
+          strip: r("m-pstrip"), side: document.body.classList.contains("mside") };
+      });
+      if (Math.abs(g.s.right - vp.width) > 1 || Math.abs(g.s.width - 360) > 1 || Math.abs(g.s.top - g.top) > 1 || Math.abs(g.s.bottom - g.dock) > 1) throw new Error(`${vp.width}: zijpaneel ` + JSON.stringify(g.s));
+      if (g.tab || !g.side) throw new Error(`${vp.width}: dock moet bereikbaar zijn naast het zijpaneel`);
+      m = await M();
+      const right = m.view.x + 10 * 48 * m.view.z;
+      if (right > g.s.left + 1) throw new Error(`${vp.width}: passend maken links van het paneel: ${right} > ${g.s.left}`);
+      // tandwiel wisselt in één tik van paneel (de dock ligt er niet onder)
+      await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+      if (await vis("#m-lsheet")) throw new Error(`${vp.width}: één paneel tegelijk`);
+      await tap(page, '#m-tiles [data-id="table"]').catch(() => {}); // ligt onder het andere paneel: niets
+      await snap(page, "wp65", "zijpaneel-" + vp.width);
+      await tap(page, "#m-close"); await frame();
+      if (await page.evaluate(() => document.body.classList.contains("mside"))) throw new Error(`${vp.width}: mside na sluiten`);
+    }
+    await page.setViewportSize(orig); await frame();
+    // terug op telefoonbreedte: paneel van onderen, dock onder het paneel niet met Tab bereikbaar
+    await tap(page, "#m-lib"); await page.locator("#m-lsheet").waitFor({ state: "visible" });
+    const ph = await page.evaluate(() => ({ b: Math.round(document.getElementById("m-lsheet").getBoundingClientRect().bottom), vh: document.documentElement.clientHeight, tab: document.getElementById("m-set").getAttribute("tabindex") }));
+    if (Math.abs(ph.b - ph.vh) > 1 || ph.tab !== "-1") throw new Error("telefoon: paneel van onderen " + JSON.stringify(ph));
+    await tap(page, "#m-lclose");
   },
   speler: null, // eigen startpagina, zie START
   home: null, homeen: null, notfound: null, // WP30: publieke homepage per taal en de niet-gevonden-pagina (START)

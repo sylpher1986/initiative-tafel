@@ -13,11 +13,11 @@
 <link rel="stylesheet" href="/css/maps.css">
 <script type="module" src="/js/maps/main.js"></script>
 </head>
-<!-- Inn the Grid (G4, WP56): geen manifest-link en geen it-version (docs/i18n.md §9.2 stap 2; installeren = D7, WP67) -->
+<!-- Inn Sight (G4, WP56): geen manifest-link en geen it-version (docs/i18n.md §9.2 stap 2; installeren = D7, WP67) -->
 <body class="maps">
 <header class="mtop">
   <a class="mhome" href="{{base}}/" aria-label="{{t:maps.home}}"><!-- embleem: zelfde tekening als EMBLEM in tools/icons.mjs --><svg class="emb" viewBox="20 2 176 196" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M108 16 181 58v84l-73 42-73-42V58Z" stroke-width="11"/><g transform="translate(0 13)" stroke-width="10"><path d="M100 47v-8q8-10 16 0v8"/><path d="M88 55h40l-8 11H96Z"/><path d="M96 70h24l8 10v42H88V80Z"/><path d="M84 130h48"/></g><path d="M108 102c-9 10-9 19 0 26 9-7 9-16 0-26Z" fill="currentColor" stroke="none"/></svg></a>
-  <!-- WP58: in de editor de kaartnaam met daaronder de opslagstatus (altijd zichtbaar); in de lijst "Inn the Grid" -->
+  <!-- WP58: in de editor de kaartnaam met daaronder de opslagstatus (altijd zichtbaar); in de lijst "Inn Sight" -->
   <div class="mtitle"><h1 id="m-name">{{t:maps.title}}</h1><div class="mstat" id="m-stat" aria-live="off"></div></div>
   <!-- WP61: Ongedaan/Opnieuw in de kop (de kop blijft zichtbaar als een paneel de dock afdekt); de versie staat onderaan paneel Kaart -->
   <div class="mhist">
@@ -36,6 +36,9 @@
   <p class="mstrip" id="m-sstrip" hidden></p>
   <p class="vh" id="m-sr" role="status" aria-live="polite"></p>
   <p class="vh" id="m-khelp">{{t:maps.sel.keys}}</p>
+  <!-- WP65: rustige uitleg in een lege kaart (geen objecten, terrein of achtergrond), zonder sluitknop; weg zodra er iets
+       op staat of een paneel open is. Geen pop-up bij het opstarten. -->
+  <p class="mempty" id="m-empty" hidden>{{t:maps.empty}}</p>
 </main>
 <!-- WP58: Mijn kaarten. Eigen weergave in dezelfde pagina (editor verborgen, history.pushState: terug = editor). Rij-tik
      opent, ⋯ opent het menu (Hernoemen, Dupliceren, Exporteren, Verwijderen). Lijst en meldingen vult js/maps/main.js. -->
@@ -98,9 +101,13 @@
   <label>{{t:maps.name}}<input id="m-mname" type="text" enterkeyhint="done" autocomplete="off" maxlength="60" spellcheck="false"></label>
   <div class="mfield"><span class="lab" id="m-type-l">{{t:maps.grid.type}}</span>
     <div class="seg" id="m-type" role="group" aria-labelledby="m-type-l"><button type="button" data-v="square">{{t:maps.grid.square}}</button><button type="button" data-v="pointy">{{t:maps.grid.pointy}}</button><button type="button" data-v="flat">{{t:maps.grid.flat}}</button></div></div>
-  <div class="f2">
-    <label>{{t:maps.grid.cols}}<input id="m-cols" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-describedby="m-cols-e"><span class="ferr" id="m-cols-e" hidden></span></label>
-    <label>{{t:maps.grid.rows}}<input id="m-rows" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-describedby="m-rows-e"><span class="ferr" id="m-rows-e" hidden></span></label>
+  <!-- WP65: foutregels buiten de labels en onder de hele rij (een fout duwt het buurveld niet omlaag) -->
+  <div class="mrow2">
+    <div class="f2">
+      <label>{{t:maps.grid.cols}}<input id="m-cols" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-describedby="m-cols-e"></label>
+      <label>{{t:maps.grid.rows}}<input id="m-rows" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-describedby="m-rows-e"></label>
+    </div>
+    <span class="ferr" id="m-cols-e" hidden></span><span class="ferr" id="m-rows-e" hidden></span>
   </div>
   <div class="mfield"><span class="lab" id="m-show-l">{{t:maps.grid.lines}}</span>
     <div class="seg" id="m-show" role="group" aria-labelledby="m-show-l"><button type="button" data-v="on">{{t:maps.grid.on}}</button><button type="button" data-v="off">{{t:maps.grid.off}}</button></div></div>
@@ -114,9 +121,12 @@
     <input type="file" id="m-bg-file" accept="image/png,image/jpeg,image/webp" hidden tabindex="-1">
     <p class="mwarn" id="m-bg-miss" hidden>{{t:maps.bg.missing}}</p>
     <div class="mbg-set" id="m-bg-set" hidden>
-      <div class="f2">
-        <label>{{t:maps.bg.ppc}}<input id="m-ppc" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-ppc-e"><span class="ferr" id="m-ppc-e" hidden></span></label>
-        <label>{{t:maps.bg.across}}<input id="m-across" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-across-e"><span class="ferr" id="m-across-e" hidden></span></label>
+      <div class="mrow2">
+        <div class="f2">
+          <label>{{t:maps.bg.ppc}}<input id="m-ppc" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-ppc-e"></label>
+          <label>{{t:maps.bg.across}}<input id="m-across" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-across-e"></label>
+        </div>
+        <span class="ferr" id="m-ppc-e" hidden></span><span class="ferr" id="m-across-e" hidden></span>
       </div>
       <button type="button" class="btn" id="m-bg-fit" hidden></button>
       <button type="button" class="btn" id="m-bg-align">{{t:maps.bg.align}}</button>
@@ -129,7 +139,8 @@
     </div>
     <p class="ferr" id="m-bg-e" role="alert" hidden></p>
   </div>
-  <p class="hint mver">{{t:maps.title}} <span id="m-ver"></span></p>
+  <!-- WP65: versie en de link naar het sneltoetsenoverzicht (ook met de toets ?) -->
+  <div class="mfoot"><p class="hint mver">{{t:maps.title}} <span id="m-ver"></span></p><button type="button" class="link mkeys" id="m-keys" aria-keyshortcuts="?" aria-haspopup="dialog">{{t:maps.keys.btn}}</button></div>
 </section>
 <!-- WP61: paneel Bibliotheek. Zelfde vorm als paneel Kaart (geen dim, kaart blijft bedienbaar). Een tegel kiezen zet
      Plaatsen aan (tik op de kaart = plaatsen, slepen = pannen); Plaatsen bestaat alleen zolang dit paneel open is.
@@ -164,6 +175,8 @@
   <div class="mterr" id="m-terr" role="group" aria-labelledby="m-terr-l" hidden><span class="vh" id="m-terr-l">{{t:maps.lib.terrain}}</span></div>
   <div class="mfield" id="m-tools-f" hidden><span class="vh" id="m-tool-l">{{t:maps.tool.title}}</span>
     <div class="seg" id="m-tool" role="group" aria-labelledby="m-tool-l"><button type="button" data-v="brush">{{t:maps.tool.brush}}</button><button type="button" data-v="wide">{{t:maps.tool.wide}}</button><button type="button" data-v="fill">{{t:maps.tool.fill}}</button></div></div>
+  <!-- WP65: zolang er geen terrein gekozen is (daarna neemt de strook bovenin het over) -->
+  <p class="hint" id="m-terr-h" hidden>{{t:maps.paint.hint}}</p>
 </section>
 <!-- WP62: paneel Object (via Meer; zelfde vorm als paneel Kaart, zonder dim). Velden toegepast bij blur/Enter, komma of
      punt; Sluiten/Esc = terug naar de dock, de selectie blijft. -->
@@ -175,11 +188,13 @@
       <input id="m-orot-v" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-orot-v-e">
       <button type="button" class="btn" id="m-oright" aria-label="{{t:maps.obj.right}}"><span aria-hidden="true">+90°</span></button></div>
     <span class="ferr" id="m-orot-v-e" hidden></span></div>
-  <div class="f2">
-    <label>{{t:maps.obj.w}}<input id="m-ow" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-ow-e"></label>
-    <label>{{t:maps.obj.h}}<input id="m-oh" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-oh-e"></label>
+  <div class="mrow2">
+    <div class="f2">
+      <label>{{t:maps.obj.w}}<input id="m-ow" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-ow-e"></label>
+      <label>{{t:maps.obj.h}}<input id="m-oh" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-oh-e"></label>
+    </div>
+    <span class="ferr" id="m-ow-e" hidden></span><span class="ferr" id="m-oh-e" hidden></span>
   </div>
-  <span class="ferr" id="m-ow-e" hidden></span><span class="ferr" id="m-oh-e" hidden></span>
   <div class="mfield"><span class="lab" id="m-olayer-l">{{t:maps.obj.layer}}</span>
     <div class="seg" id="m-olayer" role="group" aria-labelledby="m-olayer-l"><button type="button" data-v="floor">{{t:maps.obj.floor}}</button><button type="button" data-v="object">{{t:maps.obj.object}}</button></div></div>
   <div class="mfield"><span class="lab" id="m-oorder-l">{{t:maps.obj.order}}</span>
@@ -191,6 +206,8 @@
   <div class="dim" data-m="close"></div>
   <div class="sheet" id="m-menu-s" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="m-menu-t"></div>
 </div>
+<!-- WP65: sneltoetsenoverzicht (modaal, met dim; vult js/maps/main.js) -->
+<div class="sheet-wrap" id="m-keysw" hidden></div>
 <div class="toast" id="m-toast" role="status" aria-live="polite"></div>
 </body>
 </html>

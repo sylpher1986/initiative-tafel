@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Inn the Grid · Kev’s Inn</title>
+<title>Inn Sight · Kev’s Inn</title>
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#241811" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1d130d" media="(prefers-color-scheme: dark)">
@@ -14,12 +14,12 @@
 <link rel="stylesheet" href="/css/maps.css">
 <script type="module" src="/js/maps/main.js"></script>
 </head>
-<!-- Inn the Grid (G4, WP56): geen manifest-link en geen it-version (docs/i18n.md §9.2 stap 2; installeren = D7, WP67) -->
+<!-- Inn Sight (G4, WP56): geen manifest-link en geen it-version (docs/i18n.md §9.2 stap 2; installeren = D7, WP67) -->
 <body class="maps">
 <header class="mtop">
   <a class="mhome" href="/nl/" aria-label="Homepage van Kev’s Inn"><!-- embleem: zelfde tekening als EMBLEM in tools/icons.mjs --><svg class="emb" viewBox="20 2 176 196" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M108 16 181 58v84l-73 42-73-42V58Z" stroke-width="11"/><g transform="translate(0 13)" stroke-width="10"><path d="M100 47v-8q8-10 16 0v8"/><path d="M88 55h40l-8 11H96Z"/><path d="M96 70h24l8 10v42H88V80Z"/><path d="M84 130h48"/></g><path d="M108 102c-9 10-9 19 0 26 9-7 9-16 0-26Z" fill="currentColor" stroke="none"/></svg></a>
-  <!-- WP58: in de editor de kaartnaam met daaronder de opslagstatus (altijd zichtbaar); in de lijst "Inn the Grid" -->
-  <div class="mtitle"><h1 id="m-name">Inn the Grid</h1><div class="mstat" id="m-stat" aria-live="off"></div></div>
+  <!-- WP58: in de editor de kaartnaam met daaronder de opslagstatus (altijd zichtbaar); in de lijst "Inn Sight" -->
+  <div class="mtitle"><h1 id="m-name">Inn Sight</h1><div class="mstat" id="m-stat" aria-live="off"></div></div>
   <!-- WP61: Ongedaan/Opnieuw in de kop (de kop blijft zichtbaar als een paneel de dock afdekt); de versie staat onderaan paneel Kaart -->
   <div class="mhist">
     <button type="button" class="btn" id="m-undo" aria-label="Ongedaan maken" disabled><svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-undo"/></svg></button>
@@ -36,7 +36,10 @@
   <!-- WP62: strook bovenin zolang er een object geselecteerd is (welk object, hoe je het verplaatst) -->
   <p class="mstrip" id="m-sstrip" hidden></p>
   <p class="vh" id="m-sr" role="status" aria-live="polite"></p>
-  <p class="vh" id="m-khelp">Toetsenbord: pijltjes verplaatsen de cursor, of het geselecteerde object (Shift: in kleine stappen). Enter selecteert of plaatst. N selecteert het volgende object. R draait, Delete verwijdert, Esc heft de selectie op.</p>
+  <p class="vh" id="m-khelp">Toetsenbord: pijltjes verplaatsen de cursor, of het geselecteerde object (Shift: in kleine stappen). Enter selecteert, plaatst of verft. N selecteert het volgende object. R draait, Delete verwijdert, Esc heft de selectie op.</p>
+  <!-- WP65: rustige uitleg in een lege kaart (geen objecten, terrein of achtergrond), zonder sluitknop; weg zodra er iets
+       op staat of een paneel open is. Geen pop-up bij het opstarten. -->
+  <p class="mempty" id="m-empty" hidden>Lege kaart. Kies onderdelen of terrein in de Bibliotheek. Raster en achtergrond staan onder het tandwiel.</p>
 </main>
 <!-- WP58: Mijn kaarten. Eigen weergave in dezelfde pagina (editor verborgen, history.pushState: terug = editor). Rij-tik
      opent, ⋯ opent het menu (Hernoemen, Dupliceren, Exporteren, Verwijderen). Lijst en meldingen vult js/maps/main.js. -->
@@ -99,9 +102,13 @@
   <label>Naam<input id="m-mname" type="text" enterkeyhint="done" autocomplete="off" maxlength="60" spellcheck="false"></label>
   <div class="mfield"><span class="lab" id="m-type-l">Raster</span>
     <div class="seg" id="m-type" role="group" aria-labelledby="m-type-l"><button type="button" data-v="square">Vierkant</button><button type="button" data-v="pointy">Hex punt</button><button type="button" data-v="flat">Hex plat</button></div></div>
-  <div class="f2">
-    <label>Kolommen<input id="m-cols" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-describedby="m-cols-e"><span class="ferr" id="m-cols-e" hidden></span></label>
-    <label>Rijen<input id="m-rows" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-describedby="m-rows-e"><span class="ferr" id="m-rows-e" hidden></span></label>
+  <!-- WP65: foutregels buiten de labels en onder de hele rij (een fout duwt het buurveld niet omlaag) -->
+  <div class="mrow2">
+    <div class="f2">
+      <label>Kolommen<input id="m-cols" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-describedby="m-cols-e"></label>
+      <label>Rijen<input id="m-rows" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-describedby="m-rows-e"></label>
+    </div>
+    <span class="ferr" id="m-cols-e" hidden></span><span class="ferr" id="m-rows-e" hidden></span>
   </div>
   <div class="mfield"><span class="lab" id="m-show-l">Rasterlijnen</span>
     <div class="seg" id="m-show" role="group" aria-labelledby="m-show-l"><button type="button" data-v="on">Aan</button><button type="button" data-v="off">Uit</button></div></div>
@@ -115,9 +122,12 @@
     <input type="file" id="m-bg-file" accept="image/png,image/jpeg,image/webp" hidden tabindex="-1">
     <p class="mwarn" id="m-bg-miss" hidden>Achtergrondafbeelding ontbreekt (browseropslag gewist).</p>
     <div class="mbg-set" id="m-bg-set" hidden>
-      <div class="f2">
-        <label>Pixels per cel<input id="m-ppc" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-ppc-e"><span class="ferr" id="m-ppc-e" hidden></span></label>
-        <label>Cellen in de breedte<input id="m-across" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-across-e"><span class="ferr" id="m-across-e" hidden></span></label>
+      <div class="mrow2">
+        <div class="f2">
+          <label>Pixels per cel<input id="m-ppc" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-ppc-e"></label>
+          <label>Cellen in de breedte<input id="m-across" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-across-e"></label>
+        </div>
+        <span class="ferr" id="m-ppc-e" hidden></span><span class="ferr" id="m-across-e" hidden></span>
       </div>
       <button type="button" class="btn" id="m-bg-fit" hidden></button>
       <button type="button" class="btn" id="m-bg-align">Uitlijnen</button>
@@ -130,7 +140,8 @@
     </div>
     <p class="ferr" id="m-bg-e" role="alert" hidden></p>
   </div>
-  <p class="hint mver">Inn the Grid <span id="m-ver"></span></p>
+  <!-- WP65: versie en de link naar het sneltoetsenoverzicht (ook met de toets ?) -->
+  <div class="mfoot"><p class="hint mver">Inn Sight <span id="m-ver"></span></p><button type="button" class="link mkeys" id="m-keys" aria-keyshortcuts="?" aria-haspopup="dialog">Sneltoetsen</button></div>
 </section>
 <!-- WP61: paneel Bibliotheek. Zelfde vorm als paneel Kaart (geen dim, kaart blijft bedienbaar). Een tegel kiezen zet
      Plaatsen aan (tik op de kaart = plaatsen, slepen = pannen); Plaatsen bestaat alleen zolang dit paneel open is.
@@ -165,6 +176,8 @@
   <div class="mterr" id="m-terr" role="group" aria-labelledby="m-terr-l" hidden><span class="vh" id="m-terr-l">Terrein</span></div>
   <div class="mfield" id="m-tools-f" hidden><span class="vh" id="m-tool-l">Gereedschap</span>
     <div class="seg" id="m-tool" role="group" aria-labelledby="m-tool-l"><button type="button" data-v="brush">Penseel</button><button type="button" data-v="wide">Breed</button><button type="button" data-v="fill">Vullen</button></div></div>
+  <!-- WP65: zolang er geen terrein gekozen is (daarna neemt de strook bovenin het over) -->
+  <p class="hint" id="m-terr-h" hidden>Kies een terrein en veeg of tik op de kaart.</p>
 </section>
 <!-- WP62: paneel Object (via Meer; zelfde vorm als paneel Kaart, zonder dim). Velden toegepast bij blur/Enter, komma of
      punt; Sluiten/Esc = terug naar de dock, de selectie blijft. -->
@@ -176,11 +189,13 @@
       <input id="m-orot-v" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-orot-v-e">
       <button type="button" class="btn" id="m-oright" aria-label="90° met de klok mee draaien"><span aria-hidden="true">+90°</span></button></div>
     <span class="ferr" id="m-orot-v-e" hidden></span></div>
-  <div class="f2">
-    <label>Breedte (cellen)<input id="m-ow" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-ow-e"></label>
-    <label>Hoogte (cellen)<input id="m-oh" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-oh-e"></label>
+  <div class="mrow2">
+    <div class="f2">
+      <label>Breedte (cellen)<input id="m-ow" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-ow-e"></label>
+      <label>Hoogte (cellen)<input id="m-oh" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-describedby="m-oh-e"></label>
+    </div>
+    <span class="ferr" id="m-ow-e" hidden></span><span class="ferr" id="m-oh-e" hidden></span>
   </div>
-  <span class="ferr" id="m-ow-e" hidden></span><span class="ferr" id="m-oh-e" hidden></span>
   <div class="mfield"><span class="lab" id="m-olayer-l">Laag</span>
     <div class="seg" id="m-olayer" role="group" aria-labelledby="m-olayer-l"><button type="button" data-v="floor">Vloer</button><button type="button" data-v="object">Object</button></div></div>
   <div class="mfield"><span class="lab" id="m-oorder-l">Volgorde</span>
@@ -192,6 +207,8 @@
   <div class="dim" data-m="close"></div>
   <div class="sheet" id="m-menu-s" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="m-menu-t"></div>
 </div>
+<!-- WP65: sneltoetsenoverzicht (modaal, met dim; vult js/maps/main.js) -->
+<div class="sheet-wrap" id="m-keysw" hidden></div>
 <div class="toast" id="m-toast" role="status" aria-live="polite"></div>
 </body>
 </html>

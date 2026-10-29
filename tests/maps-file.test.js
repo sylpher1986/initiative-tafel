@@ -163,12 +163,12 @@ test("kaart van een nieuwer schema of zonder bruikbare achtergrond wordt niet ha
 
 test("bestandsnaam: lokale tijd, kaartnaam als veilige slug", () => {
   const d = new Date(2026, 9, 28, 9, 5);
-  assert.equal(fileName("Kaart 1", d), "inn-the-grid-kaart-1-2026-10-28-09-05.json");
-  assert.equal(fileName("Crypte: Ëlvenpoort / niveau 2!", d), "inn-the-grid-crypte-elvenpoort-niveau-2-2026-10-28-09-05.json");
-  assert.equal(fileName("../../etc/passwd", d), "inn-the-grid-etc-passwd-2026-10-28-09-05.json");
-  assert.equal(fileName("", d), "inn-the-grid-map-2026-10-28-09-05.json");
-  assert.equal(fileName("🐉🐉", d), "inn-the-grid-map-2026-10-28-09-05.json");
-  assert.match(fileName("x".repeat(100), d), /^inn-the-grid-x{40}-2026/);
+  assert.equal(fileName("Kaart 1", d), "inn-sight-kaart-1-2026-10-28-09-05.json");
+  assert.equal(fileName("Crypte: Ëlvenpoort / niveau 2!", d), "inn-sight-crypte-elvenpoort-niveau-2-2026-10-28-09-05.json");
+  assert.equal(fileName("../../etc/passwd", d), "inn-sight-etc-passwd-2026-10-28-09-05.json");
+  assert.equal(fileName("", d), "inn-sight-map-2026-10-28-09-05.json");
+  assert.equal(fileName("🐉🐉", d), "inn-sight-map-2026-10-28-09-05.json");
+  assert.match(fileName("x".repeat(100), d), /^inn-sight-x{40}-2026/);
 });
 
 test("sha in de fixture klopt met de bytes (sanity van de fixtures)", async () => {
@@ -176,4 +176,22 @@ test("sha in de fixture klopt met de bytes (sanity van de fixtures)", async () =
   const [sha] = Object.keys(doc.assets);
   assert.equal(shaOf(Buffer.from(doc.assets[sha].data, "base64")), sha);
   assert.equal(doc.map.bg.asset, sha);
+});
+
+// WP65 (D13): de tool heet Inn Sight. Geen oude naam meer in de catalogi of op de pagina; een bestand van vóór de
+// hernoeming (app "Inn the Grid 0.x") importeert nog, want readFile kijkt naar format, niet naar app.
+test("hernoeming Inn Sight: catalogi en pagina's zonder oude naam, oud bestand importeert", async () => {
+  const ROOT = join(DIR, "../../..");
+  for (const f of ["locales/src/en/maps.js", "locales/src/nl/maps.js", "locales/maps/en.js", "locales/maps/nl.js", "pages/maps.html", "maps/index.html", "nl/maps/index.html"]) {
+    const s = readFileSync(join(ROOT, f), "utf8");
+    assert.ok(!/Inn the Grid/i.test(s), f + ": oude naam");
+  }
+  assert.ok(readFileSync(join(ROOT, "maps/index.html"), "utf8").includes("<title>Inn Sight · Kev’s Inn</title>"));
+  const old = JSON.parse(fx("valid.json").text);
+  assert.match(old.app, /^Inn the Grid 0\./);
+  const r = await read("valid.json");
+  assert.equal(r.ok, true);
+  assert.equal(r.map.name, "Test fixture");
+  const { parts } = buildParts({ ...r.map, id: "abcdef123456" }, r.assets, { app: "Inn Sight 0.10.0", now: new Date(0) });
+  assert.equal(JSON.parse(parts.join("")).format, "kevs-inn-maps"); // formaat bewust niet hernoemd
 });

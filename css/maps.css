@@ -144,3 +144,31 @@ body.maps{display:flex;flex-direction:column;padding:0;height:100dvh} /* zonder 
 .myname input{width:100%}
 .myrow .btn{flex:0 0 auto;padding:0 10px}
 .myrow .mdel{color:var(--bad)}
+/* WP65: foutregels onder de hele rij (buiten de labels): de velden blijven op dezelfde hoogte. Twee fouten tegelijk = één
+   regel (de eerste); de tweede komt terug zodra de eerste weg is. */
+.mrow2{display:grid;gap:4px}
+.mrow2 .ferr{margin:0}
+.mrow2 .ferr:not([hidden]) ~ .ferr{display:none}
+/* WP65: versie + Sneltoetsen onderaan paneel Kaart */
+.mfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.mkeys{min-height:44px;padding:0 4px}
+/* WP65: uitleg in een lege kaart (rustig, niet aanklikbaar) */
+.mempty{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);margin:0;width:calc(100% - 48px);max-width:280px;box-sizing:border-box;
+  text-align:center;color:var(--muted);font-size:.95rem;line-height:1.4;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px} /* leesbaar boven de rasterlijnen */
+.mempty[hidden]{display:none}
+#m-terr-h{margin:0}
+#m-terr-h[hidden]{display:none}
+/* WP65: sneltoetsenoverzicht */
+.mkgrp{margin:12px 0 0;font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.mkeysheet{max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow:auto;overscroll-behavior:contain}
+.mkeysheet .keys{margin:6px 0 4px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)} /* toets en uitleg even breed: op 320 px geen smalle uitlegkolom */
+.mkeysheet .keys dt{white-space:normal}
+/* WP65: vanaf 768 px (iPad, desktop) zijn de panelen een zijpaneel rechts over het canvas, van onder de kop tot boven de
+   dock (--m-top/--m-bot zet js/maps/main.js); de dock blijft bedienbaar. Passend maken gebeurt in het deel links. */
+@media (min-width:768px){
+  .msheet{top:var(--m-top,57px);bottom:var(--m-bot,61px);left:auto;right:0;width:360px;max-width:none;max-height:none;margin:0;border-radius:0;
+    border-left:1px solid var(--line);box-shadow:var(--shadow-pop);padding:12px max(16px,env(safe-area-inset-right,0px)) 16px 16px}
+  .msheet .grab{display:none}
+  body.mside .mstrip,body.mside .mempty{left:calc((100% - 360px) / 2)}
+  body.mside .mstrip{max-width:calc(100% - 384px)}
+}

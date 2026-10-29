@@ -10,7 +10,7 @@ const VENDOR_ASSETS = ["./vendor/pdfjs/pdf.js", "./vendor/pdfjs/pdf.worker.js"];
 // Gelijk houden aan js/maps/version.js (tests/maps-sw.test.js). Een Maps-release verhoogt alleen MAPS_VERSION: CACHE
 // van Initiative heet dan nog hetzelfde en install haalt bestanden die daar al staan niet opnieuw op (en omgekeerd).
 // Gedeeld (css/app.css, fonts, iconen, js/i18n/*, js/theme.js, homepage) staat in ASSETS: wijzigen = Initiative-release.
-const MAPS_VERSION = "0.9.0";
+const MAPS_VERSION = "0.10.0";
 const MAPS_CACHE = "kevs-inn-maps-" + MAPS_VERSION;
 const MAPS_ASSETS = [
   "./maps/",
