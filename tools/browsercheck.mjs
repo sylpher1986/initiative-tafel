@@ -124,7 +124,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
@@ -572,7 +572,7 @@ const SCEN = {
     }));
     await page.goto(here); await ready();
     const up = await page.evaluate(() => new Promise((res) => { const r = indexedDB.open("kevs-inn-maps"); r.onsuccess = () => { const db = r.result; res({ v: db.version, idx: [...db.transaction("assets").objectStore("assets").indexNames], id: window.__maps.map().id }); db.close(); }; }));
-    if (up.v !== 2 || !up.idx.includes("src") || up.id !== "upgrade01") throw new Error("upgrade v1 → v2: " + JSON.stringify(up));
+    if (up.v !== 3 || !up.idx.includes("src") || up.id !== "upgrade01") throw new Error("upgrade v1 → v3: " + JSON.stringify(up)); // WP64: versie 3 (store "mine")
     const frame = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     const B = () => page.evaluate(() => ({ ...window.__maps.bg(), bg: window.__maps.map().bg || null, grid: window.__maps.grid() }));
     const choose = async (sel, file) => {
@@ -1268,6 +1268,162 @@ const SCEN = {
     const ms = await page.evaluate(() => window.__maps.bench(20));
     if (page.viewportSize().width === 320) console.log(`  wp63: tekenen hex 100×100 vol: ${ms.toFixed(1)} ms/frame (zonder terrein ${ms0.toFixed(1)})`);
     if (ms > 80 || ms - ms0 > 15) throw new Error(`tekenen hex 100×100: ${ms.toFixed(1)} ms per frame`);
+  },
+  // WP64: eigen assets. Tab Eigen past op 320 px (drie tabs, geen afgekapte tekst); lege toestand; foute bestanden (eigen
+  // regel); toevoegen = item met naam uit het bestand, grootte uit de verhouding, miniatuur, meteen Plaatsen; tik = object
+  // (schema 5, tekent de afbeelding); beheerrij met gebruik; hernoemen (Enter, leeg = vorige); dezelfde upload = geen nieuw
+  // item; tweede item; quota-strook (estimate nagebootst); verwijderen van een gebruikt item (melding "blijft op 1 kaart",
+  // kaart tekent hem nog) + Ongedaan; herladen + opruimen houdt alles; export (download) → import in een ander
+  // browsercontext: kaart compleet, item in Mijn assets met de naam, ongebruikt item niet in het bestand; opslag vol.
+  // --shots=wp64: tab Eigen.
+  async wp64(page, base) {
+    const ready = (p = page) => p.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);
+    await ready();
+    const frame = (p = page) => p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const nl = (await page.evaluate(() => document.documentElement.lang)) === "nl", says = (re, txt) => (nl ? re.test(txt) : !!txt);
+    const ptr = (steps) => page.evaluate((steps) => {
+      const c = document.getElementById("m-canvas"), r = c.getBoundingClientRect();
+      for (const [type, x, y] of steps) c.dispatchEvent(new PointerEvent(type, { pointerId: 1, pointerType: "touch", isPrimary: true, clientX: r.left + x, clientY: r.top + y, bubbles: true, cancelable: true, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+    }, steps);
+    const scr = async (mx, my, p = page) => { const v = await p.evaluate(() => window.__maps.view()); return { x: mx * 48 * v.z + v.x, y: my * 48 * v.z + v.y }; };
+    const tapMap = async (mx, my) => { const q = await scr(mx, my); await ptr([["pointerdown", q.x, q.y], ["pointerup", q.x, q.y]]); await frame(); };
+    const pixel = async (mx, my, p = page) => { const q = await scr(mx, my, p); return p.evaluate(({ x, y }) => { const c = document.getElementById("m-canvas"), d = devicePixelRatio || 1; return [...c.getContext("2d").getImageData(Math.round(x * d), Math.round(y * d), 1, 1).data].slice(0, 3); }, q); };
+    const near = (a, b) => a.every((v, i) => Math.abs(v - b[i]) < 24);
+    const mine = (p = page) => p.evaluate(() => window.__maps.mine());
+    const add = async (file, p = page) => {
+      const [fc] = await Promise.all([p.waitForEvent("filechooser"), tap(p, "#m-myadd")]);
+      await fc.setFiles(file);
+      await p.waitForFunction(() => { const b = document.getElementById("m-myadd"); return b && !b.disabled && !b.hasAttribute("aria-busy"); }, null, { timeout: 10000 });
+    };
+    // kleine kaart (10 × 8)
+    await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    for (const [sel, v] of [["#m-cols", "10"], ["#m-rows", "8"]]) { await page.locator(sel).fill(v); await page.locator(sel).press("Enter"); }
+    await tap(page, "#m-close");
+    await tap(page, "#m-lib"); await page.locator("#m-lsheet").waitFor({ state: "visible" });
+    await tap(page, '#m-ltab [data-v="own"]');
+    await page.locator("#m-my").waitFor({ state: "visible" });
+    const tabs = await page.evaluate(() => [...document.querySelectorAll("#m-ltab button")].map((b) => ({ t: b.textContent, cut: b.scrollWidth > b.clientWidth + 1, w: b.getBoundingClientRect().width })));
+    if (tabs.length !== 3 || tabs.some((x) => x.cut)) throw new Error("tabs in de kop: " + JSON.stringify(tabs));
+    if (!(await page.locator("#m-myhint").isVisible()) || (await page.locator("#m-mytiles .mtile").count()) !== 1 || !(await page.locator("#m-snap").isVisible())) throw new Error("lege toestand tab Eigen");
+    // foute bestanden: eigen foutregel, geen item
+    for (const [name, mimeType, buffer] of [["x.svg", "image/svg+xml", Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')], ["x.png", "image/png", Buffer.from("geen afbeelding")]]) {
+      await add({ name, mimeType, buffer });
+      const e = await page.evaluate(() => ({ v: !document.getElementById("m-myerr").hidden, t: document.getElementById("m-myerr").textContent }));
+      if (!e.v || e.t.length < 10 || e.t.includes("⟦") || (await mine()).length) throw new Error(`${name}: ` + JSON.stringify(e));
+    }
+    // toevoegen: 256 × 128 → 2 × 1 cel, naam uit het bestand, miniatuur, meteen gekozen (Plaatsen)
+    const tok = await fixture(page, 256, 128, 32);
+    await add({ name: "goblin_token.png", mimeType: "image/png", buffer: tok });
+    let my = await mine();
+    if (my.length !== 1 || my[0].name !== "goblin token" || my[0].w !== 2 || my[0].h !== 1 || !my[0].thumb) throw new Error("toevoegen: " + JSON.stringify(my));
+    const T = my[0].sha;
+    let st = await page.evaluate(() => ({ err: document.getElementById("m-myerr").hidden, hint: document.getElementById("m-myhint").hidden, tool: window.__maps.tool(), foc: document.activeElement?.dataset?.id, img: document.querySelector("#m-mytiles .mtimg img")?.naturalWidth, row: !document.getElementById("m-myrow").hidden }));
+    if (!st.err || !st.hint || !st.tool.placing || st.tool.active !== T || st.foc !== T || !st.row) throw new Error("na toevoegen: " + JSON.stringify(st));
+    await page.waitForFunction(() => document.querySelector("#m-mytiles .mtimg img")?.naturalWidth > 0, null, { timeout: 5000 }).catch(() => { throw new Error("miniatuur laadt niet"); });
+    if (!says(/Niet gebruikt/, await page.locator("#m-myinfo").textContent())) throw new Error("gebruik vóór plaatsen: " + await page.locator("#m-myinfo").textContent());
+    await snap(page, "wp64", "eigen");
+    // plaatsen: object met de sha, grootte uit Mijn assets, schema 5, afbeelding getekend
+    await tapMap(3, 2);
+    let m = await page.evaluate(() => window.__maps.map());
+    const o = (m.objs || []).find((x) => x.asset === T);
+    if (!o || o.w !== 2 || o.h !== 1 || o.layer !== "object") throw new Error("plaatsen: " + JSON.stringify(m.objs));
+    await page.waitForFunction((s) => window.__maps.art(s), T, { timeout: 5000 });
+    await frame();
+    if (!near(await pixel(o.x + 0.125, o.y + 0.125), [0xc9, 0xb4, 0x8a])) throw new Error("eigen asset niet getekend: " + await pixel(o.x + 0.125, o.y + 0.125));
+    if (!says(/Op deze kaart/, await page.locator("#m-myinfo").textContent())) throw new Error("gebruik na plaatsen: " + await page.locator("#m-myinfo").textContent());
+    await mapsIdb(page, (all) => all.some((x) => x.schema === 5 && (x.objs || []).some((y) => y.asset === T)));
+    // hernoemen: Enter past toe, leeg = vorige naam
+    await tap(page, "#m-myren");
+    if ((await page.evaluate(() => document.activeElement?.id)) !== "m-myname") throw new Error("hernoemen: geen focus in het veld");
+    await page.locator("#m-myname").fill("Goblin");
+    await page.locator("#m-myname").press("Enter");
+    await page.waitForFunction(() => window.__maps.mine()[0].name === "Goblin", null, { timeout: 3000 }).catch(() => {});
+    my = await mine();
+    if (my[0].name !== "Goblin" || (await page.locator("#m-myname-l").isVisible()) || (await page.evaluate(() => document.activeElement?.id)) !== "m-myren") throw new Error("hernoemen: " + JSON.stringify(my));
+    await tap(page, "#m-myren"); await page.locator("#m-myname").fill("   "); await page.locator("#m-myname").press("Enter");
+    if ((await mine())[0].name !== "Goblin") throw new Error("leeg hernoemen veranderde de naam");
+    // dezelfde upload nog eens: geen nieuw item, melding
+    await add({ name: "kopie.png", mimeType: "image/png", buffer: tok });
+    if ((await mine()).length !== 1 || !says(/staat al bij/, await page.locator("#m-toast").textContent())) throw new Error("dubbele upload: " + JSON.stringify(await mine()));
+    // tweede item (verhouding hoog): 64 × 160 → 1 × 2,5
+    const tall = await fixture(page, 64, 160, 32, "image/webp");
+    await add({ name: "fakkel.webp", mimeType: "image/webp", buffer: tall });
+    my = await mine();
+    const U = my.find((x) => x.name === "fakkel");
+    if (my.length !== 2 || !U || U.w !== 1 || U.h !== 2.5 || my[0].sha !== U.sha) throw new Error("tweede item: " + JSON.stringify(my));
+    // quota: estimate nagebootst (85 %) → strook bij het openen van de tab; zonder estimate geen strook
+    await page.evaluate(() => { window.__est = navigator.storage.estimate; navigator.storage.estimate = async () => ({ usage: 85, quota: 100 }); });
+    await tap(page, '#m-ltab [data-v="parts"]'); await tap(page, '#m-ltab [data-v="own"]');
+    await page.waitForFunction(() => !document.getElementById("m-myq").hidden, null, { timeout: 3000 }).catch(() => { throw new Error("quota-strook ontbreekt"); });
+    if (!(await page.locator("#m-myq").textContent()).includes("85")) throw new Error("quota-strook: " + await page.locator("#m-myq").textContent());
+    await page.evaluate(() => { navigator.storage.estimate = window.__est; });
+    // opslag vol bij toevoegen: eigen foutregel, geen item
+    await page.evaluate(() => { window.__put = IDBObjectStore.prototype.put; IDBObjectStore.prototype.put = function () { throw new DOMException("vol", "QuotaExceededError"); }; });
+    await add({ name: "vol.png", mimeType: "image/png", buffer: await fixture(page, 40, 40, 10) });
+    await page.evaluate(() => { IDBObjectStore.prototype.put = window.__put; });
+    if ((await mine()).length !== 2 || (await page.locator("#m-myerr").isHidden())) throw new Error("opslag vol: geen foutregel");
+    // verwijderen van het gebruikte item: melding noemt de kaart, object blijft getekend; Ongedaan zet hem terug
+    await tap(page, `#m-mytiles [data-id="${T}"]`);
+    await tap(page, "#m-mydel");
+    await page.waitForFunction(() => window.__maps.mine().length === 1, null, { timeout: 3000 }).catch(() => {});
+    await page.waitForTimeout(50);
+    if ((await mine()).length !== 1 || !says(/verwijderd uit je eigen afbeeldingen. Staat nog op 1 kaart\./, await page.locator("#m-toast").textContent())) throw new Error("verwijderen: " + await page.locator("#m-toast").textContent());
+    if ((await page.evaluate(() => document.activeElement?.id)) !== "m-myadd") throw new Error("focus na verwijderen");
+    await frame();
+    if (!near(await pixel(o.x + 0.125, o.y + 0.125), [0xc9, 0xb4, 0x8a])) throw new Error("na verwijderen uit Mijn assets tekent de kaart het object niet meer");
+    await tap(page, "#m-toast .tundo");
+    await page.waitForFunction((s) => window.__maps.mine().some((x) => x.sha === s && x.name === "Goblin"), T, { timeout: 3000 });
+    // herladen: items, object en afbeeldingen blijven (opruimen bij het opstarten kent de eigen assets)
+    await page.evaluate(() => window.__maps.flush());
+    await page.reload(); await ready();
+    await page.waitForFunction((s) => window.__maps.mine().length === 2 && window.__maps.art(s), T, { timeout: 5000 });
+    const keys = (await mapsAssets(page)).map((a) => a.key);
+    if (!keys.includes(T) || !keys.includes(U.sha)) throw new Error("opruimen gooide een eigen asset weg");
+    // review: ongebruikt item verwijderen + herstarten = afbeelding opgeruimd; de gebruikte blijft (ook zonder item)
+    await tap(page, "#m-lib"); await page.locator("#m-lsheet").waitFor({ state: "visible" });
+    await tap(page, '#m-ltab [data-v="own"]');
+    await tap(page, `#m-mytiles [data-id="${U.sha}"]`); await tap(page, "#m-mydel");
+    await page.waitForFunction(() => window.__maps.mine().length === 1, null, { timeout: 3000 });
+    await page.waitForTimeout(100);
+    await page.reload(); await ready();
+    await page.waitForFunction((s) => window.__maps.art(s), T, { timeout: 5000 });
+    for (let i = 0; i < 40 && (await mapsAssets(page)).some((a) => a.key === U.sha); i++) await page.waitForTimeout(50);
+    const keys2 = (await mapsAssets(page)).map((a) => a.key);
+    if (keys2.includes(U.sha) || !keys2.includes(T)) throw new Error("opruimen na verwijderen: " + JSON.stringify(keys2));
+    // export (download): alleen de gebruikte eigen asset, met naam; ongebruikte niet
+    await page.evaluate(() => { try { Object.defineProperty(navigator, "canShare", { value: undefined, configurable: true }); } catch { /* */ } });
+    const id = (await page.evaluate(() => window.__maps.map())).id;
+    await tap(page, "#m-maps"); await page.locator("#m-list").waitFor({ state: "visible" });
+    await tap(page, `#m-lrows .mkl-m[data-id="${id}"]`);
+    const [dl] = await Promise.all([page.waitForEvent("download"), tap(page, '#m-menu [data-m="exp"]')]);
+    const { readFileSync } = await import("node:fs");
+    const text = readFileSync(await dl.path(), "utf8"), doc = JSON.parse(text);
+    if (!doc.assets[T] || doc.assets[T].name !== "Goblin" || doc.assets[U.sha] || doc.map.schema !== 5) throw new Error("exportbestand: " + JSON.stringify(Object.keys(doc.assets)));
+    // ander apparaat: importeren → kaart compleet, item in Mijn assets met de naam
+    const ctx2 = await page.context().browser().newContext({ viewport: page.viewportSize(), hasTouch: true, isMobile: true, deviceScaleFactor: 2, serviceWorkers: "block" });
+    try {
+      const p2 = await ctx2.newPage();
+      await p2.goto(page.url()); await ready(p2);
+      await tap(p2, "#m-maps"); await p2.locator("#m-list").waitFor({ state: "visible" });
+      const [fc] = await Promise.all([p2.waitForEvent("filechooser"), tap(p2, "#m-imp")]);
+      await fc.setFiles({ name: dl.suggestedFilename(), mimeType: "application/json", buffer: Buffer.from(text) });
+      const got = await mapsIdb(p2, (all) => all.some((x) => x.schema === 5));
+      let nid = got.find((x) => x.schema === 5).id;
+      let m2 = await p2.evaluate(() => window.__maps.mine());
+      if (m2.length !== 1 || m2[0].sha !== T || m2[0].name !== "Goblin" || !m2[0].thumb) throw new Error("import Mijn assets: " + JSON.stringify(m2));
+      // review: Ongedaan van de import haalt ook het toegevoegde item weg; daarna opnieuw importeren
+      await tap(p2, "#m-toast .tundo");
+      await p2.waitForFunction(() => window.__maps.mine().length === 0, null, { timeout: 3000 }).catch(() => { throw new Error("Ongedaan van de import liet het item staan"); });
+      const [fc2] = await Promise.all([p2.waitForEvent("filechooser"), tap(p2, "#m-imp")]);
+      await fc2.setFiles({ name: dl.suggestedFilename(), mimeType: "application/json", buffer: Buffer.from(text) });
+      nid = (await mapsIdb(p2, (all) => all.some((x) => x.schema === 5))).find((x) => x.schema === 5).id;
+      await p2.waitForFunction(() => window.__maps.mine().length === 1, null, { timeout: 5000 });
+      await tap(p2, `#m-lrows .mkl-o[data-id="${nid}"]`);
+      await p2.waitForFunction((s) => window.__maps.view$() === "edit" && window.__maps.art(s), T, { timeout: 5000 });
+      await frame(p2);
+      const ob = (await p2.evaluate(() => window.__maps.map())).objs.find((x) => x.asset === T);
+      if (!near(await pixel(ob.x + 0.125, ob.y + 0.125, p2), [0xc9, 0xb4, 0x8a])) throw new Error("geïmporteerde eigen asset niet getekend");
+    } finally { await ctx2.close(); }
   },
   speler: null, // eigen startpagina, zie START
   home: null, homeen: null, notfound: null, // WP30: publieke homepage per taal en de niet-gevonden-pagina (START)

@@ -124,6 +124,7 @@ const cinfoSet = new Set(Object.keys(CINFO).flatMap((id) => [...cinfoKeys(id, "2
 const DYNAMIC = [
   [/^maps\.bg\.err\./, "js/maps/main.js bgErr"],
   [/^maps\.imp\.err\./, "js/maps/main.js impErr"],
+  [/^maps\.my\.err\.(quota|max)$/, "js/maps/main.js myErr (WP64)"],
   [/^maps\.asset\./, "js/maps/main.js assetName (BUILTIN in js/maps/model/assets.js)"],
   [/^maps\.hist\.(grid|bg|align|place|move|rotate|size|dup|del|undel|layer|order|paint|fill|erase|eraseFill)$/, "js/maps/main.js stepName (meta.k)"],
   [/^maps\.terr\./, "js/maps/main.js terrName (TERRAINS in js/maps/model/terrain.js)"],

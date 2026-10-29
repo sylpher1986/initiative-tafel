@@ -230,5 +230,31 @@ export default {
   "maps.hist.paint": "[Páíñt {name} ···]",
   "maps.hist.fill": "[Fíll wíth {name} ····]",
   "maps.hist.erase": "[Érásé térráíñ ·····]",
-  "maps.hist.eraseFill": "[Érásé áréá ····]"
+  "maps.hist.eraseFill": "[Érásé áréá ····]",
+  "maps.lib.own": "[Çüstöm ···]",
+  "maps.my.hint": "[Ådd ýöür öwñ ímágés (PÑG, JPÉG ör WébP). Théý’ré képt öñ thís dévíçé, réádý för áll ýöür máps. ·································]",
+  "maps.my.add": "[Ådd ··]",
+  "maps.my.name": "[Ñámé ··]",
+  "maps.my.rename": "[Réñámé ···]",
+  "maps.my.del": "[Rémövé ···]",
+  "maps.my.unnamed": "[Çüstöm ímágé ·····]",
+  "maps.my.base": "[Ímágé ··]",
+  "maps.my.unused": "[Ñöt üséd ···]",
+  "maps.my.onThis": "[Öñ thís máp ····]",
+  "maps.my.onN": {
+    "one": "[Öñ {n} máp ···]",
+    "other": "[Öñ {n} máps ···]"
+  },
+  "maps.my.info": "[{name} · {use} ··]",
+  "maps.my.quota": "[Störágé álmöst füll ({pct}%). Rémövé üñüséd ímágés ör máps. ···················]",
+  "maps.my.err.quota": "[Störágé ís füll, sö thé ímágé çöüldñ’t bé sávéd. Rémövé üñüséd ímágés ör máps. ····························]",
+  "maps.my.err.max": "[Yöü çáñ kéép üp tö {n} çüstöm ímágés. Rémövé öñé fírst. ···················]",
+  "maps.my.already": "[“{name}” ís álréádý íñ ýöür çüstöm ímágés. ·············]",
+  "maps.my.deleted": "[“{name}” rémövéd fröm ýöür çüstöm ímágés. ·············]",
+  "maps.my.deletedKept": {
+    "one": "[“{name}” rémövéd fröm ýöür çüstöm ímágés. Stíll öñ {n} máp. ··················]",
+    "other": "[“{name}” rémövéd fröm ýöür çüstöm ímágés. Stíll öñ {n} máps. ··················]"
+  },
+  "maps.exp.big": "[Çáñ’t éxpört: wíth áll íts ímágés thís máp wöüld bé lárgér tháñ {mb} MB, töö bíg tö ímpört ágáíñ. Rémövé sömé çüstöm ímágés fröm thé máp. ···············································]",
+  "maps.exp.missingOwn": "[Çáñ’t éxpört: á çüstöm ímágé öñ thís máp ís míssíñg fröm thís dévíçé. ·························]"
 };

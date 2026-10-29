@@ -2,12 +2,14 @@
 // JSON-bestand, de afbeeldingen als base64 erin (D4 optie A, besloten in WP60 op het advies; extensie .json = D5).
 // Vorm: { format: "kevs-inn-maps", version: 1, exported, app: "Inn the Grid x.y.z", map: {…}, assets: { <sha256>: {
 // mime, w, h, data } } }. `map` is het kaartdocument zonder id (geen verwijzing naar browseropslag; import geeft
-// altijd een nieuwe id). `assets` bevat precies de afbeeldingen waar de kaart naar verwijst (nu alleen bg.asset).
+// altijd een nieuwe id). `assets` bevat precies de afbeeldingen waar de kaart naar verwijst: bg.asset en (WP64) de eigen
+// assets op objecten, die optioneel hun naam uit Mijn assets meekrijgen (`name`, gebruikersinhoud).
 // Alles uit een bestand is onbetrouwbaar: grootte, JSON, format, versie (hoger = weigeren, lager = migreren via
 // MIGRATE), cleanMap voor de kaart en per asset: mime-allowlist, geldige base64, magic bytes = mime, afmetingen uit de
 // kop = w/h en binnen de grenzen, sha256 van de bytes = sleutel. Decoderen (laatste controle) doet de UI.
 import { cleanMap, SCHEMA } from "./map.js";
 import { sniff, dims, IMG } from "./image.js";
+import { usedAssets, isCustom, cleanItemName, MINE } from "./mine.js";
 
 export const FORMAT = "kevs-inn-maps";
 /** Hoogste bestandsversie die deze versie schrijft en leest */
@@ -54,20 +56,25 @@ const toBytes = (d) => (d instanceof Uint8Array ? d : d instanceof ArrayBuffer ?
  * Bestand opbouwen als lijst tekststukken (UI: new Blob(parts)), zodat een grote afbeelding nooit één enorme string
  * wordt. map = kaartdocument (cleanMap), assets = sha → record { data: ArrayBuffer|Uint8Array, mime, w, h }. Het
  * record-veld src (sha256 van het origineel, sleutel van de store-index) gaat bewust niet mee: browseropslag.
- * Geeft { parts } of { missing: [sha] } als een afbeelding waar de kaart naar verwijst niet beschikbaar is (dan niet
+ * Geeft { parts }, { big: true } (WP64: het bestand zou groter worden dan FILE_MAX) of { missing: [sha] } als een afbeelding waar de kaart naar verwijst niet beschikbaar is (dan niet
  * exporteren: een bestand zonder afbeelding is niet zelfstandig).
  */
-export function buildParts(map, assets, { app = "", now = new Date() } = {}) {
+export function buildParts(map, assets, { app = "", now = new Date(), names = null } = {}) {
   const c = cleanMap(map);
   if (!c) return { missing: [] };
   const { id, ...doc } = c; // id = sleutel in de browseropslag: niet in het bestand
-  const need = doc.bg ? [doc.bg.asset] : [];
+  const need = usedAssets(doc); // WP64: achtergrond + eigen assets op objecten, elk één keer; ongebruikte nooit
   const missing = need.filter((sha) => { const r = assets && assets.get(sha); return !(r && toBytes(r.data) && MIMES.includes(r.mime)); });
   if (missing.length) return { missing };
+  // WP64: meerdere afbeeldingen in één bestand: nooit een export maken die de import (FILE_MAX) zelf weer weigert
+  const size = need.reduce((n, sha) => n + Math.ceil(toBytes(assets.get(sha).data).length / 3) * 4 + 200, 0) + JSON.stringify(doc).length + 400;
+  if (size > FILE_MAX) return { big: true };
   const head = { format: FORMAT, version: FILE_VERSION, exported: now.toISOString(), app, map: doc };
   const parts = [JSON.stringify(head).slice(0, -1) + ',"assets":{'];
   need.forEach((sha, i) => {
     const r = assets.get(sha), meta = { mime: r.mime, w: r.w, h: r.h };
+    const nm = isCustom(sha) && doc.objs && doc.objs.some((o) => o.asset === sha) && names && cleanItemName(names.get(sha));
+    if (nm) meta.name = nm; // WP64: naam in Mijn assets (alleen voor een object-asset)
     parts.push(`${i ? "," : ""}${JSON.stringify(sha)}:${JSON.stringify(meta).slice(0, -1)},"data":"`);
     for (const s of b64Chunks(toBytes(r.data))) parts.push(s);
     parts.push('"}');
@@ -116,9 +123,8 @@ export async function readFile(size, text, { hash, migrate = MIGRATE } = {}) {
   if (m.bg != null && !map.bg) return { ok: false, code: "badmap" };
   // WP63: idem terrein: onbruikbaar terwijl er cellen geverfd lijken = weigeren (een echt leeg terrein mag)
   if (m.terr != null && !map.terr && !(plain(m.terr) && typeof m.terr.cells === "string" && !/[1-9a-z]/.test(m.terr.cells))) return { ok: false, code: "badmap" };
-  const assets = new Map();
-  if (map.bg) {
-    const sha = map.bg.asset, all = doc.assets;
+  const assets = new Map(), names = new Map(), all = doc.assets;
+  for (const sha of usedAssets(map)) { // WP64: achtergrond én eigen assets op objecten, elk met dezelfde controles
     const a = plain(all) && own(all, sha) ? all[sha] : null;
     if (!plain(a)) return { ok: false, code: "missing" };
     if (!MIMES.includes(a.mime)) return { ok: false, code: "image" };
@@ -128,7 +134,11 @@ export async function readFile(size, text, { hash, migrate = MIGRATE } = {}) {
     const d = dims(bytes, a.mime);
     if (!d || d.w !== a.w || d.h !== a.h || Math.max(d.w, d.h) > IMG.maxSide || d.w * d.h > IMG.maxInPixels) return { ok: false, code: "image" };
     if (typeof hash !== "function" || (await hash(bytes)) !== sha) return { ok: false, code: "sha" };
-    assets.set(sha, { data: bytes.buffer, mime: a.mime, w: d.w, h: d.h, ow: map.bg.w, oh: map.bg.h }); // fromB64: eigen buffer vanaf 0
+    const isBg = map.bg && map.bg.asset === sha; // dezelfde afbeelding als achtergrond én object: het origineel van de achtergrond
+    if (!isBg && Math.max(d.w, d.h) > MINE.maxSide) return { ok: false, code: "image" }; // WP64: eigen asset ≤ 1024 px (geheugen)
+    assets.set(sha, { data: bytes.buffer, mime: a.mime, w: d.w, h: d.h, ow: isBg ? map.bg.w : d.w, oh: isBg ? map.bg.h : d.h }); // fromB64: eigen buffer vanaf 0
+    const nm = isCustom(sha) && map.objs && map.objs.some((o) => o.asset === sha) ? cleanItemName(a.name) : "";
+    if (nm) names.set(sha, nm);
   }
-  return { ok: true, map, assets };
+  return { ok: true, map, assets, names };
 }

@@ -120,3 +120,27 @@ body.maps{display:flex;flex-direction:column;padding:0;height:100dvh} /* zonder 
 .mterr .mtile{min-height:64px}
 .mtsw{width:32px;height:24px;border-radius:var(--r-s);border:1px solid var(--line-strong);pointer-events:none}
 .mtsw.erase{background:repeating-linear-gradient(45deg,var(--card) 0 4px,var(--line) 4px 8px);border-style:dashed}
+/* WP64: tab Eigen (Mijn assets). Drie tabs in de kop: elke knop zo breed als zijn tekst ("Onderdelen" past op 320 px).
+   Tegel: miniatuur op een geblokte achtergrond (transparantie zichtbaar in beide thema's), naam max 2 regels. */
+.mltab button{flex:1 1 auto;padding-left:6px;padding-right:6px}
+#m-my{display:grid;gap:8px}
+#m-my[hidden]{display:none}
+#m-my .ferr,#m-my .hint{margin:0}
+#m-mytiles .mtile{min-height:84px}
+.mtimg{width:40px;height:40px;display:block;border-radius:var(--r-s);pointer-events:none;
+  background:repeating-conic-gradient(var(--card) 0 25%,var(--line) 0 50%) 0 0/10px 10px}
+.mtimg img{width:40px;height:40px;object-fit:contain;display:block}
+#m-mytiles .mtile>span:last-child{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.madd{border-style:dashed}
+.madd .mplus{font-size:1.6rem;line-height:40px;height:40px;font-weight:600}
+.madd[aria-busy="true"]{cursor:progress}
+.mywarn{margin:0;padding:8px 10px;border-radius:var(--r);border:1px solid var(--warn);background:var(--warn-soft);color:var(--fg);font-size:.85rem}
+.mywarn[hidden]{display:none}
+.myrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.myrow[hidden]{display:none}
+.myinfo{flex:1 1 120px;min-width:0;font-size:.85rem;overflow-wrap:anywhere}
+.myname{flex:1 1 120px;min-width:0;margin:0}
+.myname[hidden]{display:none}
+.myname input{width:100%}
+.myrow .btn{flex:0 0 auto;padding:0 10px}
+.myrow .mdel{color:var(--bad)}

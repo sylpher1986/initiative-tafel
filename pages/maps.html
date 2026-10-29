@@ -138,10 +138,25 @@
   <div class="grab" aria-hidden="true"></div>
   <!-- WP63: tabs Onderdelen | Terrein op de plek van de titel (de titel blijft voor de schermlezer) -->
   <div class="shead"><h3 class="vh" id="m-l-t">{{t:maps.lib.title}}</h3>
-    <div class="seg mltab" id="m-ltab" role="group" aria-labelledby="m-l-t"><button type="button" data-v="parts">{{t:maps.lib.parts}}</button><button type="button" data-v="terrain">{{t:maps.lib.terrain}}</button></div>
+    <div class="seg mltab" id="m-ltab" role="group" aria-labelledby="m-l-t"><button type="button" data-v="parts">{{t:maps.lib.parts}}</button><button type="button" data-v="terrain">{{t:maps.lib.terrain}}</button><button type="button" data-v="own">{{t:maps.lib.own}}</button></div>
     <button type="button" class="link" id="m-lclose">{{t:maps.panel.close}}</button></div>
   <div class="seg" id="m-cats" role="group" aria-labelledby="m-l-t"><button type="button" data-v="floor">{{t:maps.cat.floor}}</button><button type="button" data-v="build">{{t:maps.cat.build}}</button><button type="button" data-v="furniture">{{t:maps.cat.furniture}}</button><button type="button" data-v="nature">{{t:maps.cat.nature}}</button></div>
   <div class="mtiles" id="m-tiles"></div>
+  <!-- WP64: tab Eigen (Mijn assets, één bibliotheek per apparaat). Eerste tegel = Toevoegen (verborgen input + knop);
+       een gekozen eigen tegel zet Plaatsen aan en toont de beheerrij (Hernoemen | Verwijderen). Tegels vult js/maps/main.js. -->
+  <div id="m-my" hidden>
+    <p class="mywarn" id="m-myq" hidden></p>
+    <div class="mtiles" id="m-mytiles"></div>
+    <input type="file" id="m-myfile" accept="image/png,image/jpeg,image/webp" tabindex="-1" hidden>
+    <p class="ferr" id="m-myerr" hidden></p>
+    <p class="hint" id="m-myhint" hidden>{{t:maps.my.hint}}</p>
+    <div class="myrow" id="m-myrow" hidden>
+      <span class="myinfo" id="m-myinfo"></span>
+      <label class="myname" id="m-myname-l" hidden><span class="vh">{{t:maps.my.name}}</span><input id="m-myname" type="text" enterkeyhint="done" autocomplete="off" maxlength="40" spellcheck="false"></label>
+      <button type="button" class="btn" id="m-myren">{{t:maps.my.rename}}</button>
+      <button type="button" class="btn mdel" id="m-mydel">{{t:maps.my.del}}</button>
+    </div>
+  </div>
   <!-- schakelaar onder de tegels (in de kop past hij op 320 px niet naast titel en Sluiten) -->
   <button type="button" class="btn msnap" id="m-snap" aria-pressed="true"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 12h16M12 4v16"/></svg>{{t:maps.lib.snap}}</button>
   <!-- WP63: tab Terrein. Een terrein (of Wissen) kiezen zet Verven aan; Verven bestaat alleen zolang deze tab open is.

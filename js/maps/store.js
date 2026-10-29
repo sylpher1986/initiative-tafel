@@ -1,13 +1,17 @@
 // Inn the Grid (G4, WP58): opslag in een eigen IndexedDB "kevs-inn-maps", los van Initiative ("initiative-tafel").
 // Stores: "maps" (kaartdocument, sleutel = id) en "assets" (afbeeldingen, WP59: sleutel = sha256 van de opgeslagen bytes,
 // record { data: ArrayBuffer, mime, w, h, ow, oh, src }; index "src" = sha256 van het originele bestand, zodat dezelfde
-// upload twee keer één asset blijft zonder opnieuw te decoderen; versie 2). Geen
+// upload twee keer één asset blijft zonder opnieuw te decoderen; versie 2) en "mine" (WP64, versie 3: Mijn assets,
+// sleutel = sha, js/maps/model/mine.js). Versie 3 houdt ook een oudere Maps-versie (oude cache, ander tabblad) buiten:
+// die opent de database niet meer (VersionError = alleen in het geheugen) en kan zo nooit bij het opstarten de eigen assets
+// opruimen die hij niet kent. Geen
 // localStorage-terugval: een kaart hoort niet in 5 MB tekst; zonder IndexedDB (privémodus) werkt de editor in het
 // geheugen en zegt de status "wordt niet bewaard" (js/maps/main.js). Laatst geopende kaart in localStorage (LAST_KEY).
 // Alles wat gelezen wordt gaat door cleanMap (js/maps/model/map.js); records van een nieuwer schema blijven onaangeroerd.
 import { cleanMap, sortMaps } from "./model/map.js";
+import { cleanItem, cleanItems, isCustom } from "./model/mine.js";
 
-export const DB = "kevs-inn-maps", DB_VERSION = 2, LAST_KEY = "maps-last";
+export const DB = "kevs-inn-maps", DB_VERSION = 3, LAST_KEY = "maps-last";
 let dbp = null, dbo = null; // dbo = open database: transacties dan synchroon starten (pagehide, zie tx)
 
 /** Database openen (één keer). Faalt als IndexedDB ontbreekt of geblokkeerd is (privémodus, instelling). */
@@ -21,6 +25,7 @@ export function openDb() {
       const db = req.result;
       if (e.oldVersion < 1) { db.createObjectStore("maps", { keyPath: "id" }); db.createObjectStore("assets"); }
       if (e.oldVersion < 2) req.transaction.objectStore("assets").createIndex("src", "src", { unique: false }); // WP59
+      if (e.oldVersion < 3) db.createObjectStore("mine", { keyPath: "sha" }); // WP64
     };
     req.onsuccess = () => {
       const db = req.result;
@@ -114,7 +119,8 @@ export async function findAsset(src) {
 /**
  * Opruimen bij het opstarten: assets waar geen enkele kaart meer naar verwijst. Alleen bij de start, zodat Ongedaan na
  * vervangen, verwijderen of kaart verwijderen de afbeelding in deze sessie nog terug kan zetten. Leest de ruwe records
- * (ook van een nieuwer schema): elke tekst in bg.asset telt als verwijzing. Geeft het aantal verwijderde assets, of -1.
+ * (ook van een nieuwer schema): elke tekst in bg.asset, elke sha op een object (WP64) en elk item in Mijn assets telt als
+ * verwijzing. Geeft het aantal verwijderde assets, of -1.
  */
 export async function gcAssets() {
   if (!mayWrite()) return 0;
@@ -122,19 +128,77 @@ export async function gcAssets() {
     // één readwrite-transactie over beide stores: een putAsset/putMap die intussen start, wacht tot het opruimen klaar is
     const db = await openDb();
     return await new Promise((resolve, reject) => {
-      const t = db.transaction(["maps", "assets"], "readwrite");
+      const t = db.transaction(["maps", "assets", "mine"], "readwrite");
       let n = 0;
+      const keep = new Set();
       const gm = t.objectStore("maps").getAll();
       gm.onsuccess = () => {
-        const keep = new Set((gm.result || []).map((m) => m && m.bg && m.bg.asset).filter((a) => typeof a === "string"));
-        const as = t.objectStore("assets"), gk = as.getAllKeys();
-        gk.onsuccess = () => { for (const k of gk.result || []) if (!keep.has(k)) { as.delete(k); n++; } };
+        for (const m of gm.result || []) {
+          if (!m || typeof m !== "object") continue;
+          if (m.bg && typeof m.bg.asset === "string") keep.add(m.bg.asset);
+          if (Array.isArray(m.objs)) for (const o of m.objs) if (o && isCustom(o.asset)) keep.add(o.asset);
+        }
+        const gi = t.objectStore("mine").getAllKeys();
+        gi.onsuccess = () => {
+          for (const k of gi.result || []) keep.add(k);
+          const as = t.objectStore("assets"), gk = as.getAllKeys();
+          gk.onsuccess = () => { for (const k of gk.result || []) if (!keep.has(k)) { as.delete(k); n++; } };
+        };
       };
       t.oncomplete = () => resolve(n);
       t.onerror = () => reject(t.error);
       t.onabort = () => reject(t.error || new Error("aborted"));
     });
   } catch { return -1; }
+}
+
+// ---- WP64: Mijn assets ----
+/** Alle items, opgeschoond, nieuwste eerst; null als lezen niet lukt */
+export async function listMine() {
+  try { return cleanItems((await tx("mine", "readonly", (s) => s.getAll())) || []); } catch { return null; }
+}
+
+/** Item bewaren (vervangt het item met dezelfde sha). false als het niet lukte. */
+export async function putMine(item) {
+  if (!mayWrite()) return true;
+  const c = cleanItem(item);
+  if (!c) return false;
+  try { await tx("mine", "readwrite", (s) => s.put(c)); return true; } catch { return false; }
+}
+
+/** Nieuwe afbeelding + item in één transactie (nooit een asset zonder item of omgekeerd). rec = null: de asset staat er
+ *  al (zelfde bytes). Geeft true, "quota" (opslag vol) of false. */
+export async function addMine(item, sha, rec) {
+  if (!mayWrite()) return true;
+  const c = cleanItem(item);
+  if (!c || c.sha !== sha || (rec && !cleanAsset(rec))) return false;
+  try {
+    const db = await openDb();
+    await new Promise((resolve, reject) => {
+      const t = db.transaction(["assets", "mine"], "readwrite");
+      let err = null;
+      if (rec) { // alleen als hij ontbreekt: dezelfde bytes als een achtergrond houden diens record (en src)
+        const as = t.objectStore("assets"), k = as.getKey(sha);
+        k.onsuccess = () => { if (k.result === undefined) { try { as.put(rec, sha); } catch (e) { err = e; t.abort(); } } };
+      }
+      t.objectStore("mine").put(c);
+      t.oncomplete = resolve;
+      t.onerror = () => reject(err || t.error);
+      t.onabort = () => reject(err || t.error || new Error("aborted"));
+    });
+    return true;
+  } catch (e) { return e && e.name === "QuotaExceededError" ? "quota" : false; }
+}
+
+/** Item uit Mijn assets halen (de afbeelding blijft voor kaarten die hem gebruiken). false als het niet lukte. */
+export async function deleteMine(sha) {
+  if (!mayWrite()) return true;
+  try { await tx("mine", "readwrite", (s) => s.delete(sha)); return true; } catch { return false; }
+}
+
+/** Opslaggebruik { usage, quota } of null (geen estimate) */
+export async function estimate() {
+  try { return navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null; } catch { return null; }
 }
 
 /** Laatst geopende kaart (id of null) */

@@ -10,23 +10,25 @@ const sha256 = async (bytes) => toHex(await crypto.subtle.digest("SHA-256", byte
 const readText = (file) => (file.text ? file.text() : new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsText(file); }));
 
 /**
- * Kaart exporteren. assets = Map(sha → record) met wat de kaart gebruikt. Geeft "done", "cancel" (deelmenu gesloten) of
- * "missing" (afbeelding niet beschikbaar: geen bestand gemaakt).
+ * Kaart exporteren. assets = Map(sha → record) met wat de kaart gebruikt. Geeft { r } met r = "done", "cancel" (deelmenu
+ * gesloten), "big" (WP64: groter dan de importgrens) of "missing" (afbeelding niet beschikbaar: geen bestand gemaakt).
+ * WP64: names = Map(sha → naam in Mijn assets) gaat mee voor eigen assets; "missing" geeft ook welke ontbreken (missing).
  */
-export async function exportMap(map, assets, { app, title }) {
-  const out = buildParts(map, assets, { app });
-  if (!out.parts) return "missing";
+export async function exportMap(map, assets, { app, title, names = null }) {
+  const out = buildParts(map, assets, { app, names });
+  if (out.big) return { r: "big" };
+  if (!out.parts) return { r: "missing", missing: out.missing || [] };
   const name = fileName(map.name, new Date());
   const blob = new Blob(out.parts, { type: "application/json" });
   try {
     const f = new File([blob], name, { type: "application/json" });
-    if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title }); return "done"; }
-  } catch (err) { if (err && err.name === "AbortError") return "cancel"; } // geannuleerd; andere fout (geen gebruikersgebaar meer): downloaden
+    if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title }); return { r: "done" }; }
+  } catch (err) { if (err && err.name === "AbortError") return { r: "cancel" }; } // geannuleerd; andere fout (geen gebruikersgebaar meer): downloaden
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-  return "done";
+  return { r: "done" };
 }
 
 /**

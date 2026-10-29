@@ -6,14 +6,16 @@
 // v1, zodat een oudere Maps-versie (ander tabblad, oude cache) hem gewoon leest; een kaart mét achtergrond is v2 en die
 // laat een oudere versie onaangeroerd in plaats van de achtergrond bij het opslaan stil weg te gooien. v3 (WP61) = er
 // staan objecten op (`objs`, js/maps/model/objects.js); zelfde redenering: Maps 0.5.0 laat zo'n kaart met rust. v4 (WP63)
-// = er is terrein geverfd (`terr`, js/maps/model/terrain.js); Maps 0.7.0 laat zo'n kaart met rust.
+// = er is terrein geverfd (`terr`, js/maps/model/terrain.js); Maps 0.7.0 laat zo'n kaart met rust. v5 (WP64) = er staat
+// een eigen asset (sha256) op een object (js/maps/model/mine.js); Maps 0.8.0 laat zo'n kaart met rust.
 import { cleanGrid } from "./grid.js";
 import { cleanBg } from "./bg.js";
 import { cleanObjs } from "./objects.js";
 import { cleanTerr } from "./terrain.js";
+import { isCustom } from "./mine.js";
 
 /** Hoogste schemaversie die deze versie kent. Hoger = niet aanraken (gemaakt door een nieuwere versie). */
-export const SCHEMA = 4;
+export const SCHEMA = 5;
 /** Langste kaartnaam (tekens) */
 export const NAME_MAX = 60;
 
@@ -51,6 +53,7 @@ export function cleanMap(raw) {
   if (objs.length) { out.objs = objs; out.schema = 3; }
   const terr = cleanTerr(raw.terr);
   if (terr) { out.terr = terr; out.schema = 4; }
+  if (objs.some((o) => isCustom(o.asset))) out.schema = 5; // WP64: eigen assets op de kaart (een oudere versie laat hem met rust)
   return out;
 }
 

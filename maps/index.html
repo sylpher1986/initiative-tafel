@@ -139,10 +139,25 @@
   <div class="grab" aria-hidden="true"></div>
   <!-- WP63: tabs Onderdelen | Terrein op de plek van de titel (de titel blijft voor de schermlezer) -->
   <div class="shead"><h3 class="vh" id="m-l-t">Library</h3>
-    <div class="seg mltab" id="m-ltab" role="group" aria-labelledby="m-l-t"><button type="button" data-v="parts">Objects</button><button type="button" data-v="terrain">Terrain</button></div>
+    <div class="seg mltab" id="m-ltab" role="group" aria-labelledby="m-l-t"><button type="button" data-v="parts">Objects</button><button type="button" data-v="terrain">Terrain</button><button type="button" data-v="own">Custom</button></div>
     <button type="button" class="link" id="m-lclose">Close</button></div>
   <div class="seg" id="m-cats" role="group" aria-labelledby="m-l-t"><button type="button" data-v="floor">Floors</button><button type="button" data-v="build">Structures</button><button type="button" data-v="furniture">Furniture</button><button type="button" data-v="nature">Nature</button></div>
   <div class="mtiles" id="m-tiles"></div>
+  <!-- WP64: tab Eigen (Mijn assets, één bibliotheek per apparaat). Eerste tegel = Toevoegen (verborgen input + knop);
+       een gekozen eigen tegel zet Plaatsen aan en toont de beheerrij (Hernoemen | Verwijderen). Tegels vult js/maps/main.js. -->
+  <div id="m-my" hidden>
+    <p class="mywarn" id="m-myq" hidden></p>
+    <div class="mtiles" id="m-mytiles"></div>
+    <input type="file" id="m-myfile" accept="image/png,image/jpeg,image/webp" tabindex="-1" hidden>
+    <p class="ferr" id="m-myerr" hidden></p>
+    <p class="hint" id="m-myhint" hidden>Add your own images (PNG, JPEG or WebP). They’re kept on this device, ready for all your maps.</p>
+    <div class="myrow" id="m-myrow" hidden>
+      <span class="myinfo" id="m-myinfo"></span>
+      <label class="myname" id="m-myname-l" hidden><span class="vh">Name</span><input id="m-myname" type="text" enterkeyhint="done" autocomplete="off" maxlength="40" spellcheck="false"></label>
+      <button type="button" class="btn" id="m-myren">Rename</button>
+      <button type="button" class="btn mdel" id="m-mydel">Remove</button>
+    </div>
+  </div>
   <!-- schakelaar onder de tegels (in de kop past hij op 320 px niet naast titel en Sluiten) -->
   <button type="button" class="btn msnap" id="m-snap" aria-pressed="true"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 12h16M12 4v16"/></svg>Snap to grid</button>
   <!-- WP63: tab Terrein. Een terrein (of Wissen) kiezen zet Verven aan; Verven bestaat alleen zolang deze tab open is.

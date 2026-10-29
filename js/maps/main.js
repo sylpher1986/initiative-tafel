@@ -8,14 +8,16 @@
 // (exporteren in het menu per kaart, importeren onder de lijst als nieuwe kaart); WP61: undo/redo (kop) over plaatsen,
 // raster en achtergrond, paneel Bibliotheek met ingebouwde onderdelen en Plaatsen; WP62: objecten selecteren (tik),
 // slepen, draaien en schalen met handgrepen, eigen dock en paneel Object, toetsenbord met cursorcel; WP63: terrein per cel
-// verven (tab Terrein in paneel Bibliotheek: penseel, breed, vullen, wissen) (docs/g4-inn-the-grid.md).
+// verven (tab Terrein in paneel Bibliotheek: penseel, breed, vullen, wissen); WP64: eigen assets (tab Eigen: Mijn assets,
+// toevoegen, plaatsen, hernoemen, verwijderen, mee in export en import) (docs/g4-inn-the-grid.md).
 import { initI18n, t, i18n } from "../i18n/boot.js";
 import { APP, VERSION } from "./version.js";
 import { cleanGrid, parseCells, bounds, LIMITS, cellAt, cellCenter, cellPoly, inside } from "./model/grid.js";
 import { clampPan, fitView, zoomAt, zoomPct, toMap, toScreen, ZMIN, ZMAX, CELL } from "./model/view.js";
 import { cleanBg, guessPpc, gridFor, parsePpc, parseAcross, scaleBg, moveBg, across, stepFor, BG } from "./model/bg.js";
 import { IMG } from "./model/image.js";
-import { prepareImage, assetImage } from "./ui/upload.js";
+import { prepareImage, assetImage, makeThumb } from "./ui/upload.js";
+import { MINE, isCustom, cleanItem, cleanItemName, nameFromFile, defaultCells, usedAssets, usedOn, quotaLevel } from "./model/mine.js";
 import { newMap, mapId, cleanName, newName, uniqueName, copyMap, sortMaps, pickStart, ago } from "./model/map.js";
 import { FILE_MAX } from "./model/file.js";
 import { exportMap, importFile } from "./ui/export.js";
@@ -221,6 +223,10 @@ async function boot() {
   const trimImgs = () => {
     const keep = map.bg && map.bg.asset;
     for (const [sha, d] of imgs) if (d && sha !== keep) { if (d.close) d.close(); imgs.delete(sha); }
+    // WP64: eigen assets: alleen die op de open kaart (en het gekozen item in Plaatsen) blijven gedecodeerd
+    const own = new Set(usedAssets({ objs: map.objs }));
+    if (isCustom(active)) own.add(active);
+    art.trim(own);
   };
   const loading = new Set();
   async function loadBg() {
@@ -342,6 +348,7 @@ async function boot() {
     changed();
     if ("grid" in patch) { if (kbd) kbd = clampCell(kbd); if (auto) fit(); else set(view); } else later();
     if ("objs" in patch) { if (selId && !selObj()) select(null, false); else if (!osheet.hidden) syncObj(); } // WP62: na Ongedaan kan het object weg zijn
+    if ("objs" in patch && !lsheet.hidden && libTab === "own") paintMyRow(); // WP64: gebruik in de beheerrij (plaatsen, Ongedaan)
     const pk = hist.peek(), hk = `${hist.canUndo}${hist.canRedo}`;
     if (pk.undo !== lastPeek.undo || pk.redo !== lastPeek.redo || hk !== lastPeek.k) histBtns(); // slepen in één groep: geen DOM-werk per beweging
   }
@@ -355,7 +362,7 @@ async function boot() {
     refresh(after);
     return step;
   }
-  const assetName = (id) => (builtin(id) ? t("maps.asset." + id) : id);
+  const assetName = (id) => (builtin(id) ? t("maps.asset." + id) : isCustom(id) ? itemName(mineItem(id)) : id); // WP64: eigen = naam in Mijn assets
   const terrName = (id) => (TERRAINS.includes(id) ? t("maps.terr." + id) : id); // WP63: onbekend terrein (nieuwere versie) = id
   const stepName = (m) => (!m ? "" : m.id ? t("maps.hist." + m.k, { name: assetName(m.id) }) : m.t ? t("maps.hist." + m.k, { name: terrName(m.t) }) : t("maps.hist." + m.k)); // WP62: elke objectstap noemt het onderdeel
   const undoBtn = $("m-undo"), redoBtn = $("m-redo");
@@ -392,24 +399,27 @@ async function boot() {
   // paneel open is. Sluiten of Esc = terug naar Kijken. "Op cel uitlijnen" (snap) staat in de kop van het paneel,
   // standaard aan, onthouden in localStorage maps-snap.
   const lsheet = $("m-lsheet"), btnLib = $("m-lib"), tiles = $("m-tiles"), pstrip = $("m-pstrip"), snapBtn = $("m-snap");
-  const art = createArt(() => later());
+  // WP64: eigen assets komen uit de opslag (of het geheugen) en worden als afbeelding getekend
+  const art = createArt(() => later(), { custom: async (sha) => { const rec = await assetRec(sha); return rec ? assetImage(rec) : null; } });
   let libCat = CATS[0], active = null, ghost = null, stripT = 0;
   let snap = true;
   try { snap = localStorage.getItem("maps-snap") !== "0"; } catch { /* geen opslag: standaard aan */ }
-  const placing = () => !!active && libTab === "parts" && !lsheet.hidden && !aligning && viewName === "edit" && !!cur;
+  const placing = () => !!active && (libTab === "parts" || libTab === "own") && !lsheet.hidden && !aligning && viewName === "edit" && !!cur;
   // WP63: tab Terrein. mat = gekozen terrein-id, "erase" (Wissen) of null (Kijken); tool onthouden in localStorage maps-ttool
   let libTab = "parts", mat = null, tool = "brush", brushAt = null, stroking = false; // stroking: een veeg loopt (geen undo tussendoor)
   try { const v = localStorage.getItem("maps-ttool"); if (TOOLS.includes(v)) tool = v; } catch { /* standaard Penseel */ }
   const painting = () => !!mat && libTab === "terrain" && !lsheet.hidden && !aligning && viewName === "edit" && !!cur;
-  const pressTiles = () => { for (const b of tiles.querySelectorAll(".mtile")) b.setAttribute("aria-pressed", String(b.dataset.id === active)); };
+  const pressTiles = () => { for (const b of lsheet.querySelectorAll(".mtile[data-id]")) b.setAttribute("aria-pressed", String(b.dataset.id === active)); paintMyRow(); };
   function paintTiles() {
     press("m-ltab", libTab);
-    const terr = libTab === "terrain";
-    for (const id of ["m-cats", "m-tiles", "m-snap"]) $(id).hidden = terr;
-    $("m-terr").hidden = !terr; $("m-tools-f").hidden = !terr;
+    const terr = libTab === "terrain", own = libTab === "own";
+    for (const id of ["m-cats", "m-tiles"]) $(id).hidden = terr || own;
+    snapBtn.hidden = terr;
+    $("m-terr").hidden = !terr; $("m-tools-f").hidden = !terr; $("m-my").hidden = !own;
     if (terr) { paintTerr(); return; }
-    press("m-cats", libCat);
     snapBtn.setAttribute("aria-pressed", String(snap));
+    if (own) { paintMine(); return; }
+    press("m-cats", libCat);
     tiles.innerHTML = inCat(libCat).map((id) => `<button type="button" class="mtile" data-id="${esc(id)}" aria-pressed="${id === active}"><img src="${esc(assetUrl(id))}" alt="" width="40" height="40"><span>${esc(assetName(id))}</span></button>`).join("");
   }
   function paintStrip() {
@@ -431,7 +441,7 @@ async function boot() {
   const setMat = (id) => { mat = id; brushAt = null; pressTerr(); paintStrip(); later(); };
   function setTab(v) {
     if (v === libTab) return;
-    libTab = v; active = null; ghost = null; mat = null; brushAt = null;
+    libTab = v; active = null; ghost = null; mat = null; brushAt = null; renaming = false;
     clearTimeout(stripT); stripT = 0;
     paintTiles(); paintStrip(); later();
   }
@@ -457,7 +467,7 @@ async function boot() {
     if (lsheet.hidden) return;
     lsheet.hidden = true; btnLib.setAttribute("aria-expanded", "false");
     dockFocus(true);
-    active = null; ghost = null; mat = null; brushAt = null; // WP63: ook Verven stopt
+    active = null; ghost = null; mat = null; brushAt = null; renaming = false; // WP63: ook Verven stopt
     clearTimeout(stripT); stripT = 0;
     paintStrip();
     if (focus) btnLib.focus();
@@ -475,6 +485,163 @@ async function boot() {
     if (!v || !TOOLS.includes(v)) return;
     tool = v; brushAt = null; press("m-tool", tool); paintStrip(); later();
     try { localStorage.setItem("maps-ttool", tool); } catch { /* alleen deze sessie */ }
+  });
+  // ---- WP64: Mijn assets (tab Eigen) ----
+  // Eén bibliotheek per apparaat (store "mine"). Eerste tegel = Toevoegen; een eigen tegel kiezen zet Plaatsen aan en toont
+  // de beheerrij (naam · gebruik, Hernoemen | Verwijderen). Verwijderen haalt alleen het item weg: kaarten houden de
+  // afbeelding (gcAssets telt elke verwijzing). Opslag ≥ 80 % = strook bovenaan de tab (nooit bij het opstarten).
+  let mine = [], addBusy = false, renaming = false;
+  const thumbs = new Map(); // sha → object-URL van de miniatuur
+  const mineItem = (sha) => (isCustom(sha) && mine.find((i) => i.sha === sha)) || null;
+  const itemName = (it) => (it && it.name) || t("maps.my.unnamed");
+  const mineNames = () => mine.map((i) => i.name).filter(Boolean);
+  const sortMine = (l) => l.sort((a, b) => b.addedAt - a.addedAt || (a.sha < b.sha ? -1 : 1));
+  /** Grootte en laag bij plaatsen: ingebouwd uit de catalogus, eigen uit Mijn assets; null = niet te plaatsen */
+  const defOf = (id) => builtin(id) || ((it) => it && { w: it.w, h: it.h, layer: "object" })(mineItem(id));
+  const dropThumb = (sha) => { const u = thumbs.get(sha); if (u) { URL.revokeObjectURL(u); thumbs.delete(sha); } };
+  const thumbUrl = (it) => {
+    if (!it.thumb) return "";
+    let u = thumbs.get(it.sha);
+    if (!u) { try { u = URL.createObjectURL(new Blob([it.thumb], { type: it.tmime })); thumbs.set(it.sha, u); } catch { return ""; } }
+    return u;
+  };
+  /** Op hoeveel kaarten staat sha als object (de open kaart uit het geheugen) */
+  const usedCount = (sha) => {
+    const onThis = !!cur && map.objs.some((o) => o.asset === sha);
+    return { onThis, n: usedOn(sha, maps.filter((m) => !cur || m.id !== cur.id)) + (onThis ? 1 : 0) };
+  };
+  const useText = (sha) => { const u = usedCount(sha); return !u.n ? t("maps.my.unused") : u.onThis && u.n === 1 ? t("maps.my.onThis") : t("maps.my.onN", { n: u.n }); };
+  const myErr = (code) => {
+    const e = $("m-myerr");
+    e.hidden = !code;
+    e.textContent = !code ? "" : ["quota", "max"].includes(code) ? t("maps.my.err." + code, { n: i18n().num(MINE.max) }) : t("maps.bg.err." + code, { mb: IMG.maxBytes / 1048576, max: IMG.maxInSide });
+  };
+  function paintMine() {
+    const add = `<button type="button" class="mtile madd" id="m-myadd"><span class="mplus" aria-hidden="true">+</span><span>${esc(t("maps.my.add"))}</span></button>`;
+    $("m-mytiles").innerHTML = add + mine.map((it) => {
+      const u = thumbUrl(it);
+      return `<button type="button" class="mtile" data-id="${esc(it.sha)}" aria-pressed="${it.sha === active}" aria-label="${esc(itemName(it))}"><span class="mtimg">${u ? `<img src="${esc(u)}" alt="" width="40" height="40">` : ""}</span><span aria-hidden="true">${esc(itemName(it))}</span></button>`;
+    }).join("");
+    if (addBusy) busyAdd(true);
+    $("m-myhint").hidden = mine.length > 0;
+    paintMyRow();
+    paintQuota();
+  }
+  const busyAdd = (on) => {
+    const b = $("m-myadd");
+    if (!b) return;
+    b.disabled = on;
+    on ? b.setAttribute("aria-busy", "true") : b.removeAttribute("aria-busy");
+    b.lastElementChild.textContent = t(on ? "maps.bg.busy" : "maps.my.add");
+  };
+  function paintMyRow() {
+    const it = libTab === "own" && !lsheet.hidden ? mineItem(active) : null, row = $("m-myrow");
+    row.hidden = !it;
+    if (!it) { renaming = false; return; }
+    const info = $("m-myinfo");
+    info.hidden = renaming; $("m-myname-l").hidden = !renaming; $("m-myren").hidden = renaming;
+    if (!renaming) info.textContent = t("maps.my.info", { name: itemName(it), use: useText(it.sha) });
+  }
+  let quotaN = 0;
+  async function paintQuota() {
+    const el = $("m-myq"), n = ++quotaN;
+    const est = saver.status === "off" ? null : await store.estimate();
+    if (n !== quotaN) return; // een nieuwere controle loopt al
+    const lv = quotaLevel(est);
+    el.hidden = !lv;
+    if (lv) el.textContent = t("maps.my.quota", { pct: Math.min(100, Math.floor((est.usage / est.quota) * 100)) });
+  }
+  /** Item bewaren (geheugen of opslag); false = mislukt (melding) */
+  const saveItem = async (it) => {
+    if (saver.status !== "off" && !(await store.putMine(it))) { toast(t("maps.msg.opFail"), { bad: true }); return false; }
+    mine = sortMine([it, ...mine.filter((x) => x.sha !== it.sha)]);
+    return true;
+  };
+  $("m-mytiles").addEventListener("click", (e) => {
+    const b = e.target.closest(".mtile");
+    if (!b) return;
+    if (b.id === "m-myadd") { if (!addBusy) { myErr(null); $("m-myfile").click(); } return; } // in de tik (iOS)
+    const id = b.dataset.id;
+    if (id) { renaming = false; setActive(active === id ? null : id); }
+  });
+  $("m-myfile").addEventListener("change", async () => {
+    const fi = $("m-myfile"), f = fi.files && fi.files[0];
+    fi.value = ""; // hetzelfde bestand nog eens = opnieuw een change
+    if (!f || addBusy) return;
+    if (mine.length >= MINE.max) { myErr("max"); return; } // vóór het decoderen
+    addBusy = true; busyAdd(true);
+    let res, item = null, dup = false;
+    try {
+      res = await prepareImage(f, { find: findRec, max: MINE.maxSide, kind: "mine", thumb: MINE.thumb });
+      if (res.ok && mineItem(res.sha)) dup = true;
+      else if (res.ok) {
+        const r = res.rec, th = res.thumb || (await makeThumb(r, MINE.thumb));
+        const base = [...nameFromFile(f.name)].slice(0, MINE.nameMax - 4).join("").trim();
+        item = cleanItem({ sha: res.sha, name: base ? uniqueName(base, mineNames()) : newName(t("maps.my.base"), mineNames()),
+          ...defaultCells(r.ow || r.w, r.oh || r.h), addedAt: Date.now(), ...(th ? { thumb: th.data, tmime: th.mime } : {}) });
+        if (saver.status === "off") { if (!memAssets.has(res.sha)) memAssets.set(res.sha, res.rec); }
+        else {
+          const w = await store.addMine(item, res.sha, res.again ? null : res.rec);
+          if (w !== true) res = { ok: false, code: w === "quota" ? "quota" : "store" };
+        }
+      }
+    } catch { res = { ok: false, code: "broken" }; }
+    addBusy = false; busyAdd(false);
+    if (!res.ok) { myErr(res.code); return; }
+    if (dup) { toast(t("maps.my.already", { name: itemName(mineItem(res.sha)) })); }
+    else { mine = sortMine([item, ...mine]); }
+    if (lsheet.hidden || libTab !== "own") return;
+    paintMine();
+    setActive(res.sha);
+    const tile = $("m-mytiles").querySelector(`[data-id="${res.sha}"]`);
+    if (tile) tile.focus();
+  });
+  const nameInpMy = $("m-myname");
+  $("m-myren").addEventListener("click", () => {
+    const it = mineItem(active);
+    if (!it) return;
+    renaming = true; paintMyRow();
+    nameInpMy.value = it.name; nameInpMy.focus(); nameInpMy.select(); // in de tik (iOS)
+  });
+  async function commitRename(apply, focus) {
+    if (!renaming) return;
+    renaming = false;
+    const it = mineItem(active), nm = cleanItemName(nameInpMy.value); // leeg = vorige naam
+    if (apply && it && nm && nm !== it.name) { renSave = saveItem({ ...it, name: nm }); await renSave; }
+    if (!lsheet.hidden && libTab === "own") {
+      // geen nieuwe tegels (een tik op een tegel of Verwijderen laat het veld los: die klik moet blijven werken)
+      const nt = mineItem(active), tile = nt && $("m-mytiles").querySelector(`[data-id="${nt.sha}"]`);
+      if (tile) { tile.setAttribute("aria-label", itemName(nt)); tile.lastElementChild.textContent = itemName(nt); }
+      paintMyRow();
+      if (focus) $("m-myren").focus();
+    }
+  }
+  nameInpMy.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); commitRename(true, true); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); commitRename(false, true); }
+  });
+  nameInpMy.addEventListener("blur", () => commitRename(true, false));
+  let renSave = Promise.resolve();
+  $("m-mydel").addEventListener("click", async () => {
+    await renSave; // hernoemen (blur) en Verwijderen in één tik: eerst de nieuwe naam, zodat Ongedaan die terugzet
+    const it = mineItem(active);
+    if (!it) return;
+    renaming = false;
+    const u = usedCount(it.sha);
+    if (saver.status !== "off" && !(await store.deleteMine(it.sha))) { toast(t("maps.msg.opFail"), { bad: true }); return; }
+    mine = mine.filter((x) => x.sha !== it.sha);
+    dropThumb(it.sha);
+    setActive(null);
+    paintMine();
+    $("m-myadd").focus();
+    const msg = u.n ? t("maps.my.deletedKept", { name: itemName(it), n: u.n }) : t("maps.my.deleted", { name: itemName(it) });
+    sr(msg);
+    toast(msg, { btn: { label: t("maps.msg.undo"), run: async () => { // Ongedaan: hetzelfde item terug (de afbeelding staat er nog tot de volgende start)
+      if (mineItem(it.sha)) return;
+      if (!(await saveItem(it))) return;
+      dropThumb(it.sha); // nieuwe URL bij het tekenen (de oude is vrijgegeven)
+      if (!lsheet.hidden && libTab === "own") paintMine();
+    } } });
   });
   // ---- WP63: verven ----
   // Penseel/Breed: de veeg begint bij het neerzetten (de eerste cel kleurt meteen), elke cel waar vinger, muis of Pencil
@@ -507,10 +674,11 @@ async function boot() {
   /** Tik op de kaart in Plaatsen: het actieve onderdeel daar neerzetten (één undo-stap) */
   function place(sx, sy) {
     if (!placing()) return;
-    const d = builtin(active), p = toMap(view, sx, sy), at = placeAt(map.grid, p.x, p.y, d.w, d.h, snap);
+    const d = defOf(active), p = toMap(view, sx, sy), at = d && placeAt(map.grid, p.x, p.y, d.w, d.h, snap);
+    if (!d) return;
     if (!at) { stripMsg(t("maps.lib.outside")); return; } // naast de kaart: niets plaatsen (niet stil naar de rand klemmen)
     if (map.objs.length >= OBJ.max) { toast(t("maps.lib.max", { n: i18n().num(OBJ.max) }), { bad: true }); return; }
-    edit({ objs: [...map.objs, newObj(active, at, map.objs)] }, { k: "place", id: active });
+    edit({ objs: [...map.objs, newObj(active, at, map.objs, Math.random, d)] }, { k: "place", id: active });
     sr(t("maps.lib.placed", { name: assetName(active) }));
   }
   /** Muis boven de kaart in Plaatsen: spookbeeld op de plek waar een klik het onderdeel zet */
@@ -525,7 +693,7 @@ async function boot() {
     if (b !== brushAt) { brushAt = b; later(); }
     let g = null;
     if (sx != null && placing()) {
-      const d = builtin(active), p = toMap(view, sx, sy), at = placeAt(map.grid, p.x, p.y, d.w, d.h, snap);
+      const d = defOf(active), p = toMap(view, sx, sy), at = d && placeAt(map.grid, p.x, p.y, d.w, d.h, snap);
       if (at) g = { asset: active, x: at.x, y: at.y, w: d.w, h: d.h, rot: 0, layer: d.layer };
     }
     const same = g && ghost && g.asset === ghost.asset && g.x === ghost.x && g.y === ghost.y;
@@ -982,12 +1150,32 @@ async function boot() {
   const exportOne = async (m) => {
     const doc = cur && cur.id === m.id ? cur : saver.status === "off" ? m : await store.getMap(m.id);
     if (!doc) { toast(t("maps.msg.opFail"), { bad: true }); return; }
-    const assets = new Map();
-    if (doc.bg) { const rec = await assetRec(doc.bg.asset); if (rec) assets.set(doc.bg.asset, rec); }
-    const r = await exportMap(doc, assets, { app: `${APP} ${VERSION}`, title: t("maps.exp.title", { name: doc.name }) });
-    if (r === "missing") { toast(t("maps.exp.missing"), { bad: true }); return; }
+    const assets = new Map(); // WP64: achtergrond + eigen assets op objecten (ongebruikte items uit Mijn assets nooit)
+    for (const sha of usedAssets(doc)) { const rec = await assetRec(sha); if (rec) assets.set(sha, rec); }
+    const names = new Map(mine.map((i) => [i.sha, i.name]));
+    const { r, missing } = await exportMap(doc, assets, { app: `${APP} ${VERSION}`, title: t("maps.exp.title", { name: doc.name }), names });
+    if (r === "big") { toast(t("maps.exp.big", { mb: FILE_MAX / 1048576 }), { bad: true }); return; }
+    if (r === "missing") { toast(t(doc.bg && missing.includes(doc.bg.asset) ? "maps.exp.missing" : "maps.exp.missingOwn"), { bad: true }); return; }
     if (r === "done") { closeMenu(); toast(t("maps.exp.done")); }
   };
+  /** WP64: eigen assets op een geïmporteerde kaart die nog niet in Mijn assets staan, daar toevoegen (naam uit het bestand,
+   *  anders "Afbeelding N"; miniatuur opnieuw gemaakt). Lukt dat niet, dan werkt de kaart gewoon (het item ontbreekt).
+   *  Geeft de toegevoegde sha's (Ongedaan haalt ze weer weg zolang geen kaart ze gebruikt). */
+  async function adoptMine(doc, res) {
+    const out = [];
+    for (const sha of usedAssets({ objs: doc.objs })) {
+      if (mineItem(sha) || mine.length >= MINE.max) continue;
+      const rec = res.assets.get(sha);
+      if (!rec) continue;
+      const th = await makeThumb(rec, MINE.thumb), nm = res.names && res.names.get(sha);
+      const it = cleanItem({ sha, name: nm ? uniqueName([...nm].slice(0, MINE.nameMax - 4).join("").trim(), mineNames()) : newName(t("maps.my.base"), mineNames()),
+        ...defaultCells(rec.w, rec.h), addedAt: Date.now(), ...(th ? { thumb: th.data, tmime: th.mime } : {}) });
+      if (!it || (saver.status !== "off" && (await store.addMine(it, sha, null)) !== true)) continue;
+      mine = sortMine([it, ...mine]);
+      out.push(sha);
+    }
+    return out;
+  }
   // importeren: verborgen input + echte knop onder de lijst; altijd een nieuwe kaart (nieuwe id, naam uniek), nooit
   // overschrijven. Fout = regel onder de knop (blijft staan tot de volgende poging), gelukt = bovenaan met focus + Ongedaan.
   const imp = { btn: $("m-imp"), file: $("m-imp-file"), err: $("m-imp-e") };
@@ -1001,7 +1189,7 @@ async function boot() {
     importing = true;
     const label = imp.btn.textContent;
     imp.btn.disabled = true; imp.btn.setAttribute("aria-busy", "true"); imp.btn.textContent = t("maps.imp.busy");
-    let res, doc;
+    let res, doc, added = [];
     try {
       res = await importFile(f);
       if (res.ok) {
@@ -1012,6 +1200,7 @@ async function boot() {
           else if (!(await store.getAsset(sha)) && !(await store.putAsset(sha, rec))) { res = { ok: false, code: "store" }; break; }
         }
         if (res.ok && saver.status !== "off" && !(await store.putMap(doc))) res = { ok: false, code: "store" };
+        if (res.ok) added = await adoptMine(doc, res); // WP64: eigen assets ook in Mijn assets op dit apparaat
       }
     } catch { res = { ok: false, code: "read" }; }
     imp.btn.disabled = false; imp.btn.removeAttribute("aria-busy"); imp.btn.textContent = label;
@@ -1026,6 +1215,7 @@ async function boot() {
       if ((cur && cur.id === doc.id) || now.updatedAt !== doc.updatedAt) { toast(t("maps.imp.kept"), { bad: true }); return; }
       if (saver.status !== "off" && !(await store.deleteMap(doc.id))) { toast(t("maps.msg.opFail"), { bad: true }); return; }
       maps = maps.filter((x) => x.id !== doc.id);
+      for (const sha of added) if (mineItem(sha) && !usedCount(sha).n) { if (saver.status === "off" || (await store.deleteMine(sha))) { mine = mine.filter((x) => x.sha !== sha); dropThumb(sha); } } // WP64: wat de import toevoegde
       if (viewName === "list") { await reload(); (rows.querySelector(".mkl-o") || $("m-new")).focus(); }
     } } });
   });
@@ -1109,6 +1299,7 @@ async function boot() {
     const id = pickStart(maps, store.lastId());
     let doc = id && maps.find((m) => m.id === id), fresh = false;
     if (!doc) { doc = newMap({ name: newName(t("maps.newBase"), names()) }); fresh = !(await store.putMap(doc)); }
+    mine = (await store.listMine()) || []; // WP64 (vóór openDoc: namen en tekenen van eigen assets)
     openDoc(doc);
     if (fresh) saver.touch(); // eerste kaart niet bewaard: autosave probeert opnieuw en toont zo nodig "Niet opgeslagen"
     store.persistStorage();
@@ -1129,7 +1320,9 @@ async function boot() {
     hist: () => ({ undo: hist.canUndo, redo: hist.canRedo, size: hist.size }), tool: () => ({ placing: placing(), active, snap, ghost: !!ghost }),
     sel: () => selId, kbd: () => kbd && { ...kbd },
     bench: (n = 20) => { const t0 = performance.now(); for (let i = 0; i < n; i++) paint(); return (performance.now() - t0) / n; }, // WP63: tekentijd per frame (browsercheck)
-    paint: () => ({ painting: painting(), tab: libTab, mat, tool, cells: countTerr(map.grid, map.terr), ids: map.terr ? [...map.terr.ids] : [] }) };
+    paint: () => ({ painting: painting(), tab: libTab, mat, tool, cells: countTerr(map.grid, map.terr), ids: map.terr ? [...map.terr.ids] : [] }),
+    mine: () => mine.map((i) => ({ sha: i.sha, name: i.name, w: i.w, h: i.h, thumb: !!i.thumb })), // WP64
+    art: (sha) => !!art.get(sha, 48) };
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});

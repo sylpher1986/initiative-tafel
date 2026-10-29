@@ -4,6 +4,7 @@
 // binnen een laag (later = erboven); een apart z-veld is niet nodig (naar voren/achteren in WP62 = herordenen).
 // Objecten blijven staan als het raster kleiner wordt (niets stil weggooien); ze mogen dus buiten de kaart liggen.
 import { builtin, cleanAssetRef } from "./assets.js";
+const isSha = (v) => typeof v === "string" && /^[0-9a-f]{64}$/.test(v); // eigen asset (zoals isCustom in mine.js; geen kringimport)
 import { bounds, cellAt, cellCenter } from "./grid.js";
 
 /** Grenzen (D10: objecten 2000 als advies, bijstellen na WP66; grootte en positie ruim, maar eindig) */
@@ -71,9 +72,10 @@ export function placeAt(grid, px, py, w, h, snap) {
   return { x: r4(clamp(x, b.x + w / 2, b.x + b.w - w / 2)), y: r4(clamp(y, b.y + h / 2, b.y + b.h - h / 2)) };
 }
 
-/** Nieuw object van een ingebouwd onderdeel op een plek (placeAt), id uniek binnen objs; null = onbekend onderdeel */
-export function newObj(asset, at, objs, rnd = Math.random) {
-  const d = builtin(asset);
+/** Nieuw object van een onderdeel op een plek (placeAt), id uniek binnen objs; null = onbekend onderdeel. def = { w, h,
+ *  layer } voor een eigen asset (WP64: sha256, standaardgrootte uit Mijn assets); een ingebouwd onderdeel heeft hem al. */
+export function newObj(asset, at, objs, rnd = Math.random, def = null) {
+  const d = builtin(asset) || (def && isSha(asset) ? { w: def.w, h: def.h, layer: LAYERS.includes(def.layer) ? def.layer : "object" } : null);
   if (!d || !at) return null;
   return { id: objId(new Set(objs.map((o) => o.id)), rnd), asset, x: at.x, y: at.y, w: d.w, h: d.h, rot: 0, layer: d.layer };
 }
