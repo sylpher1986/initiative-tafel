@@ -13,11 +13,12 @@ import { cleanBg } from "./bg.js";
 import { cleanObjs } from "./objects.js";
 import { cleanTerr } from "./terrain.js";
 import { isCustom } from "./mine.js";
+import { LIMITS } from "./limits.js";
 
 /** Hoogste schemaversie die deze versie kent. Hoger = niet aanraken (gemaakt door een nieuwere versie). */
 export const SCHEMA = 5;
 /** Langste kaartnaam (tekens) */
-export const NAME_MAX = 60;
+export const NAME_MAX = LIMITS.mapName;
 
 const ID_RE = /^[a-z0-9]{6,32}$/;
 

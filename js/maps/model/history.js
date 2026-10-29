@@ -6,9 +6,10 @@
 // Groeperen: opeenvolgende stappen met dezelfde group (bijv. één uitlijnsessie: slepen + pijltjes tot Klaar) worden één
 // stap; seal() sluit de groep af. Een groep die per saldo niets veranderde, verdwijnt. meta = beschrijving van de stap
 // als code (bijv. { k: "place", id: "table" }) voor de knoplabels; de UI maakt er tekst van.
+import { LIMITS } from "./limits.js";
 
 /** Maximaal aantal stappen (oudste vallen weg) */
-export const HIST_MAX = 100;
+export const HIST_MAX = LIMITS.hist;
 
 // Lijsten (objs) zijn altijd nieuw bij een wijziging: identiteit volstaat (geen JSON over 2000 objecten per tik);
 // kleine objecten (grid, bg) worden op inhoud vergeleken. terr (WP63, ± 10 KB tekst) ook: één keer per veeg, en verven

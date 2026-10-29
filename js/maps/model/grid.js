@@ -4,8 +4,9 @@
 // Hex (WP57): intern axiale coördinaten (q, r), naar buiten offset-kolom/rij (c, r): pointy = "odd-r" (oneven rijen een
 // halve cel naar rechts), flat = "odd-q" (oneven kolommen een halve cel omlaag). Cel (0,0) raakt de linker- en bovenrand.
 
-/** Grenzen van een kaart (D10: max 100×100 voor de MVP; bijstellen na WP66) */
-export const LIMITS = { minCells: 1, maxCells: 100 };
+/** Grenzen (D10: kaart max 100×100; WP66: alle grenzen centraal in limits.js) */
+import { LIMITS } from "./limits.js";
+export { LIMITS };
 /** Rastertypes en hex-oriëntaties (id's in opslag) */
 export const TYPES = ["square", "hex"];
 export const ORIENTS = ["pointy", "flat"];
@@ -144,4 +145,25 @@ export function visibleCells(grid, rect) {
   const c0 = Math.max(0, Math.floor((rect.x - ox) / cw)), c1 = Math.min(grid.cols - 1, Math.floor((rect.x + rect.w) / cw));
   const r0 = Math.max(0, Math.floor((rect.y - oy) / rh)), r1 = Math.min(grid.rows - 1, Math.floor((rect.y + rect.h) / rh));
   return c0 > c1 || r0 > r1 ? { c0: 1, c1: 0, r0: 1, r1: 0 } : { c0, c1, r0, r1 };
+}
+
+// ---- WP66: hex-rasterlijnen zonder dubbele randen ----
+// Rand k van een cel loopt van hoekpunt k naar k + 1 (cellPoly). Een rand tussen twee kaartcellen tekent maar één van
+// beide: elke cel tekent altijd zijn randen naar boven en links (pointy: 4 links, 5 linksboven, 0 rechtsboven; flat:
+// 3 linksboven, 4 boven, 5 rechtsboven) en de andere drie alleen als daar geen kaartcel ligt (de rand van de kaart).
+// Buur over rand k als offset (dc, dr), per pariteit (even/oneven rij bij pointy, kolom bij flat).
+const EDGE_NB = {
+  pointy: [[[0, -1], [1, 0], [0, 1], [-1, 1], [-1, 0], [-1, -1]], [[1, -1], [1, 0], [1, 1], [0, 1], [-1, 0], [0, -1]]],
+  flat: [[[1, 0], [0, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]], [[1, 1], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, 0]]],
+};
+/** Eerste eigen rand (de render tekent vanaf hier rondom, zodat de eigen randen één aaneengesloten lijn zijn) */
+export const EDGE_START = { pointy: 4, flat: 3 };
+const OWN_EDGES = { pointy: 0b110001, flat: 0b111000 }; // bit k = rand k is altijd van deze cel
+/** Welke randen tekent cel (c, r)? Bitmasker (bit k = rand k). Samen tekenen alle kaartcellen elke rand precies één keer. */
+export function hexEdgeMask(grid, c, r) {
+  const o = pointy(grid) ? "pointy" : "flat", nb = EDGE_NB[o][(o === "pointy" ? r : c) & 1];
+  let m = OWN_EDGES[o];
+  if (c > 0 && r > 0 && c < grid.cols - 1 && r < grid.rows - 1) return m; // binnencel: alle buren liggen op de kaart
+  for (let k = 0; k < 6; k++) if (!(m & (1 << k)) && !inside(grid, c + nb[k][0], r + nb[k][1])) m |= 1 << k;
+  return m;
 }

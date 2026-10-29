@@ -124,7 +124,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
@@ -745,8 +745,8 @@ const SCEN = {
     if (!se.vis || se.dis || msgs.has(se.t)) throw new Error("opslag vol: " + JSON.stringify(se));
     msgs.set(se.t, "store");
     if ((await mapsIdb(page, () => true)).length !== n0) throw new Error("kapot bestand maakte toch een kaart");
-    // 13 foutbestanden + te groot + opslag vol, codes empty notjson format newer b64 sha missing image badmap big store: 11 teksten
-    if (msgs.size !== 11) throw new Error("foutregels niet per soort verschillend: " + [...msgs.keys()].join(" | "));
+    // 14 foutbestanden + te groot + opslag vol, codes empty notjson format newer b64 sha missing image badmap objs (WP66) big store: 12 teksten
+    if (msgs.size !== 12) throw new Error("foutregels niet per soort verschillend: " + [...msgs.keys()].join(" | "));
     await snap(page, "wp60", "fout");
     // geldig bestand: nieuwe kaart bovenaan met focus, melding met Ongedaan, foutregel weg
     const fxDoc = JSON.parse(readFileSync(join(FX, "valid.json"), "utf8")), sha = Object.keys(fxDoc.assets)[0];
@@ -1429,6 +1429,58 @@ const SCEN = {
   // foutregels onder de rij (velden houden dezelfde top), kernflow (achtergrond → object → verven met het toetsenbord →
   // export), toegankelijke namen, en iPad portret (768) en desktop (1280): zijpaneel rechts tussen kop en dock, dock
   // bereikbaar, passend maken links van het paneel, geen horizontaal scrollen. --shots=wp65: lege kaart, zijpaneel.
+  // WP66: prestaties en grenzen. Import met meer dan 2000 objecten = eigen foutregel, geen kaart; meetstand ?bench (korte
+  // fasen): uitslag met drie fasen in een paneel, schrijft niets (geen kaart, laatste kaart en tabbladclaim ongewijzigd);
+  // de kaartbuffer (createLayer) tekent bij pannen precies wat een volledige tekening zou tekenen, doorlopend zoomen is
+  // een voorbeeld en wordt daarna vanzelf scherp. --shots=wp66: de uitslag.
+  async wp66(page, base) {
+    const ready = () => page.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);
+    await ready();
+    const { readFileSync } = await import("node:fs");
+    await tap(page, "#m-maps"); await page.locator("#m-list").waitFor({ state: "visible" });
+    const n0 = (await mapsIdb(page, (all) => all.length >= 1)).length;
+    const [fc] = await Promise.all([page.waitForEvent("filechooser"), tap(page, "#m-imp")]);
+    await fc.setFiles({ name: "te-veel.json", mimeType: "application/json", buffer: readFileSync(join(ROOT, "tests/fixtures/maps/err-objs.json")) });
+    await page.waitForFunction(() => !document.getElementById("m-imp-e").hidden, null, { timeout: 10000 });
+    const et = await page.locator("#m-imp-e").textContent();
+    if (!/2[.,]?000/.test(et)) throw new Error("foutregel noemt de grens niet: " + et);
+    await page.waitForTimeout(300);
+    if ((await mapsIdb(page, () => true)).length !== n0) throw new Error("import met te veel objecten maakte toch een kaart");
+    const keep = await page.evaluate(() => [localStorage.getItem("maps-last"), localStorage.getItem("maps-tab")]);
+    // meetstand
+    await page.goto(base + (await page.evaluate(() => location.pathname)) + "?bench&ms=300");
+    await page.waitForFunction(() => window.__maps && window.__maps.result(), null, { timeout: 60000 });
+    const res = await page.evaluate(() => window.__maps.result());
+    for (const ph of ["pan", "far", "zoom"]) if (!(res.res[ph] && res.res[ph].fps > 0)) throw new Error("meetstand: fase " + ph + " zonder uitslag");
+    if (!(res.openMs > 0) || !(res.mem.mb > 0)) throw new Error("meetstand: openen/geheugen ontbreekt");
+    if ((await page.locator("#m-benchw .mbench dt").count()) !== 4) throw new Error("uitslag: 4 regels");
+    if (!(await page.evaluate(() => document.getElementById("m-benchw").contains(document.activeElement)))) throw new Error("uitslag: focus in het paneel");
+    if (page.viewportSize().width === 320) console.log(`  wp66: open ${res.openMs} ms, ` + ["pan", "far", "zoom"].map((p) => `${p} ${res.res[p].fps} fps (tekenen ${res.res[p].draw} ms)`).join(", ") + `, ${res.mem.mb} MB`);
+    await snap(page, "wp66", "uitslag");
+    const after = await page.evaluate(() => [localStorage.getItem("maps-last"), localStorage.getItem("maps-tab")]);
+    if (after[0] !== keep[0] || after[1] !== keep[1]) throw new Error("meetstand schreef in localStorage: " + JSON.stringify([keep, after]));
+    if ((await mapsIdb(page, () => true)).length !== n0) throw new Error("meetstand schreef een kaart");
+    // buffer tegen volledige tekening
+    const go = (v) => page.evaluate((v) => window.__maps.go(v), v);
+    const diff = async (what) => { const d = await page.evaluate(() => window.__maps.diff()); if (d.n > d.of * 0.002) throw new Error(`${what}: ${d.n} van ${d.of} pixels anders dan een volledige tekening`); };
+    let v = { x: -300.25, y: -200.5, z: 0.5 };
+    await page.waitForTimeout(300); // ZOOM_GAP: het zoomen van het script is voorbij
+    if ((await go(v)) !== "full") throw new Error("nieuwe zoom: volledig tekenen");
+    await diff("volledig");
+    for (const [dx, dy] of [[13.3, 0], [0, -21.7], [-48.4, 33.1], [5.5, 5.5]]) {
+      v = { ...v, x: v.x + dx, y: v.y + dy };
+      const m = await go(v);
+      if (m !== "pan") throw new Error(`pannen ${dx},${dy}: ${m}`);
+      await diff(`na pannen ${dx},${dy}`);
+    }
+    if ((await go({ ...v, x: v.x + 5000 })) !== "full") throw new Error("ver pannen: volledig tekenen");
+    await page.waitForTimeout(300);
+    if ((await go({ ...v, z: 0.55 })) !== "full") throw new Error("losse zoomstap: meteen scherp");
+    const zm = await go({ ...v, z: 0.6 });
+    if (zm !== "zoom") throw new Error("doorlopend zoomen: voorbeeld verwacht, kreeg " + zm);
+    await page.waitForFunction(() => window.__maps.mode() === "full", null, { timeout: 2000 });
+    await diff("na zoomen");
+  },
   async wp65(page) {
     const ready = () => page.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);
     await ready();

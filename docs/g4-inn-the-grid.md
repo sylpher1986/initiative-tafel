@@ -262,7 +262,7 @@ Nummering loopt door op de repo-historie (laatste was WP55). Elk pakket = één 
 - Acceptatie: (1) kernflow (nieuwe kaart → achtergrond → object → verven → export) op iPhone SE-breedte (320), iPad portret en desktop zonder horizontaal scrollen; (2) alle knoppen hebben `aria-label`, focus zichtbaar; (2b) een foutregel verschuift geen buurveld (browsercheck: velden in een rij houden dezelfde `top` met en zonder fout); (2c) geen "Inn the Grid" meer in de catalogi of op de pagina (test), een bestand met `app: "Inn the Grid 0.x"` importeert nog (fixture); (3) Michiel doet de kernflow op zijn telefoon zonder hulp (handmatig).
 - Grootte M.
 
-**WP66 · Prestaties en grenzen** · M
+**WP66 · Prestaties en grenzen** · M — **klaar (Maps 0.11.0)**; besluiten en meetwaarden in CLAUDE.md (kaartbuffer met verschuiven en zoomvoorbeeld, hexranden één keer, `LIMITS` in `model/limits.js`, import > 2000 objecten geweigerd, meetstand `/maps/?bench`, kleine onderdelen tot 512 px). Acceptatie (2) en (3) aangetoond, (1) desktop aangetoond (headless 59–60 fps); **(1) iPad: Michiel draait `/nl/maps/?bench` op zijn oudste iPad** (doel ≥ 30 fps per fase)
 - Scope: meetscenario 100×100 + 2000 objecten + achtergrond 4096 px; offscreen-buffers, culling, tekenen alleen bij verandering (`requestAnimationFrame`), `LIMITS` centraal, geheugenmeting.
 - Acceptatie: (1) pannen/zoomen ≥ 30 fps op Michiels oudste iPad, ≥ 50 fps desktop (meetscript); (2) openen van de meetkaart < 2 s op desktop; (3) grenzen gehandhaafd met melding.
 - Uit WP61: `render/art.js` begrenst de bitmap op 256 px per cel (onscherp bij dpr 3 en 400 %): meten en zo nodig 512 voor kleine onderdelen.
@@ -311,14 +311,14 @@ Kleinste waardevolle eind-tot-eind-release: **M1**.
 | D1 | Pad | **Besloten 28-10: `/maps/` en `/nl/maps/`** (code, catalogus en opslag heten ook `maps`; de productnaam staat los daarvan, zie D13) |
 | D13 | Naam | **Besloten 28-10: Inn Sight** (was Inn the Grid). Zichtbaar in WP65, documentatie en padbesluit (advies: `/maps/` houden) in WP67 |
 | D2 | Versie | **Besloten 28-10: Inn the Grid krijgt een eigen versienummer**; de bestaande nummers zijn van Inn itiative; de homepage krijgt geen nummer. Uitwerking zie §2.10. Startversie 0.1.0, 1.0.0 bij M2 (WP67). |
-| D3 | Tekentechniek | **Besloten 28-10: Canvas 2D, eigen code, voor nu**; herzien als WP66 daar aanleiding toe geeft |
+| D3 | Tekentechniek | **Besloten 28-10: Canvas 2D, eigen code, voor nu**; WP66: blijft (met de kaartbuffer ruim binnen de doelen, headless) |
 | D4 | Projectbestand | **Besloten in WP60 op het advies: optie A, één JSON met base64-assets** (formaat §8) |
 | D5 | Extensie | **Besloten in WP60 op het advies: `.json`** (iOS-bestandskiezer kent die; `format` maakt het herkenbaar) |
 | D6 | Ingebouwde assets | **Besloten in WP61 op het advies: eigen eenvoudige SVG's** (licentieschoon, zoals "geen niet-SRD content"), 24 stuks in `data/maps-assets/` |
 | D7 | Zichtbaarheid | Tot M2 niet op de homepage, niet installeerbaar, `noindex`; besluit in WP67 |
 | D8 | Koppeling (fase 3) | Zelfde-origin lezen + bestand als terugval |
 | D9 | Reviewers in de functionele fase | Volgens CLAUDE.md; UX-agent alleen bij echte keuzes, vormgeving pas in WP68 |
-| D10 | Grenzen | **Kaart: besloten in WP57 op het advies, max 100×100 cellen**; objecten: 2000 (advies, bijstellen na WP66) |
+| D10 | Grenzen | **Kaart: besloten in WP57 op het advies, max 100×100 cellen**; objecten: 2000, bevestigd in WP66 (headless; iPad-meting door Michiel open, bij tegenvallen lagere grens) |
 | D11 | Tabbladen | **Besloten in WP58 op het advies: eigen `maps-tab`, nieuwste wint** |
 | D12 | Uploads | **Besloten in WP59 op het advies: ≤ 25 MB invoer, opgeslagen ≤ 4096 px, alleen PNG/JPEG/WebP** (daarbij: weigeren boven 16384 px per zijde of 36 MP, vóór het decoderen) |
 
@@ -338,7 +338,7 @@ Geen meer: D1–D3 zijn besloten. De rest start op het advies en wordt per pakke
 ---
 
 ## 7. Volgende stap
-WP56–WP60 zijn klaar (28-10-2026): **mijlpaal M1** (Maps 0.5.0). WP61 klaar (Maps 0.6.0). WP62 klaar (Maps 0.7.0; plaatsen met het toetsenbord meegenomen). WP63 klaar (Maps 0.8.0, terrein verven). WP64 klaar (Maps 0.9.0, eigen assets). WP65 klaar (Maps 0.10.0, responsief en eerste gebruik; zichtbare naam Inn Sight). Volgende: **WP66**. De documentatie van de hernoeming (D13) volgt in WP67.
+WP56–WP60 zijn klaar (28-10-2026): **mijlpaal M1** (Maps 0.5.0). WP61 klaar (Maps 0.6.0). WP62 klaar (Maps 0.7.0; plaatsen met het toetsenbord meegenomen). WP63 klaar (Maps 0.8.0, terrein verven). WP64 klaar (Maps 0.9.0, eigen assets). WP65 klaar (Maps 0.10.0, responsief en eerste gebruik; zichtbare naam Inn Sight). WP66 klaar (Maps 0.11.0, prestaties en grenzen; iPad-meting open). Volgende: **WP67** (M2). De documentatie van de hernoeming (D13) volgt in WP67.
 
 Oorspronkelijk advies bij de start van G4: **WP56 · Tool-skelet met vierkant raster, pannen en zoomen.**
 Waarom eerst: laagste risico, raakt Initiative niet, legt pad, pagina, catalogus, service worker, tests, browsercheck en het canvas-/gebarenfundament vast waar elk volgend pakket op bouwt. Na WP56 is er al iets op de telefoon te openen.

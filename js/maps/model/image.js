@@ -4,10 +4,11 @@
 // afbeelding (decompressiebom) wordt zo geweigerd zonder het geheugen van een oude iPad op te blazen.
 // Besluit D12 (WP59, op het advies): invoer ≤ 25 MB, opgeslagen langste zijde ≤ 4096 px (iOS-canvasgrens),
 // hercodering naar WebP (terugval JPEG) verwijdert ook EXIF/locatie (docs/g4-inn-the-grid.md §2.6).
+import { LIMITS } from "./limits.js";
 
 /** Grenzen: invoer in bytes, opgeslagen langste zijde, en wat we bereid zijn te decoderen */
 // maxInPixels: het origineel wordt volledig gedecodeerd (± 4 bytes per pixel): 36 MP ≈ 144 MB, plus bestand en canvas
-export const IMG = { maxBytes: 25 * 1024 * 1024, maxSide: 4096, maxInSide: 16384, maxInPixels: 36e6 };
+export const IMG = { maxBytes: LIMITS.inBytes, maxSide: LIMITS.bgSide, maxInSide: LIMITS.inSide, maxInPixels: LIMITS.inPixels }; // waarden in limits.js
 
 const at = (b, i) => (i < b.length ? b[i] : -1);
 const ascii = (b, i, n) => { let s = ""; for (let k = 0; k < n; k++) { const c = at(b, i + k); if (c < 0) return ""; s += String.fromCharCode(c); } return s; };

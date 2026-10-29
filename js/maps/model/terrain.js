@@ -13,7 +13,7 @@ export const TERRAINS = ["stone", "wood", "grass", "dirt", "water", "sand", "lav
 /** Gereedschappen in de UI: penseel (1 cel), breed (cel + buren), vullen (aaneengesloten gebied) */
 export const TOOLS = ["brush", "wide", "fill"];
 /** Vast celraster en het grootste palet (één teken per cel) */
-export const TERR = { w: LIMITS.maxCells, h: LIMITS.maxCells, maxIds: 35 };
+export const TERR = { w: LIMITS.maxCells, h: LIMITS.maxCells, maxIds: LIMITS.terrIds };
 
 const ALPH = "0123456789abcdefghijklmnopqrstuvwxyz";
 const CODE = [...ALPH].map((ch) => ch.charCodeAt(0));

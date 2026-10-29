@@ -172,3 +172,9 @@ body.maps{display:flex;flex-direction:column;padding:0;height:100dvh} /* zonder 
   body.mside .mstrip,body.mside .mempty{left:calc((100% - 360px) / 2)}
   body.mside .mstrip{max-width:calc(100% - 384px)}
 }
+/* WP66: uitslag van de meetstand (/maps/?bench) in de vorm van het sneltoetsenoverzicht */
+.mbench dt{font-weight:600}
+.mbench-ok,.mbench-bad{font-weight:700}
+.mbench-ok{color:var(--good)} .mbench-bad{color:var(--bad)}
+.mbench-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.mbench-act .btn{text-decoration:none}

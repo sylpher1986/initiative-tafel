@@ -6,9 +6,10 @@
 import { builtin, cleanAssetRef } from "./assets.js";
 const isSha = (v) => typeof v === "string" && /^[0-9a-f]{64}$/.test(v); // eigen asset (zoals isCustom in mine.js; geen kringimport)
 import { bounds, cellAt, cellCenter } from "./grid.js";
+import { LIMITS } from "./limits.js";
 
-/** Grenzen (D10: objecten 2000 als advies, bijstellen na WP66; grootte en positie ruim, maar eindig) */
-export const OBJ = { max: 2000, minSize: 0.25, maxSize: 20, maxPos: 1000 };
+/** Grenzen (D10: objecten 2000, bevestigd in WP66; grootte en positie ruim, maar eindig; waarden in limits.js) */
+export const OBJ = { max: LIMITS.objs, minSize: LIMITS.objMinSize, maxSize: LIMITS.objMaxSize, maxPos: LIMITS.objMaxPos };
 export const LAYERS = ["floor", "object"];
 const ID_RE = /^[a-z0-9]{1,16}$/;
 

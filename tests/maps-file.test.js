@@ -105,7 +105,7 @@ test("elk fouttype een eigen code", async () => {
     "err-empty.json": "empty", "err-notjson.json": "notjson", "err-format.json": "format", "err-newer.json": "newer",
     "err-newer-schema.json": "newer", "err-b64.json": "b64", "err-sha.json": "sha", "err-missing.json": "missing",
     "err-image-svg.json": "image", "err-image-dims.json": "image", "err-image-mime.json": "image", "err-badmap.json": "badmap",
-    "err-badmap-bg.json": "badmap",
+    "err-badmap-bg.json": "badmap", "err-objs.json": "objs",
   };
   const files = readdirSync(DIR).filter((f) => f.startsWith("err-"));
   assert.deepEqual(files.sort(), Object.keys(cases).sort(), "elk foutbestand heeft een verwachting");

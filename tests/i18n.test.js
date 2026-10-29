@@ -138,6 +138,7 @@ const DYNAMIC = [
   [{ test: (k) => cinfoSet.has(k) }, "js/rules/conditions.js condInfo (CINFO, CINFO24)"],
   [/^dnd\.exh\.s?[1-6]$/, "js/rules/conditions.js, effects.js"],
   [/^maps\.ago\.(min|hour|day)$/, "js/maps/main.js when() (ago)"],
+  [/^maps\.bench\.ph\.(pan|far|zoom)$/, "js/maps/ui/bench.js (PHASES in js/maps/model/bench.js)"],
 ];
 
 test("ongebruikte sleutels zijn een fout (sinds WP33); samengestelde sleutels via DYNAMIC", () => {

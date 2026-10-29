@@ -10,12 +10,14 @@
 import { cleanMap, SCHEMA } from "./map.js";
 import { sniff, dims, IMG } from "./image.js";
 import { usedAssets, isCustom, cleanItemName, MINE } from "./mine.js";
+import { LIMITS } from "./limits.js";
+import { OBJ, cleanObj } from "./objects.js";
 
 export const FORMAT = "kevs-inn-maps";
 /** Hoogste bestandsversie die deze versie schrijft en leest */
 export const FILE_VERSION = 1;
 /** Grens voor een bestand bij import (bytes): een echte export (één 4096-px-afbeelding) blijft ruim onder 10 MB */
-export const FILE_MAX = 35 * 1024 * 1024; // één asset ≤ 25 MB (IMG.maxBytes) als base64 + marge; meer = geheugen op een oude iPad
+export const FILE_MAX = LIMITS.fileBytes; // één asset ≤ 25 MB (IMG.maxBytes) als base64 + marge; meer = geheugen op een oude iPad
 const MIMES = ["image/png", "image/jpeg", "image/webp"];
 
 /** Migraties per bestandsversie: MIGRATE[v](doc) maakt van een v-bestand een (v+1)-bestand. Nog leeg (v1 = eerste). */
@@ -99,7 +101,7 @@ export function upgrade(doc, migrate = MIGRATE) {
  * Bestand lezen. size = bestandsgrootte in bytes, text = inhoud, hash(bytes) = async sha256-hex (crypto.subtle in de
  * browser, node:crypto in de tests). Geeft { ok: true, map, assets: Map(sha → { data: ArrayBuffer, mime, w, h, ow, oh })
  * } met map zonder id (de aanroeper kiest id en naam), of { ok: false, code } met code ∈ "empty" | "big" |
- * "notjson" | "format" | "newer" | "badmap" | "missing" (afbeelding niet in het bestand) | "b64" (kapotte base64) |
+ * "notjson" | "format" | "newer" | "badmap" | "objs" (WP66: meer dan OBJ.max objecten) | "missing" (afbeelding niet in het bestand) | "b64" (kapotte base64) |
  * "image" (geen toegestane of een kapotte afbeelding, of afmetingen kloppen niet) | "sha" (inhoud klopt niet met de
  * sleutel). Tekst via de catalogus (maps.imp.err.<code>). Een src uit het bestand wordt genegeerd: anders kan een
  * gemaakt bestand zich voordoen als een later geüpload origineel (findAsset).
@@ -116,6 +118,8 @@ export async function readFile(size, text, { hash, migrate = MIGRATE } = {}) {
   const m = doc.map;
   if (!plain(m)) return { ok: false, code: "badmap" };
   if (Number.isInteger(m.schema) && m.schema > SCHEMA) return { ok: false, code: "newer" };
+  // WP66: meer objecten dan de grens = weigeren met een melding (cleanObjs kapt stil af; een import mag niets stil weglaten)
+  if (Array.isArray(m.objs) && m.objs.length > OBJ.max && m.objs.filter((o) => cleanObj(o)).length > OBJ.max) return { ok: false, code: "objs" };
   const map = cleanMap({ ...m, id: "import0" }); // tijdelijke id: alleen om door cleanMap te komen
   if (!map) return { ok: false, code: "badmap" };
   delete map.id;

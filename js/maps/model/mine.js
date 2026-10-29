@@ -6,9 +6,10 @@
 // Een object verwijst naar een eigen asset met diezelfde sha (ASSET_RE in model/assets.js). Uit de bibliotheek halen
 // haalt alleen het item weg: kaarten die de afbeelding gebruiken houden hem (gcAssets telt elke verwijzing).
 import { OBJ } from "./objects.js";
+import { LIMITS } from "./limits.js";
 
 /** Langste itemnaam (tekens) en het maximum aantal items (bescherming tegen een gemaakte database of import) */
-export const MINE = { nameMax: 40, max: 500, maxSide: 1024, thumb: 128, thumbBytes: 256 * 1024 };
+export const MINE = { nameMax: LIMITS.itemName, max: LIMITS.mine, maxSide: LIMITS.mineSide, thumb: LIMITS.thumb, thumbBytes: LIMITS.thumbBytes }; // waarden in limits.js
 const THUMB_MIMES = ["image/webp", "image/jpeg", "image/png"];
 const SHA = /^[0-9a-f]{64}$/;
 

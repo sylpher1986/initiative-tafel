@@ -22,7 +22,7 @@ import { MINE, isCustom, cleanItem, cleanItemName, nameFromFile, defaultCells, u
 import { newMap, mapId, cleanName, newName, uniqueName, copyMap, sortMaps, pickStart, ago } from "./model/map.js";
 import { FILE_MAX } from "./model/file.js";
 import { exportMap, importFile } from "./ui/export.js";
-import { readColors, fitCanvas, draw, TERR_COLORS } from "./render/canvas.js";
+import { readColors, fitCanvas, createLayer, draw, TERR_COLORS } from "./render/canvas.js";
 import { TERRAINS, TOOLS, paintCells, brushCells, strokeCells, footprint, fillCells, countTerr } from "./model/terrain.js";
 import { createArt } from "./render/art.js";
 import { createHistory } from "./model/history.js";
@@ -34,11 +34,16 @@ import { esc, toast } from "./ui/dom.js";
 import * as store from "./store.js";
 import { createSaver } from "./save.js";
 import { claimTab } from "./tablock.js";
+import { benchMap, BENCH_SHA, rng } from "./model/bench.js";
+import { runPhases, resultHtml } from "./ui/bench.js";
 
 const ZOOM_STEP = 1.25;
 const $ = (id) => document.getElementById(id);
 // Eigen catalogus per taal (locales/maps/<taal>.js, OWN in tools/i18n-build.mjs): absoluut pad, eigen cache
 const loadCat = (l) => import(`/locales/maps/${l}.js`).then((m) => m.default || {});
+// WP66: meetstand /maps/?bench (hex) of ?bench=square: meetkaart alleen in het geheugen, geen tabbladclaim, niets bewaard
+const BENCH_MODE = new URLSearchParams(location.search).get("bench");
+const BENCH_MS = Math.min(10000, Math.max(200, +new URLSearchParams(location.search).get("ms") || 4000)); // &ms= : kortere fasen (browsercheck)
 
 async function boot() {
   await initI18n({ load: loadCat });
@@ -54,7 +59,7 @@ async function boot() {
   let gone = false, viewName = "edit";
 
   // ---- WP58: opslag, status ----
-  const ok = claimTab(tabLost); // D11: nieuwste tabblad wint
+  const ok = BENCH_MODE === null ? claimTab(tabLost) : () => false; // D11: nieuwste tabblad wint; meetstand schrijft nooit
   store.setWriteGuard(ok);
   const saver = createSaver({ write: () => (cur ? store.putMap(cur) : true), onStatus: paintStatus });
   const stat = $("m-stat");
@@ -77,15 +82,19 @@ async function boot() {
   const paint = () => {
     queued = false;
     fitCanvas(cv, w, h, dpr);
-    draw(cv, map, view, w, h, dpr, col, { img: (map.bg && imgs.get(map.bg.asset)) || null, align: aligning, art, ghost,
+    const r = layer.paint(cv, map, view, w, h, dpr, col, { img: (map.bg && imgs.get(map.bg.asset)) || null, align: aligning, art, ghost,
       sel: selObj(), cursor: kbd && !selId && viewName === "edit" ? cellPoly(map.grid, kbd.c, kbd.r) : null,
-      brush: brushAt && painting() ? brushAt.cells.map((q) => cellPoly(map.grid, q.c, q.r)) : null });
+      brush: brushAt && painting() ? brushAt.cells.map((q) => cellPoly(map.grid, q.c, q.r)) : null }, [art.ver()]);
+    lastMode = r.mode;
+    if (r.settle) { clearTimeout(settleT); settleT = setTimeout(later, r.settle); } // WP66: na het zoomen scherp tekenen
     const n = zoomPct(view), z = $("m-zoom");
     if (z.dataset.n !== String(n)) { z.dataset.n = n; z.textContent = t("maps.zoom.pct", { n }); z.setAttribute("aria-label", t("maps.zoom.fit", { n })); }
     $("m-out").disabled = view.z <= ZMIN;
     $("m-in").disabled = view.z >= ZMAX;
   };
   const later = () => { if (!queued) { queued = true; requestAnimationFrame(paint); } };
+  const layer = createLayer(); // WP66: buffer van de kaart (render/canvas.js): pannen en zoomen tekenen niet alles opnieuw
+  let settleT = 0, lastMode = "";
   const set = (v) => { view = clampPan(v, bounds(map.grid), w, h); later(); };
   // Passend maken in het deel dat niet onder het paneel Kaart ligt (WP57). auto = de view is nog "passend": dan blijft hij
   // passend bij een ander raster, schermformaat of paneel; elke eigen pan/zoom zet auto uit.
@@ -1030,7 +1039,7 @@ async function boot() {
     const isList = v === "list";
     list.hidden = !isList; ldock.hidden = !isList;
     wrap.hidden = isList;
-    if (isList) select(null, false); // WP62
+    if (isList) { select(null, false); layer.clear(); } // WP62; WP66: kaartbuffer vrij zolang de lijst open is
     docks();
     head(); chrome();
     histBtns(); paintStrip();
@@ -1211,7 +1220,7 @@ async function boot() {
   // importeren: verborgen input + echte knop onder de lijst; altijd een nieuwe kaart (nieuwe id, naam uniek), nooit
   // overschrijven. Fout = regel onder de knop (blijft staan tot de volgende poging), gelukt = bovenaan met focus + Ongedaan.
   const imp = { btn: $("m-imp"), file: $("m-imp-file"), err: $("m-imp-e") };
-  const impErr = (code) => { imp.err.hidden = !code; imp.err.textContent = code ? t("maps.imp.err." + code, { mb: FILE_MAX / 1048576 }) : ""; };
+  const impErr = (code) => { imp.err.hidden = !code; imp.err.textContent = code ? t("maps.imp.err." + code, { mb: FILE_MAX / 1048576, n: i18n().num(OBJ.max) }) : ""; };
   let importing = false; // eigen vlag (niet busy): een gekozen bestand wordt nooit stil genegeerd omdat er net een lijstactie loopt
   imp.btn.addEventListener("click", () => { if (!importing) { impErr(null); imp.file.click(); } });
   imp.file.addEventListener("change", async () => {
@@ -1367,8 +1376,12 @@ async function boot() {
   try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { col = readColors(); later(); }); } catch { /* Safari < 14: geen live wissel */ }
 
   // ---- start: laatste kaart heropenen; nog geen kaart = direct "Map 1"; geen opslag = in het geheugen ----
-  const stored = (await store.available()) ? await store.listMaps() : undefined;
-  if (stored) {
+  const stored = BENCH_MODE !== null ? undefined : (await store.available()) ? await store.listMaps() : undefined;
+  if (BENCH_MODE !== null) { // WP66: lege kaart tot de meetkaart klaar is (startBench), geen melding "wordt niet bewaard"
+    saver.off();
+    maps = [newMap({ name: t("maps.bench.name") })];
+    openDoc(maps[0]);
+  } else if (stored) {
     maps = stored;
     const id = pickStart(maps, store.lastId());
     let doc = id && maps.find((m) => m.id === id), fresh = false;
@@ -1393,10 +1406,106 @@ async function boot() {
     bg: () => ({ state: bgState(), align: aligning, img: !!(map.bg && imgs.get(map.bg.asset)) }),
     hist: () => ({ undo: hist.canUndo, redo: hist.canRedo, size: hist.size }), tool: () => ({ placing: placing(), active, snap, ghost: !!ghost }),
     sel: () => selId, kbd: () => kbd && { ...kbd },
-    bench: (n = 20) => { const t0 = performance.now(); for (let i = 0; i < n; i++) paint(); return (performance.now() - t0) / n; }, // WP63: tekentijd per frame (browsercheck)
+    bench: (n = 20) => { const t0 = performance.now(); for (let i = 0; i < n; i++) fullDraw(cv, view); const ms = (performance.now() - t0) / n; layer.clear(); paint(); return ms; }, // WP63: tekentijd per frame zonder buffer (WP66; browsercheck)
+    result: () => benchRes, // WP66: uitslag van de meetstand (null tot klaar)
+    go: (v) => { view = { ...v }; paint(); return lastMode; }, // WP66: view zetten en meteen tekenen (browsercheck: buffer tegen volledige tekening)
+    mode: () => lastMode, // WP66: hoe het laatste frame tekende (full | pan | zoom | same)
+    // WP66: pixels die verschillen tussen wat er staat (buffer) en een volledige tekening zonder buffer op dezelfde view
+    diff: () => {
+      const c = document.createElement("canvas"); c.width = cv.width; c.height = cv.height;
+      const vb = layer.view() || view;
+      fullDraw(c, { ...view, x: vb.x, y: vb.y });
+      const a = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data, b = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+      let n = 0;
+      for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) > 8 || Math.abs(a[i + 1] - b[i + 1]) > 8 || Math.abs(a[i + 2] - b[i + 2]) > 8) n++;
+      return { n, of: a.length / 4 };
+    },
     paint: () => ({ painting: painting(), tab: libTab, mat, tool, cells: countTerr(map.grid, map.terr), ids: map.terr ? [...map.terr.ids] : [] }),
     mine: () => mine.map((i) => ({ sha: i.sha, name: i.name, w: i.w, h: i.h, thumb: !!i.thumb })), // WP64
     art: (sha) => !!art.get(sha, 48) };
+
+  // WP66: volledige tekening zonder buffer (diagnose: tekentijd en vergelijking met de buffer)
+  const fullDraw = (c, v) => draw(c, map, v, w, h, dpr, col, { img: (map.bg && imgs.get(map.bg.asset)) || null, align: aligning, art, ghost, sel: selObj(),
+    cursor: kbd && !selId && viewName === "edit" ? cellPoly(map.grid, kbd.c, kbd.r) : null });
+  // ---- WP66: meetstand ----
+  let benchRes = null;
+  const raf = () => new Promise((res) => requestAnimationFrame(res));
+  /** Achtergrond van side × side px als asset-record (zoals upload.js hem bewaart: WebP, anders JPEG) */
+  async function benchImage(side) {
+    const c = document.createElement("canvas"), g = c.getContext("2d"), rnd = rng(4096);
+    c.width = c.height = side;
+    const gr = g.createLinearGradient(0, 0, side, side);
+    gr.addColorStop(0, "#6b5a45"); gr.addColorStop(0.5, "#8f9a6a"); gr.addColorStop(1, "#4b6478");
+    g.fillStyle = gr; g.fillRect(0, 0, side, side);
+    for (let i = 0; i < 3000; i++) { // vlekken en lijnen: een echte kaartfoto comprimeert ook niet tot niets
+      g.fillStyle = `hsla(${Math.floor(rnd() * 360)},30%,${30 + Math.floor(rnd() * 40)}%,0.35)`;
+      g.beginPath(); g.arc(rnd() * side, rnd() * side, 4 + rnd() * 60, 0, Math.PI * 2); g.fill();
+    }
+    const blob = (type) => new Promise((res) => c.toBlob(res, type, 0.9));
+    // Safari < 16 maakt van "image/webp" een PNG (tientallen MB voor 4096² met ruis): eerst op 1 × 1 kijken of WebP lukt
+    const t1 = document.createElement("canvas"); t1.width = t1.height = 1;
+    const webp = t1.toDataURL("image/webp").startsWith("data:image/webp");
+    const b = await blob(webp ? "image/webp" : "image/jpeg");
+    c.width = c.height = 0; // canvasgeheugen meteen vrij (oude iPad)
+    if (!b) return null;
+    return { data: await b.arrayBuffer(), mime: b.type, w: side, h: side, ow: side, oh: side };
+  }
+  async function startBench() {
+    let locked = false;
+    const lock = (on) => { locked = on; for (const el of document.body.children) if (!el.matches("script, .toast, #m-benchw")) el.inert = on; };
+    // inert werkt niet op Safari < 15.5: toetsen ook zo tegenhouden (behalve in het uitslagpaneel)
+    document.addEventListener("keydown", (e) => { if (locked && !e.target.closest?.("#m-benchw")) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+    const say = (text) => { pstrip.hidden = false; pstrip.textContent = text; };
+    lock(true);
+    say(t("maps.bench.prep"));
+    await raf(); await raf();
+    const m = benchMap(BENCH_MODE === "square" ? "square" : "hex"), rec = await benchImage(LIMITS.bgSide);
+    if (rec) memAssets.set(BENCH_SHA, rec);
+    const doc = { ...newMap({ name: t("maps.bench.name") }), schema: 4, grid: m.grid, terr: m.terr, objs: m.objs, ...(rec ? { bg: m.bg } : {}) };
+    maps = [doc];
+    const t0 = performance.now();
+    openDoc(doc); // zoals een kaart uit de lijst: achtergrond decoderen, onderdelen laden, passend tekenen
+    art.preload(BUILTIN_IDS);
+    // wachten tot de achtergrond gedecodeerd (of mislukt: null) en alle onderdelen geladen zijn, hooguit 30 s
+    while (!((!rec || imgs.has(BENCH_SHA)) && art.done(BUILTIN_IDS)) && performance.now() - t0 < 30000) await raf();
+    const noBg = !rec || !imgs.get(BENCH_SHA); // te weinig geheugen om 4096² te decoderen: meten zonder, en dat melden
+    paint();
+    const openMs = performance.now() - t0;
+    const run = async () => {
+      lock(true);
+      const res = await runPhases({ b: bounds(map.grid), size: () => ({ w, h }), phase: BENCH_MS,
+        frame: (v) => { view = v; const s0 = performance.now(); paint(); return { ms: performance.now() - s0, full: lastMode === "full" }; },
+        onPhase: (id, i, n) => say(t("maps.bench.run", { phase: t("maps.bench.ph." + id), i: i + 1, n })) });
+      pstrip.hidden = true;
+      fit();
+      const heap = performance.memory && performance.memory.usedJSHeapSize; // alleen Chromium
+      const bytes = (map.bg && imgs.get(map.bg.asset) ? map.bg.w * map.bg.h * 4 : 0) + art.bytes() + cv.width * cv.height * 4 + layer.bytes();
+      benchRes = { res, openMs: Math.round(openMs), touch: matchMedia("(pointer:coarse)").matches, dev: { w: Math.round(w), h: Math.round(h), dpr, cw: cv.width, ch: cv.height },
+        mem: { mb: Math.round(bytes / 1048576), heap: heap ? Math.round(heap / 1048576) : 0 }, noBg };
+      showBench();
+    };
+    const bw = document.createElement("div");
+    bw.className = "sheet-wrap"; bw.id = "m-benchw"; bw.hidden = true;
+    document.body.append(bw);
+    function showBench() {
+      bw.innerHTML = `<div class="dim" data-bench="x"></div><div class="sheet mkeysheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="m-b-t">`
+        + `<div class="grab" aria-hidden="true"></div><div class="shead"><h3 id="m-b-t">${esc(t("maps.bench.title"))}</h3></div>`
+        + resultHtml(benchRes)
+        + `<div class="mbench-act"><button type="button" class="btn" data-bench="again">${esc(t("maps.bench.again"))}</button>`
+        + `<a class="btn primary" href="${esc(location.pathname)}">${esc(t("maps.bench.back"))}</a></div></div>`;
+      bw.hidden = false;
+      lock(true);
+      bw.querySelector(".sheet").focus({ preventScroll: true });
+    }
+    bw.addEventListener("click", (e) => { if (e.target.closest("[data-bench=again]")) { bw.hidden = true; bw.innerHTML = ""; run(); } });
+    run();
+  }
+  if (BENCH_MODE !== null) startBench().catch((e) => {
+    console.error("Inn Sight: bench failed", e);
+    for (const el of document.body.children) el.inert = false;
+    pstrip.hidden = true;
+    toast(t("maps.bench.fail"), { bad: true });
+  });
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
