@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP62): hit-test en geometrie van objecten, puur (geen DOM, Node-testbaar). Een object is een
+// Inn Sight (G4, WP62): hit-test en geometrie van objecten, puur (geen DOM, Node-testbaar). Een object is een
 // rechthoek van w × h kaarteenheden rond zijn middelpunt (x, y), gedraaid met rot graden met de klok mee (zoals de render:
 // canvas rotate). De hit-test kiest het BOVENSTE object onder een punt: de tekenvolgorde (drawOrder) van achter naar voren
 // doorlopen en de laatste treffer nemen, dus laag object boven laag floor en binnen een laag later = erboven.

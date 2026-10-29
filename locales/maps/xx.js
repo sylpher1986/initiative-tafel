@@ -6,6 +6,8 @@ export default {
   "maps.home": "[Kév’s Íññ hömé págé ·······]",
   "maps.canvas": "[Máp wíth á gríd öf {cols} bý {rows} sqüárés ···········]",
   "maps.dock": "[Máp çöñtröls ·····]",
+  "maps.dock.list": "[Mý máps ···]",
+  "maps.dock.set": "[Séttíñgs ···]",
   "maps.zoom.in": "[Zööm íñ ···]",
   "maps.zoom.out": "[Zööm öüt ···]",
   "maps.zoom.pct": "[{n}% ·]",

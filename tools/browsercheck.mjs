@@ -124,7 +124,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/", wp68: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
@@ -1433,6 +1433,42 @@ const SCEN = {
   // fasen): uitslag met drie fasen in een paneel, schrijft niets (geen kaart, laatste kaart en tabbladclaim ongewijzigd);
   // de kaartbuffer (createLayer) tekent bij pannen precies wat een volledige tekening zou tekenen, doorlopend zoomen is
   // een voorbeeld en wordt daarna vanzelf scherp. --shots=wp66: de uitslag.
+  // WP68a (Maps 1.1.0): huisstijl van de editor. Walnut-kop met bovenregel "Inn Sight" (alleen in de editor), dock met
+  // icoon + label (onder 380 px alleen het icoon, nooit < 44 px), de labels zitten in de toegankelijke naam, lijst met een
+  // rastertype-teken per rij, paneel Kaart in twee groepen, strook op één regel als hij past.
+  async wp68(page) {
+    await page.waitForFunction(() => window.__maps && document.getElementById("m-zoom").textContent);
+    const r = await page.evaluate(() => {
+      const $ = (id) => document.getElementById(id), cs = (el) => getComputedStyle(el);
+      const top = document.querySelector(".mtop"), out = { w: innerWidth };
+      out.topBg = cs(top).backgroundColor; out.eye = !$("m-eye").hidden && $("m-eye").getBoundingClientRect().height > 0;
+      out.btns = ["m-maps", "m-lib", "m-set"].map((id) => { const b = $(id), l = b.querySelector(".mdl"), rc = b.getBoundingClientRect();
+        return { id, h: rc.height, w: rc.width, lab: l && l.getBoundingClientRect().width > 0, name: b.getAttribute("aria-label"), txt: l && l.textContent }; });
+      out.dockOver = $("m-dock").scrollWidth - $("m-dock").clientWidth;
+      return out;
+    });
+    if (r.dockOver > 0) throw new Error("dock loopt over: " + r.dockOver + " px");
+    if (!/rgb\(36, 24, 17\)|rgb\(58, 40, 30\)/.test(r.topBg)) throw new Error("kop niet Walnut/Dark Oak: " + r.topBg);
+    if (!r.eye) throw new Error("bovenregel Inn Sight ontbreekt in de editor");
+    for (const b of r.btns) {
+      if (b.h < 44 || b.w < 44) throw new Error("dockknop < 44 px: " + JSON.stringify(b));
+      if (b.lab !== r.w >= 380) throw new Error("label " + (r.w >= 380 ? "ontbreekt" : "zichtbaar onder 380 px") + ": " + JSON.stringify(b));
+      if (!b.name.toLowerCase().includes(b.txt.toLowerCase())) throw new Error("label niet in de toegankelijke naam: " + JSON.stringify(b));
+    }
+    await tap(page, "#m-set"); await page.waitForTimeout(100);
+    const g = await page.evaluate(() => [...document.querySelectorAll("#m-sheet .mgrp")].map((e) => getComputedStyle(e).backgroundColor));
+    if (g.length !== 2 || g.some((c) => c === "rgba(0, 0, 0, 0)")) throw new Error("paneel Kaart: twee groepen op --sunk verwacht: " + JSON.stringify(g));
+    await page.keyboard.press("Escape"); await page.waitForTimeout(50);
+    await tap(page, "#m-lib"); await page.waitForTimeout(100);
+    await tap(page, "#m-tiles .mtile"); await page.waitForTimeout(100);
+    const strip = await page.evaluate(() => { const e = document.getElementById("m-pstrip"), rc = e.getBoundingClientRect(); return { h: rc.height, w: rc.width, sw: e.scrollWidth }; });
+    if (r.w >= 390 && strip.h > 48) throw new Error("strook niet op één regel op " + r.w + " px: " + JSON.stringify(strip));
+    await page.keyboard.press("Escape"); await page.waitForTimeout(50);
+    await tap(page, "#m-maps"); await page.waitForTimeout(150);
+    const l = await page.evaluate(() => ({ eye: document.getElementById("m-eye").hidden, g: document.querySelectorAll("#m-lrows .mkl-g svg").length, rows: document.querySelectorAll("#m-lrows .mkl-row").length }));
+    if (!l.eye) throw new Error("bovenregel zichtbaar in de lijst");
+    if (l.g !== l.rows || !l.rows) throw new Error("rastertype-teken per rij ontbreekt: " + JSON.stringify(l));
+  },
   async wp66(page, base) {
     const ready = () => page.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);
     await ready();

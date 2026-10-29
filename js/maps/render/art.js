@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP61): tekeningen van de ingebouwde onderdelen laden en tekenklaar houden. Een SVG wordt één keer als
+// Inn Sight (G4, WP61): tekeningen van de ingebouwde onderdelen laden en tekenklaar houden. Een SVG wordt één keer als
 // <img> geladen (data/maps-assets/<id>.svg, in de Maps-cache van de service worker: werkt offline) en per onderdeel op
 // één rastergrootte in een eigen canvas gezet (macht van 2 pixels per cel, 32–256; WP66: kleine onderdelen tot 512), zodat 2000 objecten per frame een
 // snelle drawImage van een bitmap zijn en geen SVG die steeds opnieuw rasterd wordt. Zoomt de kaart zo ver dat een

@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP56): invoer voor pannen en zoomen via Pointer Events (muis, pen, touch). WP56 kent alleen de
+// Inn Sight (G4, WP56): invoer voor pannen en zoomen via Pointer Events (muis, pen, touch). WP56 kent alleen de
 // modus Kijken: één vinger of de muis = pannen, knijpen = zoomen, wiel (en trackpad-knijpen) = zoomen rond de cursor.
 // Later bepaalt de gereedschapsmodus wat één vinger doet; knijpen en twee vingers blijven altijd pannen/zoomen (§2.7).
 // Geen pagina-scroll of iOS-paginazoom: touch-action:none op het canvas (css/maps.css) en gesture* geblokkeerd.

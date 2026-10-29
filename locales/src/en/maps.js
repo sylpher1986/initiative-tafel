@@ -6,6 +6,8 @@ export default {
   "maps.home": "Kev’s Inn home page",
   "maps.canvas": "Map with a grid of {cols} by {rows} squares",
   "maps.dock": "Map controls",
+  "maps.dock.list": "My maps", // WP68a: zichtbaar label onder het lijst-icoon in de dock (naam blijft maps.list.open)
+  "maps.dock.set": "Settings", // WP68a: zichtbaar label onder het tandwiel in de dock (naam blijft maps.panel.open; vertaalagent: niet "Map" naast de lijst)
   "maps.zoom.in": "Zoom in",
   "maps.zoom.out": "Zoom out",
   "maps.zoom.pct": "{n}%",

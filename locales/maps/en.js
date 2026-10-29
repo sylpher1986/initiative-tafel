@@ -6,6 +6,8 @@ export default {
   "maps.home": "Kev’s Inn home page",
   "maps.canvas": "Map with a grid of {cols} by {rows} squares",
   "maps.dock": "Map controls",
+  "maps.dock.list": "My maps",
+  "maps.dock.set": "Settings",
   "maps.zoom.in": "Zoom in",
   "maps.zoom.out": "Zoom out",
   "maps.zoom.pct": "{n}%",

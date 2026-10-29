@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP58): autosave met status, zonder DOM (timers in te spuiten, Node-testbaar). Elke wijziging roept
+// Inn Sight (G4, WP58): autosave met status, zonder DOM (timers in te spuiten, Node-testbaar). Elke wijziging roept
 // touch() aan; na DELAY ms stilte schrijft hij één keer (write() leest dan de actuele kaart). Bij pagehide/verbergen:
 // flush() schrijft meteen. Status: "saved" · "pending" (wijziging wacht) · "saving" · "error" · "off" (geen opslag hier).
 // "error" blijft staan tot een volgende schrijfpoging echt lukt; een nieuwe wijziging maakt er geen "pending" van

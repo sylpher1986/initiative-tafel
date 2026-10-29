@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP61): catalogus van de ingebouwde onderdelen, puur (geen DOM, Node-testbaar). D6 (besloten in WP61
+// Inn Sight (G4, WP61): catalogus van de ingebouwde onderdelen, puur (geen DOM, Node-testbaar). D6 (besloten in WP61
 // op het advies): eigen, eenvoudige top-down SVG's uit de repo (data/maps-assets/<id>.svg), licentieschoon; geen
 // SVG-uploads (docs/g4-inn-the-grid.md §2.6). De id is wat in de opslag en in een export staat: nooit hernoemen of
 // hergebruiken (tests/maps-objects.test.js bevriest de lijst). Naam via de catalogus: maps.asset.<id>, categorie via

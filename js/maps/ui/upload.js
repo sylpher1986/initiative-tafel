@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP59): een gekozen bestand omzetten in een veilige, kleine asset. Stappen: grootte en soort
+// Inn Sight (G4, WP59): een gekozen bestand omzetten in een veilige, kleine asset. Stappen: grootte en soort
 // controleren op de bytes (checkImage, puur), dezelfde upload hergebruiken (sha256 van het origineel, index "src"),
 // decoderen, verkleinen tot langste zijde ≤ 4096 px en hercoderen naar WebP (terugval JPEG op wit).
 // Hercoderen verwijdert EXIF/locatie; de opgeslagen bytes krijgen hun eigen sha256 = sleutel in de assetstore.

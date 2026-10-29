@@ -1,18 +1,21 @@
-/* Inn the Grid (G4, WP56): opmaak van de kaartenmaker. Gebruikt de tokens, letters en .btn uit css/app.css; geen hex
+/* Inn Sight (G4, WP56): opmaak van de kaartenmaker. Gebruikt de tokens, letters en .btn uit css/app.css; geen hex
    (kleuren alleen via tokens). Indeling telefoon: kop, canvas vol scherm, dockrij onderaan (docs/g4-inn-the-grid.md §2.7).
-   Vormgeving komt pas in WP68; dit is functioneel. */
+   Vormgeving sinds WP68 (68a: Walnut-kop, dock met labels, panelen in groepen). */
 html,body.maps{height:100%;overflow:hidden;overscroll-behavior:none}
 body.maps{display:flex;flex-direction:column;padding:0;height:100dvh} /* zonder dvh (iOS < 15.4) geldt height:100% hierboven, niet 100vh (dock achter de werkbalk) */
 .mtop{display:flex;align-items:center;gap:8px;padding:calc(4px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 4px max(4px,env(safe-area-inset-left,0px));
-  border-bottom:1px solid var(--line);background:var(--surface);flex:0 0 auto;min-width:0}
-.mhome{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;color:var(--act-ink);border-radius:var(--r)}
+  border-bottom:1px solid var(--line);background:var(--fight-bg);color:var(--fight-fg);flex:0 0 auto;min-width:0} /* WP68a: Walnut-kop zoals de Gevecht-kop van Initiative */
+.mtop :focus-visible{outline-color:var(--fight-fg)}
+.mhome{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;color:var(--now-ink);border-radius:var(--r)}
+.meye{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--now-ink);white-space:nowrap;line-height:1.1}
+.meye[hidden]{display:none}
 .mhome .emb{width:28px;height:28px}
 .mtitle{flex:1 1 auto;min-width:0;display:grid;line-height:1.2}
 .mtop h1{font-family:var(--brand);font-size:1.2rem;font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .mver{margin:0;color:var(--muted);font-size:.85rem} /* WP61: versie onderaan paneel Kaart */
 /* WP61: Ongedaan/Opnieuw in de kop */
 .mhist{display:flex;gap:4px;flex:0 0 auto}
-.mhist .btn{padding:0;border-color:transparent;background:none}
+.mhist .btn{padding:0;border-color:transparent;background:none;color:var(--fight-fg)}
 .mhist .btn:disabled{opacity:.4}
 .mhist .li{width:22px;height:22px;vertical-align:middle}
 .mredo{transform:scaleX(-1)}
@@ -21,9 +24,15 @@ body.maps{display:flex;flex-direction:column;padding:0;height:100dvh} /* zonder 
 #m-canvas:active{cursor:grabbing}
 .mdock{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:0 0 auto;background:var(--surface);border-top:1px solid var(--line);
   padding:8px max(12px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
-.mzoom{display:flex;align-items:center;gap:4px}
-.mzoom .btn{font-size:1.25rem;line-height:1;padding:0}
-#m-zoom{min-width:4.2em;text-align:center;font-weight:600;padding:0 4px;border-color:transparent;background:none;font-size:1rem}
+.mzoom{display:flex;align-items:center;gap:0;border:1px solid var(--btn-line);border-radius:var(--r);background:var(--btn)} /* WP68a: zoom als één groep */
+.mzoom .btn{font-size:1.25rem;line-height:1;padding:0;border-color:transparent;background:none}
+@media (hover:hover){.mzoom .btn:hover{border-color:transparent}} /* WP68a: geen rand binnen de groep (de scheidingslijnen van #m-zoom blijven) */
+#m-zoom{min-width:4.2em;text-align:center;font-weight:600;padding:0 4px;font-size:1rem;border-radius:0;border-left-color:var(--btn-line);border-right-color:var(--btn-line)}
+/* WP68a: dockknoppen met icoon + label (onder 380 px alleen het icoon, 44 px) */
+.mdb{display:inline-grid;justify-items:center;align-content:center;gap:1px;min-height:52px;padding:2px 8px;border-color:transparent;background:none}
+.mdl{font-size:.72rem;font-weight:600;line-height:1.1;color:var(--muted);white-space:nowrap}
+.mdb[aria-expanded="true"] .mdl{color:var(--fg)}
+@media (max-width:429px){.mdb{padding:2px 4px}.mdock{gap:6px}.mright{gap:4px}#m-zoom{min-width:3.4em}} /* WP68a: "Instellingen" past op 380–429 px */
 .mright{display:flex;align-items:center;gap:8px}
 #m-set .li{width:22px;height:22px;vertical-align:middle}
 #m-set[aria-expanded="true"]{background:var(--act-soft);border-color:var(--sel)}
@@ -38,24 +47,29 @@ body.maps{display:flex;flex-direction:column;padding:0;height:100dvh} /* zonder 
 .msheet .seg button{font-size:.9rem;padding:0 4px}
 /* WP58: opslagstatus onder de kaartnaam (altijd zichtbaar). Fout = knop van 44 px hoog zonder dat de kop meegroeit
    (negatieve marge, zoals .shead .link); privémodus = vaste rode tekst. */
-.mstat{font-size:.8rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.2em}
-.mstat.bad{color:var(--bad);font-weight:600}
+.mstat{font-size:.8rem;color:var(--fight-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.2em}
+.mstat.bad{color:var(--t-bad);font-weight:600} /* WP68a: op walnoot (--bad haalt daar geen 4,5:1) */
 .mstat-b{display:inline-flex;align-items:center;gap:4px;min-height:44px;margin:-14px 0;padding:0;border:0;background:none;color:inherit;font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .mstat-b .li{width:14px;height:14px;flex:0 0 auto}
 .mstat[data-s="error"]{overflow:visible}
 #m-maps .li,#m-fit .li,#m-lib .li{width:22px;height:22px;vertical-align:middle}
-@media (max-width:479px){#m-fit{display:none}} /* WP61: Bibliotheek erbij; op telefoonbreedte is het percentage de knop Hele kaart */
+@media (max-width:559px){#m-fit{display:none}} /* WP61: op telefoonbreedte is het percentage de knop Hele kaart; WP68a: de losse knop pas vanaf 560 px (naast de gelabelde knoppen) */
+#m-fit{white-space:nowrap}
 #m-lib[aria-expanded="true"]{background:var(--act-soft);border-color:var(--sel)}
 /* WP58: Mijn kaarten (eigen weergave; de editor is dan verborgen) */
 .mkl{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:12px max(12px,env(safe-area-inset-right,0px)) 12px max(12px,env(safe-area-inset-left,0px));display:grid;gap:10px;align-content:start;max-width:640px;width:100%;margin-inline:auto;box-sizing:border-box}
 .mkl h2{margin:0;font-family:var(--display);font-size:1.2rem}
 .mwarn{margin:0;color:var(--bad);font-weight:600}
+.mempt{margin:0;padding:12px;border:1.5px dashed var(--line-strong);border-radius:var(--r);background:var(--surface);text-align:center} /* WP68a: lege lijst */
+.mempt[hidden]{display:none}
 .mkl-rows{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .mkl-row{display:flex;align-items:stretch;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
-.mkl-o{flex:1 1 auto;min-width:0;min-height:56px;display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:center;text-align:left;border:0;background:none;color:var(--fg);font:inherit;padding:8px 4px 8px 12px;cursor:pointer;border-radius:var(--r)}
-.mkl-n{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.mkl-s{grid-column:1;font-size:.85rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.mkl-c{grid-column:2;grid-row:1 / span 2;font-size:.8rem;font-weight:700;color:var(--act-ink);border:1px solid var(--sel);border-radius:999px;padding:1px 8px}
+.mkl-o{flex:1 1 auto;min-width:0;min-height:56px;display:grid;grid-template-columns:auto 1fr auto;column-gap:10px;align-items:center;text-align:left;border:0;background:none;color:var(--fg);font:inherit;padding:6px 4px 6px 8px;cursor:pointer;border-radius:var(--r)}
+.mkl-g{grid-column:1;grid-row:1 / span 2;width:44px;height:44px;border-radius:var(--r-s);background:var(--sunk);color:var(--muted);display:grid;place-items:center} /* WP68a: rastertype */
+.mkl-g .li{width:26px;height:26px}
+.mkl-n{grid-column:2;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.mkl-s{grid-column:2;font-size:.85rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.mkl-c{grid-column:3;grid-row:1 / span 2;font-size:.8rem;font-weight:700;color:var(--act-ink);border:1px solid var(--sel);border-radius:999px;padding:1px 8px}
 .mkl-m{flex:0 0 auto;align-self:center;margin-right:6px;border-color:transparent;background:none}
 .mkl-m .li{width:22px;height:22px;vertical-align:middle}
 .mkl-imp{width:100%;margin-top:4px} /* WP60: importeren onder de lijst, secundair */
@@ -67,11 +81,14 @@ body.maps{display:flex;flex-direction:column;padding:0;height:100dvh} /* zonder 
 .mmenu .mdel{color:var(--bad)}
 .mrename{display:grid;gap:6px}
 .mrename .btn{margin-top:6px;min-height:48px}
-.maps .toast{bottom:calc(68px + env(safe-area-inset-bottom,0px))}
+.maps .toast{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
 @media (max-width:379px){ /* WP58: vijf bedieningsdelen in de dock op 320 px */
-  .mdock{gap:6px}.mzoom{gap:2px}.mright{gap:4px}#m-zoom{min-width:3.4em}#m-fit,#m-set,#m-maps,#m-lib{padding:0}}
+  .mdock{gap:6px}.mzoom{gap:2px}.mright{gap:4px}#m-zoom{min-width:3.4em}#m-fit,#m-set,#m-maps,#m-lib{padding:0}
+  .mdl{display:none}.mdb{min-height:44px;min-width:44px}
+  .mkl-g{width:36px;height:36px}.mkl-g .li{width:22px;height:22px}.mkl-o{column-gap:8px}}
 /* WP59: achtergrond in paneel Kaart en de uitlijnmodus */
-.mbg{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.mgrp{display:grid;gap:10px;background:var(--sunk);border-radius:var(--r);padding:10px} /* WP68a: groep in paneel Kaart */
+.mbg{display:grid;gap:8px}
 .mbg-set{display:grid;gap:8px}
 .mbg-row{display:flex;gap:8px}
 .mbg-row .btn{flex:1 1 0}
@@ -79,7 +96,7 @@ body.maps{display:flex;flex-direction:column;padding:0;height:100dvh} /* zonder 
 .mbg .hint{margin:0}
 .mbg .ferr{margin:0}
 #m-bg-pick[aria-busy="true"]{cursor:progress}
-.mstrip{position:absolute;top:8px;left:50%;transform:translateX(-50%);margin:0;max-width:calc(100% - 24px);box-sizing:border-box;
+.mstrip{position:absolute;top:8px;left:50%;transform:translateX(-50%);margin:0;width:max-content;max-width:calc(100% - 24px);box-sizing:border-box;
   background:var(--surface);color:var(--fg);border:1px solid var(--sel);border-radius:999px;padding:6px 14px;font-size:.9rem;font-weight:600;text-align:center;pointer-events:none;box-shadow:var(--shadow-pop)}
 .mstrip[hidden]{display:none}
 .marrows{display:flex;gap:4px}
@@ -154,7 +171,7 @@ body.maps{display:flex;flex-direction:column;padding:0;height:100dvh} /* zonder 
 .mkeys{min-height:44px;padding:0 4px}
 /* WP65: uitleg in een lege kaart (rustig, niet aanklikbaar) */
 .mempty{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);margin:0;width:calc(100% - 48px);max-width:280px;box-sizing:border-box;
-  text-align:center;color:var(--muted);font-size:.95rem;line-height:1.4;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px} /* leesbaar boven de rasterlijnen */
+  text-align:center;color:var(--muted);font-size:.95rem;line-height:1.4;pointer-events:none;background:var(--surface);border:1.5px dashed var(--line-strong);border-radius:var(--r);padding:10px 14px} /* WP68a: lege toestand gestippeld */ /* leesbaar boven de rasterlijnen */
 .mempty[hidden]{display:none}
 #m-terr-h{margin:0}
 #m-terr-h[hidden]{display:none}

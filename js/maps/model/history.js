@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP61): undo/redo, puur (geen DOM, Node-testbaar). Een stap = { before, after, group }: before/after
+// Inn Sight (G4, WP61): undo/redo, puur (geen DOM, Node-testbaar). Een stap = { before, after, group }: before/after
 // zijn kleine "patches" met alleen de velden van het kaartdocument die de stap verandert (grid, bg, objs, terr; undefined =
 // veld afwezig). Waarden worden nooit ter plekke gewijzigd (de editor maakt altijd nieuwe objecten/lijsten), dus een
 // stap houdt alleen verwijzingen vast. Alleen in het geheugen, per geopende kaart, max HIST_MAX stappen; niet in de

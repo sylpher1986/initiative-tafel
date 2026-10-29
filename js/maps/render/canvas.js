@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP56): tekenen op één canvas ter grootte van het scherm. Render past nooit data aan; hij krijgt de
+// Inn Sight (G4, WP56): tekenen op één canvas ter grootte van het scherm. Render past nooit data aan; hij krijgt de
 // kaart en de view en tekent. Lijnen in apparaatpixels (setTransform 1:1, crisp) zodat ze scherp blijven op DPR 1/2/3.
 // Culling: alleen rasterlijnen/cellen in beeld (visibleLines, visibleCells). Kleuren uit de tokens van css/app.css (licht
 // en donker); de rasterkleur is een id uit een vaste set (WP57): "auto" = lijnkleur van het thema, de rest vast (merkpalet),

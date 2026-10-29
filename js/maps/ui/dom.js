@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP58): kleine DOM-hulpjes en meldingen. Eigen kopie van wat Initiative in js/ui/util.js heeft
+// Inn Sight (G4, WP58): kleine DOM-hulpjes en meldingen. Eigen kopie van wat Initiative in js/ui/util.js heeft
 // (grens: js/maps/ importeert niets van Initiative). Meldingen gebruiken de opmaak .toast/.tmsg/.tundo uit css/app.css.
 import { t } from "../../i18n/boot.js";
 

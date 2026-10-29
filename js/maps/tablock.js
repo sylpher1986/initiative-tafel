@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP58, D11): één tabblad tegelijk, het nieuwste wint. Zelfde patroon als js/tablock.js van Initiative,
+// Inn Sight (G4, WP58, D11): één tabblad tegelijk, het nieuwste wint. Zelfde patroon als js/tablock.js van Initiative,
 // maar een eigen sleutel ("maps-tab"), zodat Grid en Initiative elkaar nooit stoppen. Bewust een kopie en geen import:
 // js/maps/ importeert niets van Initiative (tests/maps-boundary.test.js). localStorage en geen BroadcastChannel: het event
 // komt in alle andere tabbladen én de waarde blijft staan, zodat een tabblad dat het event miste (bevroren, bfcache) het bij

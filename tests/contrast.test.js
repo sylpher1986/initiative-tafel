@@ -47,7 +47,7 @@ const PAIRS = [
   ["muted", "sb-bg", TEXT, "statblock-meta"], ["act-ink", "sb-bg", TEXT, "worp in het statblock"], ["info", "sb-bg", TEXT, "Voorbeeld/Daarna in de zijkolom"],
   ["fg", "card", TEXT, "tekst op kaart"], ["muted", "card", TEXT, "secundair op kaart"], ["act-ink", "card", TEXT, "goud op kaart"],
   ["good", "card", TEXT, "gelukt op kaart"], ["warn", "card", TEXT, "aandacht op kaart"], ["bad", "card", TEXT, "fout op kaart"], ["info", "card", TEXT, "info op kaart"],
-  ["now-ink", "fight-bg", TEXT, "aan de beurt op walnoot-kop (spelersscherm)"], ["muted", "sunk", TEXT, "kop spelersscherm bij verbinding kwijt"],
+  ["now-ink", "fight-bg", TEXT, "aan de beurt op walnoot-kop (spelersscherm); Inn Sight-embleem en bovenregel (WP68a)"], ["t-bad", "fight-bg", TEXT, "Inn Sight: Niet opgeslagen in de walnoot-kop (WP68a)"], ["muted", "sunk", TEXT, "kop spelersscherm bij verbinding kwijt"],
   ["line-strong", "card", UI, "componentrand op kaart"], ["sel", "card", UI, "ring op kaart"], ["mon", "card", UI, "zijstreep op kaart"], ["focus", "card", UI, "focusring op kaart"], ["line-strong", "sb-bg", UI, "rand in het statblock"],
   ["fight-fg", "fight-bg", TEXT, "Gevecht-kop"], ["fight-muted", "fight-bg", TEXT, "Gevecht-kop secundair"], ["fight-fg", "fight-btn", TEXT, "knop in Gevecht-kop"],
   ["sel", "surface", UI, "ring geopend/geselecteerd"], ["sel", "act-soft", UI, "selectierand op zacht vlak"],

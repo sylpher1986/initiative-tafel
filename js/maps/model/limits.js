@@ -2,7 +2,7 @@
 // mine.js, file.js, history.js, terrain.js) lezen hun waarden hier; hun eigen exports (LIMITS in grid.js, OBJ, IMG, MINE,
 // FILE_MAX, HIST_MAX, TERR) blijven bestaan, zodat aanroepers niet veranderen. Bijstellen = alleen hier; tests in
 // tests/maps-limits.test.js bewaken dat elke module dezelfde waarde gebruikt en dat de meetkaart (model/bench.js) precies
-// op de grenzen zit. Gemeten in WP66 (CLAUDE.md, "Gemaakte keuzes → Inn the Grid").
+// op de grenzen zit. Gemeten in WP66 (CLAUDE.md, "Gemaakte keuzes → Inn Sight").
 const MB = 1024 * 1024;
 export const LIMITS = Object.freeze({
   // kaart (D10, WP57): kolommen en rijen

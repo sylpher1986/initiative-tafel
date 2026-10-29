@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP64): "Mijn assets", puur (geen DOM, Node-testbaar). Eigen afbeeldingen die de DM als object op de
+// Inn Sight (G4, WP64): "Mijn assets", puur (geen DOM, Node-testbaar). Eigen afbeeldingen die de DM als object op de
 // kaart zet. Eén bibliotheek per apparaat (over alle kaarten heen), store "mine" in de IndexedDB (js/maps/store.js, DB
 // versie 3). Een item = { sha, name, w, h, addedAt }: sha = sha256 van de opgeslagen bytes (sleutel in de store "assets",
 // zoals een achtergrond), name = gebruikersinhoud (nooit vertaald), w/h = standaardgrootte in cellen bij plaatsen,

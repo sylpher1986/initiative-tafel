@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP58): opslag in een eigen IndexedDB "kevs-inn-maps", los van Initiative ("initiative-tafel").
+// Inn Sight (G4, WP58): opslag in een eigen IndexedDB "kevs-inn-maps", los van Initiative ("initiative-tafel").
 // Stores: "maps" (kaartdocument, sleutel = id) en "assets" (afbeeldingen, WP59: sleutel = sha256 van de opgeslagen bytes,
 // record { data: ArrayBuffer, mime, w, h, ow, oh, src }; index "src" = sha256 van het originele bestand, zodat dezelfde
 // upload twee keer één asset blijft zonder opnieuw te decoderen; versie 2) en "mine" (WP64, versie 3: Mijn assets,

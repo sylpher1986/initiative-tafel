@@ -17,8 +17,9 @@
 <body class="maps">
 <header class="mtop">
   <a class="mhome" href="{{base}}/" aria-label="{{t:maps.home}}"><!-- embleem: zelfde tekening als EMBLEM in tools/icons.mjs --><svg class="emb" viewBox="20 2 176 196" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M108 16 181 58v84l-73 42-73-42V58Z" stroke-width="11"/><g transform="translate(0 13)" stroke-width="10"><path d="M100 47v-8q8-10 16 0v8"/><path d="M88 55h40l-8 11H96Z"/><path d="M96 70h24l8 10v42H88V80Z"/><path d="M84 130h48"/></g><path d="M108 102c-9 10-9 19 0 26 9-7 9-16 0-26Z" fill="currentColor" stroke="none"/></svg></a>
-  <!-- WP58: in de editor de kaartnaam met daaronder de opslagstatus (altijd zichtbaar); in de lijst "Inn Sight" -->
-  <div class="mtitle"><h1 id="m-name">{{t:maps.title}}</h1><div class="mstat" id="m-stat" aria-live="off"></div></div>
+  <!-- WP58: in de editor de kaartnaam met daaronder de opslagstatus (altijd zichtbaar); in de lijst "Inn Sight".
+       WP68a: Walnut-kop (tokens --fight-*), in de editor een bovenregel met de toolnaam boven de kaartnaam -->
+  <div class="mtitle"><span class="meye" id="m-eye">{{t:maps.title}}</span><h1 id="m-name">{{t:maps.title}}</h1><div class="mstat" id="m-stat" aria-live="off"></div></div>
   <!-- WP61: Ongedaan/Opnieuw in de kop (de kop blijft zichtbaar als een paneel de dock afdekt); de versie staat onderaan paneel Kaart -->
   <div class="mhist">
     <button type="button" class="btn" id="m-undo" aria-label="{{t:maps.hist.undo}}" disabled><svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-undo"/></svg></button>
@@ -45,7 +46,7 @@
 <main class="mkl" id="m-list" hidden aria-labelledby="m-l-title">
   <h2 id="m-l-title">{{t:maps.list.title}}</h2>
   <p class="mwarn" id="m-l-off" hidden>{{t:maps.status.offLong}}</p>
-  <p class="hint" id="m-l-empty" hidden>{{t:maps.list.empty}}</p>
+  <p class="hint mempt" id="m-l-empty" hidden>{{t:maps.list.empty}}</p>
   <ul class="mkl-rows" id="m-lrows"></ul>
   <!-- WP60: importeren onder de lijst (zelden nodig, buiten duimbereik is goed); altijd een nieuwe kaart. Fout = regel onder de knop. -->
   <input type="file" id="m-imp-file" accept=".json,application/json" hidden tabindex="-1">
@@ -57,17 +58,18 @@
   <button type="button" class="btn primary" id="m-new">{{t:maps.list.new}}</button>
 </nav>
 <nav class="mdock" id="m-dock" aria-label="{{t:maps.dock}}">
-  <button type="button" class="btn" id="m-maps" aria-label="{{t:maps.list.open}}"><!-- WP58: lijst-icoon inline (geen gedeeld icoon: icons/ui.svg hoort bij Initiative) --><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg></button>
+  <!-- WP68a: icoon + zichtbaar label (onder 380 px alleen het icoon; de toegankelijke naam blijft het aria-label, dat het label bevat) -->
+  <button type="button" class="btn mdb" id="m-maps" aria-label="{{t:maps.list.open}}"><!-- WP58: lijst-icoon inline (geen gedeeld icoon: icons/ui.svg hoort bij Initiative) --><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg><span class="mdl" aria-hidden="true">{{t:maps.dock.list}}</span></button>
   <div class="mzoom">
     <button type="button" class="btn" id="m-out" aria-label="{{t:maps.zoom.out}}"><span aria-hidden="true">−</span></button>
-    <!-- WP61: het percentage is ook de knop Hele kaart (onder 480 px de enige: daar is de losse knop weg voor Bibliotheek) -->
+    <!-- WP61: het percentage is ook de knop Hele kaart (onder 560 px de enige (WP68a): daar is de losse knop weg voor Bibliotheek) -->
     <button type="button" class="btn mzpct" id="m-zoom"></button>
     <button type="button" class="btn" id="m-in" aria-label="{{t:maps.zoom.in}}"><span aria-hidden="true">+</span></button>
   </div>
   <div class="mright">
     <button type="button" class="btn" id="m-fit" aria-label="{{t:maps.fit}}"><span class="mfit-t" aria-hidden="true">{{t:maps.fit}}</span></button>
-    <button type="button" class="btn" id="m-lib" aria-label="{{t:maps.lib.title}}" aria-expanded="false" aria-controls="m-lsheet"><!-- WP61: bibliotheek-icoon inline --><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><circle cx="17.5" cy="6.5" r="3.5"/><path d="M6.5 14 10 20H3Z"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
-    <button type="button" class="btn" id="m-set" aria-label="{{t:maps.panel.open}}" aria-expanded="false" aria-controls="m-sheet"><svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-gear"/></svg></button>
+    <button type="button" class="btn mdb" id="m-lib" aria-label="{{t:maps.lib.title}}" aria-expanded="false" aria-controls="m-lsheet"><!-- WP61: bibliotheek-icoon inline --><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><circle cx="17.5" cy="6.5" r="3.5"/><path d="M6.5 14 10 20H3Z"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="mdl" aria-hidden="true">{{t:maps.lib.title}}</span></button>
+    <button type="button" class="btn mdb" id="m-set" aria-label="{{t:maps.panel.open}}" aria-expanded="false" aria-controls="m-sheet"><svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-gear"/></svg><span class="mdl" aria-hidden="true">{{t:maps.dock.set}}</span></button>
   </div>
 </nav>
 <!-- WP59: uitlijnmodus. Vervangt de dock: één vinger sleept de afbeelding, de pijlen schuiven per stap, Gereed = terug
@@ -99,6 +101,8 @@
   <div class="shead"><h3 id="m-s-title">{{t:maps.panel.title}}</h3><button type="button" class="link" id="m-close">{{t:maps.panel.close}}</button></div>
   <!-- WP58: naam, toegepast bij blur/Enter; leeg = vorige naam terug -->
   <label>{{t:maps.name}}<input id="m-mname" type="text" enterkeyhint="done" autocomplete="off" maxlength="60" spellcheck="false"></label>
+  <!-- WP68a: raster en achtergrond elk als groep op --sunk (paneeltjes zonder eigen rand) -->
+  <div class="mgrp" role="group" aria-labelledby="m-type-l">
   <div class="mfield"><span class="lab" id="m-type-l">{{t:maps.grid.type}}</span>
     <div class="seg" id="m-type" role="group" aria-labelledby="m-type-l"><button type="button" data-v="square">{{t:maps.grid.square}}</button><button type="button" data-v="pointy">{{t:maps.grid.pointy}}</button><button type="button" data-v="flat">{{t:maps.grid.flat}}</button></div></div>
   <!-- WP65: foutregels buiten de labels en onder de hele rij (een fout duwt het buurveld niet omlaag) -->
@@ -115,9 +119,10 @@
     <div class="seg" id="m-color" role="group" aria-labelledby="m-color-l"><button type="button" data-v="auto">{{t:maps.color.auto}}</button><button type="button" data-v="dark">{{t:maps.color.dark}}</button><button type="button" data-v="light">{{t:maps.color.light}}</button><button type="button" data-v="gold">{{t:maps.color.gold}}</button></div></div>
   <div class="mfield"><span class="lab" id="m-alpha-l">{{t:maps.grid.alpha}}</span>
     <div class="seg" id="m-alpha" role="group" aria-labelledby="m-alpha-l"><button type="button" data-v="25"></button><button type="button" data-v="50"></button><button type="button" data-v="75"></button><button type="button" data-v="100"></button></div></div>
+  </div>
   <!-- WP59: achtergrond. Drie standen (alleen hidden wisselt): geen afbeelding, wel (schaal, raster passend, Uitlijnen,
        Vervangen/Verwijderen), ontbreekt (opslag gewist: Opnieuw kiezen houdt schaal en verschuiving). -->
-  <div class="mbg" id="m-bg" role="group" aria-labelledby="m-bg-l"><span class="lab" id="m-bg-l">{{t:maps.bg.title}}</span>
+  <div class="mbg mgrp" id="m-bg" role="group" aria-labelledby="m-bg-l"><span class="lab" id="m-bg-l">{{t:maps.bg.title}}</span>
     <input type="file" id="m-bg-file" accept="image/png,image/jpeg,image/webp" hidden tabindex="-1">
     <p class="mwarn" id="m-bg-miss" hidden>{{t:maps.bg.missing}}</p>
     <div class="mbg-set" id="m-bg-set" hidden>

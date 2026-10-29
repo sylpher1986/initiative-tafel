@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP63): terrein per cel, puur (geen DOM, Node-testbaar). Opgeslagen (kaartdocument, projectbestand)
+// Inn Sight (G4, WP63): terrein per cel, puur (geen DOM, Node-testbaar). Opgeslagen (kaartdocument, projectbestand)
 // als { w, h, ids, cells }: een vast celraster van w × h (= LIMITS.maxCells, los van kolommen/rijen van de kaart, zodat
 // kleiner en weer groter maken niets weggooit, net als objecten buiten de kaart), cells = tekst van w·h tekens rij voor
 // rij (index r·w + c), elk teken = positie in ALPH: "0" = leeg, k = ids[k − 1]. ids = palet van de terrein-id's die

@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP60): projectbestand naar buiten brengen en binnenhalen (browserdeel van js/maps/model/file.js).
+// Inn Sight (G4, WP60): projectbestand naar buiten brengen en binnenhalen (browserdeel van js/maps/model/file.js).
 // Exporteren zoals exportFile in Initiative (eigen kopie, grens): eerst het deelmenu met het bestand (telefoon: AirDrop,
 // Bestanden, mail), anders of bij een fout downloaden. Het bestand wordt als Blob uit stukken gebouwd, zodat een grote
 // afbeelding nooit één enorme string in het geheugen wordt.

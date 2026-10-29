@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP61): objecten op de kaart, puur (geen DOM, Node-testbaar). Een object = { id, asset, x, y, w, h,
+// Inn Sight (G4, WP61): objecten op de kaart, puur (geen DOM, Node-testbaar). Een object = { id, asset, x, y, w, h,
 // rot, layer }: x/y = MIDDELPUNT in kaarteenheden (1 cel = 1; draaien in WP62 gebeurt om dat punt), w/h = grootte in
 // cellen, rot = graden (0…359; WP61 plaatst altijd 0), layer = "floor" | "object". Volgorde: de lijst is de tekenvolgorde
 // binnen een laag (later = erboven); een apart z-veld is niet nodig (naar voren/achteren in WP62 = herordenen).

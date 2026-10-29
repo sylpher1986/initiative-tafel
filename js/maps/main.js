@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP56): opstarten van de kaartenmaker op /maps/ en /{taal}/maps/. Staat helemaal los van Initiative:
+// Inn Sight (G4, WP56): opstarten van de kaartenmaker op /maps/ en /{taal}/maps/. Staat helemaal los van Initiative:
 // alleen gedeelde infrastructuur (js/i18n/*, js/theme.js, tokens en letters uit css/app.css), nooit iets uit js/rules/,
 // js/ui/, state.js, storage.js of tablock.js (tests/maps-boundary.test.js). WP56: pannen en zoomen; WP57: paneel Kaart
 // (rastertype, kolommen/rijen, lijnen, kleur, dekking), werkt direct; WP58: kaarten bewaren (IndexedDB "kevs-inn-maps",
@@ -123,14 +123,14 @@ async function boot() {
     if (emptyEl.hidden === empty) emptyEl.hidden = !empty;
   }
   const label = () => cv.setAttribute("aria-label", t(map.grid.type === "hex" ? "maps.canvasHex" : "maps.canvas", { cols: map.grid.cols, rows: map.grid.rows }));
-  const head = () => { $("m-name").textContent = viewName === "list" ? t("maps.title") : cur?.name || t("maps.title"); };
+  const head = () => { $("m-name").textContent = viewName === "list" ? t("maps.title") : cur?.name || t("maps.title"); $("m-eye").hidden = viewName === "list"; }; // WP68a: bovenregel "Inn Sight" alleen in de editor (in de lijst is de kop zelf de toolnaam)
   $("m-ver").textContent = VERSION;
   attachInput(cv, { get: () => view, set: user, drag: (dx, dy) => dragBg(dx, dy), dragging: () => aligning,
     tap: (x, y) => onTap(x, y), tapping: () => viewName === "edit" && !aligning && !!cur, hover: (x, y) => hoverAt(x, y), grab: (x, y, k) => grab(x, y, k) });
   $("m-in").addEventListener("click", () => user(zoomAt(view, ZOOM_STEP, freeW() / 2, freeH() / 2))); // WP65: rond het midden van het vrije deel
   $("m-out").addEventListener("click", () => user(zoomAt(view, 1 / ZOOM_STEP, freeW() / 2, freeH() / 2)));
   $("m-fit").addEventListener("click", fit);
-  $("m-zoom").addEventListener("click", fit); // WP61: het percentage is ook Hele kaart (onder 480 px de enige)
+  $("m-zoom").addEventListener("click", fit); // WP61: het percentage is ook Hele kaart (onder 560 px de enige, WP68a)
   // ---- WP57: paneel Kaart ----
   const sheet = $("m-sheet"), btnSet = $("m-set");
   const press = (id, v) => { for (const b of $(id).querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.v === v)); };
@@ -1019,6 +1019,10 @@ async function boot() {
   let maps = []; // laatst gelezen lijst (opgeschoond, gesorteerd)
   const names = (except) => maps.filter((m) => m.id !== except).map((m) => m.name);
   const when = (ts) => { const a = ago(ts); if (!a) return i18n().date(ts, { day: "numeric", month: "short", ...(new Date(ts).getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) }); return a.k === "now" ? t("maps.ago.now") : t("maps.ago." + a.k, { n: a.n }); };
+  // WP68a: teken van het rastertype per rij (alleen beeld; de ondertitel noemt het type al)
+  const glyph = (d) => `<span class="mkl-g" aria-hidden="true"><svg class="li" viewBox="0 0 24 24" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">${d}</svg></span>`;
+  const GLYPH = { square: glyph('<rect x="3" y="3" width="18" height="18" rx="1"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>'),
+    pointy: glyph('<path d="M12 2.5 20.5 7.4v9.2L12 21.5 3.5 16.6V7.4Z"/>'), flat: glyph('<path d="M2.5 12 7.4 3.5h9.2l4.9 8.5-4.9 8.5H7.4Z"/>') };
   const fill = (focusId) => {
     if (cur && saver.status !== "off") { const i = maps.findIndex((m) => m.id === cur.id); if (i >= 0) maps[i] = { ...cur }; } // wat nog niet bewaard is, toont al de nieuwste naam
     maps = sortMaps(maps);
@@ -1026,7 +1030,7 @@ async function boot() {
     rows.innerHTML = maps.map((m) => {
       const g = m.grid, sub = t(g.type === "hex" ? "maps.list.hex" : "maps.list.square", { cols: g.cols, rows: g.rows, when: when(m.updatedAt) });
       const open = cur && cur.id === m.id;
-      return `<li class="mkl-row"><button type="button" class="mkl-o${open ? " cur" : ""}" data-id="${esc(m.id)}"><span class="mkl-n">${esc(m.name)}</span><span class="mkl-s">${esc(sub)}</span>${open ? `<span class="mkl-c">${esc(t("maps.list.current"))}</span>` : ""}</button>`
+      return `<li class="mkl-row"><button type="button" class="mkl-o${open ? " cur" : ""}" data-id="${esc(m.id)}">${GLYPH[g.type === "hex" ? g.orient : "square"] || GLYPH.square}<span class="mkl-n">${esc(m.name)}</span><span class="mkl-s">${esc(sub)}</span>${open ? `<span class="mkl-c">${esc(t("maps.list.current"))}</span>` : ""}</button>`
         + `<button type="button" class="btn mkl-m" data-id="${esc(m.id)}" aria-label="${esc(t("maps.list.more", { name: m.name }))}" aria-haspopup="dialog"><svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-more"/></svg></button></li>`;
     }).join("");
     $("m-back").hidden = !cur && !maps.length;

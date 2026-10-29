@@ -1,6 +1,6 @@
-// Inn the Grid (G4, WP60): projectbestand v1, puur (geen DOM, Node-testbaar). Eén kaart volledig en zelfstandig in één
+// Inn Sight (G4, WP60): projectbestand v1, puur (geen DOM, Node-testbaar). Eén kaart volledig en zelfstandig in één
 // JSON-bestand, de afbeeldingen als base64 erin (D4 optie A, besloten in WP60 op het advies; extensie .json = D5).
-// Vorm: { format: "kevs-inn-maps", version: 1, exported, app: "Inn the Grid x.y.z", map: {…}, assets: { <sha256>: {
+// Vorm: { format: "kevs-inn-maps", version: 1, exported, app: "Inn Sight x.y.z", map: {…}, assets: { <sha256>: {
 // mime, w, h, data } } }. `map` is het kaartdocument zonder id (geen verwijzing naar browseropslag; import geeft
 // altijd een nieuwe id). `assets` bevat precies de afbeeldingen waar de kaart naar verwijst: bg.asset en (WP64) de eigen
 // assets op objecten, die optioneel hun naam uit Mijn assets meekrijgen (`name`, gebruikersinhoud).

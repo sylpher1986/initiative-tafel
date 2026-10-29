@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP59): achtergrondafbeelding van een kaart, puur (geen DOM, Node-testbaar). Het raster ligt vast
+// Inn Sight (G4, WP59): achtergrondafbeelding van een kaart, puur (geen DOM, Node-testbaar). Het raster ligt vast
 // vanaf de oorsprong; de afbeelding schuift en schaalt eronder (docs/g4-inn-the-grid.md §2.3).
 // bg = { asset, w, h, ppc, x, y }:
 //   asset = sha256 (hex) van de opgeslagen bytes = sleutel in de IndexedDB-store "assets";

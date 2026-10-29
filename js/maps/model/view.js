@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP56): viewport (pannen en zoomen), puur. Eén canvas ter grootte van het scherm met een
+// Inn Sight (G4, WP56): viewport (pannen en zoomen), puur. Eén canvas ter grootte van het scherm met een
 // transformatie, nooit een canvas ter grootte van de kaart (docs/g4-inn-the-grid.md §2.7).
 // View = { x, y, z }: scherm (CSS-px) = kaart × CELL × z + (x, y). z = 1 is 100 %.
 

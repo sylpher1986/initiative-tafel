@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP59): controle van een geüploade afbeelding, puur (geen DOM, Node-testbaar). Alleen PNG, JPEG en
+// Inn Sight (G4, WP59): controle van een geüploade afbeelding, puur (geen DOM, Node-testbaar). Alleen PNG, JPEG en
 // WebP, herkend aan de eerste bytes (magic bytes), nooit aan extensie of mime-type van het bestand. Geen SVG (script-
 // risico). Afmetingen komen uit de kop van het bestand, vóór het decoderen: een klein bestand met een gigantische
 // afbeelding (decompressiebom) wordt zo geweigerd zonder het geheugen van een oude iPad op te blazen.

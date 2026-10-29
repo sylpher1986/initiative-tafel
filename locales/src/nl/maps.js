@@ -5,6 +5,8 @@ export default {
   "maps.home": "Homepage van Kev’s Inn",
   "maps.canvas": "Kaart met een raster van {cols} bij {rows} vakjes",
   "maps.dock": "Kaartbediening",
+  "maps.dock.list": "Kaarten", // WP68a: zichtbaar label onder het lijst-icoon in de dock (naam blijft maps.list.open)
+  "maps.dock.set": "Instellingen", // WP68a: zichtbaar label onder het tandwiel in de dock (naam blijft maps.panel.open; vertaalagent: niet "Map" naast de lijst)
   "maps.zoom.in": "Inzoomen",
   "maps.zoom.out": "Uitzoomen",
   "maps.zoom.pct": "{n}%",

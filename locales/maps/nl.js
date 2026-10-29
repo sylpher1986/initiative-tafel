@@ -6,6 +6,8 @@ export default {
   "maps.home": "Homepage van Kev’s Inn",
   "maps.canvas": "Kaart met een raster van {cols} bij {rows} vakjes",
   "maps.dock": "Kaartbediening",
+  "maps.dock.list": "Kaarten",
+  "maps.dock.set": "Instellingen",
   "maps.zoom.in": "Inzoomen",
   "maps.zoom.out": "Uitzoomen",
   "maps.zoom.pct": "{n}%",

@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP58): kaartdocument, schema v1, puur (geen DOM, Node-testbaar). Eén kaart = één record in de
+// Inn Sight (G4, WP58): kaartdocument, schema v1, puur (geen DOM, Node-testbaar). Eén kaart = één record in de
 // IndexedDB-store "maps" (js/maps/store.js). v1 bevat naam en raster; v2 (WP59) voegt de optionele achtergrond `bg` toe
 // (js/maps/model/bg.js). Objecten (`objs`) sinds WP61, terrein (`terr`) sinds WP63, als optionele velden (docs/g4-inn-the-grid.md §2.3). Alles wat
 // uit de opslag (of later een bestand) komt is onbetrouwbaar: altijd via cleanMap.

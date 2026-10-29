@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP56–WP57): rasterwiskunde, puur (geen DOM, Node-testbaar). Kaarteenheid: 1 cel = 1 eenheid
+// Inn Sight (G4, WP56–WP57): rasterwiskunde, puur (geen DOM, Node-testbaar). Kaarteenheid: 1 cel = 1 eenheid
 // (vierkant: zijde; hex: afstand tussen de middelpunten van buurcellen), oorsprong linksboven, x naar rechts, y naar
 // beneden (docs/g4-inn-the-grid.md §2.3).
 // Hex (WP57): intern axiale coördinaten (q, r), naar buiten offset-kolom/rij (c, r): pointy = "odd-r" (oneven rijen een
