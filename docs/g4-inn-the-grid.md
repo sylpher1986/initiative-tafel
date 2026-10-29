@@ -33,7 +33,7 @@ Legenda bij beweringen: **[F]** geverifieerd in de repo · **[C]** conclusie uit
 ### 1.3 Beperkingen en onbekend **[?]**
 - Issues/discussies op GitHub niet bekeken.
 - Of Playwright in elke sessie beschikbaar is, niet getest in deze sessie.
-- Werkelijke prestaties van canvas op Michiels oudste iPad: onbekend, moet gemeten worden (WP66).
+- Werkelijke prestaties van canvas op Michiels oudste iPad: gemeten in WP66 (29-10), 34–41 fps op de meetkaart; waarden in CLAUDE.md.
 - Gedrag van Blobs in IndexedDB op oudere iOS-versies: bekend wisselvallig, daarom ArrayBuffer (zie §2.4).
 
 ---
@@ -262,7 +262,7 @@ Nummering loopt door op de repo-historie (laatste was WP55). Elk pakket = één 
 - Acceptatie: (1) kernflow (nieuwe kaart → achtergrond → object → verven → export) op iPhone SE-breedte (320), iPad portret en desktop zonder horizontaal scrollen; (2) alle knoppen hebben `aria-label`, focus zichtbaar; (2b) een foutregel verschuift geen buurveld (browsercheck: velden in een rij houden dezelfde `top` met en zonder fout); (2c) geen "Inn the Grid" meer in de catalogi of op de pagina (test), een bestand met `app: "Inn the Grid 0.x"` importeert nog (fixture); (3) Michiel doet de kernflow op zijn telefoon zonder hulp (handmatig).
 - Grootte M.
 
-**WP66 · Prestaties en grenzen** · M — **klaar (Maps 0.11.0)**; besluiten en meetwaarden in CLAUDE.md (kaartbuffer met verschuiven en zoomvoorbeeld, hexranden één keer, `LIMITS` in `model/limits.js`, import > 2000 objecten geweigerd, meetstand `/maps/?bench`, kleine onderdelen tot 512 px). Acceptatie (2) en (3) aangetoond, (1) desktop aangetoond (headless 59–60 fps); **(1) iPad: Michiel draait `/nl/maps/?bench` op zijn oudste iPad** (doel ≥ 30 fps per fase)
+**WP66 · Prestaties en grenzen** · M — **klaar (Maps 0.11.0)**; besluiten en meetwaarden in CLAUDE.md (kaartbuffer met verschuiven en zoomvoorbeeld, hexranden één keer, `LIMITS` in `model/limits.js`, import > 2000 objecten geweigerd, meetstand `/maps/?bench`, kleine onderdelen tot 512 px). Acceptatie (2) en (3) aangetoond, (1) desktop aangetoond (headless 59–60 fps); (1) iPad aangetoond 29-10: pannen 35/34 fps, zoomen 41 fps, openen 1,8 s (alles Goed; marge klein, zie CLAUDE.md)
 - Scope: meetscenario 100×100 + 2000 objecten + achtergrond 4096 px; offscreen-buffers, culling, tekenen alleen bij verandering (`requestAnimationFrame`), `LIMITS` centraal, geheugenmeting.
 - Acceptatie: (1) pannen/zoomen ≥ 30 fps op Michiels oudste iPad, ≥ 50 fps desktop (meetscript); (2) openen van de meetkaart < 2 s op desktop; (3) grenzen gehandhaafd met melding.
 - Uit WP61: `render/art.js` begrenst de bitmap op 256 px per cel (onscherp bij dpr 3 en 400 %): meten en zo nodig 512 voor kleine onderdelen.
@@ -324,7 +324,7 @@ Kleinste waardevolle eind-tot-eind-release: **M1**.
 | D7 | Zichtbaarheid | **Besloten 29-10 (WP67, op het advies): toolkaart op de homepage (label Beta); installeerbaar pas in WP68 (eigen manifest + icoon); `noindex` blijft**. WP68 (Michiel, 29-10): installeren in 68d, één app per taal (`/maps/` en `/nl/maps/`) |
 | D8 | Koppeling (fase 3) | Zelfde-origin lezen + bestand als terugval |
 | D9 | Reviewers in de functionele fase | Volgens CLAUDE.md; UX-agent alleen bij echte keuzes, vormgeving pas in WP68 |
-| D10 | Grenzen | **Kaart: besloten in WP57 op het advies, max 100×100 cellen**; objecten: 2000, bevestigd in WP66 (headless; iPad-meting door Michiel open, bij tegenvallen lagere grens) |
+| D10 | Grenzen | **Kaart: besloten in WP57 op het advies, max 100×100 cellen**; objecten: 2000, bevestigd in WP66 (headless en op de oudste iPad: 34–41 fps) |
 | D11 | Tabbladen | **Besloten in WP58 op het advies: eigen `maps-tab`, nieuwste wint** |
 | D12 | Uploads | **Besloten in WP59 op het advies: ≤ 25 MB invoer, opgeslagen ≤ 4096 px, alleen PNG/JPEG/WebP** (daarbij: weigeren boven 16384 px per zijde of 36 MP, vóór het decoderen) |
 
@@ -344,7 +344,7 @@ Geen meer: D1–D3 zijn besloten. De rest start op het advies en wordt per pakke
 ---
 
 ## 7. Volgende stap
-WP56–WP60 zijn klaar (28-10-2026): **mijlpaal M1** (Maps 0.5.0). WP61 klaar (Maps 0.6.0). WP62 klaar (Maps 0.7.0; plaatsen met het toetsenbord meegenomen). WP63 klaar (Maps 0.8.0, terrein verven). WP64 klaar (Maps 0.9.0, eigen assets). WP65 klaar (Maps 0.10.0, responsief en eerste gebruik; zichtbare naam Inn Sight). WP66 klaar (Maps 0.11.0, prestaties en grenzen; iPad-meting open). WP67 klaar (Maps 1.0.0, uitgebracht: toolkaart op de homepage, documentatie Inn Sight): **mijlpaal M2**. WP68 opgesplitst in 68a–68d (mockup goedgekeurd 29-10); WP68a klaar (Maps 1.1.0). Volgende: **WP68b** (uitleg + raster-chip), dan 68c (assets) en 68d (installeerbaar) en daarna fase 3 na akkoord. Open: iPad-meting (WP66).
+WP56–WP60 zijn klaar (28-10-2026): **mijlpaal M1** (Maps 0.5.0). WP61 klaar (Maps 0.6.0). WP62 klaar (Maps 0.7.0; plaatsen met het toetsenbord meegenomen). WP63 klaar (Maps 0.8.0, terrein verven). WP64 klaar (Maps 0.9.0, eigen assets). WP65 klaar (Maps 0.10.0, responsief en eerste gebruik; zichtbare naam Inn Sight). WP66 klaar (Maps 0.11.0, prestaties en grenzen; iPad-meting 29-10 Goed). WP67 klaar (Maps 1.0.0, uitgebracht: toolkaart op de homepage, documentatie Inn Sight): **mijlpaal M2**. WP68 opgesplitst in 68a–68d (mockup goedgekeurd 29-10); WP68a klaar (Maps 1.1.0). Volgende: **WP68b** (uitleg + raster-chip), dan 68c (assets) en 68d (installeerbaar) en daarna fase 3 na akkoord. Open: iPad-meting (WP66).
 
 Oorspronkelijk advies bij de start van G4: **WP56 · Tool-skelet met vierkant raster, pannen en zoomen.**
 Waarom eerst: laagste risico, raakt Initiative niet, legt pad, pagina, catalogus, service worker, tests, browsercheck en het canvas-/gebarenfundament vast waar elk volgend pakket op bouwt. Na WP56 is er al iets op de telefoon te openen.
