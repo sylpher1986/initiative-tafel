@@ -1218,10 +1218,10 @@ const SCEN = {
     await swipeMap(5.5, 6.5, 6.5, 6.5);
     m = await M();
     if (m.sel || m.paint.cells !== 40) throw new Error("veeg over de tafel: " + JSON.stringify({ sel: m.sel, cells: m.paint.cells }));
-    // toetsen selecteren niet tijdens Verven (Enter, N)
+    // N selecteert niet tijdens Verven (Enter verft sinds WP65 de cursorcel: scenario wp65)
     await page.locator("#m-canvas").focus();
-    await page.keyboard.press("Enter"); await page.keyboard.press("n"); await frame();
-    if ((await M()).sel || !(await M()).paint.painting) throw new Error("Enter/N selecteren niet in Verven");
+    await page.keyboard.press("n"); await frame();
+    if ((await M()).sel || !(await M()).paint.painting || (await M()).paint.cells !== 40) throw new Error("N selecteert niet in Verven");
     // Esc stopt Verven; tik selecteert dan weer
     await page.keyboard.press("Escape"); await frame();
     m = await M();
