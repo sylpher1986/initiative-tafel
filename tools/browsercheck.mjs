@@ -124,7 +124,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
@@ -1132,6 +1132,142 @@ const SCEN = {
     await mapsIdb(page, (l) => l.some((x) => x.id === doc.id && JSON.stringify(x.objs) === JSON.stringify(doc.objs)));
     await page.reload(); await ready();
     if (JSON.stringify((await M()).map.objs) !== JSON.stringify(doc.objs) || (await M()).sel) throw new Error("na herladen");
+  },
+  // WP63 (G4): terrein verven. Tab Terrein in paneel Bibliotheek (categorieën en tegels weg, terreintegels + gereedschap);
+  // zonder gekozen terrein verft niets; veeg met één vinger = elke cel eronder, één undo-stap (acceptatie 1), Ongedaan en
+  // Opnieuw; een tweede vinger zet de begonnen veeg terug zonder stap; de kleur staat echt op het canvas (pixel); Breed =
+  // 3×3; Vullen stopt bij een muur van steen en de kaartrand (acceptatie 2), slepen in Vullen pant; Wissen; een veeg over
+  // een meubel verft (geen selectie); Esc stopt Verven; herladen; hex pointy: tik verft één cel. --shots=wp63: terrein.
+  async wp63(page) {
+    const ready = (p = page) => p.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);
+    await ready();
+    const frame = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const M = () => page.evaluate(() => ({ map: window.__maps.map(), hist: window.__maps.hist(), view: window.__maps.view(), grid: window.__maps.grid(), sel: window.__maps.sel(), paint: window.__maps.paint(),
+      strip: document.getElementById("m-pstrip").hidden ? "" : document.getElementById("m-pstrip").textContent }));
+    const ptr = (steps, kind = "touch") => page.evaluate(({ steps, kind }) => {
+      const c = document.getElementById("m-canvas"), r = c.getBoundingClientRect();
+      for (const [type, id, x, y] of steps) c.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: kind, isPrimary: id === 1, clientX: r.left + x, clientY: r.top + y, bubbles: true, cancelable: true, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+    }, { steps, kind });
+    const scr = async (mx, my) => { const v = (await M()).view; return { x: mx * 48 * v.z + v.x, y: my * 48 * v.z + v.y }; };
+    const tapMap = async (mx, my) => { const p = await scr(mx, my); await ptr([["pointerdown", 1, p.x, p.y], ["pointerup", 1, p.x, p.y]]); await frame(); };
+    const swipe = async (a, b) => { const st = [["pointerdown", 1, a.x, a.y]]; for (let i = 1; i <= 8; i++) st.push(["pointermove", 1, a.x + ((b.x - a.x) * i) / 8, a.y + ((b.y - a.y) * i) / 8]); st.push(["pointerup", 1, b.x, b.y]); await ptr(st); await frame(); };
+    const swipeMap = async (x0, y0, x1, y1) => swipe(await scr(x0, y0), await scr(x1, y1));
+    const nl = (await page.evaluate(() => document.documentElement.lang)) === "nl", says = (re, txt) => (nl ? re.test(txt) : !!txt); // striptekst alleen in het Nederlands letterlijk
+    const cells = async () => (await M()).paint.cells;
+    const pixel = async (mx, my) => { const p = await scr(mx, my); return page.evaluate(({ x, y }) => { const c = document.getElementById("m-canvas"), d = devicePixelRatio || 1; return [...c.getContext("2d").getImageData(Math.round(x * d), Math.round(y * d), 1, 1).data].slice(0, 3); }, p); };
+    // kleine kaart (10 × 8), zodat elke cel ruim tikbaar is op 320 px
+    await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    for (const [sel, v] of [["#m-cols", "10"], ["#m-rows", "8"]]) { await page.locator(sel).fill(v); await page.locator(sel).press("Enter"); }
+    await tap(page, "#m-close"); await frame();
+    // een tafel om overheen te verven
+    await tap(page, "#m-lib"); await page.locator("#m-lsheet").waitFor({ state: "visible" });
+    await tap(page, '#m-cats [data-v="furniture"]'); await tap(page, '#m-tiles [data-id="table"]'); await tapMap(6.3, 6.4);
+    if ((await M()).map.objs.length !== 1) throw new Error("opbouw: tafel");
+    // tab Terrein
+    await tap(page, '#m-ltab [data-v="terrain"]'); await frame();
+    if (!(await page.locator("#m-tiles").isHidden()) || !(await page.locator("#m-cats").isHidden()) || (await page.locator("#m-terr .mtile").count()) !== 9) throw new Error("tab Terrein: 8 terreinen + Wissen, geen onderdelen");
+    let m = await M();
+    if (m.paint.painting || m.paint.tab !== "terrain" || m.strip) throw new Error("geen terrein gekozen: geen Verven");
+    await swipeMap(0.5, 0.5, 3.5, 0.5);
+    if ((await cells()) !== 0) throw new Error("zonder gekozen terrein verft een veeg niets");
+    // gras, penseel: één veeg = elke cel eronder, één stap
+    await tap(page, '#m-tool [data-v="brush"]');
+    await tap(page, '#m-terr [data-t="grass"]'); await frame();
+    m = await M();
+    if (!m.paint.painting || !says(/Gras/, m.strip)) throw new Error("Verven: strook " + m.strip);
+    const h0 = m.hist.size, vw = m.view;
+    await swipeMap(0.5, 0.5, 5.5, 0.5);
+    m = await M();
+    if (m.paint.cells !== 6 || m.hist.size !== h0 + 1 || m.view.x !== vw.x || m.view.y !== vw.y || m.view.z !== vw.z) throw new Error("veeg: " + JSON.stringify({ cells: m.paint.cells, h: m.hist.size, h0 }));
+    const px = await pixel(1.5, 0.5);
+    if (Math.abs(px[0] - 108) > 6 || Math.abs(px[1] - 154) > 6 || Math.abs(px[2] - 72) > 6) throw new Error("gras op het canvas: " + px);
+    await snap(page, "wp63", "terrein");
+    await tap(page, "#m-undo"); await frame();
+    if ((await cells()) !== 0) throw new Error("Ongedaan: de hele veeg");
+    await tap(page, "#m-redo"); await frame();
+    if ((await cells()) !== 6) throw new Error("Opnieuw");
+    // tweede vinger: de begonnen veeg verdwijnt, geen stap, knijpen zoomt
+    const h1 = (await M()).hist.size, z1 = (await M()).view.z, a = await scr(2.5, 3.5), b = await scr(5.5, 4.5);
+    await ptr([["pointerdown", 1, a.x, a.y], ["pointerdown", 2, b.x, b.y], ["pointermove", 2, b.x + 40, b.y + 30], ["pointerup", 2, b.x + 40, b.y + 30], ["pointerup", 1, a.x, a.y]]); await frame();
+    m = await M();
+    if (m.paint.cells !== 6 || m.hist.size !== h1 || m.view.z === z1) throw new Error("tweede vinger: " + JSON.stringify({ cells: m.paint.cells, h: m.hist.size, z: [z1, m.view.z] }));
+    await page.keyboard.press("0"); await frame(); // weer passend (de dock ligt onder het paneel)
+    // breed: 3 × 3 rond de cel
+    await tap(page, '#m-tool [data-v="wide"]');
+    await tapMap(2.5, 3.5);
+    if ((await cells()) !== 15) throw new Error("Breed: 3×3 erbij: " + (await cells()));
+    // muur van steen op kolom 7, dan water vullen rechts ervan: stopt bij de muur en de rand
+    await tap(page, '#m-tool [data-v="brush"]'); await tap(page, '#m-terr [data-t="stone"]');
+    await swipeMap(7.5, 0.5, 7.5, 7.5);
+    if ((await cells()) !== 23) throw new Error("muur: " + (await cells()));
+    await tap(page, '#m-tool [data-v="fill"]'); await tap(page, '#m-terr [data-t="water"]'); await frame();
+    if (!says(/Vullen: Water/, (await M()).strip)) throw new Error("strook Vullen");
+    const v0 = (await M()).view, h2 = (await M()).hist.size;
+    await swipeMap(8.5, 2.5, 8.5, 5.5);
+    m = await M();
+    if (m.paint.cells !== 23 || (m.view.x === v0.x && m.view.y === v0.y)) throw new Error("slepen in Vullen pant, verft niet");
+    await page.keyboard.press("0"); await frame();
+    await tapMap(8.5, 3.5);
+    m = await M();
+    if (m.paint.cells !== 23 + 16 || m.hist.size !== h2 + 1 || !m.paint.ids.includes("water")) throw new Error("vullen rechts van de muur: " + m.paint.cells);
+    // wissen (penseel) en een veeg over de tafel verft (geen selectie)
+    await tap(page, '#m-tool [data-v="brush"]'); await tap(page, '#m-terr [data-t="erase"]');
+    await tapMap(0.5, 0.5);
+    if ((await cells()) !== 38 || !says(/Wissen/, (await M()).strip)) throw new Error("wissen");
+    await tap(page, '#m-terr [data-t="dirt"]');
+    await swipeMap(5.5, 6.5, 6.5, 6.5);
+    m = await M();
+    if (m.sel || m.paint.cells !== 40) throw new Error("veeg over de tafel: " + JSON.stringify({ sel: m.sel, cells: m.paint.cells }));
+    // toetsen selecteren niet tijdens Verven (Enter, N)
+    await page.locator("#m-canvas").focus();
+    await page.keyboard.press("Enter"); await page.keyboard.press("n"); await frame();
+    if ((await M()).sel || !(await M()).paint.painting) throw new Error("Enter/N selecteren niet in Verven");
+    // Esc stopt Verven; tik selecteert dan weer
+    await page.keyboard.press("Escape"); await frame();
+    m = await M();
+    if (m.paint.painting || m.strip) throw new Error("Esc stopt Verven");
+    // herladen: terrein bewaard
+    const doc = m.map;
+    await page.evaluate(() => window.__maps.flush());
+    await mapsIdb(page, (l) => l.some((x) => x.id === doc.id && x.terr && x.terr.cells === doc.terr.cells));
+    await page.reload(); await ready();
+    m = await M();
+    if (m.paint.cells !== 40 || m.map.schema !== 4) throw new Error("na herladen: " + JSON.stringify({ cells: m.paint.cells, schema: m.map.schema }));
+    // hex: tik verft één cel (de cel onder het celmidden)
+    await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    await tap(page, '#m-type [data-v="pointy"]'); await tap(page, "#m-close"); await frame();
+    await tap(page, "#m-lib"); await page.locator("#m-lsheet").waitFor({ state: "visible" });
+    await tap(page, '#m-ltab [data-v="terrain"]');
+    await tap(page, '#m-terr [data-t="lava"]');
+    const n0 = await cells(), cc = cellCenter(cleanGrid((await M()).grid), 3, 6);
+    await tapMap(cc.x, cc.y);
+    m = await M();
+    if (m.paint.cells !== n0 + 1 || !m.paint.ids.includes("lava")) throw new Error("hex: één cel: " + JSON.stringify({ n0, cells: m.paint.cells }));
+    const lv = await pixel(cc.x, cc.y), nb = cellCenter(cleanGrid((await M()).grid), 4, 6), nv = await pixel(nb.x, nb.y);
+    if (Math.abs(lv[0] - 207) > 8 || Math.abs(lv[1] - 81) > 8 || Math.abs(lv[2] - 42) > 8 || Math.abs(nv[0] - 207) < 8 && Math.abs(nv[1] - 81) < 8) throw new Error("hex: lava alleen in die cel: " + JSON.stringify({ lv, nv }));
+    // flat: één kolom-run van drie cellen + de cel ernaast leeg
+    await tap(page, "#m-lclose"); await tap(page, "#m-set"); await tap(page, '#m-type [data-v="flat"]'); await tap(page, "#m-close"); await frame();
+    await tap(page, "#m-lib"); await tap(page, '#m-ltab [data-v="terrain"]'); await tap(page, '#m-terr [data-t="sand"]');
+    const gf = cleanGrid((await M()).grid), f0 = cellCenter(gf, 1, 2), f2 = cellCenter(gf, 1, 4);
+    await swipeMap(f0.x, f0.y, f2.x, f2.y);
+    for (const [c, r, want] of [[1, 2, true], [1, 3, true], [1, 4, true], [2, 3, false], [1, 5, false]]) {
+      const q = cellCenter(gf, c, r), v = await pixel(q.x, q.y), sand = Math.abs(v[0] - 216) < 8 && Math.abs(v[1] - 192) < 8 && Math.abs(v[2] - 138) < 8;
+      if (sand !== want) throw new Error(`hex plat: zand in ${c},${r} = ${sand}: ${v}`);
+    }
+    // acceptatie 3: hex 100×100 helemaal geverfd (headless tekent in software: grens ruim, en vooral het verschil met en zonder terrein telt) (vullen + breed in vier soorten), hele kaart in beeld: tekentijd per frame
+    await tap(page, "#m-lclose");
+    await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    for (const [sel, v] of [["#m-cols", "100"], ["#m-rows", "100"]]) { await page.locator(sel).fill(v); await page.locator(sel).press("Enter"); }
+    await tap(page, "#m-close"); await frame();
+    await tap(page, "#m-lib"); await page.locator("#m-lsheet").waitFor({ state: "visible" });
+    await tap(page, '#m-ltab [data-v="terrain"]'); await tap(page, '#m-tool [data-v="fill"]'); await tap(page, '#m-terr [data-t="grass"]');
+    await page.keyboard.press("0"); await frame();
+    const ms0 = await page.evaluate(() => window.__maps.bench(20));
+    await tapMap(50, 50);
+    if ((await cells()) !== 10000) throw new Error("100×100 vullen: " + (await cells()));
+    const ms = await page.evaluate(() => window.__maps.bench(20));
+    if (page.viewportSize().width === 320) console.log(`  wp63: tekenen hex 100×100 vol: ${ms.toFixed(1)} ms/frame (zonder terrein ${ms0.toFixed(1)})`);
+    if (ms > 80 || ms - ms0 > 15) throw new Error(`tekenen hex 100×100: ${ms.toFixed(1)} ms per frame`);
   },
   speler: null, // eigen startpagina, zie START
   home: null, homeen: null, notfound: null, // WP30: publieke homepage per taal en de niet-gevonden-pagina (START)

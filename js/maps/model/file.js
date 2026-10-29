@@ -114,6 +114,8 @@ export async function readFile(size, text, { hash, migrate = MIGRATE } = {}) {
   delete map.id;
   // een kaart die naar een afbeelding verwijst, maar met een onbruikbare bg, verliest die niet stil
   if (m.bg != null && !map.bg) return { ok: false, code: "badmap" };
+  // WP63: idem terrein: onbruikbaar terwijl er cellen geverfd lijken = weigeren (een echt leeg terrein mag)
+  if (m.terr != null && !map.terr && !(plain(m.terr) && typeof m.terr.cells === "string" && !/[1-9a-z]/.test(m.terr.cells))) return { ok: false, code: "badmap" };
   const assets = new Map();
   if (map.bg) {
     const sha = map.bg.asset, all = doc.assets;

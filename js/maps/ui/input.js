@@ -16,11 +16,13 @@ export const SLOP = 8;
 // WP62: grab(x, y, kind) wordt bij het neerzetten van de eerste vinger/muis gevraagd of dit gebaar iets oppakt (object,
 // draai- of schaalgreep). Geeft het { move(x, y), end() } terug, dan krijgt dat handvat de beweging (absolute CSS-px,
 // pas voorbij SLOP: een tik verschuift niets) in plaats van pannen; end() bij loslaten, annuleren of een tweede vinger
-// (knijpen zoomt dan zoals altijd). kind = pointerType ("mouse", "touch", "pen").
+// (knijpen zoomt dan zoals altijd). kind = pointerType ("mouse", "touch", "pen"). WP63: een handvat met cancel() krijgt
+// bij een tweede vinger cancel() in plaats van end() (een begonnen veeg verdwijnt, knijpen zoomt).
 export function attachInput(cv, { get, set, drag = null, dragging = () => false, tap = null, tapping = () => false, hover = null, grab = null }) {
   const pts = new Map(); // pointerId → { x, y } (CSS-px binnen het canvas)
   let start = null, moved = false, multi = false, held = null; // huidig gebaar: beginpunt, voorbij SLOP, ooit twee vingers, opgepakt handvat
-  const drop = () => { const h = held; held = null; if (h) h.end(); };
+  // WP63: een tweede vinger annuleert (cancel, als het handvat dat kent: een begonnen veeg wordt teruggedraaid), loslaten beëindigt
+  const drop = (undo = false) => { const h = held; held = null; if (h) (undo && h.cancel ? h.cancel() : h.end()); };
   const at = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
 
   cv.addEventListener("pointerdown", (e) => {
@@ -28,7 +30,7 @@ export function attachInput(cv, { get, set, drag = null, dragging = () => false,
     if (e.isPrimary) { drop(); pts.clear(); start = at(e); moved = false; multi = false; } // nieuw gebaar: een gemiste pointerup laat geen spookvinger achter
     if (pts.size >= 2) return; // een derde vinger doet niets
     pts.set(e.pointerId, at(e));
-    if (pts.size > 1) { multi = true; drop(); } // tweede vinger: niets meer slepen, knijpen zoomt
+    if (pts.size > 1) { multi = true; drop(true); } // tweede vinger: niets meer slepen, knijpen zoomt
     else if (grab && !(drag && dragging())) { const p = at(e); held = grab(p.x, p.y, e.pointerType) || null; }
     try { cv.setPointerCapture(e.pointerId); } catch { /* oude browser */ }
     e.preventDefault();

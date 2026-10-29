@@ -74,7 +74,7 @@ tests/maps-*.test.js
 - **Kaarteenheid**: 1 cel = 1 eenheid (vierkant: zijde; hex: afstand tussen middelpunten). Objectposities zijn floats in kaarteenheden, dus onafhankelijk van schermresolutie en achtergrondpixels.
 - **Raster**: `{ type: "square" | "hex", orient: "pointy" | "flat" (hex), cols, rows, show, color, alpha }`. Hex-cellen in axiale coördinaten intern, opgeslagen als offset-kolom/rij (eenvoudiger te begrenzen).
 - **Achtergrond**: `{ asset, x, y, scale, rot? }` — positie/schaal in kaarteenheden, zodat een geüploade battle map op het raster uitgelijnd kan worden.
-- **Terrein**: schaarse celkaart `{ "c,r": terrainId }` (verven per cel).
+- **Terrein** (WP63, `terr`): `{ w, h, ids, cells }`: vast celraster w × h (= `LIMITS.maxCells`, los van kolommen/rijen), `cells` = tekst van w·h tekens rij voor rij, teken = positie in `0-9a-z` (0 = leeg, k = `ids[k − 1]`). Oorspronkelijk advies (schaarse celkaart `{ "c,r": terrainId }`) afgewezen om de kopieerkosten per veeg.
 - **Objecten** (WP61, `objs`): `[{ id, asset, x, y, w, h, rot, layer }]`, x/y = middelpunt, w/h in cellen, `layer` ∈ `floor | object` (MVP); later `token | dm | fog`. Geen `z`: de lijstvolgorde is de tekenvolgorde binnen een laag.
 - **Assets**: `{ id: { kind: "builtin", ref } | { kind: "custom", mime, w, h, sha256, name } }`; bytes los in de assetstore, niet in het kaartdocument.
 - Id's en codes in opslag, geen labels (CLAUDE.md, Meertaligheid). Gebruikersinhoud (kaartnaam, objectnamen) wordt nooit vertaald.
@@ -241,11 +241,13 @@ Nummering loopt door op de repo-historie (laatste was WP55). Elk pakket = één 
 - Risico: verwarring pannen vs. slepen op touch → modus-indicator, slepen alleen op een geselecteerd object.
 - Grootte L.
 
-**WP63 · Terrein per cel verven** · M
+**WP63 · Terrein per cel verven** · M — **klaar (Maps 0.8.0)**; besluiten in CLAUDE.md
 - Scope: gereedschap Verven met terreintypen (± 8: steen, hout, gras, aarde, water, zand, lava, leegte), penseelgrootte 1/3, gum, vlakvulling binnen kaartrand, vierkant en hex.
 - Niet: vrij tekenen, muren op celranden.
 - Gebaren: in Verven vult slepen met één vinger, muis of Apple Pencil elke cel waar je overheen gaat; twee vingers pannen en zoomen (wens Michiel 28-10-2026, eerder K10; slepen in Plaatsen blijft pannen, WP61).
 - Acceptatie: (1) één veegbeweging = één undo-stap; (2) vlakvulling stopt bij andere terreintypen en de kaartrand (test op beide rasters); (3) 100×100 volverven blijft vloeiend (zie WP66-budget).
+- Opslag bewust anders dan §2.3 (schaarse `{ "c,r": id }`): `{ w, h, ids, cells }`, vast 100×100-raster als tekst (één teken per cel, palet `ids`); een kopie van 10 000 sleutels kost ± 9 ms per veegbeweging, deze vorm ± 0,2 ms. Schema 4 = kaart met terrein.
+- Naar WP65: toetsenbordweg voor Verven (cursorcel + Enter, samen met die van Plaatsen). Naar WP66: meten op een echt toestel; terrein kost headless ± 1 ms per frame (één pad per terreintype, aaneengesloten cellen als één veelhoek), het hex-raster zelf ± 27 ms.
 - Grootte M.
 
 **WP64 · Eigen assets** · M
@@ -335,7 +337,7 @@ Geen meer: D1–D3 zijn besloten. De rest start op het advies en wordt per pakke
 ---
 
 ## 7. Volgende stap
-WP56–WP60 zijn klaar (28-10-2026): **mijlpaal M1** (Maps 0.5.0). WP61 klaar (Maps 0.6.0). WP62 klaar (Maps 0.7.0; plaatsen met het toetsenbord meegenomen). Volgende: **WP63 · Terrein per cel verven** of **WP64 · Eigen assets** (parallel mogelijk). De hernoeming naar Inn Sight (D13) volgt in WP65 en WP67.
+WP56–WP60 zijn klaar (28-10-2026): **mijlpaal M1** (Maps 0.5.0). WP61 klaar (Maps 0.6.0). WP62 klaar (Maps 0.7.0; plaatsen met het toetsenbord meegenomen). WP63 klaar (Maps 0.8.0, terrein verven). Volgende: **WP64 · Eigen assets**. De hernoeming naar Inn Sight (D13) volgt in WP65 en WP67.
 
 Oorspronkelijk advies bij de start van G4: **WP56 · Tool-skelet met vierkant raster, pannen en zoomen.**
 Waarom eerst: laagste risico, raakt Initiative niet, legt pad, pagina, catalogus, service worker, tests, browsercheck en het canvas-/gebarenfundament vast waar elk volgend pakket op bouwt. Na WP56 is er al iets op de telefoon te openen.
@@ -358,7 +360,7 @@ Eén kaart volledig en zelfstandig in één JSON-bestand (`js/maps/model/file.js
   "assets": { "<sha256>": { "mime": "image/webp", "w": 2100, "h": 1400, "data": "<base64>" } }
 }
 ```
-- `map` = het kaartdocument zoals in de opslag (§2.3, `cleanMap`), **zonder `id`**: geen verwijzing naar browseropslag; import geeft altijd een nieuwe id, tijden = nu, naam via `uniqueName` (nooit overschrijven). `bg` en dus `assets` alleen als er een achtergrond is (schema 2); objecten (WP61) als optioneel veld `objs` (schema 3, `cleanObjs`; ingebouwde onderdelen alleen als id, niet als afbeelding; een onbekende id blijft bewaard en wordt als plaatshouder getekend); terrein komt later.
+- `map` = het kaartdocument zoals in de opslag (§2.3, `cleanMap`), **zonder `id`**: geen verwijzing naar browseropslag; import geeft altijd een nieuwe id, tijden = nu, naam via `uniqueName` (nooit overschrijven). `bg` en dus `assets` alleen als er een achtergrond is (schema 2); objecten (WP61) als optioneel veld `objs` (schema 3, `cleanObjs`; ingebouwde onderdelen alleen als id, niet als afbeelding; een onbekende id blijft bewaard en wordt als plaatshouder getekend); terrein (WP63) als optioneel veld `terr` (schema 4, `cleanTerr`: vast raster, palet van alleen gebruikte id's, onbekende id blijft en wordt een plaatshouder; bestandsversie blijft 1).
 - `assets` bevat precies de afbeeldingen waar de kaart naar verwijst; sleutel = sha256 (hex) van de bytes in `data`; `w`/`h` = afmetingen van die opgeslagen bytes (≤ 4096 px). `src` (sha256 van het origineel, index in de opslag) gaat bewust niet mee en wordt bij import genegeerd; een bestaande asset met dezelfde sha wordt niet overschreven.
 - Bestandsnaam `inn-the-grid-<kaartnaam>-YYYY-MM-DD-HH-MM.json` (lokale tijd, slug van de naam, max 40 tekens, leeg = `map`).
 - Schrijven: als Blob uit tekststukken (`buildParts`, base64 per 48 KB), nooit één enorme string. Ontbreekt een afbeelding (opslag gewist), dan geen bestand maar een melding.

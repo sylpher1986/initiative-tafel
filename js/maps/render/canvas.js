@@ -8,6 +8,11 @@ import { CELL, toScreen, visibleRect, crisp } from "../model/view.js";
 import { bgRect } from "../model/bg.js";
 import { drawOrder } from "../model/objects.js";
 import { corners, handles } from "../model/hit.js";
+import { cellsOf, known, TERR } from "../model/terrain.js";
+
+/** Terreinkleuren (WP63): kaartinhoud, dus vast en niet per thema (zoals de vaste rasterkleuren); vormgeving in WP68.
+ *  Ook de kleurvlakken in het paneel (main.js). Onbekend terrein (nieuwere versie) = plaatshouder in de lijnkleur. */
+export const TERR_COLORS = { stone: "#8d877c", wood: "#9c6b3c", grass: "#6c9a48", dirt: "#7f6045", water: "#4a82b4", sand: "#d8c08a", lava: "#cf512a", void: "#17110c" };
 
 /** Kleuren uit de CSS-tokens (opnieuw lezen bij een themawissel) */
 export function readColors(el = document.documentElement) {
@@ -33,7 +38,9 @@ export function fitCanvas(cv, w, h, dpr) {
  *  Volgorde: achtergrond → laag floor → raster → laag object → kaartrand (het raster ligt over vloeren, onder meubels). */
 // WP62: sel = geselecteerd object (gedraaid kader in --sel met een lichte rand eromheen, draaigreep met steel en
 // schaalgreep; boven alles, ook boven de kaartrand), cursor = hoekpunten (kaarteenheden) van de toetsenbordcel (gestippeld).
-export function draw(cv, map, v, w, h, dpr, col, { img = null, align = false, art = null, ghost = null, sel = null, cursor = null } = {}) {
+// WP63: terrein (map.terr) boven de achtergrond en onder de laag floor; brush = hoekpunten van de cellen die een klik
+// zou verven (omlijning onder de muis, desktop).
+export function draw(cv, map, v, w, h, dpr, col, { img = null, align = false, art = null, ghost = null, sel = null, cursor = null, brush = null } = {}) {
   const g = cv.getContext("2d"), grid = map.grid, b = bounds(grid);
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.fillStyle = col.page;
@@ -52,6 +59,7 @@ export function draw(cv, map, v, w, h, dpr, col, { img = null, align = false, ar
     g.globalAlpha = 1;
     if (!align) { g.save(); g.beginPath(); g.rect(X0, Y0, X1 - X0, Y1 - Y0); g.clip(); g.drawImage(img, bx, by, bw, bh); g.restore(); }
   }
+  if (map.terr && !align) drawTerr(g, map.terr, grid, v, w, h, dpr, col); // WP63: boven de achtergrond, onder vloeren en raster
   const { list: objs, nf } = map.objs && map.objs.length ? drawOrder(map.objs) : { list: [], nf: 0 };
   const things = (from, to) => { for (let i = from; i < to; i++) drawObj(g, objs[i], v, w, h, dpr, col, art); };
   if (!align) things(0, nf);
@@ -72,6 +80,7 @@ export function draw(cv, map, v, w, h, dpr, col, { img = null, align = false, ar
   g.strokeStyle = col.edge;
   g.lineWidth = e;
   g.strokeRect(X0 + e / 2, Y0 + e / 2, X1 - X0 - e, Y1 - Y0 - e);
+  if (!align && brush) for (const pts of brush) drawCursor(g, pts, v, dpr, col);
   if (!align && cursor) drawCursor(g, cursor, v, dpr, col);
   if (!align && sel) drawSel(g, sel, v, dpr, col);
 }
@@ -155,4 +164,67 @@ function drawObj(g, o, v, w, h, dpr, col, art) {
     g.strokeRect(-ow / 2 + inset, -oh / 2 + inset, ow - 2 * inset, oh - 2 * inset);
   }
   g.restore();
+}
+
+// Terrein: per terreintype één pad en één fill (geen naden tussen cellen van hetzelfde type, ± 9 fills per frame).
+// Vierkant: aaneengesloten cellen in een rij als één rechthoek op hele apparaatpixels; hex: zeshoeken zoals hexPath.
+// Alleen de zichtbare cellen binnen de kaart (culling); cellen buiten de kaart (raster verkleind) blijven onzichtbaar.
+// Offscreen-buffer per zoomniveau pas als WP66 dat nodig blijkt.
+function drawTerr(g, terr, grid, v, w, h, dpr, col) {
+  const C = visibleCells(grid, visibleRect(v, w, h));
+  if (C.c0 > C.c1) return;
+  const a = cellsOf(terr), n = terr.ids.length, W = TERR.w;
+  const paths = Array.from({ length: n + 1 }, () => null), path = (k) => paths[k] || (paths[k] = new Path2D());
+  if (grid.type !== "hex") {
+    const X = (c) => Math.round(toScreen(v, c, 0).x * dpr), Y = (r) => Math.round(toScreen(v, 0, r).y * dpr);
+    for (let r = C.r0; r <= C.r1; r++) {
+      const y0 = Y(r), y1 = Y(r + 1);
+      for (let c = C.c0; c <= C.c1;) {
+        const k = a[r * W + c];
+        let e = c + 1;
+        while (e <= C.c1 && a[r * W + e] === k) e++;
+        if (k) { const x0 = X(c); path(k).rect(x0, y0, X(e) - x0, y1 - y0); }
+        c = e;
+      }
+    }
+  } else {
+    const s = CELL * v.z * dpr, m0 = cellCenter(grid, 0, 0), py = grid.orient !== "flat";
+    const off = cellPoly(grid, 0, 0).map((p) => [(p.x - m0.x) * s, (p.y - m0.y) * s]);
+    const ox = v.x * dpr + m0.x * s, oy = v.y * dpr + m0.y * s, dc = py ? s : 1.5 * HEX_R * s, dr = py ? 1.5 * HEX_R * s : s, half = s / 2;
+    // aaneengesloten cellen van één soort als één veelhoek: pointy per rij (buren links/rechts delen een zijde), flat per
+    // kolom (boven/onder); hoekpunten off[0…5] met de klok mee (pointy: boven, rechtsboven, rechtsonder, onder,
+    // linksonder, linksboven; flat: rechts, rechtsonder, linksonder, links, linksboven, rechtsboven)
+    const at = (c, r) => [ox + c * dc + (py && (r & 1) ? half : 0), oy + r * dr + (!py && (c & 1) ? half : 0)];
+    const pt = (P, m, i, first) => (first ? P.moveTo(m[0] + off[i][0], m[1] + off[i][1]) : P.lineTo(m[0] + off[i][0], m[1] + off[i][1]));
+    const [o0, o1] = py ? [C.r0, C.r1] : [C.c0, C.c1], [i0, i1] = py ? [C.c0, C.c1] : [C.r0, C.r1];
+    for (let o = o0; o <= o1; o++) for (let i = i0; i <= i1;) {
+      const k = py ? a[o * W + i] : a[i * W + o];
+      let e = i + 1;
+      while (e <= i1 && (py ? a[o * W + e] : a[e * W + o]) === k) e++;
+      if (k) {
+        const P = path(k), cell = (j) => (py ? at(j, o) : at(o, j));
+        if (py) { // linksboven, dan per cel boven + rechtsboven, rechtsonder van de laatste, terug per cel onder + linksonder
+          pt(P, cell(i), 5, true);
+          for (let j = i; j < e; j++) { const m = cell(j); pt(P, m, 0); pt(P, m, 1); }
+          pt(P, cell(e - 1), 2);
+          for (let j = e - 1; j >= i; j--) { const m = cell(j); pt(P, m, 3); pt(P, m, 4); }
+        } else { // linksboven van de eerste, rechtsboven, dan per cel rechts + rechtsonder, terug per cel links + linksboven
+          pt(P, cell(i), 4, true); pt(P, cell(i), 5);
+          for (let j = i; j < e; j++) { const m = cell(j); pt(P, m, 0); pt(P, m, 1); }
+          pt(P, cell(e - 1), 2);
+          for (let j = e - 1; j >= i; j--) { const m = cell(j); pt(P, m, 3); if (j > i) pt(P, m, 4); }
+        }
+        P.closePath();
+      }
+      i = e;
+    }
+  }
+  for (let k = 1; k <= n; k++) {
+    if (!paths[k]) continue;
+    const id = terr.ids[k - 1];
+    g.fillStyle = known(id) ? TERR_COLORS[id] : col.line;
+    if (!known(id)) g.globalAlpha = 0.5;
+    g.fill(paths[k]);
+    g.globalAlpha = 1;
+  }
 }

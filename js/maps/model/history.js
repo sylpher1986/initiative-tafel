@@ -1,5 +1,5 @@
 // Inn the Grid (G4, WP61): undo/redo, puur (geen DOM, Node-testbaar). Een stap = { before, after, group }: before/after
-// zijn kleine "patches" met alleen de velden van het kaartdocument die de stap verandert (grid, bg, objs; undefined =
+// zijn kleine "patches" met alleen de velden van het kaartdocument die de stap verandert (grid, bg, objs, terr; undefined =
 // veld afwezig). Waarden worden nooit ter plekke gewijzigd (de editor maakt altijd nieuwe objecten/lijsten), dus een
 // stap houdt alleen verwijzingen vast. Alleen in het geheugen, per geopende kaart, max HIST_MAX stappen; niet in de
 // opslag en niet in een export (docs/g4-inn-the-grid.md §2.4). Naam en kaartlijst vallen erbuiten.
@@ -11,7 +11,8 @@
 export const HIST_MAX = 100;
 
 // Lijsten (objs) zijn altijd nieuw bij een wijziging: identiteit volstaat (geen JSON over 2000 objecten per tik);
-// kleine objecten (grid, bg) worden op inhoud vergeleken.
+// kleine objecten (grid, bg) worden op inhoud vergeleken. terr (WP63, ± 10 KB tekst) ook: één keer per veeg, en verven
+// en weer terugwissen naar dezelfde stand geeft zo terecht geen stap.
 const same = (a, b) => a === b || (!Array.isArray(a) && !Array.isArray(b) && JSON.stringify(a) === JSON.stringify(b));
 /** Verandert een stap iets? (alle sleutels van before en after vergelijken) */
 export const changes = (before, after) => [...new Set([...Object.keys(before), ...Object.keys(after)])].some((k) => !same(before[k], after[k]));

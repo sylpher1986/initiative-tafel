@@ -7,10 +7,11 @@
 // assetstore), schaal, raster passend, uitlijnmodus, vervangen/verwijderen met Ongedaan; WP60: projectbestand v1
 // (exporteren in het menu per kaart, importeren onder de lijst als nieuwe kaart); WP61: undo/redo (kop) over plaatsen,
 // raster en achtergrond, paneel Bibliotheek met ingebouwde onderdelen en Plaatsen; WP62: objecten selecteren (tik),
-// slepen, draaien en schalen met handgrepen, eigen dock en paneel Object, toetsenbord met cursorcel (docs/g4-inn-the-grid.md).
+// slepen, draaien en schalen met handgrepen, eigen dock en paneel Object, toetsenbord met cursorcel; WP63: terrein per cel
+// verven (tab Terrein in paneel Bibliotheek: penseel, breed, vullen, wissen) (docs/g4-inn-the-grid.md).
 import { initI18n, t, i18n } from "../i18n/boot.js";
 import { APP, VERSION } from "./version.js";
-import { cleanGrid, parseCells, bounds, LIMITS, cellAt, cellCenter, cellPoly } from "./model/grid.js";
+import { cleanGrid, parseCells, bounds, LIMITS, cellAt, cellCenter, cellPoly, inside } from "./model/grid.js";
 import { clampPan, fitView, zoomAt, zoomPct, toMap, toScreen, ZMIN, ZMAX, CELL } from "./model/view.js";
 import { cleanBg, guessPpc, gridFor, parsePpc, parseAcross, scaleBg, moveBg, across, stepFor, BG } from "./model/bg.js";
 import { IMG } from "./model/image.js";
@@ -18,7 +19,8 @@ import { prepareImage, assetImage } from "./ui/upload.js";
 import { newMap, mapId, cleanName, newName, uniqueName, copyMap, sortMaps, pickStart, ago } from "./model/map.js";
 import { FILE_MAX } from "./model/file.js";
 import { exportMap, importFile } from "./ui/export.js";
-import { readColors, fitCanvas, draw } from "./render/canvas.js";
+import { readColors, fitCanvas, draw, TERR_COLORS } from "./render/canvas.js";
+import { TERRAINS, TOOLS, paintCells, brushCells, strokeCells, footprint, fillCells, countTerr } from "./model/terrain.js";
 import { createArt } from "./render/art.js";
 import { createHistory } from "./model/history.js";
 import { CATS, BUILTIN_IDS, builtin, inCat, assetUrl } from "./model/assets.js";
@@ -40,7 +42,7 @@ async function boot() {
   const cv = $("m-canvas"), wrap = $("m-stage");
   // cur = de geopende kaart (document zoals in de opslag) of null (verwijderd, lijst open); map = wat de render tekent
   let cur = null;
-  const map = { grid: cleanGrid(), bg: null, objs: [] };
+  const map = { grid: cleanGrid(), bg: null, objs: [], terr: null };
   // WP59: tekenbare achtergronden per asset (sha → afbeelding; null = ontbreekt in de opslag), assets in het geheugen als
   // er geen opslag is (privémodus), en de uitlijnmodus
   const imgs = new Map(), memAssets = new Map();
@@ -73,7 +75,8 @@ async function boot() {
     queued = false;
     fitCanvas(cv, w, h, dpr);
     draw(cv, map, view, w, h, dpr, col, { img: (map.bg && imgs.get(map.bg.asset)) || null, align: aligning, art, ghost,
-      sel: selObj(), cursor: kbd && !selId && viewName === "edit" ? cellPoly(map.grid, kbd.c, kbd.r) : null });
+      sel: selObj(), cursor: kbd && !selId && viewName === "edit" ? cellPoly(map.grid, kbd.c, kbd.r) : null,
+      brush: brushAt && painting() ? brushAt.cells.map((q) => cellPoly(map.grid, q.c, q.r)) : null });
     const n = zoomPct(view), z = $("m-zoom");
     if (z.dataset.n !== String(n)) { z.dataset.n = n; z.textContent = t("maps.zoom.pct", { n }); z.setAttribute("aria-label", t("maps.zoom.fit", { n })); }
     $("m-out").disabled = view.z <= ZMIN;
@@ -318,7 +321,7 @@ async function boot() {
   // Elke wijziging aan raster, achtergrond of objecten gaat via edit(): patch toepassen (put) en als stap vastleggen.
   // Ongedaan/Opnieuw passen de patch van de stap toe. Per geopende kaart, alleen in het geheugen (model/history.js).
   const hist = createHistory();
-  const docField = (k) => (k === "grid" ? map.grid : k === "bg" ? map.bg || undefined : map.objs.length ? map.objs : undefined);
+  const docField = (k) => (k === "grid" ? map.grid : k === "bg" ? map.bg || undefined : k === "terr" ? map.terr || undefined : map.objs.length ? map.objs : undefined);
   /** Patch toepassen op wat de render tekent en op het document (zonder geschiedenis) */
   function put(patch) {
     if ("grid" in patch) { map.grid = cleanGrid(patch.grid); if (cur) cur.grid = map.grid; }
@@ -329,6 +332,7 @@ async function boot() {
       if ((map.bg && map.bg.asset) !== was) { trimImgs(); loadBg(); }
     }
     if ("objs" in patch) { map.objs = patch.objs || []; if (cur) { if (map.objs.length) cur.objs = map.objs; else delete cur.objs; } }
+    if ("terr" in patch) { map.terr = patch.terr || null; if (cur) { if (map.terr) cur.terr = map.terr; else delete cur.terr; } } // WP63
   }
   /** Na een patch: panelen, label, bewaren, tekenen, knoppen */
   function refresh(patch) {
@@ -352,7 +356,8 @@ async function boot() {
     return step;
   }
   const assetName = (id) => (builtin(id) ? t("maps.asset." + id) : id);
-  const stepName = (m) => (!m ? "" : m.id ? t("maps.hist." + m.k, { name: assetName(m.id) }) : t("maps.hist." + m.k)); // WP62: elke objectstap noemt het onderdeel
+  const terrName = (id) => (TERRAINS.includes(id) ? t("maps.terr." + id) : id); // WP63: onbekend terrein (nieuwere versie) = id
+  const stepName = (m) => (!m ? "" : m.id ? t("maps.hist." + m.k, { name: assetName(m.id) }) : m.t ? t("maps.hist." + m.k, { name: terrName(m.t) }) : t("maps.hist." + m.k)); // WP62: elke objectstap noemt het onderdeel
   const undoBtn = $("m-undo"), redoBtn = $("m-redo");
   function histBtns() {
     lastPeek = { ...hist.peek(), k: `${hist.canUndo}${hist.canRedo}` };
@@ -366,14 +371,14 @@ async function boot() {
   const srEl = $("m-sr");
   const sr = (text) => { srEl.textContent = ""; requestAnimationFrame(() => { srEl.textContent = text; }); }; // ook dezelfde zin opnieuw voorlezen
   function undo() {
-    if (aligning || viewName !== "edit" || !cur) return;
+    if (aligning || stroking || viewName !== "edit" || !cur) return;
     const m = hist.peek().undo, p = hist.undo();
     if (!p) return;
     put(p); refresh(p);
     sr(t("maps.hist.undone", { step: stepName(m) }));
   }
   function redo() {
-    if (aligning || viewName !== "edit" || !cur) return;
+    if (aligning || stroking || viewName !== "edit" || !cur) return;
     const m = hist.peek().redo, p = hist.redo();
     if (!p) return;
     put(p); refresh(p);
@@ -391,18 +396,44 @@ async function boot() {
   let libCat = CATS[0], active = null, ghost = null, stripT = 0;
   let snap = true;
   try { snap = localStorage.getItem("maps-snap") !== "0"; } catch { /* geen opslag: standaard aan */ }
-  const placing = () => !!active && !lsheet.hidden && !aligning && viewName === "edit" && !!cur;
+  const placing = () => !!active && libTab === "parts" && !lsheet.hidden && !aligning && viewName === "edit" && !!cur;
+  // WP63: tab Terrein. mat = gekozen terrein-id, "erase" (Wissen) of null (Kijken); tool onthouden in localStorage maps-ttool
+  let libTab = "parts", mat = null, tool = "brush", brushAt = null, stroking = false; // stroking: een veeg loopt (geen undo tussendoor)
+  try { const v = localStorage.getItem("maps-ttool"); if (TOOLS.includes(v)) tool = v; } catch { /* standaard Penseel */ }
+  const painting = () => !!mat && libTab === "terrain" && !lsheet.hidden && !aligning && viewName === "edit" && !!cur;
   const pressTiles = () => { for (const b of tiles.querySelectorAll(".mtile")) b.setAttribute("aria-pressed", String(b.dataset.id === active)); };
   function paintTiles() {
+    press("m-ltab", libTab);
+    const terr = libTab === "terrain";
+    for (const id of ["m-cats", "m-tiles", "m-snap"]) $(id).hidden = terr;
+    $("m-terr").hidden = !terr; $("m-tools-f").hidden = !terr;
+    if (terr) { paintTerr(); return; }
     press("m-cats", libCat);
     snapBtn.setAttribute("aria-pressed", String(snap));
     tiles.innerHTML = inCat(libCat).map((id) => `<button type="button" class="mtile" data-id="${esc(id)}" aria-pressed="${id === active}"><img src="${esc(assetUrl(id))}" alt="" width="40" height="40"><span>${esc(assetName(id))}</span></button>`).join("");
   }
   function paintStrip() {
     if (stripT) return; // de korte melding "Tik binnen de kaart" staat er nog
-    const on = placing();
-    pstrip.hidden = !on;
+    const on = placing(), pt = painting();
+    pstrip.hidden = !on && !pt;
     if (on) pstrip.textContent = t("maps.lib.placing", { name: assetName(active) });
+    else if (pt) pstrip.textContent = mat === "erase" ? t({ brush: "maps.paint.eraseBrush", wide: "maps.paint.eraseWide", fill: "maps.paint.eraseFill" }[tool]) : t("maps.paint." + tool, { name: terrName(mat) });
+  }
+  // WP63: terreintegels (kleurvlak + naam, 5 kolommen) en de gereedschap-seg
+  function paintTerr() {
+    press("m-tool", tool);
+    const tile = (id, sw) => `<button type="button" class="mtile" data-t="${esc(id)}" aria-pressed="${id === mat}">${sw}<span>${esc(id === "erase" ? t("maps.terr.erase") : terrName(id))}</span></button>`;
+    $("m-terr").innerHTML = `<span class="vh" id="m-terr-l">${esc(t("maps.lib.terrain"))}</span>`
+      + TERRAINS.map((id) => tile(id, `<span class="mtsw" style="background:${TERR_COLORS[id]}" aria-hidden="true"></span>`)).join("")
+      + tile("erase", `<span class="mtsw erase" aria-hidden="true"></span>`);
+  }
+  const pressTerr = () => { for (const b of $("m-terr").querySelectorAll(".mtile")) b.setAttribute("aria-pressed", String(b.dataset.t === mat)); };
+  const setMat = (id) => { mat = id; brushAt = null; pressTerr(); paintStrip(); later(); };
+  function setTab(v) {
+    if (v === libTab) return;
+    libTab = v; active = null; ghost = null; mat = null; brushAt = null;
+    clearTimeout(stripT); stripT = 0;
+    paintTiles(); paintStrip(); later();
   }
   const stripMsg = (text) => { clearTimeout(stripT); pstrip.hidden = false; pstrip.textContent = text; stripT = setTimeout(() => { stripT = 0; paintStrip(); }, 2000); };
   const setActive = (id) => { active = id; ghost = null; pressTiles(); paintStrip(); later(); };
@@ -426,7 +457,7 @@ async function boot() {
     if (lsheet.hidden) return;
     lsheet.hidden = true; btnLib.setAttribute("aria-expanded", "false");
     dockFocus(true);
-    active = null; ghost = null;
+    active = null; ghost = null; mat = null; brushAt = null; // WP63: ook Verven stopt
     clearTimeout(stripT); stripT = 0;
     paintStrip();
     if (focus) btnLib.focus();
@@ -437,6 +468,42 @@ async function boot() {
   $("m-cats").addEventListener("click", (e) => { const v = e.target.closest("button")?.dataset.v; if (v && v !== libCat) { libCat = v; paintTiles(); } });
   tiles.addEventListener("click", (e) => { const id = e.target.closest(".mtile")?.dataset.id; if (id) setActive(active === id ? null : id); });
   snapBtn.addEventListener("click", () => setSnap(!snap));
+  $("m-ltab").addEventListener("click", (e) => { const v = e.target.closest("button")?.dataset.v; if (v) setTab(v); });
+  $("m-terr").addEventListener("click", (e) => { const id = e.target.closest(".mtile")?.dataset.t; if (id) setMat(mat === id ? null : id); });
+  $("m-tool").addEventListener("click", (e) => {
+    const v = e.target.closest("button")?.dataset.v;
+    if (!v || !TOOLS.includes(v)) return;
+    tool = v; brushAt = null; press("m-tool", tool); paintStrip(); later();
+    try { localStorage.setItem("maps-ttool", tool); } catch { /* alleen deze sessie */ }
+  });
+  // ---- WP63: verven ----
+  // Penseel/Breed: de veeg begint bij het neerzetten (de eerste cel kleurt meteen), elke cel waar vinger, muis of Pencil
+  // overheen gaat wordt geverfd; tijdens de veeg alleen tekenen en bewaren (put), bij loslaten één undo-stap. Een tweede
+  // vinger zet de stand van vóór de veeg terug zonder stap (knijpen zoomt). Vullen: tik vult het gebied, slepen pant.
+  const terrMeta = (fill) => (mat === "erase" ? { k: fill ? "eraseFill" : "erase" } : { k: fill ? "fill" : "paint", t: mat });
+  const matId = () => (mat === "erase" ? null : mat);
+  function paintGrab(sx, sy) {
+    const before = map.terr, meta = terrMeta(false), id = matId(), tl = tool, at = cur && cur.updatedAt;
+    let last = toMap(view, sx, sy), live = true;
+    stroking = true; brushAt = null; // omlijning volgt een ingedrukte muis niet: weg tijdens de veeg
+    const apply = (cells) => {
+      const next = paintCells(map.terr, footprint(map.grid, cells, tl), id);
+      if (next !== map.terr) { put({ terr: next }); changed(); later(); }
+    };
+    apply(strokeCells(map.grid, last.x, last.y, last.x, last.y));
+    return {
+      move(x, y) { if (!live) return; const q = toMap(view, x, y); apply(strokeCells(map.grid, last.x, last.y, q.x, q.y)); last = q; },
+      end() { if (!live) return; live = false; stroking = false; if (map.terr === before) return; const after = { terr: map.terr || undefined }; hist.record({ terr: before || undefined }, after, null, meta); refresh(after); },
+      // terugzetten en bewaren, maar updatedAt zoals vóór de veeg (netto geen wijziging: de kaart springt niet bovenaan Mijn kaarten)
+      cancel() { if (!live) return; live = false; stroking = false; if (map.terr !== before) { put({ terr: before || undefined }); if (cur) { cur.updatedAt = at; saver.touch(); } later(); } },
+    };
+  }
+  function fillAt(sx, sy) {
+    const p = toMap(view, sx, sy), c = cellAt(map.grid, p.x, p.y);
+    if (!inside(map.grid, c.c, c.r)) { stripMsg(t("maps.lib.outside")); return; }
+    const next = paintCells(map.terr, fillCells(map.grid, map.terr, c.c, c.r), matId());
+    if (next !== map.terr) edit({ terr: next || undefined }, terrMeta(true));
+  }
   /** Tik op de kaart in Plaatsen: het actieve onderdeel daar neerzetten (één undo-stap) */
   function place(sx, sy) {
     if (!placing()) return;
@@ -448,6 +515,14 @@ async function boot() {
   }
   /** Muis boven de kaart in Plaatsen: spookbeeld op de plek waar een klik het onderdeel zet */
   function hoverAt(sx, sy) {
+    // WP63: omlijning van de cellen die een klik zou verven (Vullen: alleen de cel); alleen tekenen als hij verschuift
+    let b = null;
+    if (sx != null && painting()) {
+      const p = toMap(view, sx, sy), c = cellAt(map.grid, p.x, p.y);
+      const key = `${c.c},${c.r},${tool}`;
+      if (inside(map.grid, c.c, c.r)) b = brushAt && brushAt.k === key ? brushAt : { k: key, cells: brushCells(map.grid, c.c, c.r, tool === "fill" ? "brush" : tool) };
+    }
+    if (b !== brushAt) { brushAt = b; later(); }
     let g = null;
     if (sx != null && placing()) {
       const d = builtin(active), p = toMap(view, sx, sy), at = placeAt(map.grid, p.x, p.y, d.w, d.h, snap);
@@ -457,7 +532,8 @@ async function boot() {
     if (!same && (g || ghost)) { ghost = g; later(); } // alleen tekenen als het spookbeeld echt verschuift
     // WP62: muiswijzer laat zien wat een klik doet (greep, verplaatsen, selecteren)
     let c = "";
-    if (sx != null && !placing() && editing()) {
+    if (sx != null && painting()) c = "crosshair";
+    else if (sx != null && !placing() && editing()) {
       const o = selObj(), hd = o && handleAt(o, view, sx, sy), p = toMap(view, sx, sy);
       c = hd === "rot" ? "crosshair" : hd === "size" ? "nwse-resize" : o && onObj(o, p.x, p.y) ? "move" : hitAll(map.objs, p.x, p.y).length ? "pointer" : "";
     }
@@ -536,6 +612,7 @@ async function boot() {
   function grab(sx, sy, kind) {
     justSel = false;
     if (kind === "mouse" && document.activeElement !== cv) cv.focus({ preventScroll: true }); // toetsen werken daarna op de kaart
+    if (painting()) return tool === "fill" ? null : paintGrab(sx, sy); // WP63: verven gaat voor selecteren (een veeg over een meubel breekt niet af)
     if (!editing() || placing()) return null;
     const p = toMap(view, sx, sy), o = selObj();
     if (o) {
@@ -550,6 +627,11 @@ async function boot() {
   /** Tik (of klik zonder slepen): Plaatsen plaatst, anders selecteren */
   function onTap(sx, sy) {
     if (placing()) { place(sx, sy); return; }
+    if (painting()) { // WP63: Penseel/Breed verfde al bij het neerzetten; naast de kaart even de strook
+      if (tool === "fill") fillAt(sx, sy);
+      else { const p = toMap(view, sx, sy), c = cellAt(map.grid, p.x, p.y); if (!inside(map.grid, c.c, c.r)) stripMsg(t("maps.lib.outside")); }
+      return;
+    }
     if (!editing()) return;
     if (justSel) { justSel = false; return; } // net met de muis geselecteerd: niet meteen doorschuiven
     const o = selObj();
@@ -713,6 +795,7 @@ async function boot() {
     map.grid = cleanGrid(doc.grid);
     map.bg = cleanBg(doc.bg);
     map.objs = doc.objs || [];
+    map.terr = doc.terr || null; // WP63
     hist.clear(); histBtns(); // WP61: geschiedenis hoort bij één kaart
     ghost = null;
     trimImgs();
@@ -974,6 +1057,7 @@ async function boot() {
       const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
       let did = true;
       if (dir && onCv) { if (o) nudgeSel(dir[0], dir[1], e.shiftKey); else moveCursor(dir[0], dir[1]); }
+      else if ((e.key === "Enter" || e.key === " " || k === "n") && onCv && painting()) { /* WP63: in Verven niet selecteren (toetsenbordweg: WP65) */ }
       else if ((e.key === "Enter" || e.key === " ") && onCv) enterKey();
       else if (k === "n" && onCv) nextObj(e.shiftKey ? -1 : 1);
       else if (o && k === "r") turn(e.shiftKey ? -1 : 1);
@@ -1043,7 +1127,9 @@ async function boot() {
     map: () => cur && { ...cur, grid: { ...cur.grid }, ...(cur.bg ? { bg: { ...cur.bg } } : {}), ...(cur.objs ? { objs: cur.objs.map((o) => ({ ...o })) } : {}) }, status: () => saver.status, view$: () => viewName, flush: () => saver.flush(),
     bg: () => ({ state: bgState(), align: aligning, img: !!(map.bg && imgs.get(map.bg.asset)) }),
     hist: () => ({ undo: hist.canUndo, redo: hist.canRedo, size: hist.size }), tool: () => ({ placing: placing(), active, snap, ghost: !!ghost }),
-    sel: () => selId, kbd: () => kbd && { ...kbd } };
+    sel: () => selId, kbd: () => kbd && { ...kbd },
+    bench: (n = 20) => { const t0 = performance.now(); for (let i = 0; i < n; i++) paint(); return (performance.now() - t0) / n; }, // WP63: tekentijd per frame (browsercheck)
+    paint: () => ({ painting: painting(), tab: libTab, mat, tool, cells: countTerr(map.grid, map.terr), ids: map.terr ? [...map.terr.ids] : [] }) };
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});

@@ -137,11 +137,19 @@
      Tegels vult js/maps/main.js per categorie. -->
 <section class="msheet" id="m-lsheet" role="dialog" aria-labelledby="m-l-t" tabindex="-1" hidden>
   <div class="grab" aria-hidden="true"></div>
-  <div class="shead"><h3 id="m-l-t">Bibliotheek</h3><button type="button" class="link" id="m-lclose">Sluiten</button></div>
+  <!-- WP63: tabs Onderdelen | Terrein op de plek van de titel (de titel blijft voor de schermlezer) -->
+  <div class="shead"><h3 class="vh" id="m-l-t">Bibliotheek</h3>
+    <div class="seg mltab" id="m-ltab" role="group" aria-labelledby="m-l-t"><button type="button" data-v="parts">Onderdelen</button><button type="button" data-v="terrain">Terrein</button></div>
+    <button type="button" class="link" id="m-lclose">Sluiten</button></div>
   <div class="seg" id="m-cats" role="group" aria-labelledby="m-l-t"><button type="button" data-v="floor">Vloeren</button><button type="button" data-v="build">Bouwdelen</button><button type="button" data-v="furniture">Meubels</button><button type="button" data-v="nature">Natuur</button></div>
   <div class="mtiles" id="m-tiles"></div>
   <!-- schakelaar onder de tegels (in de kop past hij op 320 px niet naast titel en Sluiten) -->
   <button type="button" class="btn msnap" id="m-snap" aria-pressed="true"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 12h16M12 4v16"/></svg>Op raster uitlijnen</button>
+  <!-- WP63: tab Terrein. Een terrein (of Wissen) kiezen zet Verven aan; Verven bestaat alleen zolang deze tab open is.
+       Penseel/Breed: tik of veeg verft; Vullen: tik vult het gebied, slepen pant. Tegels vult js/maps/main.js. -->
+  <div class="mterr" id="m-terr" role="group" aria-labelledby="m-terr-l" hidden><span class="vh" id="m-terr-l">Terrein</span></div>
+  <div class="mfield" id="m-tools-f" hidden><span class="vh" id="m-tool-l">Gereedschap</span>
+    <div class="seg" id="m-tool" role="group" aria-labelledby="m-tool-l"><button type="button" data-v="brush">Penseel</button><button type="button" data-v="wide">Breed</button><button type="button" data-v="fill">Vullen</button></div></div>
 </section>
 <!-- WP62: paneel Object (via Meer; zelfde vorm als paneel Kaart, zonder dim). Velden toegepast bij blur/Enter, komma of
      punt; Sluiten/Esc = terug naar de dock, de selectie blijft. -->

@@ -112,3 +112,11 @@ body.maps{display:flex;flex-direction:column;padding:0;height:100dvh} /* zonder 
 @media (max-width:379px){.mobtns{gap:2px}.mobtns .btn{min-width:44px}}
 #m-osheet{grid-template-columns:minmax(0,1fr)} /* een lange knoptekst (Naar achtergrond) mag het paneel op 320 px niet breder maken */
 #m-osheet .mbg-row .btn{min-width:0;white-space:normal;line-height:1.2;padding:4px 6px}
+/* WP63: tabs Onderdelen | Terrein in de kop van paneel Bibliotheek, terreintegels in 5 kolommen (kleurvlak + naam) */
+#m-lsheet .shead{gap:8px}
+.mltab{flex:1 1 auto;min-width:0;max-width:280px}
+.mltab button{font-size:.95rem}
+.mterr{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.mterr .mtile{min-height:64px}
+.mtsw{width:32px;height:24px;border-radius:var(--r-s);border:1px solid var(--line-strong);pointer-events:none}
+.mtsw.erase{background:repeating-linear-gradient(45deg,var(--card) 0 4px,var(--line) 4px 8px);border-style:dashed}
