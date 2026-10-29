@@ -1,8 +1,8 @@
-# G4 · Inn the Grid — plan (inventaris, architectuur, MVP, werkpakketten)
+# G4 · Inn Sight (was Inn the Grid) — plan (inventaris, architectuur, MVP, werkpakketten)
 
 Stand: 28-10-2026, op basis van `Sylpher1986/initiative-tafel` `main` @ `52dee49` (Kev's Inn itiative 2.11.1). Status: **D1–D3 besloten (28-10-2026)**; overige aanbevelingen gelden tot een pakket anders beslist.
 
-**Naam (D13, 28-10-2026): Inn the Grid wordt Inn Sight.** De hernoeming zit in WP65 (alles wat de gebruiker ziet) en WP67 (documentatie, besluit over het pad). Tot dan heet de tool in code en documentatie nog Inn the Grid; in dit plan heten de open pakketten al Inn Sight.
+**Naam (D13, 28-10-2026): Inn the Grid wordt Inn Sight.** De hernoeming zat in WP65 (alles wat de gebruiker ziet) en WP67 (documentatie, pad `/maps/` blijft). Oudere passages in dit plan noemen de tool nog Inn the Grid (historie); de bestandsnaam van dit plan blijft (vaste verwijzingen).
 
 Uitgangspunt van Michiel (28-10): basic beginnen, eerst iets functioneels, daarna mooi maken; tot er iets werkt helemaal los van Initiative.
 
@@ -269,9 +269,10 @@ Nummering loopt door op de repo-historie (laatste was WP55). Elk pakket = één 
 - Risico: tegenvallende iPad → lagere grens voor gratis versie (D10).
 - Grootte M.
 
-**WP67 · Uitbrengen losstaande editor** · S
+**WP67 · Uitbrengen losstaande editor** · S · **klaar 29-10-2026 (Maps 1.0.0)**
 - Scope: volledige developer-review (x.y.0), README/CLAUDE.md (naam Inn Sight in regel 3, subsectie "Gemaakte keuzes → Inn Sight", stap 3 van "Bij elke wijziging", lijst bewust niet hernoemd), ROADMAP en de titel van dit plan, D13 bevestigen dat het pad `/maps/` blijft (advies: houden, padsegmenten zijn functioneel en Engels; een nieuw pad vraagt redirects en een nieuwe sw-scope voor niets), beslissen over homepage-kaart (met de naam Inn Sight), eigen manifest/installeerbaar en indexeren (§9.2 stap 8, D7).
 - Acceptatie: besluiten D7 vastgelegd; live-checklijst afgevinkt.
+- Uitkomst: D13 pad `/maps/` bevestigd; D7: toolkaart op de homepage (met label Beta), installeerbaar pas in WP68, `noindex` blijft; documentatie op Inn Sight (CLAUDE.md "Gemaakte keuzes → Inn Sight → Uitbrengen").
 
 → **Mijlpaal M2.**
 
@@ -309,13 +310,13 @@ Kleinste waardevolle eind-tot-eind-release: **M1**.
 | # | Vraag | Advies |
 |---|---|---|
 | D1 | Pad | **Besloten 28-10: `/maps/` en `/nl/maps/`** (code, catalogus en opslag heten ook `maps`; de productnaam staat los daarvan, zie D13) |
-| D13 | Naam | **Besloten 28-10: Inn Sight** (was Inn the Grid). Zichtbaar in WP65, documentatie en padbesluit (advies: `/maps/` houden) in WP67 |
+| D13 | Naam | **Besloten 28-10: Inn Sight** (was Inn the Grid). Zichtbaar in WP65, documentatie in WP67; **pad `/maps/` bevestigd 29-10 (WP67)** |
 | D2 | Versie | **Besloten 28-10: Inn the Grid krijgt een eigen versienummer**; de bestaande nummers zijn van Inn itiative; de homepage krijgt geen nummer. Uitwerking zie §2.10. Startversie 0.1.0, 1.0.0 bij M2 (WP67). |
 | D3 | Tekentechniek | **Besloten 28-10: Canvas 2D, eigen code, voor nu**; WP66: blijft (met de kaartbuffer ruim binnen de doelen, headless) |
 | D4 | Projectbestand | **Besloten in WP60 op het advies: optie A, één JSON met base64-assets** (formaat §8) |
 | D5 | Extensie | **Besloten in WP60 op het advies: `.json`** (iOS-bestandskiezer kent die; `format` maakt het herkenbaar) |
 | D6 | Ingebouwde assets | **Besloten in WP61 op het advies: eigen eenvoudige SVG's** (licentieschoon, zoals "geen niet-SRD content"), 24 stuks in `data/maps-assets/` |
-| D7 | Zichtbaarheid | Tot M2 niet op de homepage, niet installeerbaar, `noindex`; besluit in WP67 |
+| D7 | Zichtbaarheid | **Besloten 29-10 (WP67, op het advies): toolkaart op de homepage (label Beta); installeerbaar pas in WP68 (eigen manifest + icoon); `noindex` blijft** |
 | D8 | Koppeling (fase 3) | Zelfde-origin lezen + bestand als terugval |
 | D9 | Reviewers in de functionele fase | Volgens CLAUDE.md; UX-agent alleen bij echte keuzes, vormgeving pas in WP68 |
 | D10 | Grenzen | **Kaart: besloten in WP57 op het advies, max 100×100 cellen**; objecten: 2000, bevestigd in WP66 (headless; iPad-meting door Michiel open, bij tegenvallen lagere grens) |
@@ -338,7 +339,7 @@ Geen meer: D1–D3 zijn besloten. De rest start op het advies en wordt per pakke
 ---
 
 ## 7. Volgende stap
-WP56–WP60 zijn klaar (28-10-2026): **mijlpaal M1** (Maps 0.5.0). WP61 klaar (Maps 0.6.0). WP62 klaar (Maps 0.7.0; plaatsen met het toetsenbord meegenomen). WP63 klaar (Maps 0.8.0, terrein verven). WP64 klaar (Maps 0.9.0, eigen assets). WP65 klaar (Maps 0.10.0, responsief en eerste gebruik; zichtbare naam Inn Sight). WP66 klaar (Maps 0.11.0, prestaties en grenzen; iPad-meting open). Volgende: **WP67** (M2). De documentatie van de hernoeming (D13) volgt in WP67.
+WP56–WP60 zijn klaar (28-10-2026): **mijlpaal M1** (Maps 0.5.0). WP61 klaar (Maps 0.6.0). WP62 klaar (Maps 0.7.0; plaatsen met het toetsenbord meegenomen). WP63 klaar (Maps 0.8.0, terrein verven). WP64 klaar (Maps 0.9.0, eigen assets). WP65 klaar (Maps 0.10.0, responsief en eerste gebruik; zichtbare naam Inn Sight). WP66 klaar (Maps 0.11.0, prestaties en grenzen; iPad-meting open). WP67 klaar (Maps 1.0.0, uitgebracht: toolkaart op de homepage, documentatie Inn Sight): **mijlpaal M2**. Volgende: **WP68** (vormgevingsronde, eerst mockup; daarin ook installeerbaar maken) en daarna fase 3 na akkoord. Open: iPad-meting (WP66).
 
 Oorspronkelijk advies bij de start van G4: **WP56 · Tool-skelet met vierkant raster, pannen en zoomen.**
 Waarom eerst: laagste risico, raakt Initiative niet, legt pad, pagina, catalogus, service worker, tests, browsercheck en het canvas-/gebarenfundament vast waar elk volgend pakket op bouwt. Na WP56 is er al iets op de telefoon te openen.

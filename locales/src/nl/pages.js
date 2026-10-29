@@ -15,7 +15,7 @@ export default {
   "page.home.ogAlt": "Kev’s Inn – Initiative tracker · D&D 5e – kevs-inn.com", // og:image:alt
   "page.home.tagline": "Your home between adventures", // merkregel, bewust Engels (zie en)
   "page.home.headline": "Bouw. Speel. Ontdek.",
-  "page.home.lead": "Gratis hulpmiddelen voor de DM aan tafel bij D&D 5e. Zet een encounter klaar, leid het gevecht op je telefoon en laat je spelers meekijken.",
+  "page.home.lead": "Gratis hulpmiddelen voor de DM aan tafel bij D&D 5e. Leid het gevecht op je telefoon, laat je spelers meekijken en maak je battle maps.",
   "page.home.langNav": "Taal",
   "page.home.tools": "Hulpmiddelen",
   "page.home.toolSub": "Encounters bouwen en gevechten bijhouden",
@@ -25,7 +25,10 @@ export default {
   "page.home.factOffline": "Werkt offline",
   "page.home.factNoAccount": "Geen account nodig",
   "page.home.factDevice": "Werkt op elk apparaat",
-  "page.home.featLabel": "Wat Initiative kan", // aria-label van de lijst met kenmerken
+  "page.home.featLabel": "Wat Initiative kan", // zichtbaar kopje boven de kenmerkenlijst, ook de naam van de lijst
+  "page.home.mapsSub": "Battle maps maken",
+  "page.home.mapsText": "Vierkant- of hexraster, je eigen kaartafbeelding, onderdelen en geverfd terrein. Alles blijft op je apparaat.",
+  "page.home.beta": "Beta",
   "page.home.featMonsters": "Alle SRD-monsters, 2014 en 2024",
   "page.home.featMonstersText": "322 uit SRD 5.1 en 331 uit SRD 5.2.1, met statblocks. Zoeken, tikken, erin.",
   "page.home.featParty": "Je party in één tik",

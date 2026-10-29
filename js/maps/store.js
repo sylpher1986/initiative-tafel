@@ -30,6 +30,7 @@ export function openDb() {
     req.onsuccess = () => {
       const db = req.result;
       db.onversionchange = () => { db.close(); dbp = null; dbo = null; }; // een nieuwere versie in een ander tabblad wil upgraden
+      db.onclose = () => { if (dbo === db) { dbp = null; dbo = null; } }; // WP67: verbinding weg (WebKit na lang op de achtergrond)
       dbo = db;
       resolve(db);
     };
@@ -51,7 +52,14 @@ function tx(store, mode, fn) {
     t.onabort = () => reject(t.error || new Error("aborted"));
     if (mode === "readwrite" && t.commit) t.commit();
   });
-  if (dbo) { try { return go(dbo); } catch (e) { return Promise.reject(e); } }
+  // WP67: verloren verbinding (oudere iPads: "Connection to Indexed Database server lost") = InvalidStateError bij
+  // db.transaction; die transactie is nooit gestart, dus één keer opnieuw openen en proberen is veilig.
+  const lost = (db) => (e) => {
+    if (!e || e.name !== "InvalidStateError") throw e;
+    if (dbo === db) { dbo = null; dbp = null; }
+    return openDb().then(go);
+  };
+  if (dbo) { const db = dbo; return go(db).catch(lost(db)); }
   return openDb().then(go);
 }
 
@@ -100,6 +108,12 @@ export async function putAsset(sha, rec) {
 
 /** Asset (record) of null. Ook bij een (tijdelijke) leesfout null: de editor toont de achtergrond dan als ontbrekend tot
  *  de kaart opnieuw geopend wordt; dat is bewust (geen herhaalpogingen in een lus). */
+/** Bestaat de asset? Zonder de bytes te lezen (import, WP67). */
+export async function hasAsset(sha) {
+  if (!SHA.test(String(sha))) return false;
+  try { return (await tx("assets", "readonly", (s) => s.getKey(sha))) !== undefined; } catch { return false; }
+}
+
 export async function getAsset(sha) {
   if (!SHA.test(String(sha))) return null;
   try { return cleanAsset(await tx("assets", "readonly", (s) => s.get(sha))); } catch { return null; }

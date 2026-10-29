@@ -1,6 +1,6 @@
 # Kev’s Inn itiative
 
-**English** · Initiative and encounter tracker for D&D 5e (2014 or 2024 rules, chosen per table), built for running combat at the table on a phone or tablet. Works offline, keeps all data in your browser, and comes in English and Dutch (`/initiative/`, `/nl/initiative/`; switch under Settings → Display). The rest of this README and the code comments are in Dutch.
+**English** · Initiative and encounter tracker for D&D 5e (2014 or 2024 rules, chosen per table), built for running combat at the table on a phone or tablet. Works offline, keeps all data in your browser, and comes in English and Dutch (`/initiative/`, `/nl/initiative/`; switch under Settings → Display). The repo also holds **Inn Sight**, a battle map maker (square or hex grid, map image, objects, painted terrain, export as a file) at `/maps/` and `/nl/maps/`, with its own version number. The rest of this README and the code comments are in Dutch.
 
 **Nederlands** · Voorheen Initiative Tafel; onderdeel van Kev’s Inn ("Your home between adventures."). Initiative tracker voor D&D 5e om gevechten aan tafel te draaien, met de regels van 2014 of 2024 (per tafel te kiezen onder Instellingen → Regels): spelers (ook via een D&D Beyond-link of PDF), alle SRD-monsters (322 uit SRD 5.1, 331 uit SRD 5.2.1), uitleg van alle SRD-spells (2014 en 2024), condities met duur, spell slots, concentration, death saves, recharge, legendary en lair actions, vaste party, logboek en undo.
 
@@ -24,11 +24,11 @@ js/data/monsters.js   monsterbibliotheek en import (Open5e / 5e-bits)
 js/data/spells.js     spellbibliotheek voor de spell-uitleg (laden bij de eerste tik, naam-aliassen)
 js/rules/             spelregels, puur en getest (editie 2014/2024 als parameter, `edition.js`)
 js/ui/                tekenen en gebruikersacties
-pages/maps.html       Inn the Grid (kaartenmaker, /maps/): sjabloon; eigen versie js/maps/version.js
-js/maps/              Inn the Grid: model/ (puur: raster, viewport, kaart, achtergrond, objecten, catalogus, undo/redo, projectbestand), render/ (canvas, tekeningen), ui/ (invoer, upload, export); los van Initiative
-data/maps-assets/     Inn the Grid: ingebouwde onderdelen (eigen top-down SVG's, id = bestandsnaam, bevroren)
-css/maps.css          opmaak Inn the Grid (tokens uit css/app.css)
-locales/maps/         eigen catalogus per taal voor Inn the Grid (gebouwd uit locales/src/*/maps.js)
+pages/maps.html       Inn Sight (kaartenmaker, /maps/; was Inn the Grid): sjabloon; eigen versie js/maps/version.js
+js/maps/              Inn Sight: model/ (puur: raster, viewport, kaart, achtergrond, objecten, catalogus, undo/redo, projectbestand), render/ (canvas, tekeningen), ui/ (invoer, upload, export); los van Initiative
+data/maps-assets/     Inn Sight: ingebouwde onderdelen (eigen top-down SVG's, id = bestandsnaam, bevroren)
+css/maps.css          opmaak Inn Sight (tokens uit css/app.css)
+locales/maps/         eigen catalogus per taal voor Inn Sight (gebouwd uit locales/src/*/maps.js)
 data/monsters.json    SRD 5.1 monsters
 data/monsters-2024.json SRD 5.2 monsters (gemaakt met tools/monsters_srd2024.py uit open5e-api, gecontroleerd tegen de SRD 5.2.1-pdf)
 data/spells.json      SRD 5.1 spells (gemaakt met tools/spells_srd.py uit 5e-bits/5e-database)

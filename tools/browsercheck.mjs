@@ -2014,6 +2014,7 @@ const SCEN = {
   // WP37 (HS14): homepage huisstijl 2.0. Illustratie geladen (AVIF/WebP via <picture>) en niet hoger dan 260 px op de telefoon,
   // kop op één regel, gouden knop boven de vouw en de enige Lantern-knop, taalkiezer met aria-current, toolkaart ≥ 72 px en
   // hele kaart klikbaar, alle interne links bestaan (geen dode routes). Desktop 1280: tekst links, beeld rechts. --shots=wp37: desktop.
+  // WP67: ook de toolkaart Inn Sight (onder Initiative, op 1280 ernaast) en het kopje boven de kenmerken.
   async wp37(page, base) {
     await page.waitForLoadState("networkidle");
     await page.evaluate(() => document.fonts.ready);
@@ -2023,9 +2024,12 @@ const SCEN = {
       const gold = [...document.querySelectorAll("a,button")].filter((e) => getComputedStyle(e).backgroundColor === "rgb(227, 168, 59)").length;
       const cur = [...document.querySelectorAll(".lang a[aria-current=page]")].map((a) => a.getAttribute("hreflang"));
       const card = document.querySelector("a.toolcard"), cb = card.getBoundingClientRect();
+      const mc = document.querySelector('a.toolcard[href$="/maps/"]'), mb = mc && mc.getBoundingClientRect(), fh = document.getElementById("h-feat");
+      const maps = mc && { h: Math.round(mb.height), below: mb.top >= cb.bottom - 1, name: mc.getAttribute("aria-labelledby").split(" ").map((i) => document.getElementById(i).textContent.trim()).join(" "),
+        feat: !!fh && fh.getBoundingClientRect().top >= mb.bottom && document.querySelector(".feat").getAttribute("aria-labelledby") === "h-feat" };
       const links = [...new Set([...document.querySelectorAll("a[href^='/']")].map((a) => a.getAttribute("href")))];
       return { loaded: img.complete && img.naturalWidth > 0, src: img.currentSrc.split("/").pop(), picH: Math.round(pic.height), lines: Math.round(h1.getBoundingClientRect().height / lh),
-        ctaBottom: Math.round(cta.bottom), vh: innerHeight, gold, cur, lang: document.documentElement.lang, cardH: Math.round(cb.height), name: card.getAttribute("aria-labelledby").split(" ").map((i) => document.getElementById(i).textContent.trim()).join(" "), links };
+        ctaBottom: Math.round(cta.bottom), vh: innerHeight, gold, cur, lang: document.documentElement.lang, cardH: Math.round(cb.height), name: card.getAttribute("aria-labelledby").split(" ").map((i) => document.getElementById(i).textContent.trim()).join(" "), maps, links };
     });
     if (!r.loaded) throw new Error("illustratie niet geladen: " + r.src);
     if (r.lines !== 1) throw new Error(`h1 op ${r.lines} regels`);
@@ -2034,15 +2038,18 @@ const SCEN = {
     if (r.gold !== 1) throw new Error("gouden knoppen: " + r.gold);
     if (r.cur.join() !== r.lang) throw new Error("taalkiezer aria-current: " + r.cur.join());
     if (r.cardH < 72 || !/itiative/.test(r.name)) throw new Error("toolkaart: " + JSON.stringify([r.cardH, r.name]));
+    // WP67: tweede toolkaart Inn Sight direct onder Initiative (≥ 72 px, naam met Beta), kenmerken daarna met een zichtbaar kopje
+    if (!r.maps || r.maps.h < 72 || !r.maps.below || !/^Inn Sight Beta /.test(r.maps.name) || !r.maps.feat) throw new Error("toolkaart Inn Sight: " + JSON.stringify(r.maps));
     for (const href of r.links) { const res = await page.request.get(base + href); if (res.status() !== 200) throw new Error(`link ${href}: ${res.status()}`); }
     if (page.viewportSize().width === 320) {
       const vp = page.viewportSize();
       await page.setViewportSize({ width: 1280, height: 800 }); await page.waitForTimeout(200);
       const d = await page.evaluate(() => {
         const t = document.querySelector(".hero-txt").getBoundingClientRect(), i = document.querySelector(".hero-img").getBoundingClientRect();
-        return { side: i.left >= t.right - 1, h: document.documentElement.scrollWidth - innerWidth, cta: document.querySelector(".cta").getBoundingClientRect().bottom, vh: innerHeight };
+        const [a, b] = [...document.querySelectorAll("a.toolcard")].map((e) => e.getBoundingClientRect());
+        return { side: i.left >= t.right - 1, h: document.documentElement.scrollWidth - innerWidth, cta: document.querySelector(".cta").getBoundingClientRect().bottom, vh: innerHeight, cards: Math.abs(a.top - b.top) < 1 && b.left > a.right };
       });
-      if (!d.side || d.h > 0 || d.cta > d.vh) throw new Error("desktop-hero: " + JSON.stringify(d));
+      if (!d.side || d.h > 0 || d.cta > d.vh || !d.cards) throw new Error("desktop-hero: " + JSON.stringify(d));
       if (SHOTS.has("wp37")) await page.screenshot({ path: join(ROOT, "shots", `wp37-desktop-${r.lang}-${await page.evaluate(() => matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")}.png`), fullPage: true });
       await page.setViewportSize(vp); await page.waitForTimeout(150);
     }

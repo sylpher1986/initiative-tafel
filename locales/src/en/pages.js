@@ -16,7 +16,7 @@ export default {
   "page.home.ogAlt": "Kev’s Inn – Initiative tracker · D&D 5e – kevs-inn.com", // og:image:alt
   "page.home.tagline": "Your home between adventures", // merkregel boven de hero-kop (WP37); bewust Engels in elke taal (ook het spelersscherm), element heeft lang="en"
   "page.home.headline": "Build. Play. Explore.", // h1 van de homepage (Newsreader, WP37)
-  "page.home.lead": "Free tools for Dungeon Masters running D&D 5e at the table. Prepare an encounter, run the fight on your phone and let your players follow along.", // introtekst in de hero (WP37)
+  "page.home.lead": "Free tools for Dungeon Masters running D&D 5e at the table. Run the fight on your phone, let your players follow along and build your battle maps.", // introtekst in de hero (WP37; WP67: met Inn Sight)
   "page.home.langNav": "Language", // aria-label van de taalkiezer rechtsboven
   "page.home.tools": "Tools", // kopje boven de toolkaart(en)
   "page.home.toolSub": "Encounter builder & combat tracker", // ondertitel op de toolkaart van Initiative; samen met de naam de toegankelijke naam van de kaartlink
@@ -26,7 +26,10 @@ export default {
   "page.home.factOffline": "Works offline",
   "page.home.factNoAccount": "No account needed", // voet
   "page.home.factDevice": "Works on any device", // voet
-  "page.home.featLabel": "What Initiative does", // aria-label van de lijst met kenmerken
+  "page.home.featLabel": "What Initiative does", // zichtbaar kopje boven de kenmerkenlijst (sinds WP67, twee toolkaarten), ook de naam van de lijst
+  "page.home.mapsSub": "Battle map maker", // ondertitel op de toolkaart van Inn Sight (WP67); samen met de naam de toegankelijke naam van de kaartlink
+  "page.home.mapsText": "Square or hex grids, your own map image, objects and painted terrain. Everything stays on your device.", // korte tekst op de toolkaart van Inn Sight
+  "page.home.beta": "Beta", // label naast de naam Inn Sight (tekst, geen stip); weg zodra Inn Sight installeerbaar of indexeerbaar wordt
   "page.home.featMonsters": "All SRD monsters, 2014 and 2024",
   "page.home.featMonstersText": "322 from SRD 5.1 and 331 from SRD 5.2.1, with stat blocks. Search, tap, done.",
   "page.home.featParty": "Your party in one tap",

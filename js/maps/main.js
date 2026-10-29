@@ -744,7 +744,6 @@ async function boot() {
   // = één undo-stap (group + seal). Zolang er een selectie is, vervangt #m-odock de dock; Meer opent paneel Object.
   const odock = $("m-odock"), osheet = $("m-osheet"), sstrip = $("m-sstrip"), btnMore = $("m-omore");
   let selId = null, kbd = null, justSel = false, gN = 0, nudgeG = null; // kbd = toetsenbordcel { c, r } of null
-  const r4 = (v) => Math.round(v * 1e4) / 1e4 + 0;
   const selObj = () => (selId && map.objs.find((o) => o.id === selId)) || null;
   const editing = () => viewName === "edit" && !!cur && !aligning;
   const objName = (o) => assetName(o.asset);
@@ -1238,7 +1237,7 @@ async function boot() {
         doc = { ...res.map, id: mapId(), name: uniqueName(res.map.name || newName(t("maps.newBase"), names()), names()), createdAt: now, updatedAt: now };
         for (const [sha, rec] of res.assets) { // een bestaande asset (zelfde sha = zelfde bytes) blijft zoals hij is, met zijn eigen src
           if (saver.status === "off") { if (!memAssets.has(sha)) memAssets.set(sha, rec); }
-          else if (!(await store.getAsset(sha)) && !(await store.putAsset(sha, rec))) { res = { ok: false, code: "store" }; break; }
+          else if (!(await store.hasAsset(sha)) && !(await store.putAsset(sha, rec))) { res = { ok: false, code: "store" }; break; }
         }
         if (res.ok && saver.status !== "off" && !(await store.putMap(doc))) res = { ok: false, code: "store" };
         if (res.ok) added = await adoptMine(doc, res); // WP64: eigen assets ook in Mijn assets op dit apparaat

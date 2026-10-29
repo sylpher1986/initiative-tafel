@@ -80,9 +80,11 @@ h1{font-family:var(--brand);font-weight:700;font-size:clamp(1.5rem,8vw,3.25rem);
     mask-composite:intersect}
   .hero-txt{order:1;padding:0}
 }
-/* tools: één brede kaart (hele kaart is de link), daaronder de kenmerken */
+/* tools: een kaart per tool (hele kaart is de link), vanaf 900 px naast elkaar; daaronder de kenmerken van Initiative met een kopje (WP67) */
 .tools{margin-top:36px}
 .tools>h2{margin:0 0 12px;font-size:.8125rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.tcards{display:grid;gap:12px}
+@media (min-width:900px){.tcards{grid-template-columns:1fr 1fr}}
 .toolcard{display:flex;align-items:center;gap:14px;min-height:72px;padding:16px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);color:var(--fg);text-decoration:none}
 .toolcard:focus-visible{border-radius:var(--r)}
 .toolcard:active{background:var(--sunk)}
@@ -90,10 +92,12 @@ h1{font-family:var(--brand);font-weight:700;font-size:clamp(1.5rem,8vw,3.25rem);
 .toolcard div{flex:1;min-width:0}
 .toolcard h3{margin:0;font-size:1.25rem;line-height:1.2;font-weight:800}
 .toolcard h3 span{color:var(--act-ink)}
+.toolcard h3 .tag{display:inline-block;vertical-align:.2em;margin-left:4px;padding:1px 6px;border-radius:6px;background:var(--sunk);color:var(--muted);font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;line-height:1.4}
 .toolcard .sub{margin:2px 0 0;color:var(--muted);font-weight:600;font-size:.9375rem}
 .toolcard .txt{margin:6px 0 0;font-size:.9375rem;max-width:40rem}
 .toolcard .go{flex:none;align-self:center;width:24px;height:24px;color:var(--act-ink)}
-.feat{list-style:none;margin:24px 0 0;padding:0;display:grid;gap:16px}
+.tools>h3{margin:28px 0 0;font-size:1rem;font-weight:800}
+.feat{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:16px}
 @media (min-width:560px){.feat{grid-template-columns:1fr 1fr;gap:20px}}
 @media (min-width:900px){.feat{grid-template-columns:repeat(4,1fr)}}
 .feat h4{margin:0;font-size:1rem;font-weight:700}
@@ -121,7 +125,7 @@ footer .facts{margin:0 0 12px;font-size:.875rem;color:var(--fg)}
     <div class="hero-txt">
       <p class="kicker" lang="en">Your home between adventures</p>
       <h1 id="h-hero">Bouw. Speel. Ontdek.</h1>
-      <p class="lead">Gratis hulpmiddelen voor de DM aan tafel bij D&amp;D 5e. Zet een encounter klaar, leid het gevecht op je telefoon en laat je spelers meekijken.</p>
+      <p class="lead">Gratis hulpmiddelen voor de DM aan tafel bij D&amp;D 5e. Leid het gevecht op je telefoon, laat je spelers meekijken en maak je battle maps.</p>
       <a class="cta" href="/nl/initiative/">Open Initiative</a>
       <ul class="facts">
         <li>Gratis</li>
@@ -132,6 +136,7 @@ footer .facts{margin:0 0 12px;font-size:.875rem;color:var(--fg)}
 
   <section class="wrap tools" aria-labelledby="h-tools">
     <h2 id="h-tools">Hulpmiddelen</h2>
+    <div class="tcards">
     <a class="toolcard" href="/nl/initiative/" aria-labelledby="tc-name tc-sub">
       <!-- brand/tool-icons/initiative.svg (WP37) --><svg viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 12 46 52M46 12 18 52"/><path d="M12 18 18 12l6 8M40 44l6 8 6-6"/><path d="M10 32h44"/><path d="M14 26h8M42 38h8"/></svg>
       <div>
@@ -141,7 +146,18 @@ footer .facts{margin:0 0 12px;font-size:.875rem;color:var(--fg)}
       </div>
       <svg class="go" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </a>
-    <ul class="feat" aria-label="Wat Initiative kan">
+    <a class="toolcard" href="/nl/maps/" aria-labelledby="tm-name tm-sub">
+      <!-- brand/tool-icons/maps.svg (WP67) --><svg viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 16 16-6 16 6 16-6v38l-16 6-16-6-16 6z"/><path d="M24 10v38M40 16v38"/><path d="m13 30 6-5 6 4 7-7 5 4 6-2 6 5"/></svg>
+      <div>
+        <h3 id="tm-name">Inn <span>Sight</span> <span class="tag">Beta</span></h3>
+        <p class="sub" id="tm-sub">Battle maps maken</p>
+        <p class="txt">Vierkant- of hexraster, je eigen kaartafbeelding, onderdelen en geverfd terrein. Alles blijft op je apparaat.</p>
+      </div>
+      <svg class="go" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+    </div>
+    <h3 id="h-feat">Wat Initiative kan</h3>
+    <ul class="feat" aria-labelledby="h-feat">
       <li><h4>Alle SRD-monsters, 2014 en 2024</h4><p>322 uit SRD 5.1 en 331 uit SRD 5.2.1, met statblocks. Zoeken, tikken, erin.</p></li>
       <li><h4>Je party in één tik</h4><p>Eén keer invoeren, met de hand of via een D&amp;D Beyond-link.</p></li>
       <li><h4>Regels bij de hand</h4><p>Condities met uitleg. Concentration save direct bij schade.</p></li>

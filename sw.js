@@ -1,6 +1,6 @@
 // Service worker: maakt de app offline bruikbaar. Geregistreerd als /sw.js met scope "/" (js/main.js), dus "./x" = "/x". Verhoog VERSION bij elke release zodat de cache ververst.
 // Gelijk houden aan js/version.js (de test bewaakt dat); dit is ook het nummer dat de app toont.
-const VERSION = "2.11.2";
+const VERSION = "2.11.3";
 const CACHE = "initiative-tafel-" + VERSION;
 // TS1: pdf.js (± 2,5 MB, alleen voor de PDF-import) in een eigen cache op zijn eigen versie: blijft staan bij een
 // app-update, zodat niet elke release hem opnieuw downloadt. Nieuwe pdf.js-versie = nieuwe map en nieuwe naam hier.
@@ -10,7 +10,7 @@ const VENDOR_ASSETS = ["./vendor/pdfjs/pdf.js", "./vendor/pdfjs/pdf.worker.js"];
 // Gelijk houden aan js/maps/version.js (tests/maps-sw.test.js). Een Maps-release verhoogt alleen MAPS_VERSION: CACHE
 // van Initiative heet dan nog hetzelfde en install haalt bestanden die daar al staan niet opnieuw op (en omgekeerd).
 // Gedeeld (css/app.css, fonts, iconen, js/i18n/*, js/theme.js, homepage) staat in ASSETS: wijzigen = Initiative-release.
-const MAPS_VERSION = "0.11.0";
+const MAPS_VERSION = "1.0.0";
 const MAPS_CACHE = "kevs-inn-maps-" + MAPS_VERSION;
 const MAPS_ASSETS = [
   "./maps/",
