@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP56): "helemaal los van Initiative" technisch afgedwongen (docs/g4-inn-the-grid.md §2.1).
+// Inn Sight (G4, WP56): "helemaal los van Initiative" technisch afgedwongen (docs/g4-inn-the-grid.md §2.1).
 // js/maps/ importeert alleen eigen modules en gedeelde infrastructuur (js/i18n/*); omgekeerd importeert niets buiten
 // js/maps/ iets uit js/maps/ (koppeling pas in fase 3, met een eigen besluit). Pure modellaag zonder DOM.
 import { test } from "node:test";

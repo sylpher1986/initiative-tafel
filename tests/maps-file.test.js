@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP60): projectbestand v1 (js/maps/model/file.js). Rondreis (exporteren → lezen geeft dezelfde
+// Inn Sight (G4, WP60): projectbestand v1 (js/maps/model/file.js). Rondreis (exporteren → lezen geeft dezelfde
 // modeldata en dezelfde bytes), geen verwijzingen naar browseropslag of URL's, elk fouttype een eigen code (bestanden in
 // tests/fixtures/maps/, gemaakt met tools/maps-fixtures.mjs), opschonen van kwaadaardige velden, migratiekader.
 // Decoderen en de IndexedDB-rondreis staan in de browsercheck (wp60).

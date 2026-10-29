@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP63): terrein per cel. Opslagvorm (cleanTerr), verven en wissen, penseel/breed, veeg zonder gaten,
+// Inn Sight (G4, WP63): terrein per cel. Opslagvorm (cleanTerr), verven en wissen, penseel/breed, veeg zonder gaten,
 // vlakvulling (stopt bij ander terrein en de kaartrand, vierkant en beide hex-oriëntaties), schema 4, rondreis via opslag
 // en projectbestand, één veeg = één undo-stap, en het budget voor 100×100 volverven.
 import { test } from "node:test";

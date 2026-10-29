@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP62): hit-test (bovenste object, ook gedraaid), handgrepen, en de pure bewerkingen: verplaatsen met
+// Inn Sight (G4, WP62): hit-test (bovenste object, ook gedraaid), handgrepen, en de pure bewerkingen: verplaatsen met
 // snap (vierkant en hex), draaien (90° heen en terug op dezelfde plek), schalen, laag, volgorde, dupliceren, verwijderen;
 // één sleep = één undo-stap.
 import { test } from "node:test";

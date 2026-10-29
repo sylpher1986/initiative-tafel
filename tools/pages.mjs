@@ -5,7 +5,7 @@
 // Adressen (WP44, 2.3.0): Engels zonder taalcode in de root, elke andere taal onder /{taal}/ (pathFor in js/i18n/lang.js).
 // Hieronder staat {base} voor "" (Engels) of "/{taal}" (bijv. "/nl").
 // Uitvoer:
-//   {base}/initiative/index.html, {base}/initiative/player/index.html, {base}/maps/index.html (Inn the Grid, WP56)
+//   {base}/initiative/index.html, {base}/initiative/player/index.html, {base}/maps/index.html (Inn Sight, WP56)
 //                                                  app-pagina's uit pages/*.html, per taal in
 //                                                  SUPPORTED ({{lang}} en {{base}} ingevuld); en en nl live sinds WP33 (1.53.0)
 // Tekst in de sjablonen (WP23): {{t:sleutel}} = catalogustekst, geëscaped voor HTML (tekst en attributen);

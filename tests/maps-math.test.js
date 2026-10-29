@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP56): rasterwiskunde en viewport (pannen, zoomen, knijpen, passend maken), puur.
+// Inn Sight (G4, WP56): rasterwiskunde en viewport (pannen, zoomen, knijpen, passend maken), puur.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { squareGrid, cellAt, cellRect, inside, bounds, visibleLines, LIMITS, cleanGrid, parseCells, cellPoly, cellCenter, neighbors, toAxial, fromAxial, visibleCells, HEX_R } from "../js/maps/model/grid.js";

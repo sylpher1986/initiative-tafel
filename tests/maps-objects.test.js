@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP61): ingebouwde catalogus, objecten, plaatsen (vierkant en hex), undo/redo en de rondreis via
+// Inn Sight (G4, WP61): ingebouwde catalogus, objecten, plaatsen (vierkant en hex), undo/redo en de rondreis via
 // opslag (cleanMap) en projectbestand (buildParts/readFile).
 import { test } from "node:test";
 import assert from "node:assert/strict";

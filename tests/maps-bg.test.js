@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP59): achtergrondafbeelding. Pure delen: bestandscontrole op de bytes (soort, afmetingen, grenzen,
+// Inn Sight (G4, WP59): achtergrondafbeelding. Pure delen: bestandscontrole op de bytes (soort, afmetingen, grenzen,
 // D12), sha256-hex, het achtergrondmodel (opschonen, startschatting, raster passend, schaal, stap) en schema v2 van het
 // kaartdocument. Decoderen, verkleinen en de IndexedDB-rondreis staan in de browsercheck (wp59).
 import { test } from "node:test";

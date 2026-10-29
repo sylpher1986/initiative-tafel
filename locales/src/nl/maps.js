@@ -272,7 +272,7 @@ export default {
   "maps.keys.esc": "Paneel sluiten, selectie opheffen, cursor weg",
   "maps.keys.move": "Een cel verplaatsen (Shift: kleine stappen)",
   "maps.keys.rot": "90° rechtsom of linksom draaien",
-  "maps.keys.order": "Naar voren of naar achteren",
+  "maps.keys.order": "Naar voorgrond of naar achtergrond",
   "maps.keys.dup": "Dupliceren",
   "maps.keys.del": "Verwijderen",
   "maps.keys.help": "Dit overzicht",

@@ -276,7 +276,7 @@ export default {
   "maps.keys.esc": "Close panel, deselect, hide the cursor",
   "maps.keys.move": "Move one cell (Shift: smaller steps)",
   "maps.keys.rot": "Rotate 90° clockwise or counterclockwise",
-  "maps.keys.order": "Bring forward or send backward",
+  "maps.keys.order": "Bring to front or send to back",
   "maps.keys.dup": "Duplicate",
   "maps.keys.del": "Delete",
   "maps.keys.help": "This overview",

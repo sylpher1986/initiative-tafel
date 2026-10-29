@@ -118,8 +118,8 @@ async function boot() {
   $("m-ver").textContent = VERSION;
   attachInput(cv, { get: () => view, set: user, drag: (dx, dy) => dragBg(dx, dy), dragging: () => aligning,
     tap: (x, y) => onTap(x, y), tapping: () => viewName === "edit" && !aligning && !!cur, hover: (x, y) => hoverAt(x, y), grab: (x, y, k) => grab(x, y, k) });
-  $("m-in").addEventListener("click", () => user(zoomAt(view, ZOOM_STEP, w / 2, h / 2)));
-  $("m-out").addEventListener("click", () => user(zoomAt(view, 1 / ZOOM_STEP, w / 2, h / 2)));
+  $("m-in").addEventListener("click", () => user(zoomAt(view, ZOOM_STEP, freeW() / 2, freeH() / 2))); // WP65: rond het midden van het vrije deel
+  $("m-out").addEventListener("click", () => user(zoomAt(view, 1 / ZOOM_STEP, freeW() / 2, freeH() / 2)));
   $("m-fit").addEventListener("click", fit);
   $("m-zoom").addEventListener("click", fit); // WP61: het percentage is ook Hele kaart (onder 480 px de enige)
   // ---- WP57: paneel Kaart ----
@@ -362,7 +362,7 @@ async function boot() {
     // slepen in de uitlijnmodus: paneel dicht, geen DOM-werk per pointermove (openPanel synct)
     if ("grid" in patch || (!sheet.hidden && "bg" in patch)) syncBg();
     changed();
-    if ("bg" in patch || "objs" in patch || "terr" in patch) chrome(); // WP65: uitleg weg zodra er iets op de kaart staat
+    if (("bg" in patch || "objs" in patch || "terr" in patch) && (!emptyEl.hidden || (!map.bg && !map.objs.length && !map.terr))) chrome(); // WP65: uitleg aan/uit alleen als de kaart leeg is of was (geen DOM-werk per sleepbeweging)
     if ("grid" in patch) { if (kbd) kbd = clampCell(kbd); if (auto) fit(); else set(view); } else later();
     if ("objs" in patch) { if (selId && !selObj()) select(null, false); else if (!osheet.hidden) syncObj(); } // WP62: na Ongedaan kan het object weg zijn
     if ("objs" in patch && !lsheet.hidden && libTab === "own") paintMyRow(); // WP64: gebruik in de beheerrij (plaatsen, Ongedaan)
@@ -901,6 +901,7 @@ async function boot() {
   }
   /** WP65: Enter/spatie in Verven: Penseel/Breed verft de cel(len) op de cursor, Vullen vult het gebied; één undo-stap */
   function paintKey() {
+    if (stroking) return; // een veeg loopt: geen stap ertussen (CLAUDE.md, WP63)
     if (!kbd) kbd = centerCell();
     const fill = tool === "fill", meta = terrMeta(fill);
     const cells = fill ? fillCells(map.grid, map.terr, kbd.c, kbd.r) : footprint(map.grid, [{ c: kbd.c, r: kbd.r }], tool);
@@ -1289,7 +1290,7 @@ async function boot() {
 
   document.addEventListener("keydown", (e) => {
     if (gone) return;
-    if (keysOpen()) { if (e.key === "Escape") { e.preventDefault(); closeKeys(); } return; } // WP65: alles eronder is inert
+    if (keysOpen()) { if (e.key === "Escape" || e.key === "?") { e.preventDefault(); closeKeys(); } return; } // ? opent en sluit // WP65: alles eronder is inert
     if (e.key === "?" && !e.metaKey && !e.ctrlKey && !e.altKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && menu.hidden && !aligning) { e.preventDefault(); openKeys(); return; }
     if (e.key === "Escape" && !menu.hidden) { e.preventDefault(); closeMenu(); return; }
     if (aligning && menu.hidden) { // WP59: pijltjes schuiven de afbeelding, Esc = Gereed
@@ -1330,8 +1331,8 @@ async function boot() {
       if (did) { e.preventDefault(); return; }
     }
     if (e.metaKey || e.ctrlKey || e.altKey || field) return;
-    if (e.key === "+" || e.key === "=") user(zoomAt(view, ZOOM_STEP, w / 2, h / 2));
-    else if (e.key === "-" || e.key === "_") user(zoomAt(view, 1 / ZOOM_STEP, w / 2, h / 2));
+    if (e.key === "+" || e.key === "=") user(zoomAt(view, ZOOM_STEP, freeW() / 2, freeH() / 2));
+    else if (e.key === "-" || e.key === "_") user(zoomAt(view, 1 / ZOOM_STEP, freeW() / 2, freeH() / 2));
     else if (e.key === "0") fit();
     else return;
     e.preventDefault();

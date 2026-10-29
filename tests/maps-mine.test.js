@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP64): eigen assets (js/maps/model/mine.js) en wat ze raken: objecten (newObj), kaartschema 5,
+// Inn Sight (G4, WP64): eigen assets (js/maps/model/mine.js) en wat ze raken: objecten (newObj), kaartschema 5,
 // projectbestand (alleen gebruikte afbeeldingen mee, naam uit Mijn assets, alle controles ook voor eigen assets).
 // Uploaden, miniatuur, opslag en het paneel staan in de browsercheck (wp64).
 import { test } from "node:test";

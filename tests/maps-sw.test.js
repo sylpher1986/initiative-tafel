@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP56, D2): eigen versie en eigen cache in de service worker (docs/g4-inn-the-grid.md §2.10).
+// Inn Sight (G4, WP56, D2): eigen versie en eigen cache in de service worker (docs/g4-inn-the-grid.md §2.10).
 // Een Maps-release mag de Initiative-cache niet veranderen en Initiative-bestanden niet opnieuw laten downloaden.
 import { test } from "node:test";
 import assert from "node:assert/strict";

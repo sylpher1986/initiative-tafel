@@ -6,7 +6,7 @@ const CACHE = "initiative-tafel-" + VERSION;
 // app-update, zodat niet elke release hem opnieuw downloadt. Nieuwe pdf.js-versie = nieuwe map en nieuwe naam hier.
 const VENDOR = "initiative-tafel-pdfjs-3.11.174";
 const VENDOR_ASSETS = ["./vendor/pdfjs/pdf.js", "./vendor/pdfjs/pdf.worker.js"];
-// Inn the Grid (G4, WP56; docs/g4-inn-the-grid.md §2.10): eigen versie en eigen cache met alleen de Maps-bestanden.
+// Inn Sight (G4, WP56; docs/g4-inn-the-grid.md §2.10): eigen versie en eigen cache met alleen de Maps-bestanden.
 // Gelijk houden aan js/maps/version.js (tests/maps-sw.test.js). Een Maps-release verhoogt alleen MAPS_VERSION: CACHE
 // van Initiative heet dan nog hetzelfde en install haalt bestanden die daar al staan niet opnieuw op (en omgekeerd).
 // Gedeeld (css/app.css, fonts, iconen, js/i18n/*, js/theme.js, homepage) staat in ASSETS: wijzigen = Initiative-release.

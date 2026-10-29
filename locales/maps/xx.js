@@ -276,7 +276,7 @@ export default {
   "maps.keys.esc": "[Çlösé páñél, déséléçt, hídé thé çürsör ··············]",
   "maps.keys.move": "[Mövé öñé çéll (Shíft: smállér stéps) ·············]",
   "maps.keys.rot": "[Rötáté 90° çlöçkwísé ör çöüñtérçlöçkwísé ··············]",
-  "maps.keys.order": "[Bríñg förwárd ör séñd báçkwárd ···········]",
+  "maps.keys.order": "[Bríñg tö fröñt ör séñd tö báçk ···········]",
   "maps.keys.dup": "[Düplíçáté ····]",
   "maps.keys.del": "[Délété ···]",
   "maps.keys.help": "[Thís övérvíéw ·····]",

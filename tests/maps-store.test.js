@@ -1,4 +1,4 @@
-// Inn the Grid (G4, WP58): kaartdocument v1 (cleanMap, namen, volgorde, start), autosave (status, debounce, fouten) en
+// Inn Sight (G4, WP58): kaartdocument v1 (cleanMap, namen, volgorde, start), autosave (status, debounce, fouten) en
 // tabblad-bewaking met eigen sleutel. Pure delen; de echte IndexedDB-rondreis staat in de browsercheck (wp58).
 import { test } from "node:test";
 import assert from "node:assert/strict";
