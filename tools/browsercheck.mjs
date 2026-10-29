@@ -124,7 +124,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/", wp68: "/nl/maps/", wp68b: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/", wp68: "/nl/maps/", wp68b: "/nl/maps/", wp68c: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
@@ -851,7 +851,7 @@ const SCEN = {
     await tapMap(3.3, 2.4);
     m = await M();
     if (m.map.objs?.length !== 1 || m.map.objs[0].x !== 3 || m.map.objs[0].y !== 2.5 || m.map.objs[0].asset !== "table") throw new Error("tik plaatst op de cel: " + JSON.stringify(m.map.objs));
-    // echt getekend: pixel in het tafelblad (#9b6a3c) zodra de tekening geladen is
+    // echt getekend: pixel in het tafelblad (#a4703f sinds WP68c, binnen 30 van de oude #9b6a3c) zodra de tekening geladen is
     const px = async (mx, my) => { const p = await scr(mx, my); return page.evaluate(({ x, y }) => { const c = document.getElementById("m-canvas"), d = window.__maps.size().dpr; return [...c.getContext("2d").getImageData(Math.round(x * d), Math.round(y * d), 1, 1).data]; }, p); };
     const near = (a, b) => a.slice(0, 3).every((v, i) => Math.abs(v - b[i]) < 30);
     let ok = false;
@@ -1521,6 +1521,20 @@ const SCEN = {
     if (!(await vis("#m-gchip")) || sd.right > sd.pl) throw new Error("chip naast het zijpaneel: " + JSON.stringify(sd));
     await page.keyboard.press("Escape"); await page.waitForTimeout(100);
     await page.setViewportSize(vp); await page.waitForTimeout(150);
+  },
+  // WP68c (Maps 1.3.0): de 24 hertekende onderdelen laden als tegel in elke categorie (geen kapotte afbeelding);
+  // horizontaal scrollen telt de matrix, tekenen op de kaart bewaakt wp61 (pixel + elk onderdeel).
+  async wp68c(page) {
+    await page.waitForFunction(() => window.__maps && document.getElementById("m-zoom").textContent);
+    await tap(page, "#m-lib"); await page.waitForTimeout(150);
+    const seen = new Set();
+    for (const b of await page.locator("#m-cats button").all()) {
+      await b.tap(); await page.waitForTimeout(100);
+      await page.waitForFunction(() => [...document.querySelectorAll("#m-tiles img")].every((i) => i.complete), null, { timeout: 5000 });
+      const t = await page.evaluate(() => [...document.querySelectorAll("#m-tiles .mtile")].map((e) => ({ id: e.dataset.id, ok: (e.querySelector("img")?.naturalWidth || 0) > 0 })));
+      for (const x of t) { if (!x.ok) throw new Error("tegel laadt niet: " + x.id); seen.add(x.id); }
+    }
+    if (seen.size !== 24) throw new Error("niet alle 24 onderdelen als tegel: " + seen.size);
   },
   async wp66(page, base) {
     const ready = () => page.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);

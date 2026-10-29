@@ -48,6 +48,32 @@ test("SVG's: eigen tekening, veilig (geen script, geen externe verwijzing), view
   }
 });
 
+// WP68c: vast palet (CLAUDE.md "Assets hertekend"): hout, steen, blad, accenten; aanvullingen alleen voor wat geen hout,
+// steen of blad is (water, aarde, linnen, doek-blauw, tentdoek, vuur, kaars), plus de inkt van messing en doek-rood.
+const PALETTE = {
+  hout: ["#c99a63", "#a4703f", "#7f5530", "#4e3119"], steen: ["#aaa69f", "#8a8680", "#3b3834", "#c4c0b8"], blad: ["#6faa5c", "#4f8a43", "#22401d"],
+  accent: ["#d9a441", "#7a5512", "#8e2f2a", "#5e1d1a"], schaduw: ["#241811"],
+  water: ["#3f6f9a", "#24496a", "#8fb8d8", "#7a6a4a", "#4e3d24"], aarde: ["#8f6c46", "#6f5233", "#b08a5c"],
+  linnen: ["#e9e2cf", "#fbf7ec", "#b9b09a", "#3f5f8a", "#27405f"], tent: ["#e2d3b0", "#c9b48a", "#b39d72", "#a8916a", "#6e5a3a"],
+  vuur: ["#f2a63a", "#fbe27a", "#f4e8c1", "#8a7a50"],
+};
+test("WP68c: elke kleur in een onderdeel komt uit het vaste palet (geen afdrijven)", () => {
+  const ok = new Set(Object.values(PALETTE).flat());
+  for (const id of Object.keys(BUILTIN)) {
+    const s = readFileSync(ROOT + `data/maps-assets/${id}.svg`, "utf8");
+    for (const c of s.match(/#[0-9a-fA-F]{3,8}\b/g) || []) assert.ok(ok.has(c.toLowerCase()), `${id}: ${c} staat niet in het palet`);
+  }
+});
+
+test("WP68c: stijl A — vormschaduw (Walnut 28 %, geen filter) alleen op laag Object; muur vult de cel en heeft er geen", () => {
+  for (const [id, d] of Object.entries(BUILTIN)) {
+    const s = readFileSync(ROOT + `data/maps-assets/${id}.svg`, "utf8");
+    assert.doesNotMatch(s, /<filter|filter=|<linearGradient|<radialGradient/, id + ": geen filters of verlopen");
+    const sh = /fill="#241811" opacity="\.28"/.test(s);
+    assert.equal(sh, d.layer === "object" && id !== "wall", id + (sh ? ": schaduw hoort niet op laag " + d.layer : ": schaduw ontbreekt"));
+  }
+});
+
 test("cleanObj/cleanObjs: begrensd, onbekende velden weg, dubbele/ongeldige id nieuw, onbekend onderdeel blijft bewaard", () => {
   const o = cleanObj({ id: "a1", asset: "table", x: 3.123456, y: -2, w: 99, h: "2", rot: -90, layer: "x", evil: "<script>" });
   assert.deepEqual(o, { id: "a1", asset: "table", x: 3.1235, y: -2, w: OBJ.maxSize, h: 1, rot: 270, layer: "object" });
