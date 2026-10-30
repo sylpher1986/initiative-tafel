@@ -13,7 +13,8 @@ import { clearMonsters } from "../rules/turns.js";
 import { findMon, sanitizeOwn, keyRef, monEd, withEdWord, loadSrd24, srd24Status } from "../data/monsters.js";
 import { rulesOf, cleanEd, edField, sameEd } from "../rules/edition.js";
 import * as E from "../rules/encounters.js";
-import { addEnc, encName } from "../rules/fight.js";
+import { addEnc, encName, encMaps } from "../rules/fight.js";
+import { openMap } from "./mapview.js";
 import { dateTxt, mapBlockHtml, loadMaps, importMap, openInSight, mapName, mapFileInput } from "./encmap.js";
 
 const fmt = (n) => i18n().num(Math.round(n)); // 1.950 (nl) / 1,950 (en)
@@ -112,15 +113,18 @@ export function encBanner(S, prep) {
 
 /**
  * VB2: naam van de ingeladen encounter boven de lijst, met de notitie (tactiek) ingeklapt. Voorbereiden: altijd de naam;
- * Gevecht: alleen als er een notitie is. Nooit op het spelersscherm (S.enc zit niet in de snapshot).
+ * Gevecht: alleen als er een notitie of een kaart is. Nooit op het spelersscherm (S.enc zit niet in de snapshot).
+ * WP70: knop "Kaart" (of "Kaarten (n)") rechts in de rij als een ingeladen encounter een kaart heeft (opent js/ui/mapview.js);
+ * aparte knop naast de naam/Tactiek (geen knop in een knop). Altijd zolang er een verwijzing is: geen controle in de opslag.
  */
 export function encStrip(S, prep) {
-  const E2 = S.enc || [], notes = E2.filter((e) => e.notes.trim());
-  if (!E2.length || (!prep && !notes.length)) return "";
+  const E2 = S.enc || [], notes = E2.filter((e) => e.notes.trim()), maps = encMaps(S);
+  if (!E2.length || (!prep && !notes.length && !maps.length)) return "";
   const name = `<b class="ennm">${esc(encName(S))}</b>`;
-  if (!notes.length) return `<li class="encn"><span class="encnb">${name}</span></li>`;
+  const mapBtn = maps.length ? `<button type="button" class="btn encmap" data-enc="map" aria-label="${esc(t(maps.length > 1 ? "init.map.view.ariaN" : "init.map.view.aria", { n: maps.length, name: maps.map((m) => m.map.name || m.name).join(", ") }))}">${esc(maps.length > 1 ? t("init.map.view.openN", { n: maps.length }) : t("init.map.view.open"))}</button>` : "";
+  if (!notes.length) return `<li class="encn"><div class="encrow2"><span class="encnb">${name}</span>${mapBtn}</div></li>`;
   const open = !!ui.encOpen;
-  return `<li class="encn"><button type="button" class="encnb" data-enc="notes" aria-expanded="${open}">${name}<span class="entac">${esc(t("init.enc.tactics"))} ${chev(open)}</span></button>${open
+  return `<li class="encn"><div class="encrow2"><button type="button" class="encnb" data-enc="notes" aria-expanded="${open}">${name}<span class="entac">${esc(t("init.enc.tactics"))} ${chev(open)}</span></button>${mapBtn}</div>${open
     ? `<div class="entxt">${notes.map((e) => `${E2.length > 1 ? `<p class="enh">${esc(e.name)}</p>` : ""}<p>${esc(e.notes.trim())}</p>`).join("")}</div>` : ""}</li>`;
 }
 
@@ -503,6 +507,7 @@ export function bindEnc() {
     if (b.dataset.enc === "allmon") { if (app.S.allMon) delete app.S.allMon; else app.S.allMon = true; commit(); render(); return; } // undo-stap, geen logregel
     if (b.dataset.enc === "difftog") { ui.diffOpen = !ui.diffOpen; render(); if (ui.diffOpen) focusLvl(".dbanner"); return; }
     if (b.dataset.enc === "notes") { ui.encOpen = !ui.encOpen; render(); return; }
+    if (b.dataset.enc === "map") { openMap(app.S, b); return; } // WP70
     if (b.id === "toast-encundo" && lastDel) {
       if (!findEnc(lastDel.id)) { app.encounters = [...app.encounters, lastDel]; saveEncounters(); }
       lastDel = null; closeToast(); repaint(); toast(t("init.enc.restored"));

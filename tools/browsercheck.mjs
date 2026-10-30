@@ -2085,6 +2085,56 @@ const SCEN = {
     if (imp.n !== 3 || !imp.map || imp.map.id === "kaart00009" || imp.names.filter((x) => /^Grot der goblins/.test(x)).length !== 2 || imp.err) throw new Error("import: " + JSON.stringify(imp));
     if (imp.focus !== "ee-map-change") throw new Error("focus na import: " + imp.focus);
   },
+  // WP70: kaart bekijken in Gevecht (DM, alleen kijken). Twee ingeladen encounters met elk een kaart (één bestaat niet).
+  // Knop "Kaarten (2)" in de encounterstrip; viewer vol scherm tot aan de dock: canvas getekend, Volgende blijft bruikbaar
+  // en de viewer blijft open, +/− en Hele kaart, chips wisselen, "staat niet op dit apparaat", Esc sluit met de focus terug.
+  // Monsters weg (undo-stand) = viewer dicht. --shots=wp70: kaart, ontbreekt.
+  async wp70(page) {
+    await SCEN.fight(page);
+    await page.evaluate(async () => {
+      const st = await import("/js/maps/store.js"), M = await import("/js/maps/model/map.js");
+      await st.putMap({ ...M.newMap({ id: "kaart00001", name: "Grot der goblins" }), grid: { type: "square", cols: 20, rows: 15 }, objs: [{ id: "o1", asset: "table", x: 5, y: 5 }] });
+      const { app } = await import("/js/state.js"), F = await import("/js/rules/fight.js"), R = await import("/js/ui/render.js");
+      F.addEnc(app.S, { name: "Grot", notes: "", map: { id: "kaart00001", name: "Oude naam" } }, true);
+      F.addEnc(app.S, { name: "Brug", notes: "Val aan vanaf de brug", map: { id: "elders0001", name: "Kaart van elders" } }, false);
+      R.render();
+    });
+    await page.waitForSelector('#order [data-enc="map"]');
+    const bh = await page.locator('#order [data-enc="map"]').evaluate((b) => [b.getBoundingClientRect().height, b.innerText]);
+    if (bh[0] < 44 || !/2/.test(bh[1])) throw new Error("knop Kaart: " + JSON.stringify(bh));
+    await tap(page, '#order [data-enc="map"]');
+    await page.waitForSelector("#mapview:not([hidden]) .mvcv:not([hidden])");
+    await page.waitForFunction(() => { const c = document.querySelector("#mapview .mvcv"); if (!c.width) return false; const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 4 * 97) if (d[i] !== d[0] || d[i + 1] !== d[1]) n++; return n > 20; });
+    const lay = await page.evaluate(() => { const v = document.querySelector("#mapview").getBoundingClientRect(), dk = document.querySelector("#dock").getBoundingClientRect();
+      return { over: v.bottom - dk.top, name: document.querySelector("#mv-name").innerText, chips: document.querySelectorAll("#mapview .mvchip").length,
+        small: [...document.querySelectorAll("#mapview button:not([hidden])")].filter((b) => b.offsetParent && b.getBoundingClientRect().height < 44).length }; });
+    if (lay.over > 1 || lay.name !== "Grot der goblins" || lay.chips !== 2 || lay.small) throw new Error("viewer: " + JSON.stringify(lay));
+    await tap(page, '#mapview [data-mv="in"]'); await tap(page, '#mapview [data-mv="fit"]');
+    await snap(page, "wp70", "kaart");
+    const r0 = await page.evaluate(async () => (await import("/js/state.js")).app.S.active);
+    await tap(page, "#next");
+    const r1 = await page.evaluate(async () => [(await import("/js/state.js")).app.S.active, !document.querySelector("#mapview").hidden]);
+    if (r1[0] === r0 || !r1[1]) throw new Error("Volgende met open kaart: " + JSON.stringify(r1));
+    // spatie met de viewer open = Volgende (focus op de viewer, niet op ✕); viewer blijft open
+    await page.keyboard.press(" ");
+    const r2 = await page.evaluate(async () => [(await import("/js/state.js")).app.S.active, !document.querySelector("#mapview").hidden]);
+    if (r2[0] === r1[0] || !r2[1]) throw new Error("spatie met open kaart: " + JSON.stringify(r2));
+    // herhaald openen en sluiten: één canvas (vers per kaart), kaart weer getekend
+    for (let i = 0; i < 3; i++) { await tap(page, '#mapview [data-mv="close"]'); await tap(page, '#order [data-enc="map"]'); }
+    await page.waitForSelector("#mapview .mvcv:not([hidden])");
+    if ((await page.locator("#mapview canvas").count()) !== 1) throw new Error("meer dan één canvas na herhaald openen");
+    await tap(page, '#mapview .mvchip[data-id="elders0001"]');
+    await page.waitForFunction(() => /Kaart van elders/.test(document.querySelector("#mapview .mvmsg")?.innerText || ""));
+    await snap(page, "wp70", "ontbreekt");
+    await page.keyboard.press("Escape");
+    await page.waitForSelector("#mapview", { state: "hidden" });
+    if ((await page.evaluate(() => document.activeElement?.dataset.enc)) !== "map") throw new Error("focus niet terug op Kaart");
+    // ingeladen encounter weg (monsters gewist) = knop en viewer weg
+    await tap(page, '#order [data-enc="map"]'); await page.waitForSelector("#mapview:not([hidden])");
+    await page.evaluate(async () => { const { app } = await import("/js/state.js"), R = await import("/js/ui/render.js"); app.S.list = app.S.list.filter((c) => c.kind === "pc"); R.render(); });
+    await page.waitForSelector("#mapview", { state: "hidden" });
+    if (await page.locator('#order [data-enc="map"]').count()) throw new Error("knop Kaart blijft zonder encounter");
+  },
   async einde(page) { await SCEN.fight(page); await tap(page, '#modes [data-setmode="prep"]'); await tap(page, "#stop"); await page.waitForSelector("#esheet .esheet"); },
   async tourf(page) { await SCEN.fight(page); await page.evaluate(async () => { localStorage.setItem("it-tour", "p"); (await import("/js/ui/tour.js")).restartTour(); (await import("/js/ui/render.js")).render(); }); await page.waitForSelector("#tour .tbox"); },
   async eigen(page) {

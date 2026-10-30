@@ -23,7 +23,9 @@ test("js/maps/ importeert alleen js/maps/ en js/i18n/", () => {
 
 // WP69 (fase 3): alleen js/ui/encmap.js mag js/maps/ gebruiken, alleen dynamisch (Initiative laadt geen kaartcode bij
 // het opstarten en breekt niet als de Maps-cache offline ontbreekt), en alleen deze modules.
-const BRIDGE = "js/ui/encmap.js", BRIDGE_OK = ["js/maps/store.js", "js/maps/ui/export.js", "js/maps/model/map.js", "js/maps/model/file.js"];
+// WP70: kaart bekijken (mapViewer) gebruikt ook de renderer, view, raster, invoer en assetImage van Inn Sight.
+const BRIDGE = "js/ui/encmap.js", BRIDGE_OK = ["js/maps/store.js", "js/maps/ui/export.js", "js/maps/model/map.js", "js/maps/model/file.js",
+  "js/maps/render/canvas.js", "js/maps/render/art.js", "js/maps/model/view.js", "js/maps/model/grid.js", "js/maps/ui/input.js", "js/maps/ui/upload.js"];
 test("buiten js/maps/ importeert alleen de brug js/ui/encmap.js iets uit js/maps/, dynamisch en uit een vaste lijst", () => {
   const bad = [];
   for (const f of walk("js/").filter((p) => !p.startsWith("js/maps/"))) for (const s of specs(readFileSync(ROOT + f, "utf8"))) {

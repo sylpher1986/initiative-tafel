@@ -1,8 +1,9 @@
 // Gevecht: ingeladen encounter (VB2) en de samenvatting bij Gevecht afronden (GV2). Puur: geen DOM, geen opslag.
-// S.enc     = [{ name, notes }]: kopie van de ingeladen encounter(s), DM-geheim (niet in de snapshot voor spelers)
+// S.enc     = [{ name, notes, map? }]: kopie van de ingeladen encounter(s), DM-geheim (niet in de snapshot voor spelers);
+//             map = verwijzing { id, name } naar een Inn Sight-kaart (WP70: kaart bekijken in Gevecht), nooit de kaart zelf
 // S.fight   = { t0, down: [{ id, name }] }: loopt vanaf Start gevecht; wie van de spelers op 0 HP kwam
 // S.endSum  = samenvatting van het laatst afgeronde gevecht (blijft tot Start gevecht of monsters wissen)
-import { crXp } from "./encounters.js";
+import { crXp, cleanMapRef } from "./encounters.js";
 import { isOut, dropIds } from "./turns.js";
 import { M, J } from "../i18n/msg.js";
 import { t } from "../i18n/boot.js";
@@ -13,13 +14,16 @@ const str = (v, max) => (v == null ? "" : String(v)).slice(0, max);
 /** Encounter erbij (Toevoegen) of in plaats van (Vervangen); max 5, dezelfde naam niet dubbel */
 export function addEnc(S, enc, replace) {
   const cur = replace ? [] : (S.enc || []).filter((e) => e.name !== enc.name);
-  S.enc = [...cur, { name: str(enc.name, 80), notes: str(enc.notes, 2000) }].slice(-MAX_ENC);
+  const map = cleanMapRef(enc.map);
+  S.enc = [...cur, { name: str(enc.name, 80), notes: str(enc.notes, 2000), ...(map ? { map } : {}) }].slice(-MAX_ENC);
 }
 /** Naam boven de lijst: "Brug + Versterking" */
 export const encName = (S) => (S.enc || []).map((e) => e.name).join(" + ");
-/** Opschonen (backup-import): alleen naam en notitie */
+/** Opschonen (backup-import): naam, notitie en (WP70) de kaartverwijzing; optioneel veld, backup blijft v4 */
 export const cleanEnc = (a) => (Array.isArray(a) ? a : []).filter((e) => e && typeof e === "object" && str(e.name, 80).trim())
-  .slice(0, MAX_ENC).map((e) => ({ name: str(e.name, 80).trim(), notes: str(e.notes, 2000) }));
+  .slice(0, MAX_ENC).map((e) => { const map = cleanMapRef(e.map); return { name: str(e.name, 80).trim(), notes: str(e.notes, 2000), ...(map ? { map } : {}) }; });
+/** WP70: ingeladen encounters met een kaart → [{ name, map }] (volgorde van inladen; dezelfde kaart één keer) */
+export const encMaps = (S) => { const seen = new Set(); return (S.enc || []).filter((e) => e.map && !seen.has(e.map.id) && seen.add(e.map.id)).map((e) => ({ name: e.name, map: e.map })); };
 
 /**
  * Na elke stap (commit): wie van de spelers op 0 HP kwam tijdens het gevecht onthouden, en de ingeladen encounter

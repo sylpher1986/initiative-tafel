@@ -34,6 +34,7 @@ import { spellEd } from "./spellrules.js";
 import { initRoll } from "./initroll.js";
 import { anonName } from "../playerview.js";
 import { paintEnc, encBanner, encStrip } from "./encounters.js";
+import { syncMap } from "./mapview.js";
 import { paintEnd, endBanner } from "./einde.js";
 import { PAS, passives, pasText, sheetPassives, percList } from "../rules/passives.js";
 import { pcReact } from "./pcreact.js";
@@ -128,6 +129,7 @@ export function render() {
   paintParty();
   paintLog();
   syncSB(app.S, openId(), sbChips);
+  syncMap(app.S); // WP70: viewer dicht als zijn kaart niet meer ingeladen is
   afterRender();
 }
 

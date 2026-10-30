@@ -1,6 +1,6 @@
 // Service worker: maakt de app offline bruikbaar. Geregistreerd als /sw.js met scope "/" (js/main.js), dus "./x" = "/x". Verhoog VERSION bij elke release zodat de cache ververst.
 // Gelijk houden aan js/version.js (de test bewaakt dat); dit is ook het nummer dat de app toont.
-const VERSION = "2.12.0";
+const VERSION = "2.13.0";
 const CACHE = "initiative-tafel-" + VERSION;
 // TS1: pdf.js (± 2,5 MB, alleen voor de PDF-import) in een eigen cache op zijn eigen versie: blijft staan bij een
 // app-update, zodat niet elke release hem opnieuw downloadt. Nieuwe pdf.js-versie = nieuwe map en nieuwe naam hier.
@@ -158,6 +158,7 @@ const ASSETS = [
   "./js/ui/hpbar.js",
   "./js/ui/encounters.js",
   "./js/ui/encmap.js",
+  "./js/ui/mapview.js",
   "./js/ui/einde.js",
   "./js/ui/render.js",
   "./js/ui/kamer.js",

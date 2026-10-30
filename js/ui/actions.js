@@ -45,6 +45,7 @@ import { finishFight, closeEnd } from "./einde.js";
 import { pcReact, setPcReact } from "./pcreact.js";
 import { armTour, restartTour } from "./tour.js";
 import { keysKey, keysOpen, closeKeys, openKeys, MAC } from "./keys.js";
+import { mapOpen, close as closeMap } from "./mapview.js";
 
 /** Fx uit de regels: meldingen tonen en oorzaken doorgeven aan het logboek */
 /** RE17: nieuwe concentration saves uit schade, als staart voor de melding (bediening alleen in de beurtbalk) */
@@ -870,6 +871,7 @@ export function onKey(e) {
     if (fwd) global.redo(); else global.undo();
     render(); return;
   }
+  if (e.key === "Escape" && !ui.sheet && mapOpen()) { e.preventDefault(); closeMap(); return; } // WP70: kaartviewer (geen paneel)
   if (keysKey(e, typing)) return; // GV10: "?" = overzicht, N/spatie = Volgende, Shift+N = Vorige
   if (ui.sheet && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
     const k = /^\d$/.test(e.key) ? ["d", e.key] : e.key === "Backspace" ? ["back"] : e.key === "Escape" ? ["close"] : e.key === "Enter" && !e.target.closest?.("#sheet button") ? ["apply"] : null;

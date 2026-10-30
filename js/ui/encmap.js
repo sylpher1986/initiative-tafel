@@ -93,3 +93,76 @@ export async function importMap(file) {
 }
 /** Inn Sight-foutcodes → de kleinere set van Initiative (eigen catalogus; details staan in Inn Sight zelf) */
 const ERR = { empty: "read", read: "read", notjson: "format", format: "format", newer: "newer", big: "big", store: "store" };
+
+/* ---------- WP70: kaart bekijken (DM, alleen kijken) ---------- */
+// Tekenen, pannen en zoomen met de modules van Inn Sight zelf (renderer met kaartbuffer, view, invoer), dynamisch geladen
+// zoals de rest van deze brug: Initiative laadt pas kaartcode als de DM een kaart opent. Alleen lezen: nooit putMap,
+// geen Inn Sight-tabbladslot (claimTab), dus een open Inn Sight-tabblad merkt hier niets van.
+let vmods = null;
+const viewMods = () => (vmods ||= Promise.all([store(), import("../maps/render/canvas.js"), import("../maps/render/art.js"),
+  import("../maps/model/view.js"), import("../maps/model/grid.js"), import("../maps/ui/input.js"), import("../maps/ui/upload.js")])
+  .then(([s, canvas, art, view, grid, input, upload]) => ({ s, canvas, art, view, grid, input, upload })))
+  .catch((e) => { vmods = null; throw e; });
+
+/**
+ * Kaart met deze id op canvas cv tonen. on(state, map) bij elke toestandswissel: "loading" | "ok" | "gone" (kaart weg) |
+ * "off" (opslag of kaartcode niet bereikbaar). v0 = onthouden view (UX: per kaart, alleen in ui) of null = passend.
+ * Geeft { fit, zoom(f), size(), view(), close() }; size() na een maatwissel (midden en zoom blijven, daarna begrensd).
+ * onZoom(min, max): zoomgrenzen bereikt (knoppen − en + uit).
+ */
+export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {} } = {}) {
+  let M = null, map = null, img = null, art = null, layer = null, view = v0 ? { ...v0 } : null, w = 0, h = 0, dpr = 1, col = null;
+  let queued = false, dead = false, settleT = 0, lim = "";
+  const paint = () => {
+    queued = false;
+    if (dead || !map || !view || w < 2 || h < 2) return;
+    M.canvas.fitCanvas(cv, w, h, dpr);
+    const r = layer.paint(cv, map, view, w, h, dpr, col, { img, art }, [art.ver()]);
+    if (r.settle) { clearTimeout(settleT); settleT = setTimeout(later, r.settle); }
+    const lo = view.z <= M.view.ZMIN, hi = view.z >= M.view.ZMAX;
+    if (lim !== `${lo}${hi}`) { lim = `${lo}${hi}`; onZoom(lo, hi); }
+  };
+  const later = () => { if (!queued && !dead) { queued = true; requestAnimationFrame(paint); } };
+  const set = (v) => { if (dead || !map || !v) return; view = M.view.clampPan(v, M.grid.bounds(map.grid), w, h); later(); };
+  const fit = () => { if (map && w > 1) set(M.view.fitView(M.grid.bounds(map.grid), w, h)); };
+  const size = () => {
+    const r = cv.getBoundingClientRect(), W = Math.max(1, r.width), H = Math.max(1, r.height);
+    dpr = window.devicePixelRatio || 1;
+    if (!map || W < 2 || H < 2) { w = W; h = H; return; }
+    col = M.canvas.readColors(); // themawissel komt mee bij openen of een maatwissel
+    const was = w; if (view && was > 1) view = { x: view.x + (W - w) / 2, y: view.y + (H - h) / 2, z: view.z }; // midden houden
+    w = W; h = H;
+    if (!view) fit(); else set(view);
+  };
+  (async () => {
+    on("loading");
+    try { M = await viewMods(); } catch { if (!dead) on("off"); return; }
+    if (dead) return;
+    if (!(await M.s.available())) { if (!dead) on("off"); return; }
+    const doc = await M.s.getMap(id);
+    if (dead) return;
+    if (!doc) { on("gone"); return; }
+    map = doc; layer = M.canvas.createLayer();
+    const rec = async (sha) => { const r = await M.s.getAsset(sha); return r ? M.upload.assetImage(r) : null; };
+    art = M.art.createArt(later, { custom: rec });
+    M.input.attachInput(cv, { get: () => view || { x: 0, y: 0, z: 1 }, set }); // één vinger/muis = pannen, knijpen en wiel = zoomen (Inn Sight)
+    on("ok", map);
+    w = 0; size();
+    if (map.bg && map.bg.asset) { const d = await rec(map.bg.asset).catch(() => null); if (dead) { if (d && d.close) d.close(); return; } img = d; later(); } // ontbreekt: raster zonder achtergrond
+  })();
+  return {
+    fit, size,
+    zoom(f) { if (map && view) set(M.view.zoomAt(view, f, w / 2, h / 2)); },
+    view: () => (view ? { ...view } : null),
+    /** Kleuren opnieuw lezen (themawissel terwijl de kaart open is) */
+    theme() { if (!dead && M && map) { col = M.canvas.readColors(); later(); } },
+    // attachInput hangt ook blur/visibilitychange aan window/document en kent geen loskoppelen: die houden deze closure
+    // vast. Daarom hier alles groots loslaten (kaart, tekeningen, buffer, modules); er blijft per opening een kleine closure.
+    close() {
+      dead = true; clearTimeout(settleT);
+      if (layer) layer.clear(); if (img && img.close) img.close(); if (art) art.trim(new Set());
+      cv.width = cv.height = 0;
+      M = map = img = art = layer = view = col = null;
+    },
+  };
+}
