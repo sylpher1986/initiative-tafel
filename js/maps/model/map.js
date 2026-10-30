@@ -91,6 +91,12 @@ export function pickStart(list, lastId) {
   return list.length ? sortMaps(list)[0].id : null;
 }
 
+/** Geïmporteerde kaart (readFile geeft hem zonder id) als nieuwe kaart: nieuwe id, unieke naam (leeg = "<base> N"),
+ *  tijden = nu. Gedeeld door Inn Sight en Initiative (WP69), zodat beide imports dezelfde kaart maken. */
+export function importedDoc(map, names, base, { id = mapId(), now = Date.now() } = {}) {
+  return { ...map, id, name: uniqueName(map.name || newName(base, names), names), createdAt: now, updatedAt: now };
+}
+
 /** Hoe lang geleden (voor de lijst): { k: "now" | "min" | "hour" | "day", n } tot 7 dagen, daarna (of bij een tijd in de
  *  toekomst of 0) null = toon de datum. De UI maakt er tekst van via de catalogus. */
 export function ago(ts, now = Date.now()) {

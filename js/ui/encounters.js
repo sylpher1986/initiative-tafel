@@ -14,10 +14,10 @@ import { findMon, sanitizeOwn, keyRef, monEd, withEdWord, loadSrd24, srd24Status
 import { rulesOf, cleanEd, edField, sameEd } from "../rules/edition.js";
 import * as E from "../rules/encounters.js";
 import { addEnc, encName } from "../rules/fight.js";
+import { dateTxt, mapBlockHtml, loadMaps, importMap, openInSight, mapName, mapFileInput } from "./encmap.js";
 
 const fmt = (n) => i18n().num(Math.round(n)); // 1.950 (nl) / 1,950 (en)
 const multTxt = (m) => i18n().num(m); // 1,5 (nl) / 1.5 (en)
-const dateTxt = (ms) => i18n().date(ms, { day: "numeric", month: "short", ...(new Date(ms).getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) });
 const monsN = (n) => t("init.diff.mons", { n }); // "3 monsters" / "1 monster"
 const monCount = (L) => L.filter((c) => c.kind === "monster").length;
 const hasLair = (L) => L.some((c) => c.kind === "lair");
@@ -143,6 +143,13 @@ export function paintEnc() {
   el.innerHTML = ui.encEdit ? editHtml() : listHtml();
   if (ui.encEdit) paintEditList();
 }
+/** WP69: kaarten op dit apparaat (opnieuw) lezen, daarna tekenen; aangeroepen door acties, niet door de render */
+function refreshMaps(then) {
+  ui.encMaps = undefined;
+  const x = ui.encEdit;
+  loadMaps().then(() => { if (ui.prep === "enc" && ui.encEdit === x) { repaint(); if (then) then(); } });
+}
+const MAP_UI = { encMaps: undefined, encPick: false, encMapErr: null, encMapBusy: false }; // WP69: kaartkiezer (per Bewerken)
 
 function listHtml() {
   const L = app.S.list, n = monCount(L), lair = hasLair(L);
@@ -174,7 +181,7 @@ function rowHtml(e) {
   const menu = ui.encMenu === e.id
     ? `<div class="encmenu"><button type="button" class="btn small" data-enc="edit" data-id="${id}">${esc(t("init.enc.edit"))}</button><button type="button" class="btn small" data-enc="dup" data-id="${id}">${esc(t("init.enc.dup"))}</button><button type="button" class="btn small" data-enc="share" data-id="${id}">${esc(t("init.enc.share"))}</button><button type="button" class="btn small ghost" data-enc="del" data-id="${id}">${esc(t("init.enc.del"))}</button></div>` : "";
   return `<div class="encrow">
-    <div class="ehead"><div class="einfo"><b>${esc(e.name)}</b><small>${esc([encSummary(e), edMark(e), dateTxt(e.updatedAt)].filter(Boolean).join(" · "))}</small>${e.notes ? `<small class="enote">${esc(e.notes)}</small>` : ""}</div>
+    <div class="ehead"><div class="einfo"><b>${esc(e.name)}</b><small>${esc([encSummary(e), edMark(e), e.map && t("init.map.title"), dateTxt(e.updatedAt)].filter(Boolean).join(" · "))}</small>${e.notes ? `<small class="enote">${esc(e.notes)}</small>` : ""}</div>
       ${e.monsters.length ? `<button type="button" class="dchip ${chipCls(r)}" data-enc="why" data-id="${id}" aria-expanded="${ui.encWhy === e.id}" aria-label="${esc(t("init.enc.whyAria", { rating: chipLbl(r), xp: fmt(r.adj) }))}">${esc(chipLbl(r))}</button>` : ""}</div>
     ${ui.encWhy === e.id ? diffWhy(r, !!e.lair, `data-enc="encall" data-id="${id}"`, E.encMons(e, findMon)) : ""}${ask}
     <div class="ebtns"><button type="button" class="btn primary" data-enc="load" data-id="${id}">${esc(t("init.enc.load"))}</button><button type="button" class="btn emore" data-enc="menu" data-id="${id}" aria-expanded="${ui.encMenu === e.id}" aria-label="${esc(t("init.enc.moreAria", { name: e.name }))}">${ico("more")}</button></div>
@@ -201,6 +208,7 @@ function editHtml() {
   return `<button type="button" class="link eback" data-enc="edit-no">‹ ${esc(t("init.add.enc"))}</button>
     <label>${esc(t("init.pc.name"))}<input id="ee-name" maxlength="80" value="${esc(x.name)}" autocomplete="off"></label>
     <label>${esc(t("init.eff.note"))} <span class="opt">${esc(t("init.pc.optional"))}</span><textarea id="ee-notes" maxlength="2000">${esc(x.notes)}</textarea></label>
+    ${mapBlockHtml(x)}
     <p class="vlbl">Monsters${x.monsters.length ? ` · <span class="dchip ${chipCls(r)}">${esc(chipLbl(r))}</span> ${fmt(r.adj)} XP` : ""}</p>
     <div class="erows">${rows || `<p class="hint">${esc(t("init.enc.noRows"))}</p>`}</div>
     ${lk ? `<label class="chk"><input type="checkbox" id="ee-lair" ${x.lair ? "checked" : ""}> Lair actions (${esc(lk.replace(/^Lair: /, ""))})</label>` : ""}
@@ -279,20 +287,23 @@ function saveNew() {
 
 /** VB5: lege encounter maken in hetzelfde subscherm; pas bij Opslaan in de bibliotheek */
 function startNew() {
-  ui.encEdit = { id: E.newId(), isNew: true, name: "", notes: "", monsters: [], lair: null, lairKey: "", lairHidden: false, all: false, q: "" };
+  ui.encEdit = { id: E.newId(), isNew: true, name: "", notes: "", monsters: [], lair: null, lairKey: "", lairHidden: false, all: false, map: null, q: "" };
+  Object.assign(ui, MAP_UI);
   ui.encMenu = null; ui.encDraft = null; ui.encImp = null; repaint();
   $("#enc-panel").closest(".psheet").scrollTop = 0;
   $("#ee-name")?.focus();
 }
 function startEdit(e) {
-  ui.encEdit = { id: e.id, name: e.name, notes: e.notes, monsters: structuredClone(e.monsters), lair: e.lair ? { ...e.lair } : null, lairKey: e.lair ? e.lair.key : "", lairHidden: !!(e.lair && e.lair.hidden), all: !!e.all, q: "" };
+  ui.encEdit = { id: e.id, name: e.name, notes: e.notes, monsters: structuredClone(e.monsters), lair: e.lair ? { ...e.lair } : null, lairKey: e.lair ? e.lair.key : "", lairHidden: !!(e.lair && e.lair.hidden), all: !!e.all, map: e.map ? { ...e.map } : null, q: "" };
+  Object.assign(ui, MAP_UI);
   ui.encMenu = null; repaint();
+  if (e.map) refreshMaps();
   $("#enc-panel").closest(".psheet").scrollTop = 0;
 }
 function saveEdit() {
   const x = ui.encEdit, old = findEnc(x.id);
   if (!x.name.trim() && !x.isNew) { toastBad(t("init.enc.errName")); $("#ee-name")?.focus(); return; }
-  const e = E.cleanEncounter({ id: x.id, name: x.name.trim() || t("init.enc.newName"), notes: x.notes, monsters: x.monsters, lair: x.lair, all: x.all, updatedAt: Date.now() }); // standaardnaam in de actieve taal; daarna inhoud (§3.4)
+  const e = E.cleanEncounter({ id: x.id, name: x.name.trim() || t("init.enc.newName"), notes: x.notes, monsters: x.monsters, lair: x.lair, all: x.all, map: x.map && { id: x.map.id, name: mapName(x.map) }, updatedAt: Date.now() }); // WP69: naam bijgewerkt als hij in Inn Sight hernoemd is // standaardnaam in de actieve taal; daarna inhoud (§3.4)
   if (!e) { toastBad(t("init.enc.errMin")); return; }
   app.encounters = old ? app.encounters.map((y) => (y.id === x.id ? e : y)) : [...app.encounters, e];
   saveEncounters(); ui.encEdit = null; repaint();
@@ -407,8 +418,35 @@ const ACT = {
   "imp-no"() { ui.encImp = null; repaint(); },
 };
 
+/* ---------- WP69: kaart (Inn Sight) bij de encounter; alleen het concept, pas bij Opslaan in de bibliotheek ---------- */
+const focusChange = () => $("#ee-map-change")?.focus({ preventScroll: true });
+const MAP_ACT = {
+  open() { Object.assign(ui, { encPick: true, encMapErr: null }); refreshMaps(); repaint(); }, // lijst opnieuw lezen (Inn Sight kan intussen gewijzigd zijn)
+  "pick-no"() { Object.assign(ui, { encPick: false, encMapErr: null }); repaint(); },
+  pick(id, x) {
+    const m = Array.isArray(ui.encMaps) && ui.encMaps.find((y) => y.id === id); if (!m) return;
+    x.map = { id: m.id, name: m.name }; Object.assign(ui, { encPick: false, encMapErr: null }); repaint(); focusChange();
+  },
+  rm(_, x) { x.map = null; Object.assign(ui, { encPick: false, encMapErr: null }); repaint(); $("[data-encmap=open]")?.focus({ preventScroll: true }); },
+  sight(id) { openInSight(id); }, // link opent Inn Sight zelf (nieuw tabblad)
+};
+async function mapImport(file, x) {
+  if (ui.encMapBusy) return;
+  Object.assign(ui, { encMapBusy: true, encMapErr: null }); repaint();
+  let r;
+  try { r = await importMap(file); } catch { r = { code: "read" }; } finally { ui.encMapBusy = false; }
+  if (ui.encEdit !== x) { if (r.doc) toast(t("init.map.addedOnly", { name: r.doc.name })); return; } // intussen weg uit Bewerken: wel in Inn Sight
+  if (!r.doc) { ui.encMapErr = { code: r.code, mb: r.mb }; repaint(); return; }
+  x.map = { id: r.doc.id, name: r.doc.name };
+  ui.encPick = false;
+  refreshMaps(focusChange); // lijst opnieuw: de nieuwe kaart staat erin
+  repaint();
+  toast(t("init.map.added", { name: r.doc.name }));
+}
+
 export function bindEnc() {
   const el = $("#enc-panel");
+  mapFileInput((f) => { if (ui.encEdit) mapImport(f, ui.encEdit); });
   el.addEventListener("click", (e) => {
     // open levelveld eerst vastleggen (blur → change), vóór een repaint van dit paneel; de algemene onClick slaat dit paneel over
     const a = document.activeElement;
@@ -426,6 +464,8 @@ export function bindEnc() {
     }
     const eq = e.target.closest("[data-edq]");
     if (eq && ui.encEdit) { const x = ui.encEdit; x.q = withEdWord(x.q, eq.dataset.edq, rulesOf(app.S)); $("#ee-q").value = x.q; paintEditList(); return; } // V4
+    const mb = e.target.closest("[data-encmap]");
+    if (mb && ui.encEdit && MAP_ACT[mb.dataset.encmap]) { MAP_ACT[mb.dataset.encmap](mb.dataset.id, ui.encEdit); return; }
     const b = e.target.closest("[data-enc]");
     if (b && ACT[b.dataset.enc]) ACT[b.dataset.enc](b.dataset.id, b);
   });

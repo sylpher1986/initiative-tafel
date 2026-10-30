@@ -81,7 +81,11 @@ export const ui = {
   svRetry: null,       // { sid, id, step } = laatst gerolde monster-save, voor "Legendary Resistance" / "Advantage" in de melding
   prep: null,          // "pc" | "mon" | "custom" | "enc" | "party" | "data" = paneel in Voorbereiden open (knoppen in de beurtbalk)
   encDraft: null,      // { name, notes } = formulier "Huidige lijst opslaan" open
-  encEdit: null,       // { id, name, notes, monsters, lair, lairKey, lairHidden, q } = encounter bewerken (concept)
+  encEdit: null,       // { id, name, notes, monsters, lair, lairKey, lairHidden, map, q } = encounter bewerken (concept)
+  encMaps: undefined,  // WP69: kaarten van Inn Sight in Bewerken: undefined = nog niet gelezen, null = niet bereikbaar, anders lijst
+  encPick: false,      // WP69: kaartkiezer open
+  encMapErr: null,     // WP69: { code, mb } = foutregel bij kaart importeren
+  encMapBusy: false,   // WP69: kaartbestand wordt verwerkt
   encMenu: null, encAsk: null, encWhy: null, // id: ⋯-menu open / vraag Vervangen|Toevoegen / uitleg moeilijkheid
   encImp: null,        // { enc, monsters, lairs } = import met bestaande id wacht op Vervangen | Als kopie
   diffOpen: false,     // uitleg bij de live moeilijkheid boven de lijst

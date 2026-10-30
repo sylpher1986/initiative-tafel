@@ -1,5 +1,7 @@
 // Encounters vooraf klaarzetten en XP-moeilijkheid (DMG 2014; bij regels 2024 het XP-budget uit SRD 5.2.1). Puur: geen DOM, geen opslag.
-// Encounter: { id, updatedAt, name, notes, monsters: [{ ref, n, ed?, hidden?, anon?, grp? }], lair?: { key, hidden? } }
+// Encounter: { id, updatedAt, name, notes, monsters: [{ ref, n, ed?, hidden?, anon?, grp? }], lair?: { key, hidden? }, map?: { id, name } }
+// map (WP69): verwijzing naar een Inn Sight-kaart (id uit kevs-inn-maps + naam als terugval), nooit een kopie; optioneel veld,
+// dus geen nieuwe backup- of bestandsversie (een oudere app laat hem weg).
 // ed: alleen "2024" (SRD 5.2-statblock); ontbreekt = eigen > geïmporteerd > SRD 5.1 op naam (G1, WP46).
 // id + updatedAt maken de collectie sync-klaar (fase 2). Hp-modus en initiative worden bewust niet bewaard.
 
@@ -153,6 +155,15 @@ export const listMons = (list, find) => (list || []).filter((c) => c.kind === "m
 /* ---------- maken, opschonen ---------- */
 const str = (v, max) => (v == null ? "" : String(v)).slice(0, max);
 const ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
+/** Kaart-id zoals Inn Sight hem maakt (mapId, js/maps/model/map.js: base36) */
+const MAP_ID = /^[a-z0-9]{6,32}$/;
+export const MAP_NAME_MAX = 60; // = LIMITS.mapName van Inn Sight
+/** WP69: kaartverwijzing opschonen → { id, name } of null. Naam: stuurtekens weg, max 60 tekens (alleen terugval bij tonen). */
+export function cleanMapRef(m) {
+  if (!m || typeof m !== "object" || Array.isArray(m) || typeof m.id !== "string" || !MAP_ID.test(m.id)) return null;
+  const name = [...(typeof m.name === "string" ? m.name : "").replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]/g, " ").replace(/\s+/g, " ").trim()].slice(0, MAP_NAME_MAX).join("").trim();
+  return { id: m.id, name };
+}
 export const total = (enc) => (enc.monsters || []).reduce((a, m) => a + m.n, 0);
 /**
  * VB5: getypt aantal voor regel i. → { n, msg }: n = null bij leeg/0/onzin (vorige waarde terug; weghalen gaat met −),
@@ -206,11 +217,13 @@ export function cleanEncounter(o, now = Date.now()) {
   const lk = o.lair && typeof o.lair === "object" ? str(o.lair.key, 120).trim() : "";
   const lair = lk ? { key: lk, ...(o.lair.hidden === true ? { hidden: true } : {}) } : null;
   if (!monsters.length && !lair) return null;
+  const map = cleanMapRef(o.map);
   const t = Number(o.updatedAt);
   return {
     id: typeof o.id === "string" && ID_RE.test(o.id) ? o.id : newId(),
     updatedAt: Number.isFinite(t) && t > 0 && t <= now + 864e5 ? Math.trunc(t) : now,
     name, notes: str(o.notes, 2000), monsters, ...(lair ? { lair } : {}), ...(o.all === true ? { all: true } : {}), // all: lage CR toch meetellen
+    ...(map ? { map } : {}),
   };
 }
 export const newId = () => "e" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);

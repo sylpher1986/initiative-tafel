@@ -19,7 +19,7 @@ import { cleanBg, guessPpc, gridFor, parsePpc, parseAcross, scaleBg, moveBg, acr
 import { IMG } from "./model/image.js";
 import { prepareImage, assetImage, makeThumb } from "./ui/upload.js";
 import { MINE, isCustom, cleanItem, cleanItemName, nameFromFile, defaultCells, usedAssets, usedOn, quotaLevel } from "./model/mine.js";
-import { newMap, mapId, cleanName, newName, uniqueName, copyMap, sortMaps, pickStart, ago } from "./model/map.js";
+import { newMap, cleanName, newName, uniqueName, copyMap, sortMaps, pickStart, ago, importedDoc } from "./model/map.js";
 import { FILE_MAX } from "./model/file.js";
 import { exportMap, importFile } from "./ui/export.js";
 import { readColors, fitCanvas, createLayer, draw, TERR_COLORS } from "./render/canvas.js";
@@ -1253,12 +1253,9 @@ async function boot() {
       res = await importFile(f);
       if (res.ok) {
         const now = Date.now();
-        doc = { ...res.map, id: mapId(), name: uniqueName(res.map.name || newName(t("maps.newBase"), names()), names()), createdAt: now, updatedAt: now };
-        for (const [sha, rec] of res.assets) { // een bestaande asset (zelfde sha = zelfde bytes) blijft zoals hij is, met zijn eigen src
-          if (saver.status === "off") { if (!memAssets.has(sha)) memAssets.set(sha, rec); }
-          else if (!(await store.hasAsset(sha)) && !(await store.putAsset(sha, rec))) { res = { ok: false, code: "store" }; break; }
-        }
-        if (res.ok && saver.status !== "off" && !(await store.putMap(doc))) res = { ok: false, code: "store" };
+        doc = importedDoc(res.map, names(), t("maps.newBase"), { now });
+        if (saver.status === "off") { for (const [sha, rec] of res.assets) if (!memAssets.has(sha)) memAssets.set(sha, rec); } // bestaande sha blijft
+        else if (!(await store.putImport(doc, res.assets))) res = { ok: false, code: "store" }; // WP69: kaart en assets in één transactie
         if (res.ok) added = await adoptMine(doc, res); // WP64: eigen assets ook in Mijn assets op dit apparaat
       }
     } catch { res = { ok: false, code: "read" }; }

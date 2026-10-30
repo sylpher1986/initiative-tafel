@@ -89,6 +89,31 @@ export async function putMap(doc) {
   try { await tx("maps", "readwrite", (s) => s.put(c)); return true; } catch { return false; }
 }
 
+/** WP69: geïmporteerde kaart + zijn afbeeldingen in één transactie, zodat gcAssets (start van een Inn Sight-tabblad)
+ *  nooit net bewaarde assets zonder kaart ziet en wist. assets = Map(sha → record); een bestaande sha blijft zoals hij is
+ *  (eigen src). Gebruikt door Inn Sight en Initiative (js/ui/encmap.js). false als het niet lukte. */
+export async function putImport(doc, assets) {
+  if (!mayWrite()) return true;
+  const c = cleanMap(doc);
+  if (!c || [...assets.values()].some((r) => !cleanAsset(r))) return false;
+  try {
+    const db = await openDb();
+    await new Promise((resolve, reject) => {
+      const t = db.transaction(["assets", "maps"], "readwrite"), as = t.objectStore("assets");
+      let err = null;
+      for (const [sha, rec] of assets) {
+        const k = as.getKey(sha);
+        k.onsuccess = () => { if (k.result === undefined) { try { as.put(rec, sha); } catch (e) { err = e; t.abort(); } } };
+      }
+      t.objectStore("maps").put(c);
+      t.oncomplete = resolve;
+      t.onerror = () => reject(err || t.error);
+      t.onabort = () => reject(err || t.error || new Error("aborted"));
+    });
+    return true;
+  } catch { return false; }
+}
+
 /** Kaart verwijderen. false als het niet lukte. */
 export async function deleteMap(id) {
   if (!mayWrite()) return true;

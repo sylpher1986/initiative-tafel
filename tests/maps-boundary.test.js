@@ -1,6 +1,6 @@
 // Inn Sight (G4, WP56): "helemaal los van Initiative" technisch afgedwongen (docs/g4-inn-the-grid.md §2.1).
 // js/maps/ importeert alleen eigen modules en gedeelde infrastructuur (js/i18n/*); omgekeerd importeert niets buiten
-// js/maps/ iets uit js/maps/ (koppeling pas in fase 3, met een eigen besluit). Pure modellaag zonder DOM.
+// js/maps/ iets uit js/maps/, behalve de brug js/ui/encmap.js (WP69, fase 3). Pure modellaag zonder DOM.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -21,10 +21,19 @@ test("js/maps/ importeert alleen js/maps/ en js/i18n/", () => {
   assert.ok(walk("js/maps/").length >= 6);
 });
 
-test("niets buiten js/maps/ importeert js/maps/ (koppeling met Initiative pas in fase 3)", () => {
+// WP69 (fase 3): alleen js/ui/encmap.js mag js/maps/ gebruiken, alleen dynamisch (Initiative laadt geen kaartcode bij
+// het opstarten en breekt niet als de Maps-cache offline ontbreekt), en alleen deze modules.
+const BRIDGE = "js/ui/encmap.js", BRIDGE_OK = ["js/maps/store.js", "js/maps/ui/export.js", "js/maps/model/map.js", "js/maps/model/file.js"];
+test("buiten js/maps/ importeert alleen de brug js/ui/encmap.js iets uit js/maps/, dynamisch en uit een vaste lijst", () => {
   const bad = [];
-  for (const f of walk("js/").filter((p) => !p.startsWith("js/maps/"))) for (const s of specs(readFileSync(ROOT + f, "utf8"))) if (target(f, s).startsWith("js/maps/")) bad.push(`${f} → ${s}`);
+  for (const f of walk("js/").filter((p) => !p.startsWith("js/maps/"))) for (const s of specs(readFileSync(ROOT + f, "utf8"))) {
+    if (!target(f, s).startsWith("js/maps/")) continue;
+    if (f !== BRIDGE || !BRIDGE_OK.includes(target(f, s))) bad.push(`${f} → ${s}`);
+  }
   assert.deepEqual(bad, []);
+  const src = readFileSync(ROOT + BRIDGE, "utf8");
+  assert.doesNotMatch(src, /^\s*import\s[^(]*["'`][^"'`]*maps\//m, "statische import van js/maps/ in de brug");
+  assert.ok(BRIDGE_OK.every((m) => src.includes(`import("../${m.slice(3)}")`)), "brug gebruikt de toegestane modules dynamisch");
 });
 
 test("modellaag puur: geen DOM, window, document of opslag", () => {

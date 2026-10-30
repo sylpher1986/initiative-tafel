@@ -1409,6 +1409,7 @@ const SCEN = {
       await fc.setFiles({ name: dl.suggestedFilename(), mimeType: "application/json", buffer: Buffer.from(text) });
       const got = await mapsIdb(p2, (all) => all.some((x) => x.schema === 5));
       let nid = got.find((x) => x.schema === 5).id;
+      await p2.waitForFunction(() => window.__maps.mine().length > 0, null, { timeout: 5000 }).catch(() => {}); // Mijn assets komt ná de kaart (adoptMine); WP69: putImport schrijft de kaart sneller
       let m2 = await p2.evaluate(() => window.__maps.mine());
       if (m2.length !== 1 || m2[0].sha !== T || m2[0].name !== "Goblin" || !m2[0].thumb) throw new Error("import Mijn assets: " + JSON.stringify(m2));
       // review: Ongedaan van de import haalt ook het toegevoegde item weg; daarna opnieuw importeren
@@ -2023,6 +2024,66 @@ const SCEN = {
     await SCEN.monster(page); await tap(page, '#p-montabs [data-prep="enc"]'); await page.waitForSelector("#enc-panel .encsave");
     await tap(page, '#enc-panel [data-enc="save-open"]'); await page.fill("#enc-name", "Hinderlaag bij de oude brug"); await tap(page, '#enc-panel [data-enc="save-go"]');
     await page.waitForSelector("#enc-panel .encrow"); await tap(page, '#enc-panel [data-enc="menu"]'); await page.waitForSelector("#enc-panel .encmenu");
+  },
+  // WP69: kaart uit Inn Sight kiezen bij een encounter (verwijzing). Twee kaarten in kevs-inn-maps; encounter A heeft kaart 1,
+  // encounter B een kaart die hier niet staat. Kiezer (rijen ≥ 44 px), kiezen + Opslaan bewaart { id, name }, "Bewerken in
+  // Inn Sight" zet maps-last; B toont "ontbreekt" met Kiezen | Kaartbestand importeren | Weghalen. --shots=wp69: gekozen, kiezer, ontbreekt.
+  async wp69(page) {
+    const wait = (sel) => page.waitForSelector(sel).catch(async () => { throw new Error(`wacht ${sel}: ${(await page.locator("#enc-panel").innerText()).slice(0, 300)}`); });
+    await SCEN.monster(page);
+    await page.evaluate(async () => {
+      const st = await import("/js/maps/store.js"), M = await import("/js/maps/model/map.js");
+      await st.putMap({ ...M.newMap({ id: "kaart00001", name: "Grot der goblins" }), grid: { type: "square", cols: 20, rows: 15 } });
+      await st.putMap({ ...M.newMap({ id: "kaart00002", name: "Oude brug bij de rivier met een heel lange naam" }), grid: { type: "hex", cols: 12, rows: 9 } });
+      const { app, saveEncounters } = await import("/js/state.js"), now = Date.now();
+      app.encounters = [{ id: "ea", name: "Grot", updatedAt: now, notes: "", monsters: [{ ref: "Goblin", n: 3 }], map: { id: "kaart00001", name: "Oude naam" } },
+        { id: "eb", name: "Brug", updatedAt: now - 1, notes: "", monsters: [{ ref: "Goblin", n: 1 }], map: { id: "elders0001", name: "Kaart van elders" } }];
+      saveEncounters();
+    });
+    await tap(page, '#p-montabs [data-prep="enc"]'); await wait("#enc-panel .encrow");
+    const sm = await page.locator("#enc-panel .encrow .einfo small").first().innerText();
+    if (sm.split(" · ").length !== 3) throw new Error("kaartmarker ontbreekt: " + sm); // "3 monsters · Kaart · 30 okt"
+    const edit = async (i) => { await page.locator('#enc-panel [data-enc="menu"]').nth(i).tap(); await tap(page, '#enc-panel [data-enc="edit"]'); await wait("#ee-name"); };
+    await edit(0);
+    await page.waitForFunction(() => /20×15/.test(document.querySelector("#enc-panel .emap")?.innerText || ""));
+    if (!/Grot der goblins/.test(await page.locator("#enc-panel .emap").innerText())) throw new Error("actuele kaartnaam niet getoond");
+    await page.locator('#enc-panel a[data-encmap="sight"]').evaluate((a) => a.addEventListener("click", (e) => e.preventDefault())); // geen nieuw tabblad in de check
+    await page.locator('#enc-panel a[data-encmap="sight"]').tap();
+    if ((await page.evaluate(() => localStorage.getItem("maps-last"))) !== "kaart00001") throw new Error("maps-last niet gezet");
+    await snap(page, "wp69", "gekozen");
+    await tap(page, '#enc-panel [data-encmap="open"]');
+    await wait('#enc-panel .emaps [data-encmap="pick"]');
+    const hs = await page.locator('#enc-panel .emaps [data-encmap="pick"]').evaluateAll((b) => b.map((x) => x.getBoundingClientRect().height));
+    if (hs.length !== 2 || hs.some((h) => h < 44)) throw new Error("kiezer: " + JSON.stringify(hs));
+    await snap(page, "wp69", "kiezer");
+    await page.locator('#enc-panel .emaps [data-id="kaart00002"]').tap();
+    await wait("#ee-map-change");
+    await tap(page, '#enc-panel [data-enc="edit-go"]');
+    const m = await page.evaluate(async () => (await import("/js/state.js")).app.encounters.find((e) => e.id === "ea").map);
+    if (!m || m.id !== "kaart00002" || !/Oude brug/.test(m.name)) throw new Error("kaart niet bewaard: " + JSON.stringify(m));
+    await wait("#enc-panel .encrow");
+    await edit(1);
+    await wait('#enc-panel .confirmbox [data-file="ee-map-file"]');
+    if (!/Kaart van elders/.test(await page.locator("#enc-panel .confirmbox").innerText())) throw new Error("bewaarde naam ontbreekt");
+    await snap(page, "wp69", "ontbreekt");
+    await tap(page, '#enc-panel .confirmbox [data-encmap="rm"]');
+    await wait('#enc-panel button[data-encmap="open"].encsave');
+    // terugval: kaartbestand importeren → in de Inn Sight-bibliotheek (nieuwe id, unieke naam) en meteen gekozen; kapot bestand = foutregel
+    const json = await page.evaluate(async () => {
+      const F = await import("/js/maps/model/file.js"), M = await import("/js/maps/model/map.js");
+      const { parts } = F.buildParts({ ...M.newMap({ id: "kaart00009", name: "Grot der goblins" }), grid: { type: "hex", cols: 8, rows: 6 } }, new Map(), { app: "Inn Sight" });
+      return new Blob(parts).text();
+    });
+    await tap(page, '#enc-panel [data-encmap="open"]');
+    await wait('#enc-panel [data-file="ee-map-file"]');
+    await page.setInputFiles("#ee-map-file", { name: "kapot.json", mimeType: "application/json", buffer: Buffer.from("{nee") });
+    await wait("#enc-panel .encerr");
+    await page.setInputFiles("#ee-map-file", { name: "grot.json", mimeType: "application/json", buffer: Buffer.from(json) });
+    await page.waitForFunction(() => /8×6/.test(document.querySelector("#enc-panel .emap")?.innerText || ""));
+    const imp = await page.evaluate(async () => { const st = await import("/js/maps/store.js"), L = await st.listMaps(), { ui } = await import("/js/ui/render.js");
+      return { n: L.length, map: ui.encEdit.map, names: L.map((m) => m.name), err: !!document.querySelector("#enc-panel .encerr"), focus: document.activeElement?.id }; });
+    if (imp.n !== 3 || !imp.map || imp.map.id === "kaart00009" || imp.names.filter((x) => /^Grot der goblins/.test(x)).length !== 2 || imp.err) throw new Error("import: " + JSON.stringify(imp));
+    if (imp.focus !== "ee-map-change") throw new Error("focus na import: " + imp.focus);
   },
   async einde(page) { await SCEN.fight(page); await tap(page, '#modes [data-setmode="prep"]'); await tap(page, "#stop"); await page.waitForSelector("#esheet .esheet"); },
   async tourf(page) { await SCEN.fight(page); await page.evaluate(async () => { localStorage.setItem("it-tour", "p"); (await import("/js/ui/tour.js")).restartTour(); (await import("/js/ui/render.js")).render(); }); await page.waitForSelector("#tour .tbox"); },
