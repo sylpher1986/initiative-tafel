@@ -100,8 +100,8 @@ const ERR = { empty: "read", read: "read", notjson: "format", format: "format", 
 // geen Inn Sight-tabbladslot (claimTab), dus een open Inn Sight-tabblad merkt hier niets van.
 let vmods = null;
 const viewMods = () => (vmods ||= Promise.all([store(), import("../maps/render/canvas.js"), import("../maps/render/art.js"),
-  import("../maps/model/view.js"), import("../maps/model/grid.js"), import("../maps/ui/input.js"), import("../maps/ui/upload.js")])
-  .then(([s, canvas, art, view, grid, input, upload]) => ({ s, canvas, art, view, grid, input, upload })))
+  import("../maps/model/view.js"), import("../maps/model/grid.js"), import("../maps/ui/input.js"), import("../maps/ui/upload.js"), import("../maps/model/assets.js")])
+  .then(([s, canvas, art, view, grid, input, upload, assets]) => ({ s, canvas, art, view, grid, input, upload, assets })))
   .catch((e) => { vmods = null; throw e; });
 
 /**
@@ -165,4 +165,56 @@ export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {} 
       M = map = img = art = layer = view = col = null;
     },
   };
+}
+
+/* ---------- WP71: plat spelersbeeld ---------- */
+// Eén JPEG van de hele kaart (achtergrond, terrein, objecten, raster en rand) voor het spelersscherm. Alleen drawBase,
+// nooit drawOver (selectie, spookbeeld, cursor): wat later voor de DM alleen is (fog, WP73) hoort hier ook buiten te
+// blijven. Vaste kleuren (kaartinhoud, niet het thema van de DM): het beeld verandert niet als de DM van thema wisselt.
+export const FLAT_MAX = 2048; // langste zijde in pixels
+const FLAT_PPC = [8, 64];     // pixels per cel (onder- en bovengrens)
+const FLAT_COL = { page: "#fffbf3", map: "#fffbf3", line: "#8c7d6b", edge: "#241811", sel: "#7a5512" };
+/** Pixels per cel voor kaartgrenzen b (in cellen): de langste zijde ≤ FLAT_MAX, binnen FLAT_PPC */
+export const flatPpc = (b) => Math.max(FLAT_PPC[0], Math.min(FLAT_PPC[1], Math.floor(FLAT_MAX / Math.max(1, b.w, b.h))));
+let flatN = 0;
+/**
+ * Kaart met deze id als plat beeld → { flat: { k, w, h, img: Blob }, at: updatedAt } of null (kaart weg, opslag of kaartcode niet bereikbaar,
+ * canvas te groot). Wacht tot de tekeningen geladen zijn (hooguit ± 4 s; wat dan nog ontbreekt wordt een plaatshouder).
+ */
+export async function flatMap(id) {
+  let M;
+  try { M = await viewMods(); if (!(await M.s.available())) return null; } catch { return null; }
+  const map = await M.s.getMap(id).catch(() => null);
+  if (!map) return null;
+  const own = new Map(); // eigen assets vooraf ophalen: createArt krijgt ze dan direct
+  const rec = async (sha) => { const r = await M.s.getAsset(sha).catch(() => null); return r ? M.upload.assetImage(r).catch(() => null) : null; };
+  const shas = [...new Set((map.objs || []).map((o) => o.asset).filter((a) => /^[0-9a-f]{64}$/.test(a)))];
+  await Promise.all(shas.map(async (s) => own.set(s, await rec(s))));
+  const img = map.bg && map.bg.asset ? await rec(map.bg.asset) : null;
+  const b = M.grid.bounds(map.grid), ppc = flatPpc(b);
+  const W = Math.max(1, Math.ceil(b.w * ppc)), H = Math.max(1, Math.ceil(b.h * ppc));
+  const v = { x: -b.x * ppc, y: -b.y * ppc, z: ppc / M.view.CELL };
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  let ping = null;
+  const art = M.art.createArt(() => ping && ping(), { custom: (sha) => own.get(sha) || null });
+  const draw = () => { const g = cv.getContext("2d"); g.setTransform(1, 0, 0, 1, 0, 0); M.canvas.drawBase(g, map, v, W, H, 1, FLAT_COL, W, H, { img, art }); };
+  const builtins = [...new Set((map.objs || []).map((o) => o.asset).filter((a) => !own.has(a)))];
+  draw(); // start het laden van alle tekeningen
+  const until = Date.now() + 4000;
+  while (Date.now() < until && !art.done(builtins.filter((a) => M.assets.builtin(a)))) await new Promise((r) => { ping = r; setTimeout(r, 250); });
+  await new Promise((r) => setTimeout(r, 0)); // eigen assets: createArt zet ze een microtask later klaar
+  ping = null;
+  draw();
+  const blob = await new Promise((r) => { try { cv.toBlob(r, "image/jpeg", 0.85); } catch { r(null); } });
+  if (img && img.close) img.close();
+  for (const x of own.values()) if (x && x.close) x.close();
+  art.trim(new Set());
+  cv.width = cv.height = 0;
+  if (!blob) return null;
+  return { flat: { k: `m${Date.now().toString(36)}${++flatN}`, w: W, h: H, img: blob }, at: map.updatedAt || 0 };
+}
+/** updatedAt van kaart id (0 = weg of niet bereikbaar): is het gedeelde beeld nog actueel? */
+export async function mapStamp(id) {
+  try { const M = await viewMods(); const m = (await M.s.available()) ? await M.s.getMap(id) : null; return (m && m.updatedAt) || 0; } catch { return 0; }
 }

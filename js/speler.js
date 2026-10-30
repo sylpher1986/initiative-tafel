@@ -2,13 +2,13 @@
 import { initI18n, t, tr, i18n } from "./i18n/boot.js";
 import { adoptExisting, joinUrl } from "./i18n/lang.js";
 import { ico } from "./ui/icons.js";
-import { cleanView, headHtml, findMe, meState, buzzFor, dsText, logLines, pushLog, pvName, hsText, tagText } from "./playerview.js";
+import { MAP_PX, cleanView, headHtml, findMe, meState, buzzFor, dsText, logLines, pushLog, pvName, hsText, tagText } from "./playerview.js";
 import { ORD } from "./rules/spells.js";
 import { localChannel, roomChannel, normCode, fmtCode } from "./share.js";
 import { esc } from "./ui/util.js";
 import { icon, avBox } from "./ui/avatar.js";
 import { hpPct, hpCls } from "./ui/hpbar.js";
-import { tvPlan } from "./tvfit.js";
+import { tvPlan, fitFont, tvMax, TV_LO } from "./tvfit.js";
 import { qrSvg } from "./qr.js";
 import { hasCondInfo, SUR } from "./rules/conditions.js";
 import { openCond, closeCond, condOpen, condSheetClick } from "./ui/condinfo.js";
@@ -230,13 +230,17 @@ function fitTv(force) {
   b.classList.toggle("tv", tv);
   if (!tv) { b.classList.remove("cols"); b.style.removeProperty("--tvfs"); tvSig = ""; return; }
   const n = $("#pv-list").children.length;
-  const sig = [n, vis("#pv-mecard"), vis("#pv-log"), vis("#pv-down"), vis("#pv-net"), vis("#pv-wait"), vis("#pv-tag"), vis("#pv-qr"), !!$("#pv-now").innerHTML, !!document.fullscreenElement, innerWidth, innerHeight].join();
+  const sig = [n, !!mapK, vis("#pv-mecard"), vis("#pv-log"), vis("#pv-down"), vis("#pv-net"), vis("#pv-wait"), vis("#pv-tag"), vis("#pv-qr"), !!$("#pv-now").innerHTML, !!document.fullscreenElement, innerWidth, innerHeight].join();
   const doc = document.documentElement, over = () => doc.scrollHeight > innerHeight + 1;
   // past het niet eens op de kleinste maat, dan is overlopen geaccepteerd (geen nieuwe zoektocht bij elke stand)
   if (!force && (sig === tvSig || sig + "|over" === tvSig) && (tvSig.endsWith("|over") || !over())) return;
   b.style.setProperty("--rows", Math.max(1, Math.ceil(n / 2)));
   const set = (f, cols) => { b.style.setProperty("--tvfs", f + "px"); b.classList.toggle("cols", cols); };
-  const { f, cols } = tvPlan(innerHeight, (f, cols) => { set(f, cols); return !over(); });
+  // WP71: met een kaart is de lijst een smalle kolom rechts: compacte rijen (opbouw van .cols), CSS houdt één kolom
+  // en geen naam afgekapt (CSS zet HP en condities onder de naam; een te grote letter kapt hem anders af)
+  const roomy = () => [...document.querySelectorAll("#pv-list .pvc .nm")].every((n) => n.scrollWidth <= n.clientWidth + 1 && n.scrollHeight <= n.clientHeight + 1);
+  let { f, cols } = mapK ? { f: fitFont(TV_LO, tvMax(innerHeight), (f) => { set(f, true); return !over() && roomy(); }) ?? TV_LO, cols: true }
+    : tvPlan(innerHeight, (f, cols) => { set(f, cols); return !over(); });
   set(f, cols);
   tvSig = over() ? sig + "|over" : sig;
 }
@@ -287,7 +291,7 @@ function boot() {
   setStick();
 
   // lokaal (ander venster op dit apparaat) luistert altijd mee; een kamercode (?k= of invoeren) verbindt via internet
-  const ch = localChannel();
+  const ch = local = localChannel();
   if (ch) {
     ch.on(handler(ch));
     ch.send({ t: "hallo" });
@@ -342,7 +346,7 @@ function dmBack() { clearTimeout(dmT); dmT = 0; if (dmGone) { dmGone = false; ba
 function handler(c) {
   return (m) => {
     if (m.t === "dm") c.send({ t: "hallo" }); // DM-scherm (opnieuw) gestart, of kamer (opnieuw) verbonden
-    else if (m.t === "stand") { const V = cleanView(m.d); if (V) { $("#pv-join").hidden = true; paint(V); } }
+    else if (m.t === "stand") { const V = cleanView(m.d); if (V) { $("#pv-join").hidden = true; if (c === local) paintMap(V.map || null); paint(V); } }
     else if (c === room && m.t === "einde") leave(t("player.room.ended"));
     else if (c === room && m.t === "stop") pause();
     else if (c === room && m.t === "dmnet") m.on ? dmBack() : dmAway();
@@ -369,8 +373,34 @@ function join(k) {
   tvQr(); fitTv();
 }
 
+/* ---------- WP71: kaart die de DM toont (alleen via het lokale kanaal; de kamer stuurt hem niet, WP72) ---------- */
+// Alleen een stand uit het lokale kanaal zet of haalt de kaart: is dit scherm ook met een kamer verbonden, dan laat een
+// stand van de kamer (zonder kaart) hem staan. Altijd passend (contain): spelers pannen of zoomen niet (UX WP71).
+let local = null, mapK = "", mapUrl = "";
+function paintMap(m) {
+  const fig = $("#pv-map"), img = $("#pv-mapimg");
+  if (!m) {
+    if (!mapK) return;
+    mapK = ""; fig.hidden = true; img.removeAttribute("src");
+    if (mapUrl) URL.revokeObjectURL(mapUrl);
+    mapUrl = "";
+  } else {
+    if (m.k === mapK) return;
+    const old = mapUrl;
+    mapK = m.k; mapUrl = URL.createObjectURL(m.img);
+    img.width = m.w; img.height = m.h; // maat vooraf: de lijst springt niet als het beeld laadt
+    img.onload = () => { if (img.naturalWidth > MAP_PX || img.naturalHeight > MAP_PX) fig.hidden = true; }; // echte maat ook begrensd
+    img.src = mapUrl;
+    fig.hidden = false;
+    if (old) URL.revokeObjectURL(old);
+  }
+  document.body.classList.toggle("map", !!mapK);
+  fitTv(true);
+}
+
 /** Stand weg (verouderd of gestopt) */
 function clear() {
+  paintMap(null);
   clearTimeout(lostT); clearTimeout(dmT); dmT = 0; netLost = dmGone = false; lastAt = 0; lastJson = ""; bar();
   $("#pv-now").innerHTML = ""; $("#pv-list").innerHTML = "";
   $("#pv-down").hidden = true; $("#pv-down").innerHTML = "";

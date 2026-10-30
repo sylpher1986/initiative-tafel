@@ -14,7 +14,7 @@ import { findMon, sanitizeOwn, keyRef, monEd, withEdWord, loadSrd24, srd24Status
 import { rulesOf, cleanEd, edField, sameEd } from "../rules/edition.js";
 import * as E from "../rules/encounters.js";
 import { addEnc, encName, encMaps } from "../rules/fight.js";
-import { openMap } from "./mapview.js";
+import { openMap, sharedId } from "./mapview.js";
 import { dateTxt, mapBlockHtml, loadMaps, importMap, openInSight, mapName, mapFileInput } from "./encmap.js";
 
 const fmt = (n) => i18n().num(Math.round(n)); // 1.950 (nl) / 1,950 (en)
@@ -121,7 +121,10 @@ export function encStrip(S, prep) {
   const E2 = S.enc || [], notes = E2.filter((e) => e.notes.trim()), maps = encMaps(S);
   if (!E2.length || (!prep && !notes.length && !maps.length)) return "";
   const name = `<b class="ennm">${esc(encName(S))}</b>`;
-  const mapBtn = maps.length ? `<button type="button" class="btn encmap" data-enc="map" aria-label="${esc(t(maps.length > 1 ? "init.map.view.ariaN" : "init.map.view.aria", { n: maps.length, name: maps.map((m) => m.map.name || m.name).join(", ") }))}">${esc(maps.length > 1 ? t("init.map.view.openN", { n: maps.length }) : t("init.map.view.open"))}</button>` : "";
+  const sh = maps.some((m) => m.map.id === sharedId()), many = maps.length > 1; // WP71: aan spelers getoond, ook met de viewer dicht
+  const aria = sh ? (many ? "init.map.view.ariaNS" : "init.map.view.ariaS") : many ? "init.map.view.ariaN" : "init.map.view.aria";
+  const lbl = sh ? (many ? "init.map.view.openNS" : "init.map.view.openS") : many ? "init.map.view.openN" : "init.map.view.open";
+  const mapBtn = maps.length ? `<button type="button" class="btn encmap${sh ? " on" : ""}" data-enc="map" aria-label="${esc(t(aria, { n: maps.length, name: maps.map((m) => m.map.name || m.name).join(", ") }))}">${esc(t(lbl, { n: maps.length }))}</button>` : "";
   if (!notes.length) return `<li class="encn"><div class="encrow2"><span class="encnb">${name}</span>${mapBtn}</div></li>`;
   const open = !!ui.encOpen;
   return `<li class="encn"><div class="encrow2"><button type="button" class="encnb" data-enc="notes" aria-expanded="${open}">${name}<span class="entac">${esc(t("init.enc.tactics"))} ${chev(open)}</span></button>${mapBtn}</div>${open

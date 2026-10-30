@@ -68,6 +68,14 @@ export function splitImgs(view, sent) {
   return { d: { ...view, list }, imgs };
 }
 
+/** WP71: de spelerskaart (plat beeld, Blob) gaat alleen over het lokale kanaal; via de kamer pas in WP72 (eigen besluit
+ *  over limieten). Zonder map dezelfde snapshot terug. */
+export function noMap(view) {
+  if (!view || !("map" in view)) return view;
+  const { map, ...rest } = view; // eslint-disable-line no-unused-vars
+  return rest;
+}
+
 /** Backoff voor opnieuw verbinden: 1, 2, 4 … max 30 s, met wat spreiding zodat niet alle schermen tegelijk komen */
 export const backoff = (n, rnd = Math.random) => Math.min(30000, 1000 * 2 ** Math.min(n, 5)) * (0.8 + 0.4 * rnd());
 
@@ -188,7 +196,7 @@ export function roomChannel(code, token, opts = {}) {
       if (m.t === "stand") {
         if (paused) return emit({ t: "gemist" }); // dmLink stuurt alleen gewijzigde standen (of na "hallo", en die komt niet tijdens een pauze)
         if (!ws || ws.readyState !== 1) return; // bij herverbinden pusht dmLink opnieuw
-        const { d, imgs: ps } = splitImgs(m.d, sent);
+        const { d, imgs: ps } = splitImgs(noMap(m.d), sent);
         for (const p of ps) if (!raw(JSON.stringify({ t: "img", id: p.id, d: p.d }))) { sent.clear(); return; }
         raw(JSON.stringify({ t: "stand", d }));
       }

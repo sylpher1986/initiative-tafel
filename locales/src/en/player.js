@@ -5,6 +5,7 @@
 export default {
   "player.who": "Who are you?", // knop; js/speler.js zet daarna "Jij: …"
   "player.full": "Full screen",
+  "player.map": "Map", // WP71: alt-tekst van de kaart die de DM toont
   "player.log": "What just happened", // aria-label van de laatste regels
   "player.me": "Your character", // aria-label van de eigen kaart
   "player.qr": "Follow along on your phone", // aria-label van de QR-code op de tv

@@ -16,6 +16,7 @@ import { claimTab } from "./tablock.js";
 import { $, esc, toastBad } from "./ui/util.js";
 import { VERSION, APP } from "./version.js";
 import { bindEnc } from "./ui/encounters.js";
+import { sharedMap } from "./ui/mapview.js";
 import { bindEnd } from "./ui/einde.js";
 import { bindSettings } from "./ui/settings.js";
 import { bindKeys } from "./ui/keys.js";
@@ -128,7 +129,7 @@ async function boot() {
     if (view) return view;
     const S = app.S;
     if (!S.round) prevTurn = null;
-    view = toPlayerView(S, (c) => (c.ref ? findMon(c.ref, c.ed)?.meta : ""), visNow(), prevTurn, { pcReact: pcReact() });
+    view = toPlayerView(S, (c) => (c.ref ? findMon(c.ref, c.ed)?.meta : ""), visNow(), prevTurn, { pcReact: pcReact(), map: sharedMap() }); // WP71: map = plat beeld, alleen als de DM het deelt
     if (view.active && view.active === S.active) prevTurn = { id: view.active, round: view.round };
     return view;
   };

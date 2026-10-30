@@ -197,7 +197,27 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS, prev = null, opts 
   if (!fight && S.endSum) out.end = Math.max(0, S.endSum.r | 0);
   if (inTurn.size > 1) out.group = [...inTurn]; // groepsnaam maakt het spelersscherm zelf (shownGroup)
   if (rulesOf(S) === "2024") out.ed = "2024"; // WP52 (B8): regels voor de conditie-uitleg; ontbreekt = 2014 (oudere schermen negeren het)
+  const pm = pvMap(opts.map);
+  if (pm) out.map = pm;
   return out;
+}
+
+/* ---------- WP71: spelerskaart (plat beeld, alleen lokaal) ---------- */
+// De DM deelt een kaart bewust (schakelaar in de kaartviewer) en rendert hem zelf tot één plat beeld (js/ui/encmap.js,
+// flatMap): achtergrond, terrein, objecten en raster, zonder editor-overlays. Naar spelers gaat alleen dat beeld met
+// zijn maat en een sleutel, nooit het kaartdocument (raster, objecten, assets, naam, id). Het beeld is een Blob: goedkoop
+// over het lokale kanaal (structured clone) en geen base64 in de JSON-vergelijking van dmLink. De kamer stuurt het niet
+// (roomChannel haalt map eruit; via de kamer pas in WP72).
+export const MAP_TYPES = ["image/jpeg", "image/png", "image/webp"];
+export const MAP_MAX = 8 * 1048576; // bytes; een plat beeld van ≤ 2048 px in JPEG is ruim kleiner
+export const MAP_PX = 4096;          // breedte en hoogte
+const MAP_K = /^[A-Za-z0-9_.-]{1,64}$/;
+const isBlob = (b) => typeof Blob !== "undefined" && b instanceof Blob;
+/** Expliciete whitelist (ook voor wat de DM-kant aanlevert): { k, w, h, img } of null */
+function pvMap(m) {
+  if (!m || typeof m !== "object" || typeof m.k !== "string" || !MAP_K.test(m.k) || !isBlob(m.img) || !MAP_TYPES.includes(m.img.type) || m.img.size > MAP_MAX) return null;
+  const w = int(m.w), h = int(m.h);
+  return w >= 1 && h >= 1 && w <= MAP_PX && h <= MAP_PX ? { k: m.k, w, h, img: m.img } : null;
 }
 
 /** "Bugbear ×3" als alle leden dezelfde naam met een nummer hebben, anders de namen achter elkaar */
@@ -325,6 +345,8 @@ export function cleanView(d) {
   const out = { v: d.v, round: Math.max(0, int(d.round)), active: pick(d.active), next: pick(d.next), list };
   if (d.nolog) out.nolog = 1;
   if (d.ed === "2024") out.ed = "2024";
+  const pm = pvMap(d.map); // WP71: alleen een geldig beeld (type, grootte, maat), anders geen kaart
+  if (pm) out.map = pm;
   if (VIS_OPTS.tags.includes(d.tg)) out.tg = d.tg;
   if (!out.round && d.end != null) out.end = Math.max(0, Math.min(9999, int(d.end)));
   const group = Array.isArray(d.group) ? [...new Set(d.group.map(pick).filter(Boolean))].slice(0, 20) : [];

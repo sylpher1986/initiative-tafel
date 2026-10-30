@@ -2,7 +2,7 @@
 // Staat in Instellingen → Spelersscherm. Kamer (code + DM-token) in localStorage: na herladen loopt het delen door.
 // Alleen UI- en verbindingstoestand: niets hiervan zit in undo, opslag of export.
 import { APP } from "../version.js";
-import { roomChannel, dmLink, createRoom, normCode, fmtCode } from "../share.js";
+import { roomChannel, dmLink, createRoom, normCode, fmtCode, noMap } from "../share.js";
 import { $, esc, toast, toastHtml, closeToast, toastBad } from "./util.js";
 import { canWrite } from "../storage.js";
 import { qrSvg } from "../qr.js";
@@ -281,7 +281,11 @@ export function dropSharing() { disconnect(); }
  * de render-updates. Een bewaarde kamer gaat direct weer open.
  */
 export function bindSharing(view, links) {
-  getView = view; addLink = links;
+  // WP71: de kamer krijgt de snapshot zonder kaart (pas in WP72), per snapshot één keer: een nieuw kaartbeeld is dan
+  // geen nieuwe stand voor de kamer (geen "gemist" tijdens een pauze)
+  const bare = new WeakMap();
+  getView = () => { const v = view(); let b = bare.get(v); if (!b) { b = noMap(v); bare.set(v, b); } return b; };
+  addLink = links;
   if (!$("#kamer-box") && window.__itErr) window.__itErr("Sharing: the share box is missing from the page (old index.html?)"); // diagnose voor de ontwikkelaar, niet vertaald
   $("#kamer-box")?.addEventListener("click", (e) => {
     const b = e.target.closest("[data-kamer]");

@@ -2085,6 +2085,75 @@ const SCEN = {
     if (imp.n !== 3 || !imp.map || imp.map.id === "kaart00009" || imp.names.filter((x) => /^Grot der goblins/.test(x)).length !== 2 || imp.err) throw new Error("import: " + JSON.stringify(imp));
     if (imp.focus !== "ee-map-change") throw new Error("focus na import: " + imp.focus);
   },
+  // WP71: spelerskaart op hetzelfde apparaat. Schakelaar "Toon aan spelers" linksonder in de viewer (≥ 44 px, naast + en −,
+  // niet eroverheen); aan = knop in de strip "Kaart · gedeeld"; spelersvenster (telefoon en tv) toont het platte beeld:
+  // telefoon onder de vaste kop (≤ 45vh, niet breder dan het scherm), tv links vast met de lijst rechts (één kolom, rijen
+  // passen). Viewer dicht = blijft gedeeld; uit = kaart weg bij de spelers; monsters gewist = niet meer gedeeld.
+  // Eindigt met de viewer open en gedeeld (meting van de DM-pagina). --shots=wp71: viewer, telefoon, tv.
+  async wp71(page, base) {
+    await SCEN.fight(page);
+    await page.evaluate(async () => {
+      const st = await import("/js/maps/store.js"), M = await import("/js/maps/model/map.js");
+      await st.putMap({ ...M.newMap({ id: "kaart00001", name: "Grot der goblins" }), grid: { type: "square", cols: 20, rows: 15 }, objs: [{ id: "o1", asset: "table", x: 5, y: 5 }, { id: "o2", asset: "tree", x: 12, y: 8 }] });
+      const { app } = await import("/js/state.js"), F = await import("/js/rules/fight.js"), R = await import("/js/ui/render.js");
+      F.addEnc(app.S, { name: "Grot", notes: "", map: { id: "kaart00001", name: "Grot der goblins" } }, true);
+      R.render();
+    });
+    const lang = await page.evaluate(() => document.documentElement.lang);
+    const openPv = async (w, h) => {
+      const pv = await page.context().newPage();
+      await pv.setViewportSize({ width: w, height: h });
+      await pv.goto(base + pathFor(lang, "/initiative/player/"));
+      await pv.waitForSelector("#pv-list .pvc");
+      return pv;
+    };
+    const pv = await openPv(page.viewportSize().width, 740);
+    if (!(await pv.locator("#pv-map").isHidden())) throw new Error("kaart op het spelersscherm zonder delen");
+    await tap(page, '#order [data-enc="map"]');
+    await page.waitForSelector('#mapview .mvtoon:not([hidden]) [data-mv="pv"]');
+    const tg = await page.evaluate(() => { const b = document.querySelector('#mapview [data-mv="pv"]').getBoundingClientRect(), z = document.querySelector("#mapview .mvzoom").getBoundingClientRect(), h = document.querySelector("#mapview .mvthint").getBoundingClientRect();
+      return { h: b.height, overlap: !(b.right <= z.left || h.right <= z.left) ? 1 : 0, pressed: document.querySelector('#mapview [data-mv="pv"]').classList.contains("on") }; });
+    if (tg.h < 44 || tg.overlap || tg.pressed) throw new Error("schakelaar: " + JSON.stringify(tg));
+    await tap(page, '#mapview [data-mv="pv"]');
+    await page.waitForFunction(() => document.querySelector('#mapview [data-mv="pv"]').classList.contains("on") && document.querySelector('#order [data-enc="map"]')?.classList.contains("on"));
+    await pv.waitForFunction(() => { const i = document.querySelector("#pv-mapimg"); return !document.querySelector("#pv-map").hidden && i.complete && i.naturalWidth > 100; }, null, { timeout: 8000 });
+    await snap(page, "wp71", "viewer");
+    const ph = await pv.evaluate(() => { const r = document.querySelector("#pv-mapimg").getBoundingClientRect(), s = document.querySelector("#pv-stick").getBoundingClientRect();
+      return { h: r.height, max: innerHeight * 0.45 + 1, below: r.top >= s.bottom - 1, hs: document.documentElement.scrollWidth - innerWidth, nat: document.querySelector("#pv-mapimg").naturalWidth }; });
+    if (ph.h > ph.max || !ph.below || ph.hs > 0 || ph.nat > 2048) throw new Error("spelersscherm telefoon: " + JSON.stringify(ph));
+    if (SHOTS.has("wp71") && page.viewportSize().width === 320) await pv.screenshot({ path: join(ROOT, "shots", `wp71-telefoon-${lang}-320-${await pv.evaluate(() => matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")}.png`) });
+    const tv = await openPv(1280, 720);
+    await tv.waitForFunction(() => document.body.classList.contains("tv") && document.body.classList.contains("map") && document.querySelector("#pv-mapimg").naturalWidth > 100, null, { timeout: 8000 });
+    const tl = await tv.evaluate(() => { const m = document.querySelector("#pv-map").getBoundingClientRect(), l = document.querySelector("#pv-list").getBoundingClientRect();
+      return { left: m.left, mapR: m.right, listL: l.left, cols: document.body.classList.contains("cols"), hs: document.documentElement.scrollWidth - innerWidth,
+        wide: [...document.querySelectorAll("#pv-list .pvc")].filter((r) => r.scrollWidth - r.clientWidth > 1).length,
+        one: new Set([...document.querySelectorAll("#pv-list .pvc")].map((r) => Math.round(r.getBoundingClientRect().left))).size,
+        hidden: [...document.querySelectorAll("#pv-list .pvc .nm")].filter((n) => n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1).map((n) => n.textContent) }; });
+    if (tl.left !== 0 || tl.listL < tl.mapR - 1 || !tl.cols || tl.hs > 0 || tl.wide || tl.one !== 1 || tl.hidden.length) throw new Error("tv: " + JSON.stringify(tl));
+    if (SHOTS.has("wp71") && page.viewportSize().width === 320) await tv.screenshot({ path: join(ROOT, "shots", `wp71-tv-${lang}-${await tv.evaluate(() => matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")}.png`) });
+    await tv.close();
+    // viewer dicht: blijft gedeeld; daarna uit = weg bij de spelers
+    await tap(page, '#mapview [data-mv="close"]');
+    await page.waitForSelector("#mapview", { state: "hidden" });
+    if (!/·/.test(await page.locator('#order [data-enc="map"]').innerText()) || (await pv.locator("#pv-map").isHidden())) throw new Error("niet meer gedeeld na sluiten");
+    await tap(page, '#order [data-enc="map"]');
+    await tap(page, '#mapview [data-mv="pv"]');
+    await pv.waitForSelector("#pv-map", { state: "hidden" });
+    if (await page.locator('#order [data-enc="map"].on').count()) throw new Error("strip zegt nog gedeeld");
+    // weer aan, monsters gewist = niet meer gedeeld (knop en viewer weg, spelers zonder kaart)
+    await tap(page, '#mapview [data-mv="pv"]');
+    await pv.waitForSelector("#pv-map:not([hidden])", { timeout: 8000 });
+    await page.evaluate(async () => { const { app } = await import("/js/state.js"), R = await import("/js/ui/render.js"), F = await import("/js/rules/fight.js");
+      const keep = app.S.list; app.S.list = keep.filter((c) => c.kind === "pc"); const enc = app.S.enc; app.S.enc = []; R.render(); app.S.list = keep; app.S.enc = enc; });
+    await pv.waitForSelector("#pv-map", { state: "hidden" });
+    await page.waitForSelector("#mapview", { state: "hidden" });
+    await page.evaluate(async () => (await import("/js/ui/render.js")).render());
+    await pv.close();
+    // eindstand voor de meting: viewer open en gedeeld
+    await tap(page, '#order [data-enc="map"]');
+    await tap(page, '#mapview [data-mv="pv"]');
+    await page.waitForFunction(() => document.querySelector('#mapview [data-mv="pv"]').classList.contains("on"));
+  },
   // WP70: kaart bekijken in Gevecht (DM, alleen kijken). Twee ingeladen encounters met elk een kaart (één bestaat niet).
   // Knop "Kaarten (2)" in de encounterstrip; viewer vol scherm tot aan de dock: canvas getekend, Volgende blijft bruikbaar
   // en de viewer blijft open, +/− en Hele kaart, chips wisselen, "staat niet op dit apparaat", Esc sluit met de focus terug.

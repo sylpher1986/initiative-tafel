@@ -5,10 +5,11 @@
 // niet opnieuw op. Tekenen/pannen/zoomen via de brug (mapViewer in js/ui/encmap.js); geen invloed op S, undo of opslag.
 // Pan/zoom per kaart onthouden in het geheugen van deze sessie (views), niet in S, backup of spelersscherm (UX WP70).
 import { t } from "../i18n/boot.js";
-import { esc } from "./util.js";
+import { esc, toastBad } from "./util.js";
 import { ico } from "./icons.js";
-import { mapViewer } from "./encmap.js";
+import { mapViewer, flatMap, mapStamp } from "./encmap.js";
 import { encMaps } from "../rules/fight.js";
+import { render } from "./render.js";
 
 const STEP = 1.25; // zoomstap van + en − (zoals Inn Sight)
 let el = null, cv = null, ctl = null, cur = null, from = null, list = [];
@@ -17,6 +18,52 @@ const names = new Map(); // kaart-id → actuele naam uit Inn Sight (na laden; d
 
 export const mapOpen = () => !!(el && !el.hidden);
 
+/* ---------- WP71: kaart tonen aan spelers (spelersvenster op dit apparaat) ---------- */
+// Eén gedeelde kaart tegelijk, bewust aangezet met de schakelaar in de viewer (UX: nooit automatisch, een kaart kan de
+// dungeon verklappen). Alleen in het geheugen van deze sessie (niet in S, opslag of backup): herladen = niet meer gedeeld.
+// Blijft gedeeld als de viewer dicht gaat; stopt als de kaart niet meer ingeladen is (syncMap). flat = plat beeld
+// (flatMap) dat toPlayerView als map meegeeft; null zolang het rendert of als het mislukte.
+let shared = null; // { id, flat: { k, w, h, img } | null, at: updatedAt van het gerenderde document }
+let shareErr = false;
+/** Plat beeld voor de snapshot (js/main.js → toPlayerView opts.map), of null */
+export const sharedMap = () => (shared && shared.flat) || null;
+/** Id van de gedeelde kaart (knop in de encounterstrip), of null */
+export const sharedId = () => (shared ? shared.id : null);
+async function flatten(s) {
+  if (s.busy) return; // al bezig voor dit object: geen tweede render van 2048 px tegelijk
+  s.busy = true;
+  const r = await flatMap(s.id).catch(() => null);
+  s.busy = false;
+  if (shared !== s) return; // intussen gestopt of opnieuw aangezet (aan → uit → aan = nieuw object)
+  if (r) { s.flat = r.flat; s.at = r.at; }
+  else if (!s.flat) { shared = null; shareErr = true; if (!mapOpen()) toastBad(t("init.map.share.fail")); }
+  // her-render mislukt: het oude beeld blijft staan (geen stil stoppen met de viewer dicht)
+  paintShare(); render(); // render: knop in de strip en een nieuwe snapshot (afterRender)
+}
+function toggleShare() {
+  shareErr = false;
+  if (shared && shared.id === cur) shared = null;
+  else if (cur) { shared = { id: cur, flat: null, at: 0, busy: false }; flatten(shared); }
+  paintShare(); render();
+}
+/** Kaart in een ander tabblad (Inn Sight) bewerkt: bij terugkomen opnieuw renderen als hij veranderde */
+async function recheck() {
+  if (!shared || !shared.flat) return;
+  const s = shared, at = await mapStamp(s.id).catch(() => 0);
+  if (shared !== s) return;
+  if (!at) { shared = null; paintShare(); render(); return; } // kaart weg uit Inn Sight: niet meer tonen
+  if (at !== s.at) flatten(s);
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") recheck(); });
+function paintShare() {
+  if (!el) return;
+  const b = el.querySelector("[data-mv=pv]"), on = !!shared && shared.id === cur;
+  b.classList.toggle("on", on); // wisselend label, dus geen aria-pressed (anders "Getoond aan spelers, ingedrukt")
+  b.textContent = t(on ? "init.map.share.on" : "init.map.share.off");
+  el.querySelector(".mvthint").textContent = t(shareErr ? "init.map.share.fail" : "init.map.share.hint");
+  el.querySelector(".mvthint").classList.toggle("err", shareErr);
+}
+
 function make() {
   el = document.createElement("div");
   el.id = "mapview"; el.className = "mapview"; el.hidden = true; el.tabIndex = -1; // focus op de viewer (niet op ✕): spatie blijft Volgende
@@ -24,6 +71,7 @@ function make() {
   el.innerHTML = `<div class="mvhead"><button type="button" class="btn mvx" data-mv="close" aria-label="${esc(t("init.map.view.close"))}">${ico("x")}</button><h2 id="mv-name" class="mvname"></h2><button type="button" class="btn small mvfit" data-mv="fit"></button></div>
     <div class="mvchips" role="group" hidden></div>
     <div class="mvbody"><canvas class="mvcv" role="img"></canvas><div class="mvmsg" role="status"></div>
+    <div class="mvtoon"><button type="button" class="btn mvtn" data-mv="pv" aria-describedby="mv-thint"></button><small class="mvthint" id="mv-thint"></small></div>
     <div class="mvzoom"><button type="button" class="btn mvz" data-mv="in" aria-label="${esc(t("init.map.view.in"))}">${ico("plus")}</button><button type="button" class="btn mvz" data-mv="out" aria-label="${esc(t("init.map.view.out"))}"><span aria-hidden="true">−</span></button></div></div>`;
   cv = el.querySelector("canvas");
   el.addEventListener("click", (e) => {
@@ -34,6 +82,7 @@ function make() {
     else if (k === "in") ctl?.zoom(STEP);
     else if (k === "out") ctl?.zoom(1 / STEP);
     else if (k === "pick") show(b.dataset.id);
+    else if (k === "pv") toggleShare();
   });
   document.body.append(el);
   addEventListener("resize", () => { if (mapOpen()) ctl?.size(); });
@@ -65,6 +114,7 @@ function msg(state, ref) {
   const p = el.querySelector(".mvmsg"), name = ref.name || t("init.map.title");
   p.hidden = state === "ok";
   el.querySelector(".mvzoom").hidden = state !== "ok";
+  el.querySelector(".mvtoon").hidden = state !== "ok";
   el.querySelector("[data-mv=fit]").disabled = state !== "ok";
   cv.hidden = state !== "ok";
   p.innerHTML = state === "loading" ? `<p>${esc(t("init.map.view.loading"))}</p>`
@@ -87,9 +137,10 @@ function show(id) {
   el.querySelector("#mv-name").textContent = name;
   cv.setAttribute("aria-label", t("init.map.view.canvas", { name }));
   chips();
+  shareErr = false; paintShare();
   ctl = mapViewer(cv, id, {
     v0: views.get(id) || null,
-    on: (state, doc) => { if (cur !== id) return; if (doc && doc.name) { names.set(id, doc.name); el.querySelector("#mv-name").textContent = doc.name; cv.setAttribute("aria-label", t("init.map.view.canvas", { name: doc.name })); chips(); } msg(state, ref.map); },
+    on: (state, doc) => { if (cur !== id) return; if (doc && shared && shared.id === id && shared.flat && doc.updatedAt && doc.updatedAt !== shared.at) flatten(shared); if (doc && doc.name) { names.set(id, doc.name); el.querySelector("#mv-name").textContent = doc.name; cv.setAttribute("aria-label", t("init.map.view.canvas", { name: doc.name })); chips(); } msg(state, ref.map); },
     onZoom: (lo, hi) => { el.querySelector("[data-mv=out]").disabled = lo; el.querySelector("[data-mv=in]").disabled = hi; },
   });
 }
@@ -125,6 +176,8 @@ export function close() {
  *  onthouden views van kaarten die niet meer ingeladen zijn vergeten. Andere kaarten: chips bijwerken. */
 export function syncMap(S) {
   const now = encMaps(S), ids = new Set(now.map((m) => m.map.id));
+  // WP71: niet meer ingeladen = niet meer gedeeld; de snapshot van deze render (afterRender) heeft de kaart al niet meer
+  if (shared && !ids.has(shared.id)) { shared = null; if (mapOpen()) paintShare(); }
   if (mapOpen()) {
     if (!ids.has(cur)) close(); // eerst sluiten (bewaart de view), daarna hieronder vergeten
     else if (now.length !== list.length || now.some((m, i) => m.map.id !== list[i].map.id)) { list = now; chips(); }

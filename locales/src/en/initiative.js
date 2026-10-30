@@ -910,6 +910,14 @@ export default {
   "init.map.view.gone": "“{name}” isn't on this device.",
   "init.map.view.app": "An app installed on the home screen has its own storage, separate from the browser.",
   "init.map.view.where": "Choose or import a map under Encounters → Edit.",
+  "init.map.view.openS": "Map · shown", // WP71: knop in de strip terwijl een kaart aan spelers getoond wordt
+  "init.map.view.openNS": "Maps ({n}) · shown",
+  "init.map.view.ariaS": "Map · shown to players: {name}", // bevat de zichtbare tekst
+  "init.map.view.ariaNS": "Maps ({n}) · shown to players: {name}",
+  "init.map.share.off": "Show to players", // WP71: schakelaar in de kaartviewer
+  "init.map.share.on": "Shown to players",
+  "init.map.share.hint": "Only the player view on this device",
+  "init.map.share.fail": "This map couldn't be shown to players. Try again.",
   "init.enc.shareHint": "Share makes a file with the encounter and its custom monsters, for another device or a co-DM.",
   "init.enc.already": "Already in the list: {what}.",
   "init.enc.stops": "Replacing ends the combat.",

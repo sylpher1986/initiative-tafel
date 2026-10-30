@@ -4,6 +4,7 @@
 export default {
   "player.who": "Wie ben jij?", // knop; js/speler.js zet daarna "Jij: …"
   "player.full": "Volledig scherm",
+  "player.map": "Kaart",
   "player.log": "Wat er net gebeurde", // aria-label van de laatste regels
   "player.me": "Jouw personage", // aria-label van de eigen kaart
   "player.qr": "Meekijken op je telefoon", // aria-label van de QR-code op de tv
