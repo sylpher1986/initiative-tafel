@@ -1642,7 +1642,6 @@ export default {
   "page.home.featLabel": "What Initiative does",
   "page.home.mapsSub": "Battle map maker",
   "page.home.mapsText": "Square or hex grids, your own map image, objects and painted terrain. Everything stays on your device.",
-  "page.home.beta": "Beta",
   "page.home.featMonsters": "All SRD monsters, 2014 and 2024",
   "page.home.featMonstersText": "322 from SRD 5.1 and 331 from SRD 5.2.1, with stat blocks. Search, tap, done.",
   "page.home.featParty": "Your party in one tap",

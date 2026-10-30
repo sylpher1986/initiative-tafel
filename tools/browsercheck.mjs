@@ -124,7 +124,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/", wp68: "/nl/maps/", wp68b: "/nl/maps/", wp68c: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/", wp68: "/nl/maps/", wp68b: "/nl/maps/", wp68c: "/nl/maps/", wp68d: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
@@ -1536,6 +1536,18 @@ const SCEN = {
     }
     if (seen.size !== 24) throw new Error("niet alle 24 onderdelen als tegel: " + seen.size);
   },
+  // WP68d (Maps 1.4.0): installeerbaar, één app per taal. De pagina wijst naar het manifest van haar eigen taal; dat
+  // manifest en alle iconen zijn bereikbaar, met id/scope/start_url = het eigen pad (nooit "/", dat is Initiative).
+  async wp68d(page, base) {
+    await page.waitForFunction(() => window.__maps && document.getElementById("m-zoom").textContent);
+    const h = await page.evaluate(() => ({ man: document.querySelector('link[rel="manifest"]')?.href, apple: document.querySelector('link[rel="apple-touch-icon"]')?.href,
+      icon: document.querySelector('link[rel="icon"]')?.href, title: document.querySelector('meta[name="apple-mobile-web-app-title"]')?.content, path: location.pathname }));
+    if (!h.man || new URL(h.man).pathname !== h.path + "manifest.webmanifest") throw new Error("manifest-link: " + JSON.stringify(h));
+    if (h.title !== "Inn Sight") throw new Error("apple-titel: " + h.title);
+    const m = await (await page.request.get(h.man)).json();
+    if (m.id !== h.path || m.scope !== h.path || m.start_url !== h.path) throw new Error("manifest-identiteit: " + JSON.stringify([m.id, m.scope, m.start_url, h.path]));
+    for (const u of [h.apple, h.icon, ...m.icons.map((i) => new URL(i.src, h.man).href)]) { const res = await page.request.get(u); if (res.status() !== 200) throw new Error(`icoon ${u}: ${res.status()}`); }
+  },
   async wp66(page, base) {
     const ready = () => page.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);
     await ready();
@@ -2141,8 +2153,8 @@ const SCEN = {
     if (r.gold !== 1) throw new Error("gouden knoppen: " + r.gold);
     if (r.cur.join() !== r.lang) throw new Error("taalkiezer aria-current: " + r.cur.join());
     if (r.cardH < 72 || !/itiative/.test(r.name)) throw new Error("toolkaart: " + JSON.stringify([r.cardH, r.name]));
-    // WP67: tweede toolkaart Inn Sight direct onder Initiative (≥ 72 px, naam met Beta), kenmerken daarna met een zichtbaar kopje
-    if (!r.maps || r.maps.h < 72 || !r.maps.below || !/^Inn Sight Beta /.test(r.maps.name) || !r.maps.feat) throw new Error("toolkaart Inn Sight: " + JSON.stringify(r.maps));
+    // WP67: tweede toolkaart Inn Sight direct onder Initiative (≥ 72 px), kenmerken daarna met een zichtbaar kopje; WP68d: zonder Beta
+    if (!r.maps || r.maps.h < 72 || !r.maps.below || !/^Inn Sight /.test(r.maps.name) || /Beta/.test(r.maps.name) || !r.maps.feat) throw new Error("toolkaart Inn Sight: " + JSON.stringify(r.maps));
     for (const href of r.links) { const res = await page.request.get(base + href); if (res.status() !== 200) throw new Error(`link ${href}: ${res.status()}`); }
     if (page.viewportSize().width === 320) {
       const vp = page.viewportSize();

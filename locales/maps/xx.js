@@ -3,6 +3,7 @@
 export default {
   "maps.page.title": "[Íññ Síght · Kév’s Íññ ········]",
   "maps.title": "[Íññ Síght ····]",
+  "maps.manifest.desc": "[Báttlé máp mákér för D&D: gríds, öbjéçts, térráíñ áñd çüstöm ímágés ························]",
   "maps.home": "[Kév’s Íññ hömé págé ·······]",
   "maps.canvas": "[Máp wíth á gríd öf {cols} bý {rows} sqüárés ···········]",
   "maps.dock": "[Máp çöñtröls ·····]",

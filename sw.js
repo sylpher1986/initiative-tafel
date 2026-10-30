@@ -1,6 +1,6 @@
 // Service worker: maakt de app offline bruikbaar. Geregistreerd als /sw.js met scope "/" (js/main.js), dus "./x" = "/x". Verhoog VERSION bij elke release zodat de cache ververst.
 // Gelijk houden aan js/version.js (de test bewaakt dat); dit is ook het nummer dat de app toont.
-const VERSION = "2.11.4";
+const VERSION = "2.11.5";
 const CACHE = "initiative-tafel-" + VERSION;
 // TS1: pdf.js (± 2,5 MB, alleen voor de PDF-import) in een eigen cache op zijn eigen versie: blijft staan bij een
 // app-update, zodat niet elke release hem opnieuw downloadt. Nieuwe pdf.js-versie = nieuwe map en nieuwe naam hier.
@@ -10,11 +10,18 @@ const VENDOR_ASSETS = ["./vendor/pdfjs/pdf.js", "./vendor/pdfjs/pdf.worker.js"];
 // Gelijk houden aan js/maps/version.js (tests/maps-sw.test.js). Een Maps-release verhoogt alleen MAPS_VERSION: CACHE
 // van Initiative heet dan nog hetzelfde en install haalt bestanden die daar al staan niet opnieuw op (en omgekeerd).
 // Gedeeld (css/app.css, fonts, iconen, js/i18n/*, js/theme.js, homepage) staat in ASSETS: wijzigen = Initiative-release.
-const MAPS_VERSION = "1.3.0";
+const MAPS_VERSION = "1.4.0";
 const MAPS_CACHE = "kevs-inn-maps-" + MAPS_VERSION;
 const MAPS_ASSETS = [
   "./maps/",
   "./nl/maps/",
+  "./maps/manifest.webmanifest",
+  "./nl/maps/manifest.webmanifest",
+  "./maps/icons/icon.svg",
+  "./maps/icons/icon-180.png",
+  "./maps/icons/icon-192.png",
+  "./maps/icons/icon-512.png",
+  "./maps/icons/icon-maskable-512.png",
   "./css/maps.css",
   "./js/maps/main.js",
   "./js/maps/version.js",
@@ -70,6 +77,7 @@ const MAPS_ASSETS = [
   "./locales/maps/nl.js",
   "./locales/maps/xx.js",
 ];
+const MAPS_SET = new Set(MAPS_ASSETS); // WP68d: aanvullen bij gebruik (fetch)
 // Pagina's (WP21; WP44: Engels zonder taalcode): homepage (WP30) en app per taal plus de oude spelersadressen (/speler,
 // /player), die offline moeten werken voor beginscherm-apps en QR-links; tests/pages.test.js bewaakt dat elke
 // gegenereerde pagina hier staat. "/initiative/" is de start_url van elk manifest.
@@ -226,7 +234,13 @@ self.addEventListener("fetch", (e) => {
       return res;
     })));
   } else if (own) {
-    e.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => (hit ? unredirect(hit) : fetch(req))));
+    // WP68d: install vult Maps best effort (D2). Mislukte daar een Maps-bestand, dan bewaart het eerste gebruik met
+    // netwerk het alsnog, zodat een geïnstalleerde Inn Sight daarna ook offline start (zonder Initiative-updates te blokkeren).
+    const mk = "." + url.pathname;
+    e.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => (hit ? unredirect(hit) : fetch(req).then((res) => {
+      if (res.ok && MAPS_SET.has(mk)) { const copy = res.clone(); unredirect(copy).then((r) => caches.open(MAPS_CACHE).then((c) => c.put(mk, r))).catch(() => {}); }
+      return res;
+    }))));
   } else {
     e.respondWith(fetch(req).then((res) => {
       if (res.ok || res.type === "opaque") { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }

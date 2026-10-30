@@ -3,6 +3,7 @@
 export default {
   "maps.page.title": "Inn Sight · Kev’s Inn",
   "maps.title": "Inn Sight",
+  "maps.manifest.desc": "Battle map maker for D&D: grids, objects, terrain and custom images", // WP68d: beschrijving van de geïnstalleerde app (tools/pages.mjs)
   "maps.home": "Kev’s Inn home page",
   "maps.canvas": "Map with a grid of {cols} by {rows} squares",
   "maps.dock": "Map controls",

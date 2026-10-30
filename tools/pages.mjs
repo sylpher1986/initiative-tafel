@@ -75,6 +75,31 @@ export function manifest(lang, cat) {
   }, null, 2) + "\n";
 }
 
+/** WP68d: manifest van Inn Sight, één app per taal (Michiel): id, scope en start_url = het eigen pad van die taal
+ *  (/maps/, /nl/maps/), zodat de app nooit buiten zijn scope springt en geen launchRedirect nodig heeft. Iconen in
+ *  maps/icons/ (Maps-cache, tools/icons.mjs). De Initiative-manifesten (id "/", scope "/") blijven ongewijzigd. */
+export const MAPS_ICONS = [
+  { src: "/maps/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+  { src: "/maps/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+  { src: "/maps/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+];
+export function mapsManifest(lang, cat) {
+  const home = pathFor(lang, "/maps/");
+  return JSON.stringify({
+    id: home,
+    name: "Inn Sight",
+    short_name: "Inn Sight",
+    description: cat["maps.manifest.desc"],
+    lang,
+    start_url: home,
+    scope: home,
+    display: "standalone",
+    background_color: "#1d130d",
+    theme_color: "#241811",
+    icons: MAPS_ICONS,
+  }, null, 2) + "\n";
+}
+
 const banner = (src) => `<!-- Gegenereerd door tools/pages.mjs uit ${src}: wijzig het sjabloon en draai node tools/pages.mjs -->\n`;
 
 const escHtml = (v) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -225,6 +250,7 @@ export async function build(root = ROOT) {
     out[`${dirOf(lang)}index.html`] = appPage(readFileSync(root + HOME_PAGE, "utf8").replace("{{seo}}", () => seoHead(lang, cat)).replace("{{langnav}}", () => langNav(lang, cat)), HOME_PAGE, lang, cat);
     out[`${dirOf(lang)}404.html`] = notFoundPage(lang, cat); // Engels = de taalloze /404.html, ook voor een ongeldig prefix
     out[`${dirOf(lang)}manifest.webmanifest`] = manifest(lang, cat);
+    out[`${dirOf(lang, "maps/")}manifest.webmanifest`] = mapsManifest(lang, cat); // WP68d
   }
   for (const [file, addr] of Object.entries(REDIRECTS)) out[file] = redirectPage(addr);
   out["robots.txt"] = robots();

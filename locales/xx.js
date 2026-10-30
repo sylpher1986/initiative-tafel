@@ -1642,7 +1642,6 @@ export default {
   "page.home.featLabel": "[Whát Íñítíátívé döés ·······]",
   "page.home.mapsSub": "[Báttlé máp mákér ······]",
   "page.home.mapsText": "[Sqüáré ör héx gríds, ýöür öwñ máp ímágé, öbjéçts áñd páíñtéd térráíñ. Évérýthíñg stáýs öñ ýöür dévíçé. ····································]",
-  "page.home.beta": "[Bétá ··]",
   "page.home.featMonsters": "[Åll SRD möñstérs, 2014 áñd 2024 ···········]",
   "page.home.featMonstersText": "[322 fröm SRD 5.1 áñd 331 fröm SRD 5.2.1, wíth stát blöçks. Séárçh, táp, döñé. ···························]",
   "page.home.featParty": "[Yöür pártý íñ öñé táp ········]",

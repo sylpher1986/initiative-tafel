@@ -1,0 +1,30 @@
+{
+  "id": "/maps/",
+  "name": "Inn Sight",
+  "short_name": "Inn Sight",
+  "description": "Battle map maker for D&D: grids, objects, terrain and custom images",
+  "lang": "en",
+  "start_url": "/maps/",
+  "scope": "/maps/",
+  "display": "standalone",
+  "background_color": "#1d130d",
+  "theme_color": "#241811",
+  "icons": [
+    {
+      "src": "/maps/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/maps/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/maps/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

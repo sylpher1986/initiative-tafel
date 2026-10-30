@@ -1639,7 +1639,6 @@ export default {
   "page.home.featLabel": "Wat Initiative kan",
   "page.home.mapsSub": "Battle maps maken",
   "page.home.mapsText": "Vierkant- of hexraster, je eigen kaartafbeelding, onderdelen en geverfd terrein. Alles blijft op je apparaat.",
-  "page.home.beta": "Beta",
   "page.home.featMonsters": "Alle SRD-monsters, 2014 en 2024",
   "page.home.featMonstersText": "322 uit SRD 5.1 en 331 uit SRD 5.2.1, met statblocks. Zoeken, tikken, erin.",
   "page.home.featParty": "Je party in één tik",

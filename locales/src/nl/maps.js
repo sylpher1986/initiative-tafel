@@ -2,6 +2,7 @@
 export default {
   "maps.page.title": "Inn Sight · Kev’s Inn",
   "maps.title": "Inn Sight",
+  "maps.manifest.desc": "Battle maps maken voor D&D: raster, onderdelen, terrein en eigen afbeeldingen", // WP68d
   "maps.home": "Homepage van Kev’s Inn",
   "maps.canvas": "Kaart met een raster van {cols} bij {rows} vakjes",
   "maps.dock": "Kaartbediening",

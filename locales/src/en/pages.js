@@ -29,7 +29,6 @@ export default {
   "page.home.featLabel": "What Initiative does", // zichtbaar kopje boven de kenmerkenlijst (sinds WP67, twee toolkaarten), ook de naam van de lijst
   "page.home.mapsSub": "Battle map maker", // ondertitel op de toolkaart van Inn Sight (WP67); samen met de naam de toegankelijke naam van de kaartlink
   "page.home.mapsText": "Square or hex grids, your own map image, objects and painted terrain. Everything stays on your device.", // korte tekst op de toolkaart van Inn Sight
-  "page.home.beta": "Beta", // label naast de naam Inn Sight (tekst, geen stip); weg zodra Inn Sight installeerbaar of indexeerbaar wordt
   "page.home.featMonsters": "All SRD monsters, 2014 and 2024",
   "page.home.featMonstersText": "322 from SRD 5.1 and 331 from SRD 5.2.1, with stat blocks. Search, tap, done.",
   "page.home.featParty": "Your party in one tap",

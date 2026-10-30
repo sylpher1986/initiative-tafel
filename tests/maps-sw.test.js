@@ -31,15 +31,19 @@ test("alle Maps-bestanden in MAPS_ASSETS en niet in ASSETS; geen Initiative-best
   assert.deepEqual(init.filter(own), [], "Maps-bestand in de Initiative-cache");
 });
 function await_files() {
-  const gen = ["maps/", "nl/maps/"];
-  return [...gen, "css/maps.css", ...walk("js/maps/"), ...walk("locales/maps/"), ...walk("data/maps-assets/")].map((f) => f.replace(/index\.html$/, ""));
+  const gen = ["maps/", "nl/maps/", "maps/manifest.webmanifest", "nl/maps/manifest.webmanifest"];
+  return [...gen, "css/maps.css", ...walk("maps/icons/"), ...walk("js/maps/"), ...walk("locales/maps/"), ...walk("data/maps-assets/")].map((f) => f.replace(/index\.html$/, ""));
 }
 
 test("gegenereerde Maps-pagina's bestaan (pages.mjs) en staan in MAPS_ASSETS", async () => {
   const files = await build();
   assert.ok(files["maps/index.html"] && files["nl/maps/index.html"]);
   for (const f of ["maps/index.html", "nl/maps/index.html"]) {
-    assert.doesNotMatch(files[f], /<link rel="manifest"|<meta name="it-version"/, f + ": geen manifest en geen it-version (§9.2 stap 2, D7)");
+    assert.doesNotMatch(files[f], /<meta name="it-version"/, f + ": geen it-version (eigen versie)");
+    const base = f.startsWith("nl/") ? "/nl" : "";
+    assert.ok(files[f].includes(`<link rel="manifest" href="${base}/maps/manifest.webmanifest">`), f + ": eigen manifest van die taal (WP68d)");
+    assert.ok(files[f].includes('<link rel="apple-touch-icon" href="/maps/icons/icon-180.png">') && files[f].includes('<meta name="apple-mobile-web-app-title" content="Inn Sight">'), f + ": iOS-icoon en -titel per pagina");
+    assert.ok(files[f].includes('<link rel="icon" href="/maps/icons/icon.svg" type="image/svg+xml">'), f + ": eigen favicon");
     assert.doesNotMatch(files[f].replace(/\s(?:src|href)="[^"]*"|<!--[\s\S]*?-->/g, ""), /\{\{|\bmaps\.[a-z]+\b/, f + ": geen sleutel of plaatshouder zichtbaar");
     assert.match(files[f], /<script type="module" src="\/js\/maps\/main\.js"><\/script>/);
   }
@@ -91,4 +95,32 @@ test("install: alleen wat in de cache van die versie ontbreekt wordt opgehaald; 
   assert.ok(!d.store.get(MC).has("./css/maps.css") && d.store.get(MC).has("./js/maps/main.js"), "rest van Maps wel bewaard");
   const e = runSw(SW, {}, (a) => a === "./css/app.css");
   await assert.rejects(e.install());
+});
+
+// WP68d: installeerbaar, één app per taal (Michiel). id/scope/start_url = het eigen pad, nooit "/" (dat is Initiative)
+test("WP68d: Maps-manifest per taal: eigen id/scope/start_url, naam Inn Sight, iconen bestaan met de opgegeven maat", async () => {
+  const files = await build();
+  const png = (p) => { const b = readFileSync(ROOT + p); assert.equal(b.toString("latin1", 1, 4), "PNG", p); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
+  for (const [f, home, lang] of [["maps/manifest.webmanifest", "/maps/", "en"], ["nl/maps/manifest.webmanifest", "/nl/maps/", "nl"]]) {
+    const m = JSON.parse(files[f]);
+    assert.deepEqual([m.id, m.scope, m.start_url, m.lang], [home, home, home, lang], f);
+    assert.equal(m.name, "Inn Sight"); assert.equal(m.short_name, "Inn Sight"); assert.equal(m.display, "standalone");
+    assert.ok(m.description && !m.description.startsWith("maps."), f + ": beschrijving uit de catalogus");
+    assert.ok(m.icons.some((i) => i.purpose === "maskable") && m.icons.some((i) => i.sizes === "192x192") && m.icons.some((i) => i.sizes === "512x512"), f);
+    for (const i of m.icons) { const n = +i.sizes.split("x")[0]; assert.match(i.src, /^\/maps\/icons\//); assert.deepEqual(png(i.src.slice(1)), [n, n], i.src); }
+  }
+  assert.deepEqual(png("maps/icons/icon-180.png"), [180, 180]);
+  for (const f of ["manifest.webmanifest", "nl/manifest.webmanifest"]) assert.equal(JSON.parse(files[f]).id, "/", f + ": Initiative ongewijzigd");
+});
+
+test("WP68d: fetch bewaart een Maps-bestand dat bij install mislukte (offline start na het eerste gebruik)", async () => {
+  const on = {}, store = new Map(), puts = [];
+  const ctx = { URL, Promise, console, Error, Set, Response: class { constructor(b, o) { Object.assign(this, o); } },
+    self: { location: { origin: "https://kevs-inn.com" }, addEventListener: (t, f) => { on[t] = f; }, skipWaiting: () => {}, clients: { claim: () => {} } },
+    caches: { open: async (n) => ({ put: async (a) => { puts.push([n, a]); }, match: async () => undefined }), keys: async () => [], delete: async () => true, match: async () => undefined },
+    fetch: async () => ({ ok: true, status: 200, redirected: false, clone() { return this; } }) };
+  vm.runInNewContext(SW, ctx);
+  const go = async (path) => { let p; on.fetch({ request: { method: "GET", url: "https://kevs-inn.com" + path }, respondWith: (x) => { p = x; } }); await p; await new Promise((r) => setTimeout(r, 0)); };
+  await go("/maps/"); await go("/nl/maps/manifest.webmanifest"); await go("/js/main.js");
+  assert.deepEqual(puts, [[`kevs-inn-maps-${MAPS}`, "./maps/"], [`kevs-inn-maps-${MAPS}`, "./nl/maps/manifest.webmanifest"]], "alleen Maps-bestanden, in de Maps-cache");
 });
