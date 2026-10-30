@@ -134,6 +134,14 @@ function drawTok(g, t, v, w, h, dpr, { hidden = false, scale = 1, shadow = false
   if (hidden) g.setLineDash([4 * dpr, 3 * dpr]);
   g.lineWidth = 2 * dpr; g.strokeStyle = TOK_EDGE.inner; g.stroke();
   g.setLineDash([]);
+  if (t.tn) turnRing(g, X, Y, R, v, dpr); // WP75: aan de beurt (Initiative legt tn alleen tijdens het tekenen over het token)
+  if (t.dn) { // WP75 (UX): neer of dood = groot kruis (Walnut met een Ivory-rand); het label blijft er leesbaar boven
+    const d = R * 0.62;
+    g.beginPath(); g.moveTo(X - d, Y - d); g.lineTo(X + d, Y + d); g.moveTo(X + d, Y - d); g.lineTo(X - d, Y + d);
+    g.lineCap = "round";
+    g.lineWidth = Math.max(4, R * 0.24); g.strokeStyle = TOK_EDGE.outer; g.stroke();
+    g.lineWidth = Math.max(2, R * 0.13); g.strokeStyle = TOK_EDGE.inner; g.stroke();
+  }
   if (t.l && R >= 7 * dpr) {
     const n = chars(t.l).length, fs = R * (n >= 3 ? 0.78 : n === 2 ? 0.95 : 1.15);
     g.font = `700 ${Math.round(fs)}px ${TOK_FONT}`;
@@ -142,6 +150,15 @@ function drawTok(g, t, v, w, h, dpr, { hidden = false, scale = 1, shadow = false
     g.fillText(t.l, X, Y + fs * 0.04, R * 1.7);
   }
   g.restore();
+}
+// WP75 (UX): beurt-ring, statisch (het spelersbeeld is een JPEG) en anders dan de selectie (die ligt tegen de schijf in
+// --sel): dubbel buiten de schijf met wat ruimte, Walnut 2 px, Ivory ± 10 % van een cel (min 3 px), Walnut 2 px. Op elke
+// vloer en tokenkleur te zien, ook op een tv. Coördinaten in apparaatpixels.
+function turnRing(g, X, Y, R, v, dpr) {
+  const iv = Math.max(3 * dpr, 0.1 * CELL * v.z * dpr), wn = 2 * dpr, r0 = R + 2.5 * dpr; // r0 = binnenkant (buiten de Ivory-rand van de schijf)
+  g.beginPath(); g.arc(X, Y, r0 + wn + iv / 2, 0, Math.PI * 2);
+  g.lineWidth = iv + 2 * wn; g.strokeStyle = TOK_EDGE.inner; g.stroke();
+  g.lineWidth = iv; g.strokeStyle = TOK_EDGE.outer; g.stroke();
 }
 // Ring om een token: selectie (breed in de kaartkleur, smal in --sel, 3 px buiten de schijf) of gestippeld (oude plek)
 function drawRing(g, t, v, dpr, col, dashed) {

@@ -2,4 +2,4 @@
 // Moet gelijk zijn aan VERSION in sw.js; tests/version.test.js bewaakt dat.
 /** Productnaam (huisstijl Kev’s Inn, WP13). Woordgrap: Inn + itiative = Initiative. */
 export const APP = "Kev’s Inn itiative";
-export const VERSION = "2.17.0";
+export const VERSION = "2.18.0";

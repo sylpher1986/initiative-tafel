@@ -99,6 +99,7 @@ const isOpen = () => $("#sbwrap").dataset.open === "true";
 
 function open() { sb.follow = true; setOpen(true); bigBtn(); }
 function setOpen(on) {
+  if (!on) document.body.classList.remove("mvsb"); // WP75: paneel boven de kaartviewer dicht (ook bij een beurtwissel)
   $("#sbwrap").dataset.open = String(on);
   document.body.dataset.sb = on ? "open" : "";
   if (!on) $("#sbwrap").dataset.big = "false";
@@ -149,6 +150,15 @@ const showable = (c) => hasSB(c) || (c && c.kind === "pc");
 const still = (c) => (c && (sb.pc ? c.kind === "pc" : hasSB(c)?.n === sb.ref && cleanEd(c.ed) === sb.ed) ? c : null);
 function show(c, chips, follow) {
   if (c.kind === "pc") showSheet(c, chips); else showSB(c, follow);
+}
+/** WP75: deelnemer c tonen (tik op een gekoppeld token in de kaartviewer). false = er is niets te tonen (monster zonder statblock) */
+export function showWho(c) {
+  if (!showable(c)) return false;
+  sb.prev = null; sb.back = null;
+  show(c, sb.args && sb.args[2], false);
+  setOpen(true); bigBtn(); // ook een speler-sheet (showSheet opent zelf niet altijd)
+  sb.follow = false; // review: de volgende beurtwissel vervangt het getoonde token-statblock niet
+  return true;
 }
 
 /**

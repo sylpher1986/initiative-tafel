@@ -75,7 +75,7 @@ tests/maps-*.test.js
 - **Raster**: `{ type: "square" | "hex", orient: "pointy" | "flat" (hex), cols, rows, show, color, alpha }`. Hex-cellen in axiale coördinaten intern, opgeslagen als offset-kolom/rij (eenvoudiger te begrenzen).
 - **Achtergrond**: `{ asset, x, y, scale, rot? }` — positie/schaal in kaarteenheden, zodat een geüploade battle map op het raster uitgelijnd kan worden.
 - **Terrein** (WP63, `terr`): `{ w, h, ids, cells }`: vast celraster w × h (= `LIMITS.maxCells`, los van kolommen/rijen), `cells` = tekst van w·h tekens rij voor rij, teken = positie in `0-9a-z` (0 = leeg, k = `ids[k − 1]`). Oorspronkelijk advies (schaarse celkaart `{ "c,r": terrainId }`) afgewezen om de kopieerkosten per veeg.
-- **Tokens** (WP74, `toks`): `{ at, list: [{ id, x, y, s, c, l, hide? }] }`, eigen veld (geen objectlaag) omdat ook de kaartviewer het schrijft; "laatste wijziging wint" op `at`, zoals fog. Schema 7.
+- **Tokens** (WP74, `toks`): `{ at, list: [{ id, x, y, s, c, l, hide?, p? }] }`, eigen veld (geen objectlaag) omdat ook de kaartviewer het schrijft; "laatste wijziging wint" op `at`, zoals fog. Schema 7; met een gekoppeld token (`p`, WP75) schema 8.
 - **Objecten** (WP61, `objs`): `[{ id, asset, x, y, w, h, rot, layer }]`, x/y = middelpunt, w/h in cellen, `layer` ∈ `floor | object`; later `dm` (fog is geen laag maar een eigen veld, zie hieronder). Geen `z`: de lijstvolgorde is de tekenvolgorde binnen een laag.
 - **Assets**: `{ id: { kind: "builtin", ref } | { kind: "custom", mime, w, h, sha256, name } }`; bytes los in de assetstore, niet in het kaartdocument.
 - Id's en codes in opslag, geen labels (CLAUDE.md, Meertaligheid). Gebruikersinhoud (kaartnaam, objectnamen) wordt nooit vertaald.
@@ -290,7 +290,7 @@ Nummering loopt door op de repo-historie (laatste was WP55). Elk pakket = één 
 ### Fase 4 — Zicht en tokens
 **WP73 · Handmatige fog of war** · L — **Klaar (30-10-2026, Maps 1.5.0, Initiative 2.16.0)**: bewerken in Inn Sight (paneel Kaart + fogmodus) en in de kaartviewer van Initiative, bewaard in de kaart (schema 6), ingebakken in het spelersbeeld. Details in CLAUDE.md, "Inn Sight → Fog of war".
 **WP74 · Vrije tokens** · L — **Klaar (30-10-2026, Maps 1.6.0, Initiative 2.17.0)**: schijf + label, D&D-grootte, verborgen voor spelers per token, geplaatst in Inn Sight (tab Tokens) en te slepen in de kaartviewer; eigen veld `toks` (schema 7, "laatste wijziging wint" zoals fog). Details in CLAUDE.md, "Inn Sight → Vrije tokens".
-**WP75 · Tokens gekoppeld aan deelnemers** · L (afhankelijk van WP69, ook `anon`/verborgen-regels van het spelersscherm respecteren).
+**WP75 · Tokens gekoppeld aan deelnemers** · L — **Klaar (30-10-2026, Maps 1.7.0, Initiative 2.18.0)**: koppeling `p` in het token (schema 8), plaatsen met "Plaatsen (n)" in de viewer, beurt-ring en kruis alleen bij het tekenen, spelersbeeld volgt de snapshot van het spelersscherm (anon, verborgen, vóór Start), tik opent de deelnemer, Ontkoppelen in Inn Sight. Details in CLAUDE.md, "Inn Sight → Tokens gekoppeld aan deelnemers".
 
 ### Kritiek pad
 WP56 → WP57 → WP58 → WP59 → WP60 (**M1**) → WP61 → WP62 → (WP63, WP64 parallel mogelijk) → WP65 → WP66 → WP67 (**M2**) → WP69 → WP71 → WP73.
@@ -342,7 +342,7 @@ Geen meer: D1–D3 zijn besloten. De rest start op het advies en wordt per pakke
 ---
 
 ## 7. Volgende stap
-WP56–WP74 zijn klaar (M1 en M2 bereikt, fase 3 af, van fase 4 WP73 en WP74); wat geldt staat in CLAUDE.md, "Gemaakte keuzes → Inn Sight". Volgende: WP75 (tokens gekoppeld aan deelnemers).
+WP56–WP75 zijn klaar (M1 en M2 bereikt, fase 3 en fase 4 af); wat geldt staat in CLAUDE.md, "Gemaakte keuzes → Inn Sight". Volgende: een vervolgplan (muren/deuren, meervoudige selectie, later G2/G3) als Michiel dat wil.
 
 ---
 
@@ -361,7 +361,7 @@ Eén kaart volledig en zelfstandig in één JSON-bestand (`js/maps/model/file.js
   "assets": { "<sha256>": { "mime": "image/webp", "w": 2100, "h": 1400, "data": "<base64>" } }
 }
 ```
-- `map` = het kaartdocument zoals in de opslag (§2.3, `cleanMap`), **zonder `id`**: geen verwijzing naar browseropslag; import geeft altijd een nieuwe id, tijden = nu, naam via `uniqueName` (nooit overschrijven). `bg` en dus `assets` alleen als er een achtergrond is (schema 2); objecten (WP61) als optioneel veld `objs` (schema 3, `cleanObjs`; ingebouwde onderdelen alleen als id, niet als afbeelding; een onbekende id blijft bewaard en wordt als plaatshouder getekend); terrein (WP63) als optioneel veld `terr` (schema 4, `cleanTerr`: vast raster, palet van alleen gebruikte id's, onbekende id blijft en wordt een plaatshouder; bestandsversie blijft 1). Eigen assets (WP64): een object met een sha256 als `asset` (schema 5); die afbeelding staat in `assets` zoals de achtergrond, met optioneel `name` (naam in Mijn assets, gebruikersinhoud, max 40); dezelfde controles en foutcodes; ontbreekt hij = `missing`. Fog (WP73) als optioneel veld `fog` (schema 6 als hij aan staat) en tokens (WP74) als optioneel veld `toks` (schema 7 met tokens; een tokenveld dat geen object is of meer dan 200 tokens = `badmap`); bestandsversie blijft 1.
+- `map` = het kaartdocument zoals in de opslag (§2.3, `cleanMap`), **zonder `id`**: geen verwijzing naar browseropslag; import geeft altijd een nieuwe id, tijden = nu, naam via `uniqueName` (nooit overschrijven). `bg` en dus `assets` alleen als er een achtergrond is (schema 2); objecten (WP61) als optioneel veld `objs` (schema 3, `cleanObjs`; ingebouwde onderdelen alleen als id, niet als afbeelding; een onbekende id blijft bewaard en wordt als plaatshouder getekend); terrein (WP63) als optioneel veld `terr` (schema 4, `cleanTerr`: vast raster, palet van alleen gebruikte id's, onbekende id blijft en wordt een plaatshouder; bestandsversie blijft 1). Eigen assets (WP64): een object met een sha256 als `asset` (schema 5); die afbeelding staat in `assets` zoals de achtergrond, met optioneel `name` (naam in Mijn assets, gebruikersinhoud, max 40); dezelfde controles en foutcodes; ontbreekt hij = `missing`. Fog (WP73) als optioneel veld `fog` (schema 6 als hij aan staat) en tokens (WP74) als optioneel veld `toks` (schema 7 met tokens, 8 met een gekoppeld token `p` (WP75); een tokenveld dat geen object is of meer dan 200 tokens = `badmap`); bestandsversie blijft 1.
 - `assets` bevat precies de afbeeldingen waar de kaart naar verwijst (achtergrond en eigen assets op objecten, elk één keer; ongebruikte items uit Mijn assets nooit); sleutel = sha256 (hex) van de bytes in `data`; `w`/`h` = afmetingen van die opgeslagen bytes (≤ 4096 px). `src` (sha256 van het origineel, index in de opslag) gaat bewust niet mee en wordt bij import genegeerd; een bestaande asset met dezelfde sha wordt niet overschreven.
 - Bestandsnaam `inn-the-grid-<kaartnaam>-YYYY-MM-DD-HH-MM.json` (lokale tijd, slug van de naam, max 40 tekens, leeg = `map`).
 - Schrijven: als Blob uit tekststukken (`buildParts`, base64 per 48 KB), nooit één enorme string. Ontbreekt een afbeelding (opslag gewist), dan geen bestand maar een melding.

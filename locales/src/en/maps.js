@@ -371,6 +371,9 @@ export default {
   "maps.tok.descNoLabel": "{name}, {size}",
   "maps.tok.descNoLabelHidden": "{name}, {size}, hidden from players",
   "maps.tok.hidden": "Hidden from players",
+  "maps.tok.linked": "Linked to a combatant in Initiative: players only see it while that combatant is visible to them.",
+  "maps.tok.unlink": "Unlink",
+  "maps.tok.unlinked": "{name} is no longer linked.",
   "maps.tok.hiddenDone": "{name} hidden from players.",
   "maps.tok.shown": "{name} visible to players.",
   "maps.tok.max": "Limit reached: {n} tokens per map.",
@@ -385,4 +388,5 @@ export default {
   "maps.hist.tlabel": "Relabel {name}",
   "maps.hist.tcolor": "Recolor {name}",
   "maps.hist.tsize": "Resize {name}",
+  "maps.hist.tunlink": "Unlink {name}",
 };

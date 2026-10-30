@@ -370,6 +370,9 @@ export default {
   "maps.tok.descNoLabel": "{name}, {size}",
   "maps.tok.descNoLabelHidden": "{name}, {size}, verborgen voor spelers",
   "maps.tok.hidden": "Verborgen voor spelers",
+  "maps.tok.linked": "Gekoppeld aan een deelnemer in Initiative: spelers zien hem alleen zolang die deelnemer voor hen zichtbaar is.",
+  "maps.tok.unlink": "Ontkoppelen",
+  "maps.tok.unlinked": "{name} is niet meer gekoppeld.",
   "maps.tok.hiddenDone": "{name} verborgen voor spelers.",
   "maps.tok.shown": "{name} zichtbaar voor spelers.",
   "maps.tok.max": "Maximum bereikt: {n} tokens per kaart.",
@@ -384,4 +387,5 @@ export default {
   "maps.hist.tlabel": "Label van {name} wijzigen",
   "maps.hist.tcolor": "Kleur van {name} wijzigen",
   "maps.hist.tsize": "Grootte van {name} wijzigen",
+  "maps.hist.tunlink": "{name} ontkoppelen",
 };

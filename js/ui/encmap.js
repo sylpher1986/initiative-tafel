@@ -10,6 +10,7 @@ import { t, i18n } from "../i18n/boot.js";
 import { normLang, DEFAULT, pathFor } from "../i18n/lang.js";
 import { esc } from "./util.js";
 import { ui } from "./render.js";
+import { decoSig as decoSigOf } from "../rules/maptoks.js";
 
 /** Datum als in de encounterlijst ("12 okt", ander jaar met jaartal) */
 export const dateTxt = (ms) => i18n().date(ms, { day: "numeric", month: "short", ...(new Date(ms).getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) });
@@ -121,17 +122,31 @@ const viewMods = () => (vmods ||= Promise.all([store(), import("../maps/render/c
  * loslaten alleen de tokens naar de kaart (putToks). Een tik op een token selecteert het (ring): onTok(info) met
  * { id, l, c, fill, ink, known, hide, fog } (fog = middelpunt onder fog), onTok(null) = niets geselecteerd; hide(id) zet "verborgen voor
  * spelers" om. onToks(doc) na elke bewaarde tokenwijziging, onToks(null) als schrijven mislukte.
+ * WP75: deco(list) legt de toestand van de deelnemers over gekoppelde tokens (decoDm: beurt-ring, kruis, verborgen) alleen
+ * voor het tekenen; redeco() na elke render van Initiative. tapLinked(p) bij een tik op een gekoppeld token: true = de
+ * viewer opende de deelnemer (geen selectie). place(entries) zet nieuwe gekoppelde tokens langs de bovenrand van het
+ * zichtbare deel; remove(tid) haalt een token weg (wees-token).
  */
-export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {}, onFog = () => {}, onTok = () => {}, onToks = () => {} } = {}) {
+export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {}, onFog = () => {}, onTok = () => {}, onToks = () => {}, deco = (l) => l, tapLinked = () => false } = {}) {
   let M = null, map = null, img = null, art = null, layer = null, view = v0 ? { ...v0 } : null, w = 0, h = 0, dpr = 1, col = null;
   let queued = false, dead = false, settleT = 0, lim = "", fogMode = null, frame = null, writing = Promise.resolve();
   let lift = null, selT = null, tframe = null; // WP74: versleept token { t, from }, geselecteerd token-id, doelcellen
+  let dsrc = null, dgen = 0, dfor = -1, dtoks = null, dsig = ""; // WP75: gedecoreerde tokens (alleen opnieuw bij nieuwe tokens of een render van Initiative)
+  const shown = () => {
+    if (map.toks !== dsrc || dgen !== dfor) {
+      const L = M.tok.tokList(map.toks), D = deco(L), sig = D === L ? "" : decoSigOf(D);
+      // review: zelfde tokens en zelfde decoratie (HP getypt, notitie) = zelfde object, dus de kaartbuffer blijft geldig
+      if (map.toks !== dsrc || sig !== dsig) dtoks = D === L ? map.toks : { at: (map.toks && map.toks.at) || 0, list: D };
+      dsrc = map.toks; dfor = dgen; dsig = sig;
+    }
+    return dtoks === map.toks ? map : { ...map, toks: dtoks }; // dezelfde lijst zolang niets verandert: de kaartbuffer blijft geldig
+  };
   const paint = () => {
     queued = false;
     if (dead || !map || !view || w < 2 || h < 2) return;
     M.canvas.fitCanvas(cv, w, h, dpr);
     const ts = selT && !lift ? M.tok.tokList(map.toks).find((x) => x.id === selT) || null : null;
-    const r = layer.paint(cv, map, view, w, h, dpr, col, { img, art, brush: frame ? [frame] : tframe ? [tframe] : null, lift: lift ? lift.from.id : null, tlift: lift, tsel: ts }, [art.ver()]);
+    const r = layer.paint(cv, shown(), view, w, h, dpr, col, { img, art, brush: frame ? [frame] : tframe ? [tframe] : null, lift: lift ? lift.from.id : null, tlift: lift, tsel: ts }, [art.ver()]);
     if (r.settle) { clearTimeout(settleT); settleT = setTimeout(later, r.settle); }
     const lo = view.z <= M.view.ZMIN, hi = view.z >= M.view.ZMAX;
     if (lim !== `${lo}${hi}`) { lim = `${lo}${hi}`; onZoom(lo, hi); }
@@ -222,12 +237,13 @@ export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {},
     if (!x) { onTok(null); return; }
     const c = M.grid.cellAt(map.grid, x.x, x.y);
     const k = M.tok.tokColor(x.c);
-    onTok({ id: x.id, l: x.l, c: x.c, fill: k.fill, ink: k.ink, known: !!M.tok.TOK_COLORS[x.c], hide: !!x.hide, fog: M.fog.hidden(map.fog, c.c, c.r) });
+    onTok({ id: x.id, l: x.l, c: x.c, fill: k.fill, ink: k.ink, known: !!M.tok.TOK_COLORS[x.c], hide: !!x.hide, fog: M.fog.hidden(map.fog, c.c, c.r), ...(x.p ? { p: x.p } : {}) });
   }
   const tokAtPt = (sx, sy) => { const p = M.view.toMap(view, sx, sy); return M.tok.nearTok(M.tok.tokList(map.toks), p.x, p.y, 22 / (M.view.CELL * view.z)); };
   function tokTap(sx, sy) {
     if (!map || !view || fogMode) return;
     const x = tokAtPt(sx, sy), id2 = x ? x.id : null;
+    if (x && x.p && tapLinked(x.p)) { if (selT) { selT = null; later(); tell(); } return; } // WP75 (Michiel): tik opent de deelnemer
     if (id2 === selT) return;
     selT = id2; later(); tell();
   }
@@ -282,6 +298,24 @@ export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {},
       change((list) => (list.some((y) => y.id === tid) ? M.tok.mapTok(list, tid, (y) => { const n = { ...y, hide }; if (!hide) delete n.hide; return n; }) : null));
     },
     zoom(f) { if (map && view) set(M.view.zoomAt(view, f, w / 2, h / 2)); },
+    /** WP75: Initiative renderde opnieuw (beurt, HP, verborgen): decoratie opnieuw */
+    redeco() { if (!dead && map) { dgen++; later(); } },
+    /** WP75: tokens van de kaart zelf (zonder decoratie), null zolang de kaart niet geladen is */
+    toks: () => (!dead && map ? M.tok.tokList(map.toks) : null),
+    /** WP75: nieuwe gekoppelde tokens (entries = [{ p, l, c, s }], spelers eerst) langs de bovenrand van het zichtbare deel.
+     *  → aantal geplaatst (0 = niets: kaart niet geladen of maximum bereikt) */
+    place(entries) {
+      if (dead || !map || !view || !entries.length) return 0;
+      const L = M.tok.tokList(map.toks), room = M.tok.TOK.max - L.length;
+      const put = placeRow(M, map.grid, L, entries.slice(0, Math.max(0, room)), M.view.toMap(view, 0, 0), M.view.toMap(view, w, h));
+      if (!put.length) return 0;
+      change((list) => { const have = new Set(list.map((y) => y.p).filter(Boolean)), used = new Set(list.map((y) => y.id)); const add = [];
+        for (const n of put) { if (have.has(n.p) || list.length + add.length >= M.tok.TOK.max) continue; const tid = M.tok.tokId(used); used.add(tid); add.push(M.tok.cleanTok({ ...n, id: tid })); }
+        return add.length ? [...list, ...add] : null; });
+      return put.length;
+    },
+    /** WP75: token weghalen (wees-token: gekoppeld, maar de deelnemer staat niet meer in de lijst) */
+    remove(tid) { if (!dead && map) { if (selT === tid) selT = null; change((list) => (list.some((y) => y.id === tid) ? M.tok.removeTok(list, tid) : null)); } },
     view: () => (view ? { ...view } : null),
     /** Kleuren opnieuw lezen (themawissel terwijl de kaart open is) */
     theme() { if (!dead && M && map) { col = M.canvas.readColors(); later(); } },
@@ -294,6 +328,36 @@ export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {},
       M = map = img = art = layer = view = col = null;
     },
   };
+}
+
+/**
+ * WP75 (UX): plekken voor nieuwe gekoppelde tokens. Een rij langs de bovenrand van het zichtbare deel (a = linksboven,
+ * b = rechtsonder in kaarteenheden), binnen de kaart, op de cellen; past het niet, dan de volgende rij. Spelers links,
+ * monsters rechts met één lege cel ertussen. Cellen met al een token worden overgeslagen. → [{ p, l, c, s, x, y }]
+ */
+function placeRow(M, grid, have, entries, a, b) {
+  const hex = grid.type === "hex", cl = (v, n) => Math.max(0, Math.min(n - 1, v));
+  const A = M.grid.cellAt(grid, a.x + 0.5, a.y + 0.5), Z = M.grid.cellAt(grid, b.x - 0.5, b.y - 0.5);
+  const c0 = cl(A.c, grid.cols), r0 = cl(A.r, grid.rows), cEnd = Math.max(c0, cl(Z.c, grid.cols));
+  const near = (L, x, y, s) => L.some((t) => Math.hypot(t.x - x, t.y - y) < ((t.s + s) / 2) * 0.9);
+  const out = [];
+  let col = c0, row = r0, rowH = 1, side = entries.length ? entries[0].pc : false;
+  for (const n of entries) {
+    if (n.pc !== side) { side = n.pc; col += 1; } // één lege cel tussen spelers en monsters
+    const wc = hex ? 1 : Math.max(1, n.s); // breedte in cellen
+    for (let tries = 0; tries < 500; tries++) {
+      if (col + wc - 1 > cEnd && col > c0) { col = c0; row += rowH; rowH = 1; } // volgende rij
+      if (row + wc - 1 > grid.rows - 1) row = Math.max(0, grid.rows - wc); // onderaan de kaart: niet verder
+      const m = M.grid.cellCenter(grid, col, row);
+      const p = M.tok.tokAt(grid, n.s, hex ? m.x : m.x + (wc - 1) / 2, hex ? m.y : m.y + (wc - 1) / 2, true);
+      col += wc;
+      if (near(have, p.x, p.y, n.s) || near(out, p.x, p.y, n.s)) continue;
+      out.push({ p: n.p, l: n.l, c: n.c, s: n.s, x: p.x, y: p.y });
+      rowH = Math.max(rowH, wc);
+      break;
+    }
+  }
+  return out;
 }
 
 /* ---------- WP71: plat spelersbeeld ---------- */
@@ -309,8 +373,10 @@ let flatN = 0;
 /**
  * Kaart met deze id als plat beeld → { flat: { k, w, h, img: Blob }, at: updatedAt } of null (kaart weg, opslag of kaartcode niet bereikbaar,
  * canvas te groot). Wacht tot de tekeningen geladen zijn (hooguit ± 4 s; wat dan nog ontbreekt wordt een plaatshouder).
+ * WP75: deco(list) = gekoppelde tokens zoals spelers ze zien (decoPv: alleen zichtbare deelnemers, "?" bij naam onbekend,
+ * kruis, beurt-ring), aangeroepen vlak voor het tekenen (de stand van dat moment); toks = de tokens van de kaart zelf.
  */
-export async function flatMap(id) {
+export async function flatMap(id, deco = (l) => l) {
   let M;
   try { M = await viewMods(); if (!(await M.s.available())) return null; } catch { return null; }
   const map = await M.s.getMap(id).catch(() => null);
@@ -327,13 +393,17 @@ export async function flatMap(id) {
   cv.width = W; cv.height = H;
   let ping = null;
   const art = M.art.createArt(() => ping && ping(), { custom: (sha) => own.get(sha) || null });
-  const draw = () => { const g = cv.getContext("2d"); g.setTransform(1, 0, 0, 1, 0, 0); M.canvas.drawBase(g, map, v, W, H, 1, FLAT_COL, W, H, { img, art, fog: "player" }); };
+  const raw = M.tok.tokList(map.toks);
+  let pm = map;
+  const draw = () => { const g = cv.getContext("2d"); g.setTransform(1, 0, 0, 1, 0, 0); M.canvas.drawBase(g, pm, v, W, H, 1, FLAT_COL, W, H, { img, art, fog: "player" }); };
   const builtins = [...new Set((map.objs || []).map((o) => o.asset).filter((a) => !own.has(a)))];
   draw(); // start het laden van alle tekeningen
   const until = Date.now() + 4000;
   while (Date.now() < until && !art.done(builtins.filter((a) => M.assets.builtin(a)))) await new Promise((r) => { ping = r; setTimeout(r, 250); });
   await new Promise((r) => setTimeout(r, 0)); // eigen assets: createArt zet ze een microtask later klaar
   ping = null;
+  const D = deco(raw); // WP75: de stand van nu (na het wachten op de tekeningen)
+  if (D !== raw) pm = { ...map, toks: { at: (map.toks && map.toks.at) || 0, list: D } };
   draw();
   const fit = await fitJpeg(cv), blob = fit && fit.b;
   if (img && img.close) img.close();
@@ -341,7 +411,7 @@ export async function flatMap(id) {
   art.trim(new Set());
   cv.width = cv.height = 0;
   if (!blob) return null;
-  return { flat: { k: `m${Date.now().toString(36)}${++flatN}`, w: fit.w, h: fit.h, img: blob }, at: map.updatedAt || 0 };
+  return { flat: { k: `m${Date.now().toString(36)}${++flatN}`, w: fit.w, h: fit.h, img: blob }, at: map.updatedAt || 0, toks: raw, sig: D === raw ? "" : decoSigOf(D) };
 }
 /** WP72: JPEG ≤ ROOM_MAP_MAX (past in de kamer): eerst lagere kwaliteit, dan kleiner (± 75 % per stap). Eén beeld voor
  *  alle spelersschermen; bijna elke kaart past al op 0,85. → { b: Blob, w, h } of null (mislukt). */

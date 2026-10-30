@@ -16,8 +16,13 @@ import { esc, toastBad } from "./util.js";
 import { ico } from "./icons.js";
 import { mapViewer, flatMap, mapStamp } from "./encmap.js";
 import { encMaps } from "../rules/fight.js";
-import { render } from "./render.js";
+import { render, ui } from "./render.js";
 import { roomMap } from "./kamer.js";
+import { app } from "../state.js";
+import { sortOrder } from "../rules/turns.js";
+import { findMon } from "../data/monsters.js";
+import { decoDm, decoPv, decoSig, toPlace, turnIds, whoOf, orphan, keysById, missingCount } from "../rules/maptoks.js";
+import { showWho, closeSB } from "./statblock.js";
 
 const STEP = 1.25; // zoomstap van + en − (zoals Inn Sight)
 let el = null, cv = null, ctl = null, cur = null, from = null, list = [];
@@ -25,9 +30,12 @@ const views = new Map(); // kaart-id → laatste view (sessie)
 const names = new Map(); // kaart-id → actuele naam uit Inn Sight (na laden; de verwijzing kan een oude naam hebben)
 
 export const mapOpen = () => !!(el && !el.hidden);
+/** WP75: statblock of sheet open boven de viewer (tik op een gekoppeld token) */
+const sbOver = () => document.body.classList.contains("mvsb") && document.body.dataset.sb === "open";
 /** WP73: Esc in de fogmodus = Klaar (zoals in Inn Sight); WP74: anders een geselecteerd token loslaten. true als dat gebeurde */
 export function fogEsc() {
   if (!mapOpen()) return false;
+  if (sbOver()) { closeSB(); return true; } // WP75: eerst het statblock boven de kaart
   if (fogging) { setFog(false); return true; }
   if (tok) { ctl?.unsel(); return true; }
   return false;
@@ -47,10 +55,10 @@ export const sharedId = () => (shared ? shared.id : null);
 async function flatten(s) {
   if (s.busy) { s.again = true; return; } // al bezig: geen tweede render van 2048 px tegelijk, wel daarna nog één (WP73)
   s.busy = true; s.again = false;
-  const r = await flatMap(s.id).catch(() => null);
+  const r = await flatMap(s.id, pvDeco).catch(() => null);
   s.busy = false;
   if (shared !== s) return; // intussen gestopt of opnieuw aangezet (aan → uit → aan = nieuw object)
-  if (r) { s.flat = r.flat; s.at = r.at; }
+  if (r) { s.flat = r.flat; s.at = r.at; s.toks = r.toks; s.sig = r.sig; }
   else if (!s.flat) { shared = null; shareErr = true; if (!mapOpen()) toastBad(t("init.map.share.fail")); }
   // her-render mislukt: het oude beeld blijft staan (geen stil stoppen met de viewer dicht)
   paintShare(); render(); // render: knop in de strip en een nieuwe snapshot (afterRender)
@@ -82,6 +90,54 @@ function paintShare() {
   el.querySelector(".mvthint").textContent = shareErr ? t("init.map.share.fail")
     : !r ? t("init.map.share.hint") : t(on && r.busy ? "init.map.share.sending" : "init.map.share.hintRoom", { code: r.code });
   el.querySelector(".mvthint").classList.toggle("err", shareErr);
+}
+
+/* ---------- WP75: gekoppelde tokens ---------- */
+// De kaart bewaart alleen de koppeling (p); beurt, neer/dood, verborgen en "naam onbekend" komen uit Initiative en worden
+// alleen bij het tekenen over het token gelegd: DM-beeld uit S (decoDm), spelersbeeld uit de snapshot van het
+// spelersscherm (decoPv: dezelfde regels, ook de laatste zichtbare beurt). pvSrc = die snapshot (js/main.js, getView).
+let pvSrc = null, pvT = 0;
+/** js/main.js: bron van de snapshot (toPlayerView) voor het spelersbeeld van gekoppelde tokens */
+export const setPvSource = (fn) => { pvSrc = fn; };
+/** Gekoppelde tokens zoals spelers ze zien (flatMap vlak voor het tekenen) */
+const pvDeco = (list) => { let V = null; try { V = pvSrc && pvSrc(); } catch { V = null; } return decoPv(V, list, keysById(app.S.list)); };
+const dmDeco = (list) => decoDm(app.S, list, turnIds(app.S));
+/** Na elke render (js/main.js, afterRender): ziet het spelersbeeld van de koppelingen er nu anders uit (beurt, neer,
+ *  verborgen, naam onbekend)? Dan ± 0,4 s later een nieuw beeld (één render tegelijk, flatten). Zonder gekoppelde tokens niets. */
+export function notePv() {
+  const s = shared;
+  if (!s || !s.flat || !s.toks || !s.toks.some((x) => x.p)) return;
+  if (decoSig(pvDeco(s.toks)) === s.sig) return;
+  clearTimeout(pvT);
+  pvT = setTimeout(() => { if (shared === s) flatten(s); }, 400);
+}
+/** Tik op een gekoppeld token: de deelnemer openen (UX: statblock of sheet als paneel boven de viewer, de kaart blijft
+ *  open). false = geen deelnemer meer (wees-token): dan selecteert de viewer hem (balk met Weghalen). */
+function openWho(p) {
+  const c = whoOf(app.S, p);
+  if (!c) return false;
+  if (showWho(c)) { document.body.classList.add("mvsb"); return true; }
+  // geen statblock (eigen monster zonder statblock): de kaart van de deelnemer in de lijst
+  close(); ui.open = c.id; render();
+  document.querySelector(`[data-id="${CSS.escape(c.id)}"]`)?.scrollIntoView?.({ block: "nearest" });
+  return true;
+}
+/** Wie nog geen token heeft (alleen bij een tik: labels en statblocks; voor de pil volstaat missingCount, review) */
+const missing = () => { const L = ctl && ctl.toks(); return L ? toPlace(sortOrder(app.S.list || []), L, (c) => (c.ref ? findMon(c.ref, c.ed)?.meta : "")) : []; };
+function paintPlace() {
+  if (!el) return;
+  const L = mapOpen() && ctl ? ctl.toks() : null;
+  const b = el.querySelector("[data-mv=place]"), n = L ? missingCount(app.S.list, L) : 0;
+  b.hidden = !n; // UX: iedereen heeft een token = geen knop (geen uitgeschakelde knop)
+  if (n) { b.textContent = t("init.map.place", { n }); b.setAttribute("aria-label", t("init.map.placeAria", { n })); } // vertaalagent: zichtbaar kort, voorgelezen voluit
+}
+function place() {
+  const E = missing();
+  if (!E.length || !ctl) return;
+  const k = ctl.place(E);
+  if (k < E.length) toastBad(t("init.map.tok.max", { n: k })); // review: 200 tokens per kaart (of geen plek): zeggen, niet stil
+  paintPlace();
+  el.focus({ preventScroll: true }); // de knop verdwijnt meestal
 }
 
 /* ---------- WP73: fog of war bewerken ---------- */
@@ -132,6 +188,9 @@ function paintTok() {
   sw.style.background = tok.fill; sw.style.color = tok.ink; sw.textContent = tok.l; // kleuren uit de kaartcode (mapViewer)
   bar.querySelector(".mvtname").textContent = tokName(tok);
   bar.querySelector("[data-mv=thide]").setAttribute("aria-pressed", String(tok.hide));
+  // WP75: gekoppeld token zonder deelnemer (vorig gevecht): spelers zien hem toch niet, dus Weghalen i.p.v. de schakelaar
+  bar.querySelector("[data-mv=thide]").hidden = !!tok.p;
+  bar.querySelector("[data-mv=tdel]").hidden = !tok.p;
   const f = bar.querySelector(".mvtfog");
   f.hidden = !tok.fog; // UX: onder fog zien spelers hem toch niet
   el.style.setProperty("--mvfog-h", bar.offsetHeight + "px");
@@ -156,9 +215,9 @@ function make() {
   el.innerHTML = `<div class="mvhead"><button type="button" class="btn mvx" data-mv="close" aria-label="${esc(t("init.map.view.close"))}">${ico("x")}</button><h2 id="mv-name" class="mvname"></h2><button type="button" class="btn small mvfit" data-mv="fit"></button></div>
     <div class="mvchips" role="group" hidden></div>
     <div class="mvbody"><canvas class="mvcv" role="img"></canvas><div class="mvmsg" role="status"></div>
-    <div class="mvtoon"><button type="button" class="btn mvtn" data-mv="pv" aria-describedby="mv-thint"></button><small class="mvthint" id="mv-thint"></small></div>
+    <div class="mvtoon"><button type="button" class="btn mvtn mvplace" data-mv="place" hidden></button><button type="button" class="btn mvtn" data-mv="pv" aria-describedby="mv-thint"></button><small class="mvthint" id="mv-thint"></small></div>
     <p class="mvfstrip" role="status" hidden></p>
-    <div class="mvtok" role="group" aria-label="${esc(t("init.map.tok.bar"))}" hidden><div class="mvfrow"><span class="mvtsw" aria-hidden="true"></span><b class="mvtname vh"></b><button type="button" class="btn mvthide" data-mv="thide" aria-pressed="false">${esc(t("init.map.tok.hidden"))}</button><button type="button" class="btn primary mvfdone" data-mv="tdone">${esc(t("init.map.tok.done"))}</button></div><small class="mvtfog" hidden>${esc(t("init.map.tok.fog"))}</small></div>
+    <div class="mvtok" role="group" aria-label="${esc(t("init.map.tok.bar"))}" hidden><div class="mvfrow"><span class="mvtsw" aria-hidden="true"></span><b class="mvtname vh"></b><button type="button" class="btn mvthide" data-mv="thide" aria-pressed="false">${esc(t("init.map.tok.hidden"))}</button><button type="button" class="btn mvthide" data-mv="tdel" hidden>${esc(t("init.map.tok.remove"))}</button><button type="button" class="btn primary mvfdone" data-mv="tdone">${esc(t("init.map.tok.done"))}</button></div><small class="mvtfog" hidden>${esc(t("init.map.tok.fog"))}</small></div>
     <div class="mvfog" role="group" aria-label="${esc(t("init.map.fog.bar"))}" hidden><div class="mvfrow"><div class="seg" role="group" aria-label="${esc(t("init.map.fog.act"))}"><button type="button" data-mv="act" data-v="reveal"></button><button type="button" data-mv="act" data-v="hide"></button></div><button type="button" class="btn primary mvfdone" data-mv="fdone"></button></div>
     <div class="seg" role="group" aria-label="${esc(t("init.map.fog.tool"))}"><button type="button" data-mv="tool" data-v="brush"></button><button type="button" data-mv="tool" data-v="wide"></button><button type="button" data-mv="tool" data-v="rect"></button></div></div>
     <div class="mvzoom"><button type="button" class="btn mvz" data-mv="fog" aria-label="${esc(t("init.map.fog.edit"))}" hidden>${FOG_ICO}</button><button type="button" class="btn mvz" data-mv="in" aria-label="${esc(t("init.map.view.in"))}">${ico("plus")}</button><button type="button" class="btn mvz" data-mv="out" aria-label="${esc(t("init.map.view.out"))}"><span aria-hidden="true">−</span></button></div></div>`;
@@ -176,6 +235,8 @@ function make() {
     else if (k === "fdone") setFog(false);
     else if (k === "thide") { if (tok) ctl?.hide(tok.id); } // WP74
     else if (k === "tdone") ctl?.unsel();
+    else if (k === "tdel") { if (tok) ctl?.remove(tok.id); } // WP75: wees-token
+    else if (k === "place") place(); // WP75
     else if (k === "act" || k === "tool") {
       if (k === "act") fogAct = b.dataset.v === "hide" ? "hide" : "reveal";
       else if (TOOLS.includes(b.dataset.v)) { fogTool = b.dataset.v; try { localStorage.setItem(FOG_KEY, fogTool); } catch { /* alleen deze sessie */ } }
@@ -201,6 +262,7 @@ function labels() {
   q(".mvtok").setAttribute("aria-label", t("init.map.tok.bar")); // WP74
   q("[data-mv=thide]").textContent = t("init.map.tok.hidden");
   q("[data-mv=tdone]").textContent = t("init.map.tok.done");
+  q("[data-mv=tdel]").textContent = t("init.map.tok.remove"); // WP75
   q(".mvtfog").textContent = t("init.map.tok.fog");
   for (const [v, k] of [["reveal", "init.map.fog.reveal"], ["hide", "init.map.fog.hide"]]) q(`[data-mv=act][data-v=${v}]`).textContent = t(k);
   for (const [v, k] of [["brush", "init.map.fog.brush"], ["wide", "init.map.fog.wide"], ["rect", "init.map.fog.rect"]]) q(`[data-mv=tool][data-v=${v}]`).textContent = t(k);
@@ -249,8 +311,9 @@ function show(id) {
   ctl = mapViewer(cv, id, {
     v0: views.get(id) || null,
     onFog: (doc) => fogSaved(id, doc),
-    onTok: (x) => { if (cur === id) onTok(x); }, onToks: (doc) => toksSaved(id, doc), // WP74
-    on: (state, doc) => { if (cur !== id) return; if (state === "ok" && doc) { fogHas = !!(doc.fog && doc.fog.on); paintFog(); } else if (state !== "ok") { fogHas = false; if (fogging) setFog(false); else paintFog(); } if (doc && shared && shared.id === id && shared.flat && doc.updatedAt && doc.updatedAt !== shared.at) flatten(shared); if (doc && doc.name) { names.set(id, doc.name); el.querySelector("#mv-name").textContent = doc.name; cv.setAttribute("aria-label", t("init.map.view.canvas", { name: doc.name })); chips(); } msg(state, ref.map); },
+    onTok: (x) => { if (cur === id) onTok(x); }, onToks: (doc) => { toksSaved(id, doc); if (cur === id) paintPlace(); }, // WP74
+    deco: dmDeco, tapLinked: openWho, // WP75
+    on: (state, doc) => { if (cur !== id) return; if (state === "ok" && doc) { fogHas = !!(doc.fog && doc.fog.on); paintFog(); } else if (state !== "ok") { fogHas = false; if (fogging) setFog(false); else paintFog(); } if (doc && shared && shared.id === id && shared.flat && doc.updatedAt && doc.updatedAt !== shared.at) flatten(shared); paintPlace(); if (doc && doc.name) { names.set(id, doc.name); el.querySelector("#mv-name").textContent = doc.name; cv.setAttribute("aria-label", t("init.map.view.canvas", { name: doc.name })); chips(); } msg(state, ref.map); },
     onZoom: (lo, hi) => { el.querySelector("[data-mv=out]").disabled = lo; el.querySelector("[data-mv=in]").disabled = hi; },
   });
 }
@@ -277,6 +340,7 @@ export function close() {
   if (!mapOpen()) return;
   if (fogging) { fogging = false; paintFog(); } // WP73
   tok = null; paintTok(); // WP74
+  document.body.classList.remove("mvsb"); // WP75: statblock weer op zijn eigen plek
   stop();
   el.hidden = true;
   const f = from && from.isConnected ? from : document.querySelector("[data-enc=map]") || document.querySelector("#next, #start"); // knop weg (kaart niet meer ingeladen): naar de dock
@@ -292,7 +356,11 @@ export function syncMap(S) {
   if (shared && !ids.has(shared.id)) { shared = null; if (mapOpen()) paintShare(); }
   if (mapOpen()) {
     if (!ids.has(cur)) close(); // eerst sluiten (bewaart de view), daarna hieronder vergeten
-    else if (now.length !== list.length || now.some((m, i) => m.map.id !== list[i].map.id)) { list = now; chips(); }
+    else {
+      if (now.length !== list.length || now.some((m, i) => m.map.id !== list[i].map.id)) { list = now; chips(); }
+      ctl?.redeco(); paintPlace(); // WP75: beurt, HP, verborgen, nieuwe deelnemers
+      if (tok && tok.p && !orphan(S, tok)) ctl?.unsel(); // geselecteerd wees-token heeft weer een deelnemer (undo)
+    }
   }
   for (const m of [views, names]) for (const id of [...m.keys()]) if (!ids.has(id)) m.delete(id);
 }

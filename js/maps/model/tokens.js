@@ -34,6 +34,11 @@ export const tokColor = (id) => TOK_COLORS[id] || { fill: "#8c7d6b", ink: IVORY 
 export const TOK_EDGE = { inner: WALNUT, outer: IVORY };
 
 const ID_RE = /^[a-z0-9]{1,16}$/, COLOR_RE = /^[a-z]{1,16}$/;
+/** WP75: koppeling met een deelnemer in Initiative: "p:<party-id>" (speler, blijft over gevechten heen) of "c:<id>"
+ *  (deelnemer in het gevecht). Inn Sight kent geen deelnemers: het bewaart de koppeling alleen (schema 8). */
+export const LINK_RE = /^[pc]:[A-Za-z0-9_-]{1,40}$/;
+/** Gekoppeld token? */
+export const linked = (t) => !!(t && t.p);
 const fin = (v) => (typeof v === "number" && Number.isFinite(v) ? v : NaN);
 const r4 = (v) => Math.round(v * 1e4) / 1e4 + 0;
 // tijd in de toekomst begrensd op nu (zoals cleanFog): anders wint zo'n veld altijd
@@ -66,6 +71,7 @@ export function cleanTok(raw) {
   const t = { id: typeof raw.id === "string" ? raw.id : "", x: pos(x), y: pos(y), s: cleanSize(raw.s),
     c: typeof raw.c === "string" && COLOR_RE.test(raw.c) ? raw.c : TOK_COLOR_IDS[0], l: cleanLabel(raw.l) };
   if (raw.hide === true) t.hide = true;
+  if (typeof raw.p === "string" && LINK_RE.test(raw.p)) t.p = raw.p; // WP75
   return t;
 }
 
@@ -93,6 +99,8 @@ export function cleanToks(raw, rnd = Math.random) {
 export const tokList = (toks) => (toks && toks.list) || [];
 /** Staan er tokens op de kaart? (schema 7) */
 export const hasToks = (toks) => tokList(toks).length > 0;
+/** Staat er een gekoppeld token op de kaart? (schema 8: Inn Sight 1.6 zou de koppeling anders weggooien) */
+export const hasLinks = (toks) => tokList(toks).some(linked);
 /** Tokens die spelers zien (niet verborgen); fog ligt er in het spelersbeeld nog overheen */
 export const playerToks = (toks) => tokList(toks).filter((t) => !t.hide);
 
@@ -165,7 +173,9 @@ export function dupTok(grid, list, id, snap, rnd = Math.random) {
   const used = new Set(list.map((x) => x.l));
   let l = bumpLabel(t.l);
   for (let i = 0; used.has(l) && i < TOK.max; i++) { const n = bumpLabel(l); if (n === l) break; l = n; } // eerste vrije: G1 → G3 als G2 al bestaat
-  return { list: [...list, { ...t, id: nid, ...p, l }], id: nid };
+  const n = { ...t, id: nid, ...p, l };
+  delete n.p; // WP75: een kopie is een vrij token (één token per deelnemer)
+  return { list: [...list, n], id: nid };
 }
 
 /** Lijst zonder token id */

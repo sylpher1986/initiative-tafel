@@ -1223,7 +1223,7 @@ async function boot() {
     tokL = bumpLabel(tokL); tghost = null; paintTokTab(); paintStrip();
   }
   /** Token n op zijn plek in de lijst als undo-stap (niets als het niet verandert) */
-  const sameTok = (a, b) => a.x === b.x && a.y === b.y && a.s === b.s && a.c === b.c && a.l === b.l && !!a.hide === !!b.hide;
+  const sameTok = (a, b) => a.x === b.x && a.y === b.y && a.s === b.s && a.c === b.c && a.l === b.l && !!a.hide === !!b.hide && (a.p || "") === (b.p || "");
   function setTok(n, k, group = null) {
     const list = tokList(map.toks), c = list.find((x) => x.id === n.id);
     if (!c || sameTok(c, n)) return null;
@@ -1296,6 +1296,7 @@ async function boot() {
     $("m-ttsize-h").textContent = sizeHint(x.s);
     swatches($("m-ttcolors"), x.c, x.l);
     $("m-tthide").setAttribute("aria-pressed", String(!!x.hide));
+    $("m-ttlink").hidden = !x.p; // WP75: gekoppeld aan een deelnemer in Initiative (UX: verklaart waarom spelers hem soms niet zien)
     $("m-tsnap").setAttribute("aria-pressed", String(snap));
   }
   function openTok() {
@@ -1322,6 +1323,8 @@ async function boot() {
   $("m-ttsize").addEventListener("click", (e) => { const x = selTok(), s = +e.target.closest("button")?.dataset.s; if (x && TOK_SIZES.includes(s) && s !== x.s) setTok(sizeTok(map.grid, x, s, snap), "tsize"); });
   $("m-ttcolors").addEventListener("click", (e) => { const x = selTok(), c = e.target.closest(".mtc")?.dataset.c; if (x && c && c !== x.c) setTok({ ...x, c }, "tcolor"); });
   $("m-tthide").addEventListener("click", toggleHide);
+  // WP75: koppeling met een deelnemer weghalen = weer een vrij token (één undo-stap)
+  $("m-ttunlink").addEventListener("click", () => { const x = selTok(); if (!x || !x.p) return; const n = { ...x }; delete n.p; setTok(n, "tunlink"); sr(t("maps.tok.unlinked", { name: tokName(n) })); $("m-ttl").focus({ preventScroll: true }); });
   hideBtn.addEventListener("click", toggleHide);
   $("m-tsnap").addEventListener("click", () => setSnap(!snap));
   $("m-tclose").addEventListener("click", () => closeTok());

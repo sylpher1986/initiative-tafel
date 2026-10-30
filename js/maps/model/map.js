@@ -16,11 +16,11 @@ import { cleanObjs } from "./objects.js";
 import { cleanTerr } from "./terrain.js";
 import { isCustom } from "./mine.js";
 import { cleanFog } from "./fog.js";
-import { cleanToks, hasToks } from "./tokens.js";
+import { cleanToks, hasToks, hasLinks } from "./tokens.js";
 import { LIMITS } from "./limits.js";
 
 /** Hoogste schemaversie die deze versie kent. Hoger = niet aanraken (gemaakt door een nieuwere versie). */
-export const SCHEMA = 7;
+export const SCHEMA = 8;
 /** Langste kaartnaam (tekens) */
 export const NAME_MAX = LIMITS.mapName;
 
@@ -62,7 +62,7 @@ export function cleanMap(raw) {
   const fog = cleanFog(raw.fog); // WP73: ook "uit" bewaren (met tijd), zodat uitzetten een latere schrijver niet verliest
   if (fog) { out.fog = fog; if (fog.on) out.schema = 6; }
   const toks = cleanToks(raw.toks); // WP74: ook een lege lijst met tijd bewaren (alles verwijderd wint van een oudere schrijver)
-  if (toks) { out.toks = toks; if (hasToks(toks)) out.schema = 7; }
+  if (toks) { out.toks = toks; if (hasToks(toks)) out.schema = hasLinks(toks) ? 8 : 7; } // WP75: gekoppelde tokens = 8
   return out;
 }
 

@@ -372,6 +372,9 @@ export default {
   "maps.tok.descNoLabel": "[{name}, {size} ·]",
   "maps.tok.descNoLabelHidden": "[{name}, {size}, híddéñ fröm pláýérs ·········]",
   "maps.tok.hidden": "[Híddéñ fröm pláýérs ·······]",
+  "maps.tok.linked": "[Líñkéd tö á çömbátáñt íñ Íñítíátívé: pláýérs öñlý séé ít whílé thát çömbátáñt ís vísíblé tö thém. ··································]",
+  "maps.tok.unlink": "[Üñlíñk ···]",
+  "maps.tok.unlinked": "[{name} ís ñö löñgér líñkéd. ········]",
   "maps.tok.hiddenDone": "[{name} híddéñ fröm pláýérs. ········]",
   "maps.tok.shown": "[{name} vísíblé tö pláýérs. ·······]",
   "maps.tok.max": "[Límít réáçhéd: {n} tökéñs pér máp. ···········]",
@@ -385,5 +388,6 @@ export default {
   "maps.hist.tundel": "[Réstöré {name} ···]",
   "maps.hist.tlabel": "[Rélábél {name} ···]",
   "maps.hist.tcolor": "[Réçölör {name} ···]",
-  "maps.hist.tsize": "[Résízé {name} ···]"
+  "maps.hist.tsize": "[Résízé {name} ···]",
+  "maps.hist.tunlink": "[Üñlíñk {name} ···]"
 };

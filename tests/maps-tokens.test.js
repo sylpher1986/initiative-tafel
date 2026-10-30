@@ -146,14 +146,14 @@ test("mergeToks en stampToks: de laatst gewijzigde lijst wint, ook leeg; geen ve
 });
 
 test("kaartdocument: tokens = schema 7 (Maps 1.5.x laat de kaart met rust), lege lijst blijft zonder schemasprong; kopie/import tijd van nu", () => {
-  assert.equal(SCHEMA, 7);
+  assert.equal(SCHEMA, 8); // WP75: 8 = gekoppelde tokens
   const m = newMap({ id: "abcdef1", name: "Grot", grid: SQ, now: 1 });
   assert.equal(cleanMap({ ...m, toks: { at: 5, list: [T()] } }).schema, 7);
   const empty = cleanMap({ ...m, toks: { at: 5, list: [] } });
   assert.equal(empty.schema, 1);
   assert.deepEqual(empty.toks, { at: 5, list: [] });
   assert.equal("toks" in cleanMap({ ...m, toks: "x" }), false);
-  assert.equal(cleanMap({ ...m, schema: 8 }), null, "nieuwer schema niet aanraken");
+  assert.equal(cleanMap({ ...m, schema: 9 }), null, "nieuwer schema niet aanraken");
   const withT = { ...m, toks: { at: 5, list: [T()] } };
   assert.equal(copyMap(withT, { id: "copy001", now: 99 }).toks.at, 99);
   assert.equal(importedDoc({ ...withT, id: undefined }, [], "Map", { id: "imp0001", now: 77 }).toks.at, 77);

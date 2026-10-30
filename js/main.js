@@ -16,7 +16,7 @@ import { claimTab } from "./tablock.js";
 import { $, esc, toastBad } from "./ui/util.js";
 import { VERSION, APP } from "./version.js";
 import { bindEnc } from "./ui/encounters.js";
-import { sharedMap } from "./ui/mapview.js";
+import { sharedMap, setPvSource, notePv } from "./ui/mapview.js";
 import { bindEnd } from "./ui/einde.js";
 import { bindSettings } from "./ui/settings.js";
 import { bindKeys } from "./ui/keys.js";
@@ -133,7 +133,8 @@ async function boot() {
     if (view.active && view.active === S.active) prevTurn = { id: view.active, round: view.round };
     return view;
   };
-  setAfterRender(() => { view = null; links.forEach((l) => l.update()); tourTick(); });
+  setAfterRender(() => { view = null; links.forEach((l) => l.update()); notePv(); tourTick(); });
+  setPvSource(getView); // WP75: gekoppelde tokens in het spelersbeeld volgen dezelfde snapshot
   const ch = localChannel();
   if (ch) links.add(dmLink(ch, getView));
   stopTab = () => { links.clear(); if (ch) ch.close(); dropSharing(); };

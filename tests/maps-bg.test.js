@@ -148,7 +148,7 @@ test("scaleBg, moveBg en stepFor", () => {
 });
 
 test("kaartdocument: schema 2 alleen mét achtergrond; kapotte achtergrond weg; nieuwer schema niet aanraken", () => {
-  assert.equal(SCHEMA, 7); // WP74: 7 = tokens (tests/maps-tokens.test.js); WP61: 3 = met objecten, WP63: 4 = met terrein (tests/maps-terrain.test.js), WP64: 5 = met eigen assets (tests/maps-mine.test.js), WP73: 6 = fog aan (tests/maps-fog.test.js)
+  assert.equal(SCHEMA, 8); // WP75: 8 = gekoppelde tokens; WP74: 7 = tokens (tests/maps-tokens.test.js); WP61: 3 = met objecten, WP63: 4 = met terrein (tests/maps-terrain.test.js), WP64: 5 = met eigen assets (tests/maps-mine.test.js), WP73: 6 = fog aan (tests/maps-fog.test.js)
   const m = newMap({ id: "abcdef1", name: "Grot", now: 5 });
   assert.equal(m.schema, 1);
   const withBg = cleanMap({ ...m, bg: { asset: SHA, w: 2100, h: 1400, ppc: 70, x: 0, y: 0 } });
