@@ -110,7 +110,8 @@ test("WP68d: Maps-manifest per taal: eigen id/scope/start_url, naam Inn Sight, i
     for (const i of m.icons) { const n = +i.sizes.split("x")[0]; assert.match(i.src, /^\/maps\/icons\//); assert.deepEqual(png(i.src.slice(1)), [n, n], i.src); }
   }
   assert.deepEqual(png("maps/icons/icon-180.png"), [180, 180]);
-  for (const f of ["manifest.webmanifest", "nl/manifest.webmanifest"]) assert.equal(JSON.parse(files[f]).id, "/", f + ": Initiative ongewijzigd");
+  // K10: Initiative heeft ook een eigen scope per taal; geen enkele andere scope dekt een Maps-pad
+  for (const f of ["manifest.webmanifest", "nl/manifest.webmanifest"]) for (const home of ["/maps/", "/nl/maps/"]) assert.ok(!home.startsWith(JSON.parse(files[f]).scope), f + " dekt " + home);
 });
 
 test("WP68d: fetch bewaart een Maps-bestand dat bij install mislukte (offline start na het eerste gebruik)", async () => {

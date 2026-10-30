@@ -12,7 +12,7 @@ export function target(loc) {
 
 /** Doorsturen zonder extra regel in de geschiedenis (terug-knop springt niet terug naar de 404) */
 export function go(w = globalThis) {
-  adoptExisting(); // WP33: bestaande gebruiker zonder voorkeur blijft Nederlands in zijn geïnstalleerde app (launchRedirect)
+  adoptExisting(); // WP33: zie js/i18n/lang.js
   const to = target(w.location);
   if (to) w.location.replace(to);
   return to;

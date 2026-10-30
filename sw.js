@@ -1,6 +1,6 @@
 // Service worker: maakt de app offline bruikbaar. Geregistreerd als /sw.js met scope "/" (js/main.js), dus "./x" = "/x". Verhoog VERSION bij elke release zodat de cache ververst.
 // Gelijk houden aan js/version.js (de test bewaakt dat); dit is ook het nummer dat de app toont.
-const VERSION = "2.11.5";
+const VERSION = "2.11.6";
 const CACHE = "initiative-tafel-" + VERSION;
 // TS1: pdf.js (± 2,5 MB, alleen voor de PDF-import) in een eigen cache op zijn eigen versie: blijft staan bij een
 // app-update, zodat niet elke release hem opnieuw downloadt. Nieuwe pdf.js-versie = nieuwe map en nieuwe naam hier.
@@ -80,7 +80,7 @@ const MAPS_ASSETS = [
 const MAPS_SET = new Set(MAPS_ASSETS); // WP68d: aanvullen bij gebruik (fetch)
 // Pagina's (WP21; WP44: Engels zonder taalcode): homepage (WP30) en app per taal plus de oude spelersadressen (/speler,
 // /player), die offline moeten werken voor beginscherm-apps en QR-links; tests/pages.test.js bewaakt dat elke
-// gegenereerde pagina hier staat. "/initiative/" is de start_url van elk manifest.
+// gegenereerde pagina hier staat. "/initiative/" en "/nl/initiative/" zijn de start_url van de manifesten (K10).
 const ASSETS = [
   "./",
   "./initiative/",

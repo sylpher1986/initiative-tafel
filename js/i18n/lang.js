@@ -5,8 +5,9 @@
 // "/initiative/player/"); elke andere taal krijgt een voorvoegsel ("/nl/", "/nl/initiative/"). "/en/…" bestaat niet
 // meer: de Worker (worker/index.js, enRedirect) en de service worker sturen het met 301 door naar het pad zonder /en/.
 // Taal uit het pad alleen via langFromPath/parsePath; adressen alleen via pathFor/switchPath (nooit zelf "/en/" of
-// "/{lang}/" in een string). Geen automatische taalredirect op voorkeur of browsertaal, behalve bij het openen van een
-// geïnstalleerde app (launchRedirect). De voorkeur (kevs-lang) schrijft alleen de taalkiezer (en eenmalig adoptExisting).
+// "/{lang}/" in een string). Geen automatische taalredirect op voorkeur of browsertaal, ook niet in een geïnstalleerde
+// app (K10: één app per taal, de taal ligt vast in het pad). De voorkeur (kevs-lang) schrijft alleen de taalkiezer (en
+// eenmalig adoptExisting); hij wordt bewaard voor fase 2 (sync).
 
 /** Talen met code, catalogi en pagina's */
 export const SUPPORTED = ["en", "nl"];
@@ -18,9 +19,6 @@ export const DEFAULT = "en";
 export const LOCALES = { en: "en-GB", nl: "nl-NL" }; // en-GB: "12 Oct 2026" en 24-uursklok (vertaalagent WP20); spelling blijft Amerikaans (PHB)
 /** localStorage-sleutel van de voorkeur (platformbreed voorvoegsel kevs-) */
 export const PREF_KEY = "kevs-lang";
-/** sessionStorage-sleutel: taal die in dit venster met de taalkiezer gekozen is (WP44). Gaat in een geïnstalleerde
- *  app voor de voorkeur (launchRedirect), zodat kiezen ook werkt als localStorage niet schrijft. */
-export const TAB_KEY = "kevs-lang-tab";
 /** localStorage-sleutel: eenmalige overgang bij Engels live (WP33) is gedaan op dit apparaat (adoptExisting) */
 export const ADOPT_KEY = "kevs-lang-adopt";
 /** localStorage-sleutel van de i18n-debugstand (?i18n=debug|xx|off, zie boot.js) */
@@ -92,7 +90,8 @@ export function switchPath(path, lang) {
  *  in het Nederlands ".../nl/initiative/player/?k=…". Rechtstreeks naar de pagina: geen doorverwijzing voor de speler. */
 export const joinUrl = (origin, lang, code) => `${origin}${pathFor(normLang(lang) || DEFAULT, "/initiative/player/")}?k=${code}`;
 
-/** Eerste ondersteunde browsertaal uit navigator.languages (of navigator.language) */
+/** Eerste ondersteunde browsertaal uit navigator.languages (of navigator.language). Sinds K10 niet meer in de app
+ *  gebruikt (geen taalredirect); bewust bewaard als pure helper, bijvoorbeeld voor een taalsuggestie in fase 2. */
 export function browserLang(languages, list = LIVE) {
   for (const l of [].concat(languages || [])) { const x = normLang(l, list); if (x) return x; }
   return null;
@@ -112,21 +111,6 @@ export function resolveLang({ path = "/", search = "", hash = "" } = {}) {
   if (!prefix) return { lang: DEFAULT, source: "path", redirect: null };
   if (!lang) return { lang: DEFAULT, source: "default", redirect: pathFor(DEFAULT, rest) + tail };
   return { lang, source: "path", redirect: lang === DEFAULT || prefix !== lang ? langBase(lang) + slash(rest) + tail : null };
-}
-
-/**
- * Taal waarin een beginscherm-app opent (WP44). Alle manifesten hebben start_url "/initiative/" (id "/" ongewijzigd,
- * zodat bestaande installaties één app blijven). Vóór 2.3.0 was dat een doorverwijzer naar de taal van voorkeur of
- * browser; nu is het de Engelse app. Alleen in een geïnstalleerde app (standalone) en alleen op een adres zonder
- * voorvoegsel kiest de app daarom nog: keuze in dit venster (tab, TAB_KEY) → voorkeur (taalkiezer, adoptExisting) →
- * browsertaal → Engels. De website zelf verwijst nooit automatisch door. Zelfde regel als het inline script in de
- * Engelse app-pagina (launchScript in tools/pages.mjs, vóór de eerste paint; tests/wp44.test.js vergelijkt ze).
- * @returns {string|null} adres in de andere taal (met search en hash), of null
- */
-export function launchRedirect({ path = "/", search = "", hash = "", standalone = false, tab = null, pref = null, languages = [], live = LIVE } = {}) {
-  if (!standalone || parsePath(path).prefix) return null;
-  const lang = normLang(tab, live) || normLang(pref, live) || browserLang(languages, live) || fallbackIn(live);
-  return lang === DEFAULT ? null : pathFor(lang, path) + (search || "") + (hash || "");
 }
 
 /** Opgeslagen voorkeur lezen: '{"lang":"nl","t":…}' → "nl"; kapot, onbekend of oud formaat → null */

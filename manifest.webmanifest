@@ -1,11 +1,11 @@
 {
-  "id": "/",
+  "id": "/initiative/",
   "name": "Kev’s Inn itiative",
   "short_name": "Inn itiative",
   "description": "Initiative tracker for D&D 5e (2014 and 2024 rules)",
   "lang": "en",
   "start_url": "/initiative/",
-  "scope": "/",
+  "scope": "/initiative/",
   "display": "standalone",
   "background_color": "#1d130d",
   "theme_color": "#241811",

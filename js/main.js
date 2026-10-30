@@ -11,7 +11,7 @@ import { localChannel, dmLink } from "./share.js";
 import { bindSharing, dropSharing } from "./ui/kamer.js";
 import { setWriteGuard } from "./storage.js";
 import { initI18n, i18nDebug, t } from "./i18n/boot.js";
-import { adoptExisting, launchRedirect, prefStore, TAB_KEY } from "./i18n/lang.js";
+import { adoptExisting } from "./i18n/lang.js";
 import { claimTab } from "./tablock.js";
 import { $, esc, toastBad } from "./ui/util.js";
 import { VERSION, APP } from "./version.js";
@@ -69,23 +69,8 @@ function tabLost() {
   d.querySelector("button").focus();
 }
 
-/** WP44: een geïnstalleerde app start op /initiative/ (start_url van elk manifest, ook van installaties van vóór 2.3.0)
- *  en opent in de taal van voorkeur of browser (launchRedirect in js/i18n/lang.js). Alleen in standalone. Meestal deed
- *  het inline script in <head> (launchScript, tools/pages.mjs) dit al vóór de eerste paint; dit vangt op wat pas na
- *  adoptExisting een voorkeur heeft. */
-function launchGo() {
-  const mq = (q) => { try { return matchMedia(q).matches; } catch { return false; } };
-  const standalone = navigator.standalone === true || ["standalone", "fullscreen", "minimal-ui"].some((m) => mq(`(display-mode: ${m})`));
-  const nav = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
-  let tab = null; try { tab = sessionStorage.getItem(TAB_KEY); } catch { /* geen sessionStorage */ }
-  const to = launchRedirect({ path: location.pathname, search: location.search, hash: location.hash, standalone, tab, pref: prefStore().get(), languages: nav });
-  if (to) location.replace(to);
-  return !!to;
-}
-
 async function boot() {
   adoptExisting(); // WP33: vóór claimTab (schrijft it-tab), anders telt een nieuwe gebruiker als bestaande
-  if (launchGo()) return; // vóór claimTab en laden: deze pagina wordt meteen vervangen
   // vóór het laden: het vorige tabblad stopt met opslaan voordat dit tabblad de stand leest
   setWriteGuard(claimTab(tabLost));
   setWarn(toastBad); // opslaan mislukt = de belangrijkste fout (WP17-review)

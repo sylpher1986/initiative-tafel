@@ -4,7 +4,7 @@ import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { build, urlOf, dirOf, launchScript, APP_PAGES, REDIRECTS, fillText, HOME_PAGE, SITE, OG_IMAGE, NOT_CACHED, HIDDEN, seoHead, langNav, sitemap, robots } from "../tools/pages.mjs";
+import { build, urlOf, dirOf, APP_PAGES, REDIRECTS, fillText, HOME_PAGE, SITE, OG_IMAGE, NOT_CACHED, HIDDEN, seoHead, langNav, sitemap, robots } from "../tools/pages.mjs";
 import { htmlStrings, isDutch } from "../tools/i18n-audit.mjs";
 import { target } from "../js/i18n/redirect.js";
 import { SUPPORTED, LIVE, pathFor, langBase } from "../js/i18n/lang.js";
@@ -36,12 +36,13 @@ test("elke pagina per taal: juiste lang, noindex, manifest van die taal, geen re
   }
 });
 
-test("manifest: zelfde identiteit en start_url als oude installaties, absolute iconen (WP44: Engels op /manifest.webmanifest)", () => {
-  for (const p of SUPPORTED.map((l) => `${dirOf(l)}manifest.webmanifest`)) {
+test("manifest: één app per taal, id/scope/start_url = de eigen app-pagina (K10), absolute iconen", () => {
+  for (const lang of SUPPORTED) {
+    const p = `${dirOf(lang)}manifest.webmanifest`, home = "/" + dirOf(lang, "initiative/");
     const m = JSON.parse(files[p]);
-    assert.equal(m.id, "/", p);
-    assert.equal(m.scope, "/", p);
-    assert.equal(m.start_url, "/initiative/", p);
+    assert.deepEqual([m.id, m.scope, m.start_url], [home, home, home], p);
+    assert.ok(files[`${dirOf(lang, "initiative/player/")}index.html`] && ("/" + dirOf(lang, "initiative/player/")).startsWith(m.scope), p + ": spelersscherm binnen de scope");
+    assert.ok(!("/" + dirOf(lang, "maps/")).startsWith(m.scope) && !"/".startsWith(m.scope), p + ": Inn Sight en homepage erbuiten");
     assert.ok(SUPPORTED.includes(m.lang), p);
     assert.ok(m.description && !m.description.includes("page."), p + ": beschrijving uit de catalogus");
     for (const i of m.icons) { assert.match(i.src, /^\//, p); assert.ok(existsSync(ROOT + i.src.slice(1)), i.src); }
@@ -120,7 +121,7 @@ const skeleton = (h) => [...h.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "<sc
   .map((m) => m[0].replace(/\s(aria-label|placeholder|title|alt|content|data-label|on[a-z]+|lang)="[^"]*"/g, " $1"));
 test("elke taal heeft hetzelfde skelet als het sjabloon (alleen tekst verschilt)", () => {
   for (const [rest, src] of Object.entries(APP_PAGES)) {
-    for (const lang of SUPPORTED) assert.deepEqual(skeleton(files[`${dirOf(lang, rest)}index.html`]), skeleton(read(src).replaceAll("{{lang}}", lang).replaceAll("{{base}}", langBase(lang)).replaceAll("{{launch}}", lang === "en" ? launchScript() : "")), `${lang}/${rest}`);
+    for (const lang of SUPPORTED) assert.deepEqual(skeleton(files[`${dirOf(lang, rest)}index.html`]), skeleton(read(src).replaceAll("{{lang}}", lang).replaceAll("{{base}}", langBase(lang))), `${lang}/${rest}`);
   }
 });
 

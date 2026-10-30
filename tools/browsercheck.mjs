@@ -2399,8 +2399,8 @@ const SCEN = {
     if (!pref || pref.lang !== "nl") throw new Error("bestaande gebruiker kreeg geen voorkeur nl: " + JSON.stringify(pref));
     await c.context().close();
   },
-  // WP44 (WB1, WB2): /en/… → 301 naar het pad zonder /en/ (query blijft); geïnstalleerde app op /initiative/ opent in de
-  // voorkeurstaal, de website niet; homepage (/ en /nl/) volgt een bewuste themakeuze uit de app, anders het systeem
+  // WP44 (WB1, WB2): /en/… → 301 naar het pad zonder /en/ (query blijft); K10: ook een geïnstalleerde app blijft in de
+  // taal van zijn pad (één app per taal, geen launchRedirect); homepage (/ en /nl/) volgt een bewuste themakeuze uit de app, anders het systeem
   // (ook zonder JavaScript en bij een systeemwissel zonder herladen), zonder flits van het verkeerde thema.
   async wp44(page, base) {
     const browser = page.context().browser();
@@ -2408,7 +2408,7 @@ const SCEN = {
     const chain = []; for (let r = resp.request().redirectedFrom(); r; r = r.redirectedFrom()) chain.push(r.url());
     if (new URL(page.url()).pathname + new URL(page.url()).search !== "/initiative/?x=1" || chain.length !== 1) throw new Error(`/en/ niet in één stap: ${chain.join(" → ")} → ${page.url()}`);
     // geïnstalleerde app (display-mode standalone nagebootst)
-    for (const [standalone, want] of [[true, "/nl/initiative/"], [false, "/initiative/"]]) {
+    for (const [standalone, want] of [[true, "/initiative/"], [false, "/initiative/"]]) {
       const ctx = await browser.newContext({ locale: "en-US" });
       await ctx.addInitScript((sa) => {
         try { localStorage.setItem("it-tour", "pf"); localStorage.setItem("kevs-lang", JSON.stringify({ lang: "nl", t: 1 })); } catch { /* */ }

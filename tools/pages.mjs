@@ -11,9 +11,8 @@
 // Tekst in de sjablonen (WP23): {{t:sleutel}} = catalogustekst, geëscaped voor HTML (tekst en attributen);
 // {{tjs:sleutel}} = binnen een JS-string in een inline script of on…-attribuut (alles wat de string of het attribuut
 // kan breken als \uXXXX). Een onbekende sleutel is een fout: dan wordt er niets geschreven.
-//   {base}/manifest.webmanifest                    manifest per taal (Engels = /manifest.webmanifest, ook voor oude
-//                                                  installaties); id "/" en start_url "/initiative/" houden alle
-//                                                  installaties één app (js/main.js kiest bij het openen de taal)
+//   {base}/manifest.webmanifest                    Initiative-manifest per taal (Engels = /manifest.webmanifest); K10:
+//                                                  één app per taal, id/scope/start_url = {base}/initiative/
 //   /speler.html, /player.html                     oude spelersadressen → /initiative/player/ (Engels, query blijft), ook offline
 //   {base}/index.html                              publieke homepage uit pages/home.html (WP30); {{seo}} = canonical,
 //                                                  hreflang en Open Graph op SITE; alleen talen in LIVE indexeerbaar;
@@ -26,7 +25,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { SUPPORTED, LIVE, DEFAULT, fallbackIn, pathFor, langBase, PREF_KEY, TAB_KEY } from "../js/i18n/lang.js";
+import { SUPPORTED, LIVE, DEFAULT, fallbackIn, pathFor, langBase } from "../js/i18n/lang.js";
 import { OWN } from "./i18n-build.mjs";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -56,18 +55,19 @@ const ICONS = [
   { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
 ];
 
-/** Manifest voor één taal. id en start_url gelijk in elke taal en ongewijzigd sinds WP21, zodat elke installatie (ook van
- *  vóór 2.3.0) één app blijft; "/initiative/" is sinds WP44 de Engelse app, die in een geïnstalleerde app de taal van
- *  voorkeur of browser opent (launchRedirect in js/i18n/lang.js, aangeroepen in js/main.js). */
+/** K10: Initiative-manifest, één app per taal (Michiel, zoals Inn Sight): id, scope en start_url = het eigen pad van
+ *  die taal (/initiative/, /nl/initiative/; het spelersscherm …/initiative/player/ valt erbinnen). Zo dekt de app
+ *  /maps/ en de homepage niet meer en springt hij nooit buiten zijn scope; daarom geen launchRedirect meer. */
 export function manifest(lang, cat) {
+  const home = pathFor(lang, "/initiative/");
   return JSON.stringify({
-    id: "/",
+    id: home,
     name: "Kev’s Inn itiative",
     short_name: "Inn itiative",
     description: cat["page.manifest.desc"],
     lang,
-    start_url: "/initiative/",
-    scope: "/",
+    start_url: home,
+    scope: home,
     display: "standalone",
     background_color: "#1d130d",
     theme_color: "#241811",
@@ -76,8 +76,8 @@ export function manifest(lang, cat) {
 }
 
 /** WP68d: manifest van Inn Sight, één app per taal (Michiel): id, scope en start_url = het eigen pad van die taal
- *  (/maps/, /nl/maps/), zodat de app nooit buiten zijn scope springt en geen launchRedirect nodig heeft. Iconen in
- *  maps/icons/ (Maps-cache, tools/icons.mjs). De Initiative-manifesten (id "/", scope "/") blijven ongewijzigd. */
+ *  (/maps/, /nl/maps/), zodat de app nooit buiten zijn scope springt. Iconen in maps/icons/ (Maps-cache,
+ *  tools/icons.mjs). Sinds K10 werkt Initiative net zo (scope /initiative/), dus de scopes overlappen niet. */
 export const MAPS_ICONS = [
   { src: "/maps/icons/icon-192.png", sizes: "192x192", type: "image/png" },
   { src: "/maps/icons/icon-512.png", sizes: "512x512", type: "image/png" },
@@ -114,24 +114,10 @@ export function fillText(tpl, cat, src = "") {
   });
 }
 
-/** WP44: inline script voor de Engelse app-pagina (/initiative/ = start_url van elk manifest). Zelfde regel als
- *  launchRedirect in js/i18n/lang.js, maar vóór de eerste paint, zodat een Nederlandse geïnstalleerde app niet eerst
- *  het Engelse scherm toont. Alleen standalone, alleen zonder voorvoegsel; nooit een fout. tests/wp44.test.js voert het
- *  uit tegen launchRedirect. Andere talen krijgen niets (een voorvoegsel wint altijd). */
-export function launchScript(live = LIVE) {
-  const others = JSON.stringify(live.filter((l) => l !== DEFAULT));
-  return `<script>(function(){try{var w=window,n=navigator,L=${others},q=function(m){try{return w.matchMedia("(display-mode: "+m+")").matches}catch(e){return false}};`
-    + `if(!(n.standalone===true||q("standalone")||q("fullscreen")||q("minimal-ui")))return;`
-    + `var b=function(t){t=String(t||"").toLowerCase().split(/[-_]/)[0];return t==="${DEFAULT}"||L.indexOf(t)>=0?t:null},x=null,p=null;`
-    + `try{x=b(sessionStorage.getItem("${TAB_KEY}"))}catch(e){}try{p=b((JSON.parse(localStorage.getItem("${PREF_KEY}"))||{}).lang)}catch(e){}`
-    + `var g=x||p;if(!g){var a=n.languages&&n.languages.length?n.languages:[n.language];for(var i=0;i<a.length&&!g;i++)g=b(a[i])}`
-    + `if(g&&g!=="${DEFAULT}")location.replace("/"+g+location.pathname+location.search+location.hash)}catch(e){}})()</script>`;
-}
-
-/** App-pagina in een taal: banner na de doctype, {{lang}} (taalcode), {{base}} (voorvoegsel: "" of "/nl", WP44),
- *  {{launch}} (launchScript, alleen Engels) en de teksten ingevuld */
+/** App-pagina in een taal: banner na de doctype, {{lang}} (taalcode), {{base}} (voorvoegsel: "" of "/nl", WP44) en de
+ *  teksten ingevuld */
 export function appPage(tpl, src, lang, cat = {}) {
-  const out = fillText(tpl.replaceAll("{{lang}}", lang).replaceAll("{{base}}", langBase(lang)).replaceAll("{{launch}}", lang === DEFAULT ? launchScript() : ""), cat, src);
+  const out = fillText(tpl.replaceAll("{{lang}}", lang).replaceAll("{{base}}", langBase(lang)), cat, src);
   if (out.includes("{{")) throw new Error(`${src}: onbekende plaatshouder ${out.slice(out.indexOf("{{"), out.indexOf("{{") + 30)}`);
   return out.replace(/^(<!doctype html>\n)/i, `$1${banner(src)}`);
 }
