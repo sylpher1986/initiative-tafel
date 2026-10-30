@@ -125,7 +125,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/", wp68: "/nl/maps/", wp68b: "/nl/maps/", wp68c: "/nl/maps/", wp68d: "/nl/maps/", wp73m: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/", wp68: "/nl/maps/", wp68b: "/nl/maps/", wp68c: "/nl/maps/", wp68d: "/nl/maps/", wp73m: "/nl/maps/", wp74m: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
@@ -1333,7 +1333,7 @@ const SCEN = {
     await tap(page, '#m-ltab [data-v="own"]');
     await page.locator("#m-my").waitFor({ state: "visible" });
     const tabs = await page.evaluate(() => [...document.querySelectorAll("#m-ltab button")].map((b) => ({ t: b.textContent, cut: b.scrollWidth > b.clientWidth + 1, w: b.getBoundingClientRect().width })));
-    if (tabs.length !== 3 || tabs.some((x) => x.cut)) throw new Error("tabs in de kop: " + JSON.stringify(tabs));
+    if (tabs.length !== 4 || tabs.some((x) => x.cut)) throw new Error("tabs (WP74: vier): " + JSON.stringify(tabs));
     if (!(await page.locator("#m-myhint").isVisible()) || (await page.locator("#m-mytiles .mtile").count()) !== 1 || !(await page.locator("#m-snap").isVisible())) throw new Error("lege toestand tab Eigen");
     // foute bestanden: eigen foutregel, geen item
     for (const [name, mimeType, buffer] of [["x.svg", "image/svg+xml", Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')], ["x.png", "image/png", Buffer.from("geen afbeelding")]]) {
@@ -2288,6 +2288,157 @@ const SCEN = {
     await pv.close();
     await tap(page, '#mapview [data-mv="fog"]'); // eindstand: fogmodus
     await page.waitForSelector("#mapview .mvfog:not([hidden])");
+  },
+  // WP74 (Inn Sight): vrije tokens. Tab Tokens (vier tabs passen, op 320 px op een eigen rij), staal kiezen = Plaatsen,
+  // een tik plaatst (label telt op), naast de kaart niets; tik selecteert (ring, dock met Verbergen i.p.v. Draaien),
+  // slepen = één stap, verbergen, paneel Token (grootte Large), toetsen (pijl, H, N), dupliceren, verwijderen + Ongedaan,
+  // token boven een object, schema 7 in de opslag. Eindstand: token geselecteerd met paneel Token.
+  async wp74m(page) {
+    await page.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);
+    const frame = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const K = () => page.evaluate(() => ({ ...window.__maps.toks(), hist: window.__maps.hist().size, view: window.__maps.view(), osel: window.__maps.sel(),
+      odock: document.getElementById("m-odock").hidden, rot: document.getElementById("m-orot").hidden, hide: document.getElementById("m-ohide").hidden,
+      hidePressed: document.getElementById("m-ohide").getAttribute("aria-pressed"), strip: document.getElementById("m-pstrip").hidden ? "" : document.getElementById("m-pstrip").textContent }));
+    const ptr = (steps) => page.evaluate((steps) => {
+      const c = document.getElementById("m-canvas"), r = c.getBoundingClientRect();
+      for (const [type, id, x, y] of steps) c.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: "touch", isPrimary: id === 1, clientX: r.left + x, clientY: r.top + y, bubbles: true, cancelable: true, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+    }, steps);
+    const scr = async (mx, my) => { const v = (await K()).view; return { x: mx * 48 * v.z + v.x, y: my * 48 * v.z + v.y }; };
+    const tapMap = async (mx, my) => { const p = await scr(mx, my); await ptr([["pointerdown", 1, p.x, p.y], ["pointerup", 1, p.x, p.y]]); await frame(); };
+    const drag = async (x0, y0, x1, y1) => { const a = await scr(x0, y0), b = await scr(x1, y1), st = [["pointerdown", 1, a.x, a.y]]; for (let i = 1; i <= 8; i++) st.push(["pointermove", 1, a.x + ((b.x - a.x) * i) / 8, a.y + ((b.y - a.y) * i) / 8]); st.push(["pointerup", 1, b.x, b.y]); await ptr(st); await frame(); };
+    await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    for (const [sel, v] of [["#m-cols", "8"], ["#m-rows", "6"]]) { await page.locator(sel).fill(v); await page.locator(sel).press("Enter"); }
+    await tap(page, "#m-close");
+    await tap(page, "#m-lib"); await page.locator("#m-lsheet").waitFor({ state: "visible" });
+    // een object (tafel) om te testen dat een token erboven ligt
+    await tap(page, '#m-ltab [data-v="parts"]');
+    await tap(page, "#m-tiles .mtile");
+    await tapMap(5.5, 3.5);
+    const tabs = await page.evaluate(() => { const b = [...document.querySelectorAll("#m-ltab button")].map((x) => x.getBoundingClientRect()), s = document.getElementById("m-lsheet").getBoundingClientRect(); return { n: b.length, inside: b.every((r) => r.right <= s.right + 1 && r.left >= s.left - 1 && r.height >= 44) }; });
+    if (tabs.n !== 4 || !tabs.inside) throw new Error("tabs: " + JSON.stringify(tabs));
+    await tap(page, '#m-ltab [data-v="tokens"]');
+    await page.locator("#m-tok").waitFor({ state: "visible" });
+    if ((await page.locator("#m-tl").inputValue()) !== "1") throw new Error("standaardlabel");
+    await page.locator("#m-tl").fill("G1"); await page.locator("#m-tl").press("Enter");
+    await tap(page, '#m-tcolors [data-c="red"]');
+    let k = await K();
+    if (!k.placing || !k.strip) throw new Error("plaatsen aan: " + JSON.stringify(k));
+    const h0 = k.hist;
+    await tapMap(1.5, 1.5); await tapMap(3.5, 1.5); await tapMap(5.5, 3.5); await tapMap(9.5, 3.5);
+    k = await K();
+    if (k.list.length !== 3 || k.list.map((x) => x.l).join() !== "G1,G2,G3" || k.hist !== h0 + 3 || k.label !== "G4") throw new Error("plaatsen: " + JSON.stringify(k));
+    if (k.list[0].x !== 1.5 || k.list[0].y !== 1.5) throw new Error("snap: " + JSON.stringify(k.list[0]));
+    await tap(page, "#m-lclose");
+    // tik op G3 (ligt op de tafel) selecteert het token, nog eens tikken = de tafel eronder
+    await tapMap(5.5, 3.5);
+    k = await K();
+    if (k.sel !== k.list[2].id || k.odock || !k.rot || k.hide) throw new Error("selecteren: " + JSON.stringify(k));
+    await tapMap(5.5, 3.5);
+    k = await K();
+    if (k.sel || !k.osel) throw new Error("object eronder: " + JSON.stringify(k));
+    await tapMap(1.5, 1.5);
+    k = await K();
+    const id1 = k.list[0].id;
+    if (k.sel !== id1 || k.osel) throw new Error("G1: " + JSON.stringify(k));
+    const h1 = k.hist;
+    await drag(1.5, 1.5, 2.6, 4.4);
+    k = await K();
+    if (k.list[0].x !== 2.5 || k.list[0].y !== 4.5 || k.hist !== h1 + 1) throw new Error("slepen: " + JSON.stringify(k.list[0]) + k.hist);
+    await tap(page, "#m-ohide");
+    k = await K();
+    if (!k.list[0].hide || k.hidePressed !== "true") throw new Error("verbergen: " + JSON.stringify(k));
+    // paneel Token: grootte Large
+    await tap(page, "#m-omore"); await page.locator("#m-tsheet").waitFor({ state: "visible" });
+    await tap(page, '#m-ttsize [data-s="2"]');
+    k = await K();
+    if (k.list[0].s !== 2 || !Number.isInteger(k.list[0].x)) throw new Error("grootte: " + JSON.stringify(k.list[0]));
+    await tap(page, "#m-tclose");
+    // toetsen: pijl verplaatst, H toont weer, Ctrl+D dupliceert, Delete + Ongedaan
+    await page.locator("#m-canvas").focus();
+    const x0 = (await K()).list[0].x;
+    await page.keyboard.press("ArrowRight");
+    if ((await K()).list[0].x !== x0 + 2) throw new Error("pijl (Large = 2 cellen): " + JSON.stringify((await K()).list[0]));
+    await page.keyboard.press("h");
+    if ((await K()).list[0].hide) throw new Error("H");
+    await page.keyboard.press("Control+d");
+    k = await K();
+    if (k.list.length !== 4 || k.sel !== k.list[3].id) throw new Error("dupliceren: " + JSON.stringify(k));
+    await page.keyboard.press("Delete");
+    if ((await K()).list.length !== 3) throw new Error("verwijderen");
+    await tap(page, "#m-undo"); await frame();
+    if ((await K()).list.length !== 4) throw new Error("ongedaan verwijderen");
+    await page.keyboard.press("Escape");
+    if ((await K()).sel) throw new Error("Esc");
+    await page.waitForFunction(() => window.__maps.status() === "saved");
+    const kept = await page.evaluate(async () => { const st = await import("/js/maps/store.js"), m = (await st.listMaps())[0]; return { schema: m.schema, n: m.toks && m.toks.list.length }; });
+    if (kept.schema !== 7 || kept.n !== 4) throw new Error("opslag: " + JSON.stringify(kept));
+    await tapMap(3.5, 1.5);
+    await tap(page, "#m-omore"); await page.locator("#m-tsheet").waitFor({ state: "visible" }); // eindstand: paneel Token
+    await snap(page, "wp74m", "panel");
+  },
+  // WP74 (Initiative): tokens in de kaartviewer. Kaart met twee tokens (één verborgen); spelersbeeld toont alleen het
+  // zichtbare; slepen = token op de nieuwe cel in de opslag en een nieuw spelersbeeld; tik = balk met Verborgen voor
+  // spelers + Klaar (pil weg, + en − erboven); omzetten bewaart. Eindstand: balk open.
+  async wp74(page, base) {
+    await SCEN.fight(page);
+    await page.evaluate(async () => {
+      const st = await import("/js/maps/store.js"), M = await import("/js/maps/model/map.js"), G = await import("/js/maps/model/grid.js");
+      const grid = G.cleanGrid({ type: "square", cols: 10, rows: 8 });
+      await st.putMap({ ...M.newMap({ id: "kaart00002", name: "Herberg" }), grid, toks: { at: Date.now(), list: [{ id: "ta", x: 1.5, y: 1.5, s: 1, c: "red", l: "G1" }, { id: "tb", x: 8.5, y: 6.5, s: 1, c: "blue", l: "A", hide: true }] } });
+      const { app } = await import("/js/state.js"), F = await import("/js/rules/fight.js"), R = await import("/js/ui/render.js");
+      F.addEnc(app.S, { name: "Herberg", notes: "", map: { id: "kaart00002", name: "Herberg" } }, true);
+      R.render();
+    });
+    const lang = await page.evaluate(() => document.documentElement.lang);
+    const pv = await page.context().newPage();
+    await pv.setViewportSize({ width: 390, height: 740 });
+    await pv.goto(base + pathFor(lang, "/initiative/player/"));
+    await pv.waitForSelector("#pv-list .pvc");
+    await tap(page, '#order [data-enc="map"]');
+    await page.waitForSelector("#mapview canvas:not([hidden])");
+    await page.waitForFunction(() => { const c = document.querySelector("#mapview canvas"); return c.width > 10; });
+    await tap(page, '#mapview [data-mv="pv"]');
+    await pv.waitForFunction(() => { const i = document.querySelector("#pv-mapimg"); return !document.querySelector("#pv-map").hidden && i.complete && i.naturalWidth > 100; }, null, { timeout: 8000 });
+    const px = (cx, cy) => pv.evaluate(({ cx, cy }) => { const i = document.querySelector("#pv-mapimg"), c = document.createElement("canvas"); c.width = i.naturalWidth; c.height = i.naturalHeight; const g = c.getContext("2d"); g.drawImage(i, 0, 0);
+      const d = g.getImageData(Math.round((cx / 10) * c.width), Math.round((cy / 8) * c.height), 1, 1).data; return { r: d[0], g: d[1], b: d[2], src: i.src }; }, { cx, cy });
+    const red = await px(1.2, 1.5), blue = await px(8.2, 6.5); // binnen de schijf, naast het label
+    if (!(red.r > 150 && red.g < 110) || blue.b > blue.r + 60) throw new Error("spelersbeeld tokens: " + JSON.stringify({ red, blue }));
+    const stored = () => page.evaluate(async () => { const st = await import("/js/maps/store.js"); const m = await st.getMap("kaart00002"); return m.toks.list.map((x) => ({ id: x.id, x: x.x, y: x.y, hide: !!x.hide })); });
+    // het token zit linksboven; de kaart is passend getekend (fitView): zoek het rode token op het canvas
+    const find = (rgb) => page.evaluate((rgb) => { const c = document.querySelector("#mapview canvas"), g = c.getContext("2d"), d = g.getImageData(0, 0, c.width, c.height).data, r = c.getBoundingClientRect(), k = c.width / r.width;
+      let sx = 0, sy = 0, n = 0; for (let y = 0; y < c.height; y += 2) for (let x = 0; x < c.width; x += 2) { const i = (y * c.width + x) * 4; if (Math.abs(d[i] - rgb[0]) < 12 && Math.abs(d[i + 1] - rgb[1]) < 12 && Math.abs(d[i + 2] - rgb[2]) < 12) { sx += x; sy += y; n++; } }
+      return n ? { x: r.left + sx / n / k, y: r.top + sy / n / k, n } : null; }, rgb);
+    const t0 = await find([192, 57, 43]);
+    if (!t0) throw new Error("rood token niet op het canvas");
+    const cellPx = await page.evaluate(() => { const c = document.querySelector("#mapview canvas"), r = c.getBoundingClientRect(); return Math.min(r.width / 10, r.height / 8); });
+    const ev = (steps) => page.evaluate((steps) => { const c = document.querySelector("#mapview canvas");
+      for (const [t, x, y] of steps) c.dispatchEvent(new PointerEvent(t, { pointerId: 1, pointerType: "touch", isPrimary: true, clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: t === "pointerup" ? 0 : 1 })); }, steps);
+    const st = [["pointerdown", t0.x, t0.y]];
+    for (let i = 1; i <= 8; i++) st.push(["pointermove", t0.x + (cellPx * 3 * i) / 8, t0.y + (cellPx * 2 * i) / 8]);
+    st.push(["pointerup", t0.x + cellPx * 3, t0.y + cellPx * 2]);
+    await ev(st);
+    const w0 = Date.now();
+    let s1;
+    while (!((s1 = await stored()).find((x) => x.id === "ta").x === 4.5)) { if (Date.now() - w0 > 5000) throw new Error("token niet verplaatst: " + JSON.stringify(s1)); await page.waitForTimeout(100); }
+    if (s1.find((x) => x.id === "ta").y !== 3.5) throw new Error("snap: " + JSON.stringify(s1));
+    await pv.waitForFunction((src) => document.querySelector("#pv-mapimg").src !== src, red.src, { timeout: 8000 });
+    // tik op het token: balk met Verborgen voor spelers
+    const t1 = await find([192, 57, 43]);
+    await ev([["pointerdown", t1.x, t1.y], ["pointerup", t1.x, t1.y]]);
+    await page.waitForSelector("#mapview .mvtok:not([hidden])");
+    const lay = await page.evaluate(() => { const q = (s) => document.querySelector(s), z = q("#mapview .mvzoom").getBoundingClientRect(), b = q("#mapview .mvtok").getBoundingClientRect();
+      return { toon: getComputedStyle(q("#mapview .mvtoon")).display, above: z.bottom <= b.top + 1, name: q("#mapview .mvtname").textContent }; });
+    if (lay.toon !== "none" || !lay.above || !/G1/.test(lay.name)) throw new Error("balk: " + JSON.stringify(lay));
+    await tap(page, '#mapview [data-mv="thide"]');
+    const w1 = Date.now();
+    while (!(await stored()).find((x) => x.id === "ta").hide) { if (Date.now() - w1 > 5000) throw new Error("verbergen niet bewaard"); await page.waitForTimeout(100); }
+    if ((await page.getAttribute('#mapview [data-mv="thide"]', "aria-pressed")) !== "true") throw new Error("schakelaar");
+    await snap(page, "wp74", "tok");
+    await tap(page, '#mapview [data-mv="tdone"]');
+    if (!(await page.locator("#mapview .mvtok").isHidden())) throw new Error("balk na Klaar");
+    await pv.close();
+    await ev([["pointerdown", t1.x, t1.y], ["pointerup", t1.x, t1.y]]); // eindstand: balk open
+    await page.waitForSelector("#mapview .mvtok:not([hidden])");
   },
   // WP72: spelerskaart via de kamer. DM deelt een kamer (kamerSim), speler in een eigen browsercontext (geen
   // BroadcastChannel: de kaart kan alleen via de kamer komen). Hint noemt de kamer; aan = kaart in stukken (elk bericht

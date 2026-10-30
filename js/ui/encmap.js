@@ -102,8 +102,8 @@ const ERR = { empty: "read", read: "read", notjson: "format", format: "format", 
 let vmods = null;
 const viewMods = () => (vmods ||= Promise.all([store(), import("../maps/render/canvas.js"), import("../maps/render/art.js"),
   import("../maps/model/view.js"), import("../maps/model/grid.js"), import("../maps/ui/input.js"), import("../maps/ui/upload.js"), import("../maps/model/assets.js"),
-  import("../maps/model/fog.js")])
-  .then(([s, canvas, art, view, grid, input, upload, assets, fog]) => ({ s, canvas, art, view, grid, input, upload, assets, fog })))
+  import("../maps/model/fog.js"), import("../maps/model/tokens.js")])
+  .then(([s, canvas, art, view, grid, input, upload, assets, fog, tok]) => ({ s, canvas, art, view, grid, input, upload, assets, fog, tok })))
   .catch((e) => { vmods = null; throw e; });
 
 /**
@@ -115,15 +115,23 @@ const viewMods = () => (vmods ||= Promise.all([store(), import("../maps/render/c
  * Sight), null = kijken. Na elke veeg alleen de fog naar de kaart in Inn Sight schrijven (putFog: de rest van de kaart blijft
  * zoals hij in de opslag staat); onFog(doc) met de opgeslagen kaart, of onFog(null) als schrijven mislukte (dan staat de
  * fog op het scherm terug zoals in de opslag).
+ * WP74 (UX): tokens. Buiten de fogmodus sleept één vinger op een token dat token (pas na SLOP, snap altijd aan, het
+ * dichtstbijzijnde middelpunt binnen 44 px telt); elders pant hij. Tijdens het slepen staat het token niet in de buffer
+ * (lift) maar groter met schaduw boven de kaart, met een gestippelde ring op de oude plek en de doelcellen omlijnd. Bij
+ * loslaten alleen de tokens naar de kaart (putToks). Een tik op een token selecteert het (ring): onTok(info) met
+ * { id, l, c, fill, ink, known, hide, fog } (fog = middelpunt onder fog), onTok(null) = niets geselecteerd; hide(id) zet "verborgen voor
+ * spelers" om. onToks(doc) na elke bewaarde tokenwijziging, onToks(null) als schrijven mislukte.
  */
-export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {}, onFog = () => {} } = {}) {
+export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {}, onFog = () => {}, onTok = () => {}, onToks = () => {} } = {}) {
   let M = null, map = null, img = null, art = null, layer = null, view = v0 ? { ...v0 } : null, w = 0, h = 0, dpr = 1, col = null;
   let queued = false, dead = false, settleT = 0, lim = "", fogMode = null, frame = null, writing = Promise.resolve();
+  let lift = null, selT = null, tframe = null; // WP74: versleept token { t, from }, geselecteerd token-id, doelcellen
   const paint = () => {
     queued = false;
     if (dead || !map || !view || w < 2 || h < 2) return;
     M.canvas.fitCanvas(cv, w, h, dpr);
-    const r = layer.paint(cv, map, view, w, h, dpr, col, { img, art, brush: frame ? [frame] : null }, [art.ver()]);
+    const ts = selT && !lift ? M.tok.tokList(map.toks).find((x) => x.id === selT) || null : null;
+    const r = layer.paint(cv, map, view, w, h, dpr, col, { img, art, brush: frame ? [frame] : tframe ? [tframe] : null, lift: lift ? lift.from.id : null, tlift: lift, tsel: ts }, [art.ver()]);
     if (r.settle) { clearTimeout(settleT); settleT = setTimeout(later, r.settle); }
     const lo = view.z <= M.view.ZMIN, hi = view.z >= M.view.ZMAX;
     if (lim !== `${lo}${hi}`) { lim = `${lo}${hi}`; onZoom(lo, hi); }
@@ -152,8 +160,19 @@ export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {},
     const rec = async (sha) => { const r = await M.s.getAsset(sha); return r ? M.upload.assetImage(r) : null; };
     art = M.art.createArt(later, { custom: rec });
     // één vinger/muis = pannen, knijpen en wiel = zoomen (Inn Sight); WP73: in de fogmodus pakt één vinger de fog op
-    M.input.attachInput(cv, { get: () => view || { x: 0, y: 0, z: 1 }, set, grab: (x, y) => (fogMode && !dead ? fogGrab(x, y) : null) });
+    M.input.attachInput(cv, { get: () => view || { x: 0, y: 0, z: 1 }, set, grab: (x, y) => (dead ? null : fogMode ? fogGrab(x, y) : tokGrab(x, y)),
+      tap: (x, y) => tokTap(x, y), tapping: () => !dead && !fogMode && !!map && M.tok.hasToks(map.toks) }); // WP74: tik op een token selecteert
     on("ok", map);
+    // WP74 (review): terug naar dit tabblad (Inn Sight bewerkte de kaart): nieuwere tokens en fog overnemen
+    document.addEventListener("visibilitychange", async () => {
+      if (dead || document.visibilityState !== "visible" || lift) return;
+      const d = await M.s.getMap(id).catch(() => null);
+      if (dead || !d || lift) return;
+      let ch = false;
+      if (d.toks && (d.toks.at || 0) > ((map.toks && map.toks.at) || 0)) { map.toks = d.toks; ch = true; }
+      if (d.fog && (d.fog.at || 0) > ((map.fog && map.fog.at) || 0)) { map.fog = d.fog; ch = true; }
+      if (ch) { later(); tell(); on("ok", map); }
+    });
     w = 0; size();
     if (map.bg && map.bg.asset) { const d = await rec(map.bg.asset).catch(() => null); if (dead) { if (d && d.close) d.close(); return; } img = d; later(); } // ontbreekt: raster zonder achtergrond
   })();
@@ -172,6 +191,71 @@ export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {},
       onFog(null);
     }).catch(() => {});
   };
+  // WP74: tokens. Schrijven zoals de fog (achter elkaar, ook na sluiten); mislukt = terug naar wat er bewaard is.
+  // fn(lijst) → nieuwe lijst of null wordt hier meteen op het scherm toegepast en bij het schrijven nog eens binnen de
+  // transactie op de OPGESLAGEN lijst (putToks met een functie): een token dat Inn Sight intussen plaatste of
+  // verwijderde, blijft zo (de viewer kende alleen de lijst van bij het openen).
+  const stamp = (list, old) => ({ at: Math.max(Date.now(), ((old && old.at) || 0) + 1), list });
+  function change(fn) {
+    const l = fn(M.tok.tokList(map.toks));
+    if (!l) return;
+    map.toks = stamp(l, map.toks);
+    later(); tell();
+    saveToks((k) => { const n = fn(M.tok.tokList(k)); return n ? stamp(n, k) : null; }, map.toks);
+  }
+  const saveToks = (fn, k) => {
+    const s = M.s;
+    writing = writing.then(async () => {
+      const doc = await s.putToks(id, fn).catch(() => null);
+      if (doc) { if (!dead && map.toks === k) { map.toks = doc.toks; later(); tell(); } onToks(doc); return; }
+      const now = await s.getMap(id).catch(() => null);
+      if (!now) { if (!dead) on("gone"); return; }
+      if (!dead && map.toks === k) { map.toks = now.toks; later(); tell(); }
+      onToks(null);
+    }).catch(() => {});
+  };
+  /** Geselecteerd token aan de viewer melden (of null als het weg is) */
+  function tell() {
+    if (dead) return;
+    const x = selT && M.tok.tokList(map.toks).find((y) => y.id === selT);
+    if (selT && !x) selT = null;
+    if (!x) { onTok(null); return; }
+    const c = M.grid.cellAt(map.grid, x.x, x.y);
+    const k = M.tok.tokColor(x.c);
+    onTok({ id: x.id, l: x.l, c: x.c, fill: k.fill, ink: k.ink, known: !!M.tok.TOK_COLORS[x.c], hide: !!x.hide, fog: M.fog.hidden(map.fog, c.c, c.r) });
+  }
+  const tokAtPt = (sx, sy) => { const p = M.view.toMap(view, sx, sy); return M.tok.nearTok(M.tok.tokList(map.toks), p.x, p.y, 22 / (M.view.CELL * view.z)); };
+  function tokTap(sx, sy) {
+    if (!map || !view || fogMode) return;
+    const x = tokAtPt(sx, sy), id2 = x ? x.id : null;
+    if (id2 === selT) return;
+    selT = id2; later(); tell();
+  }
+  function tokGrab(sx, sy) {
+    if (!map || !view || !M.tok.hasToks(map.toks)) return null;
+    const t0 = tokAtPt(sx, sy);
+    if (!t0) return null;
+    const p0 = M.view.toMap(view, sx, sy), dx = p0.x - t0.x, dy = p0.y - t0.y;
+    const cells = (x) => { // doelcellen: de footprint (vierkant) of de cel (hex) onder het middelpunt
+      if (map.grid.type === "hex") { const c = M.grid.cellAt(map.grid, x.x, x.y); return M.grid.cellPoly(map.grid, c.c, c.r); }
+      const s = Math.max(1, x.s) / 2, cx = x.s < 1 ? Math.floor(x.x) + 0.5 : x.x, cy = x.s < 1 ? Math.floor(x.y) + 0.5 : x.y;
+      return [{ x: cx - s, y: cy - s }, { x: cx + s, y: cy - s }, { x: cx + s, y: cy + s }, { x: cx - s, y: cy + s }];
+    };
+    return {
+      move(x, y) {
+        if (dead) return;
+        const q = M.view.toMap(view, x, y), n = M.tok.moveTok(map.grid, t0, q.x - dx, q.y - dy, true); // snap altijd aan (UX)
+        lift = { t: n, from: t0 }; tframe = cells(n); later();
+      },
+      end() {
+        if (dead) return;
+        const l = lift; lift = null; tframe = null; later();
+        if (!l || (l.t.x === t0.x && l.t.y === t0.y)) return;
+        change((list) => (list.some((y) => y.id === t0.id) ? M.tok.tokFront(M.tok.mapTok(list, t0.id, (y) => ({ ...y, x: l.t.x, y: l.t.y })), t0.id) : null)); // versleept = bovenop; intussen weg = niets
+      },
+      cancel() { if (!dead && lift) { lift = null; tframe = null; later(); } },
+    };
+  }
   function fogGrab(x, y) {
     if (!map || !view || !M.fog.fogOn(map.fog)) return null;
     const p = (sx, sy) => M.view.toMap(view, sx, sy);
@@ -186,7 +270,17 @@ export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {},
   }
   return {
     fit, size,
-    fog(mode) { fogMode = mode || null; if (!fogMode && frame) { frame = null; later(); } },
+    fog(mode) { fogMode = mode || null; if (!fogMode && frame) { frame = null; later(); } if (fogMode && selT) { selT = null; later(); tell(); } }, // WP74: fogmodus = geen tokenselectie
+    /** WP74: tokenselectie opheffen (Klaar, Esc) */
+    unsel() { if (selT && !dead) { selT = null; later(); tell(); } },
+    /** WP74: "verborgen voor spelers" van token tid omzetten en bewaren */
+    hide(tid) {
+      if (dead || !map) return;
+      const x = M.tok.tokList(map.toks).find((y) => y.id === tid);
+      if (!x) return;
+      const hide = !x.hide; // doelwaarde (niet omzetten: de opgeslagen waarde kan intussen anders zijn)
+      change((list) => (list.some((y) => y.id === tid) ? M.tok.mapTok(list, tid, (y) => { const n = { ...y, hide }; if (!hide) delete n.hide; return n; }) : null));
+    },
     zoom(f) { if (map && view) set(M.view.zoomAt(view, f, w / 2, h / 2)); },
     view: () => (view ? { ...view } : null),
     /** Kleuren opnieuw lezen (themawissel terwijl de kaart open is) */

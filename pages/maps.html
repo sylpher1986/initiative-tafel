@@ -118,6 +118,7 @@
 <nav class="mdock" id="m-odock" aria-label="{{t:maps.sel.dock}}" hidden>
   <div class="mobtns">
     <button type="button" class="btn" id="m-orot" aria-label="{{t:maps.sel.rot}}"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></button>
+    <button type="button" class="btn mhide" id="m-ohide" aria-label="{{t:maps.tok.hidden}}" aria-pressed="false" hidden><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="moff" d="M3 3l18 18"/></svg></button>
     <button type="button" class="btn" id="m-odup" aria-label="{{t:maps.sel.dup}}"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></button>
     <button type="button" class="btn mdel" id="m-odel" aria-label="{{t:maps.sel.del}}"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
     <button type="button" class="btn" id="m-omore" aria-label="{{t:maps.sel.more}}" aria-expanded="false" aria-controls="m-osheet"><svg class="li" aria-hidden="true" focusable="false"><use href="/icons/ui.svg#i-more"/></svg></button>
@@ -196,7 +197,7 @@
   <div class="grab" aria-hidden="true"></div>
   <!-- WP63: tabs Onderdelen | Terrein op de plek van de titel (de titel blijft voor de schermlezer) -->
   <div class="shead"><h3 class="vh" id="m-l-t">{{t:maps.lib.title}}</h3>
-    <div class="seg mltab" id="m-ltab" role="group" aria-labelledby="m-l-t"><button type="button" data-v="parts">{{t:maps.lib.parts}}</button><button type="button" data-v="terrain">{{t:maps.lib.terrain}}</button><button type="button" data-v="own">{{t:maps.lib.own}}</button></div>
+    <div class="seg mltab" id="m-ltab" role="group" aria-labelledby="m-l-t"><button type="button" data-v="parts">{{t:maps.lib.parts}}</button><button type="button" data-v="terrain">{{t:maps.lib.terrain}}</button><button type="button" data-v="own">{{t:maps.lib.own}}</button><button type="button" data-v="tokens">{{t:maps.lib.tokens}}</button></div>
     <button type="button" class="link" id="m-lclose">{{t:maps.panel.close}}</button></div>
   <div class="seg" id="m-cats" role="group" aria-labelledby="m-l-t"><button type="button" data-v="floor">{{t:maps.cat.floor}}</button><button type="button" data-v="build">{{t:maps.cat.build}}</button><button type="button" data-v="furniture">{{t:maps.cat.furniture}}</button><button type="button" data-v="nature">{{t:maps.cat.nature}}</button></div>
   <div class="mtiles" id="m-tiles"></div>
@@ -214,6 +215,17 @@
       <button type="button" class="btn" id="m-myren">{{t:maps.my.rename}}</button>
       <button type="button" class="btn mdel" id="m-mydel">{{t:maps.my.del}}</button>
     </div>
+  </div>
+  <!-- WP74: tab Tokens (UX). Label (telt na plaatsen op: G1 → G2), grootte (D&D) en kleur; een kleurstaal kiezen zet
+       Plaatsen aan, zoals een tegel. Grootte-knoppen en stalen vult js/maps/main.js. -->
+  <div class="mtok" id="m-tok" hidden>
+    <label>{{t:maps.tok.label}}<input id="m-tl" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="m-tl-h"></label>
+    <p class="hint" id="m-tl-h"></p>
+    <div class="mfield"><span class="lab" id="m-tsize-l">{{t:maps.tok.size}}</span>
+      <div class="seg mtsize" id="m-tsize" role="group" aria-labelledby="m-tsize-l"></div>
+      <p class="hint" id="m-tsize-h"></p></div>
+    <div class="mfield"><span class="lab" id="m-tcol-l">{{t:maps.tok.color}}</span>
+      <div class="mtcols" id="m-tcolors" role="group" aria-labelledby="m-tcol-l"></div></div>
   </div>
   <!-- schakelaar onder de tegels (in de kop past hij op 320 px niet naast titel en Sluiten) -->
   <button type="button" class="btn msnap" id="m-snap" aria-pressed="true"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 12h16M12 4v16"/></svg>{{t:maps.lib.snap}}</button>
@@ -247,6 +259,20 @@
   <div class="mfield"><span class="lab" id="m-oorder-l">{{t:maps.obj.order}}</span>
     <div class="mbg-row" role="group" aria-labelledby="m-oorder-l"><button type="button" class="btn" id="m-oback">{{t:maps.obj.back}}</button><button type="button" class="btn" id="m-ofront">{{t:maps.obj.front}}</button></div></div>
   <button type="button" class="btn msnap" id="m-osnap" aria-pressed="true"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 12h16M12 4v16"/></svg>{{t:maps.lib.snap}}</button>
+</section>
+<!-- WP74: paneel Token (via Meer, zelfde vorm als paneel Object): label, grootte, kleur, verborgen voor spelers, snap.
+     Elke wijziging is één undo-stap; het label wordt toegepast bij blur/Enter (leeg = het vorige label terug). -->
+<section class="msheet" id="m-tsheet" role="dialog" aria-labelledby="m-t-t" tabindex="-1" hidden>
+  <div class="grab" aria-hidden="true"></div>
+  <div class="shead"><h3 id="m-t-t"></h3><button type="button" class="link" id="m-tclose">{{t:maps.panel.close}}</button></div>
+  <label>{{t:maps.tok.label}}<input id="m-ttl" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+  <div class="mfield"><span class="lab" id="m-ttsize-l">{{t:maps.tok.size}}</span>
+    <div class="seg mtsize" id="m-ttsize" role="group" aria-labelledby="m-ttsize-l"></div>
+    <p class="hint" id="m-ttsize-h"></p></div>
+  <div class="mfield"><span class="lab" id="m-ttcol-l">{{t:maps.tok.color}}</span>
+    <div class="mtcols" id="m-ttcolors" role="group" aria-labelledby="m-ttcol-l"></div></div>
+  <button type="button" class="btn msnap mhide" id="m-tthide" aria-pressed="false"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="moff" d="M3 3l18 18"/></svg>{{t:maps.tok.hidden}}</button>
+  <button type="button" class="btn msnap" id="m-tsnap" aria-pressed="true"><svg class="li" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 12h16M12 4v16"/></svg>{{t:maps.lib.snap}}</button>
 </section>
 <!-- WP58: menu en hernoemen voor een kaart uit de lijst (modaal, met dim) -->
 <div class="sheet-wrap" id="m-menu" hidden>

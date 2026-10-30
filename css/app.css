@@ -1207,6 +1207,17 @@ a.btn.encsave{display:flex;align-items:center;justify-content:center;color:var(-
 .mapview.fogging .mvzoom{bottom:calc(var(--mvfog-h) + 8px)}
 .mvfstrip{position:absolute;top:8px;left:50%;transform:translateX(-50%);margin:0;width:max-content;max-width:calc(100% - 24px);box-sizing:border-box;background:var(--surface);color:var(--fg);border:1px solid var(--sel);border-radius:999px;padding:6px 14px;font-size:.9rem;font-weight:600;text-align:center;pointer-events:none}
 .mvfstrip[hidden]{display:none}
+/* WP74: geselecteerd token in de viewer: balk onderaan (zoals de fogbalk), + en − erboven, schakelaar "Tonen aan spelers" weg */
+.mvtok{position:absolute;left:0;right:0;bottom:0;display:grid;gap:4px;padding:8px max(8px,env(safe-area-inset-right,0px)) 8px max(8px,env(safe-area-inset-left,0px));background:var(--surface);border-top:1px solid var(--line)}
+.mvtok[hidden]{display:none}
+.mvtsw{flex:0 0 auto;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:.8rem;line-height:1;box-shadow:0 0 0 2px rgb(36,24,17),0 0 0 3px rgb(250,246,236);overflow:hidden;white-space:nowrap} /* rand = kaartinhoud, vast zoals TOK_EDGE (js/maps/model/tokens.js) */
+/* naam alleen voor de schermlezer: het bolletje toont label en kleur (op 320 px past de naam er niet naast) */
+.mvthide{flex:1 1 auto;min-height:44px;min-width:0;white-space:normal;line-height:1.15;padding:4px 10px}
+.mvthide[aria-pressed="true"]{background:var(--act-soft);border-color:var(--sel);box-shadow:inset 0 0 0 1px var(--sel);font-weight:700}
+.mvtfog{font-size:.8rem;color:var(--muted)}
+.mvtfog[hidden]{display:none}
+.mapview.tokking .mvtoon{display:none}
+.mapview.tokking .mvzoom{bottom:calc(var(--mvfog-h) + 8px)}
 .enclink{width:100%;margin-top:12px}
 
 /* GV2: samenvatting bij Gevecht afronden */

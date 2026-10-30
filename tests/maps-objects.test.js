@@ -196,7 +196,7 @@ test("history: een groep (uitlijnsessie) is één stap; seal sluit; per saldo ni
 });
 
 test("kaartdocument: objecten → schema 3 (Maps 0.5.0 laat zo'n kaart met rust), zonder objecten v1/v2; kopie houdt ze", () => {
-  assert.equal(SCHEMA, 6); // WP63: 4 = terrein, WP64: 5 = eigen assets, WP73: 6 = fog
+  assert.equal(SCHEMA, 7); // WP74: 7 = tokens; WP63: 4 = terrein, WP64: 5 = eigen assets, WP73: 6 = fog
   const m = newMap({ id: "abc123", name: "Crypte" });
   assert.equal(cleanMap(m).schema, 1);
   assert.equal("objs" in cleanMap({ ...m, objs: [] }), false);

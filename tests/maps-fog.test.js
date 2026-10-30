@@ -120,7 +120,7 @@ test("mergeFog: de laatst gewijzigde fog wint, ook uitzetten; geen fog-veld verl
 });
 
 test("kaartdocument: fog aan = schema 6 (Maps 1.4.x laat de kaart met rust), uit blijft bewaard zonder schemasprong", () => {
-  assert.equal(SCHEMA, 6);
+  assert.equal(SCHEMA, 7); // WP74: 7 = tokens
   const m = newMap({ id: "abcdef1", name: "Grot", now: 1 });
   assert.equal(cleanMap({ ...m, fog: setFogOn(true, 5) }).schema, 6);
   const off = cleanMap({ ...m, fog: setFogOn(false, 5) });

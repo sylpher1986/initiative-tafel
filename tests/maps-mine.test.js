@@ -89,7 +89,7 @@ test("plaatsen: eigen asset met de grootte uit Mijn assets; zonder def of onbeke
 });
 
 test("kaartschema 5 alleen met een eigen asset op een object; nieuwer = niet aanraken", () => {
-  assert.equal(SCHEMA, 6); // WP73: 6 = fog aan
+  assert.equal(SCHEMA, 7); // WP73: 6 = fog aan, WP74: 7 = tokens
   const m = newMap({ id: "abcdef1", name: "Grot" });
   const A = "a".repeat(64);
   assert.equal(cleanMap({ ...m, objs: [{ id: "o1", asset: "table", x: 1, y: 1 }] }).schema, 3);

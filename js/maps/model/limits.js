@@ -9,6 +9,8 @@ export const LIMITS = Object.freeze({
   minCells: 1, maxCells: 100,
   // objecten (D10, WP61): aantal per kaart, grootte in cellen, positie in kaarteenheden
   objs: 2000, objMinSize: 0.25, objMaxSize: 20, objMaxPos: 1000,
+  // tokens (WP74): aantal per kaart, labellengte (grafemen) en harde grens in codepunten (combinerende tekens)
+  toks: 200, tokLabel: 3, tokLabelCp: 16,
   // terrein (WP63): soorten per kaart (één teken per cel)
   terrIds: 35,
   // uploads (D12, WP59): invoer, opgeslagen achtergrond, decompressiebom

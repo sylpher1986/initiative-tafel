@@ -8,6 +8,9 @@
 // onderaan met Onthullen | Verbergen + Klaar en het gereedschap (Penseel | Breed | Rechthoek, onthouden per apparaat zoals
 // in Inn Sight), strook bovenin; één vinger werkt op de fog, twee vingers pannen/zoomen. De fog gaat na elke veeg naar de
 // kaart in Inn Sight (mapViewer, putFog) en een gedeelde kaart krijgt ± 1 s later een nieuw spelersbeeld.
+// WP74: tokens (UX): één vinger op een token sleept het (mapViewer), een tik selecteert het: balk onderaan op de plek van
+// de fogbalk met het token, de schakelaar "Verborgen voor spelers" en Klaar (tik ernaast of Esc = weg). Na elke
+// tokenwijziging krijgt een gedeelde kaart ± 1 s later een nieuw spelersbeeld, zoals bij de fog.
 import { t } from "../i18n/boot.js";
 import { esc, toastBad } from "./util.js";
 import { ico } from "./icons.js";
@@ -22,8 +25,13 @@ const views = new Map(); // kaart-id → laatste view (sessie)
 const names = new Map(); // kaart-id → actuele naam uit Inn Sight (na laden; de verwijzing kan een oude naam hebben)
 
 export const mapOpen = () => !!(el && !el.hidden);
-/** WP73: Esc in de fogmodus = Klaar (zoals in Inn Sight); true als dat gebeurde */
-export function fogEsc() { if (!mapOpen() || !fogging) return false; setFog(false); return true; }
+/** WP73: Esc in de fogmodus = Klaar (zoals in Inn Sight); WP74: anders een geselecteerd token loslaten. true als dat gebeurde */
+export function fogEsc() {
+  if (!mapOpen()) return false;
+  if (fogging) { setFog(false); return true; }
+  if (tok) { ctl?.unsel(); return true; }
+  return false;
+}
 
 /* ---------- WP71: kaart tonen aan spelers (spelersvenster op dit apparaat) ---------- */
 // Eén gedeelde kaart tegelijk, bewust aangezet met de schakelaar in de viewer (UX: nooit automatisch, een kaart kan de
@@ -99,8 +107,8 @@ function setFog(on) {
   on = !!on && fogHas && !!ctl;
   if (on === fogging) return;
   fogging = on;
-  ctl?.fog(on ? { reveal: fogAct === "reveal", tool: fogTool } : null);
-  paintFog();
+  ctl?.fog(on ? { reveal: fogAct === "reveal", tool: fogTool } : null); // WP74: heft ook een tokenselectie op (onTok(null))
+  paintFog(); paintTok();
   (on ? el.querySelector("[data-mv=fdone]") : el.querySelector("[data-mv=fog]").hidden ? el : el.querySelector("[data-mv=fog]")).focus({ preventScroll: true });
 }
 const fogMode = () => ctl?.fog(fogging ? { reveal: fogAct === "reveal", tool: fogTool } : null);
@@ -108,6 +116,36 @@ const fogMode = () => ctl?.fog(fogging ? { reveal: fogAct === "reveal", tool: fo
 function fogSaved(id, doc) {
   if (!doc) { toastBad(t("init.map.fog.fail")); return; }
   if (cur === id) { fogHas = !!(doc.fog && doc.fog.on); if (!fogHas && fogging) setFog(false); else paintFog(); }
+  if (shared && shared.id === id && shared.flat) { clearTimeout(fogT); const s = shared; fogT = setTimeout(() => { if (shared === s) flatten(s); }, 1000); }
+}
+
+/* ---------- WP74: geselecteerd token (balk onderaan) ---------- */
+let tok = null; // { id, l, c, hide, fog } of null
+const tokName = (x) => (x.l ? t("init.map.tok.name", { l: x.l }) : t("init.map.tok.nameColor", { color: x.known ? t("init.map.tok.c." + x.c) : x.c }));
+function paintTok() {
+  if (!el) return;
+  const bar = el.querySelector(".mvtok"), on = !!tok && !fogging;
+  bar.hidden = !on;
+  el.classList.toggle("tokking", on);
+  if (!on) return;
+  const sw = bar.querySelector(".mvtsw");
+  sw.style.background = tok.fill; sw.style.color = tok.ink; sw.textContent = tok.l; // kleuren uit de kaartcode (mapViewer)
+  bar.querySelector(".mvtname").textContent = tokName(tok);
+  bar.querySelector("[data-mv=thide]").setAttribute("aria-pressed", String(tok.hide));
+  const f = bar.querySelector(".mvtfog");
+  f.hidden = !tok.fog; // UX: onder fog zien spelers hem toch niet
+  el.style.setProperty("--mvfog-h", bar.offsetHeight + "px");
+}
+function onTok(x) {
+  const was = tok && tok.id;
+  tok = x;
+  paintTok();
+  // focus blijft op de viewer (spatie = Volgende); alleen als hij in de balk stond en die verdwijnt, terug naar de viewer
+  if (!x && was && el.contains(document.activeElement) && el.querySelector(".mvtok").contains(document.activeElement)) el.focus({ preventScroll: true });
+}
+/** Tokens bewaard (doc) of mislukt (null): een gedeelde kaart ± 1 s later opnieuw renderen, zoals na een fogveeg */
+function toksSaved(id, doc) {
+  if (!doc) { toastBad(t("init.map.tok.fail")); return; }
   if (shared && shared.id === id && shared.flat) { clearTimeout(fogT); const s = shared; fogT = setTimeout(() => { if (shared === s) flatten(s); }, 1000); }
 }
 
@@ -120,6 +158,7 @@ function make() {
     <div class="mvbody"><canvas class="mvcv" role="img"></canvas><div class="mvmsg" role="status"></div>
     <div class="mvtoon"><button type="button" class="btn mvtn" data-mv="pv" aria-describedby="mv-thint"></button><small class="mvthint" id="mv-thint"></small></div>
     <p class="mvfstrip" role="status" hidden></p>
+    <div class="mvtok" role="group" aria-label="${esc(t("init.map.tok.bar"))}" hidden><div class="mvfrow"><span class="mvtsw" aria-hidden="true"></span><b class="mvtname vh"></b><button type="button" class="btn mvthide" data-mv="thide" aria-pressed="false">${esc(t("init.map.tok.hidden"))}</button><button type="button" class="btn primary mvfdone" data-mv="tdone">${esc(t("init.map.tok.done"))}</button></div><small class="mvtfog" hidden>${esc(t("init.map.tok.fog"))}</small></div>
     <div class="mvfog" role="group" aria-label="${esc(t("init.map.fog.bar"))}" hidden><div class="mvfrow"><div class="seg" role="group" aria-label="${esc(t("init.map.fog.act"))}"><button type="button" data-mv="act" data-v="reveal"></button><button type="button" data-mv="act" data-v="hide"></button></div><button type="button" class="btn primary mvfdone" data-mv="fdone"></button></div>
     <div class="seg" role="group" aria-label="${esc(t("init.map.fog.tool"))}"><button type="button" data-mv="tool" data-v="brush"></button><button type="button" data-mv="tool" data-v="wide"></button><button type="button" data-mv="tool" data-v="rect"></button></div></div>
     <div class="mvzoom"><button type="button" class="btn mvz" data-mv="fog" aria-label="${esc(t("init.map.fog.edit"))}" hidden>${FOG_ICO}</button><button type="button" class="btn mvz" data-mv="in" aria-label="${esc(t("init.map.view.in"))}">${ico("plus")}</button><button type="button" class="btn mvz" data-mv="out" aria-label="${esc(t("init.map.view.out"))}"><span aria-hidden="true">−</span></button></div></div>`;
@@ -135,6 +174,8 @@ function make() {
     else if (k === "pv") toggleShare();
     else if (k === "fog") setFog(true); // WP73
     else if (k === "fdone") setFog(false);
+    else if (k === "thide") { if (tok) ctl?.hide(tok.id); } // WP74
+    else if (k === "tdone") ctl?.unsel();
     else if (k === "act" || k === "tool") {
       if (k === "act") fogAct = b.dataset.v === "hide" ? "hide" : "reveal";
       else if (TOOLS.includes(b.dataset.v)) { fogTool = b.dataset.v; try { localStorage.setItem(FOG_KEY, fogTool); } catch { /* alleen deze sessie */ } }
@@ -157,6 +198,10 @@ function labels() {
   q(".mvchips").setAttribute("aria-label", t("init.map.view.pick"));
   q("[data-mv=fog]").setAttribute("aria-label", t("init.map.fog.edit")); // WP73
   q("[data-mv=fdone]").textContent = t("init.map.fog.done");
+  q(".mvtok").setAttribute("aria-label", t("init.map.tok.bar")); // WP74
+  q("[data-mv=thide]").textContent = t("init.map.tok.hidden");
+  q("[data-mv=tdone]").textContent = t("init.map.tok.done");
+  q(".mvtfog").textContent = t("init.map.tok.fog");
   for (const [v, k] of [["reveal", "init.map.fog.reveal"], ["hide", "init.map.fog.hide"]]) q(`[data-mv=act][data-v=${v}]`).textContent = t(k);
   for (const [v, k] of [["brush", "init.map.fog.brush"], ["wide", "init.map.fog.wide"], ["rect", "init.map.fog.rect"]]) q(`[data-mv=tool][data-v=${v}]`).textContent = t(k);
 }
@@ -190,6 +235,7 @@ function show(id) {
   stop();
   cur = id;
   fogHas = false; if (fogging) { fogging = false; paintFog(); } // WP73: fogmodus hoort bij één kaart
+  tok = null; paintTok(); // WP74: tokenselectie ook
   // vers canvas per kaart: attachInput hangt zijn listeners aan het canvas en kent geen loskoppelen; het oude canvas
   // gaat met zijn listeners weg (geen dubbele pan/zoom na vaker openen of wisselen)
   const c = document.createElement("canvas");
@@ -203,6 +249,7 @@ function show(id) {
   ctl = mapViewer(cv, id, {
     v0: views.get(id) || null,
     onFog: (doc) => fogSaved(id, doc),
+    onTok: (x) => { if (cur === id) onTok(x); }, onToks: (doc) => toksSaved(id, doc), // WP74
     on: (state, doc) => { if (cur !== id) return; if (state === "ok" && doc) { fogHas = !!(doc.fog && doc.fog.on); paintFog(); } else if (state !== "ok") { fogHas = false; if (fogging) setFog(false); else paintFog(); } if (doc && shared && shared.id === id && shared.flat && doc.updatedAt && doc.updatedAt !== shared.at) flatten(shared); if (doc && doc.name) { names.set(id, doc.name); el.querySelector("#mv-name").textContent = doc.name; cv.setAttribute("aria-label", t("init.map.view.canvas", { name: doc.name })); chips(); } msg(state, ref.map); },
     onZoom: (lo, hi) => { el.querySelector("[data-mv=out]").disabled = lo; el.querySelector("[data-mv=in]").disabled = hi; },
   });
@@ -229,6 +276,7 @@ export function openMap(S, b) {
 export function close() {
   if (!mapOpen()) return;
   if (fogging) { fogging = false; paintFog(); } // WP73
+  tok = null; paintTok(); // WP74
   stop();
   el.hidden = true;
   const f = from && from.isConnected ? from : document.querySelector("[data-enc=map]") || document.querySelector("#next, #start"); // knop weg (kaart niet meer ingeladen): naar de dock

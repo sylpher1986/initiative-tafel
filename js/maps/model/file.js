@@ -8,6 +8,7 @@
 // MIGRATE), cleanMap voor de kaart en per asset: mime-allowlist, geldige base64, magic bytes = mime, afmetingen uit de
 // kop = w/h en binnen de grenzen, sha256 van de bytes = sleutel. Decoderen (laatste controle) doet de UI.
 import { cleanMap, SCHEMA } from "./map.js";
+import { TOK, cleanTok } from "./tokens.js";
 import { sniff, dims, IMG } from "./image.js";
 import { usedAssets, isCustom, cleanItemName, MINE } from "./mine.js";
 import { LIMITS } from "./limits.js";
@@ -129,6 +130,9 @@ export async function readFile(size, text, { hash, migrate = MIGRATE } = {}) {
   if (m.terr != null && !map.terr && !(plain(m.terr) && typeof m.terr.cells === "string" && !/[1-9a-z]/.test(m.terr.cells))) return { ok: false, code: "badmap" };
   // WP73: idem fog: een fog-veld dat geen fog is, weigeren (cleanFog maakt kapotte cellen veilig "alles verborgen")
   if (m.fog != null && !map.fog) return { ok: false, code: "badmap" };
+  // WP74: idem tokens: een tokenveld dat geen object is, of meer tokens dan de grens (cleanToks kapt stil af), weigeren
+  if (m.toks != null && !map.toks) return { ok: false, code: "badmap" };
+  if (plain(m.toks) && (("list" in m.toks && !Array.isArray(m.toks.list)) || (Array.isArray(m.toks.list) && (m.toks.list.length > TOK.max || m.toks.list.some((x) => !cleanTok(x)))))) return { ok: false, code: "badmap" }; // review: niets stil weglaten
   const assets = new Map(), names = new Map(), all = doc.assets;
   for (const sha of usedAssets(map)) { // WP64: achtergrond én eigen assets op objecten, elk met dezelfde controles
     const a = plain(all) && own(all, sha) ? all[sha] : null;

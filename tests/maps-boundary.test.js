@@ -24,7 +24,7 @@ test("js/maps/ importeert alleen js/maps/ en js/i18n/", () => {
 // WP69 (fase 3): alleen js/ui/encmap.js mag js/maps/ gebruiken, alleen dynamisch (Initiative laadt geen kaartcode bij
 // het opstarten en breekt niet als de Maps-cache offline ontbreekt), en alleen deze modules.
 // WP70: kaart bekijken (mapViewer) gebruikt ook de renderer, view, raster, invoer en assetImage van Inn Sight.
-const BRIDGE = "js/ui/encmap.js", BRIDGE_OK = ["js/maps/store.js", "js/maps/ui/export.js", "js/maps/model/map.js", "js/maps/model/file.js",
+const BRIDGE = "js/ui/encmap.js", BRIDGE_OK = ["js/maps/store.js", "js/maps/model/tokens.js", "js/maps/ui/export.js", "js/maps/model/map.js", "js/maps/model/file.js",
   "js/maps/render/canvas.js", "js/maps/render/art.js", "js/maps/model/view.js", "js/maps/model/grid.js", "js/maps/ui/input.js", "js/maps/ui/upload.js", "js/maps/model/assets.js",
   "js/maps/model/fog.js"]; // WP73: fog bewerken in de kaartviewer
 test("buiten js/maps/ importeert alleen de brug js/ui/encmap.js iets uit js/maps/, dynamisch en uit een vaste lijst", () => {

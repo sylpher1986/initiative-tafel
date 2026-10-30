@@ -223,3 +223,22 @@ body.maps{display:flex;flex-direction:column;padding:0;height:100dvh} /* zonder 
 .mbench-ok{color:var(--good)} .mbench-bad{color:var(--bad)}
 .mbench-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .mbench-act .btn{text-decoration:none}
+/* WP74: tokens. Tab Tokens (label, grootte, kleur) en paneel Token; stalen 4 × 2 (≥ 48 px) met het label erin.
+   Onder 400 px staan de vier tabs op een eigen rij onder de kop (UX: vier tabs passen op 320 px niet naast Sluiten). */
+.mtok{display:grid;gap:8px}
+.mtok[hidden]{display:none}
+.mtok .hint,#m-tsheet .hint{margin:0}
+.mtsize button{font-size:.95rem}
+.mtcols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.mtc{min-height:52px;min-width:0;display:grid;place-items:center;border:1px solid var(--btn-line);border-radius:var(--r);background:var(--btn);padding:4px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.mtc span{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:.95rem;line-height:1;box-shadow:0 0 0 2px #241811,0 0 0 3px #faf6ec;pointer-events:none;overflow:hidden;white-space:nowrap}
+.mtc[aria-pressed="true"]{background:var(--act-soft);border-color:var(--sel);box-shadow:inset 0 0 0 2px var(--sel)}
+.mhide .moff{display:none}
+.mhide[aria-pressed="true"] .moff{display:inline}
+#m-ohide[aria-pressed="true"],#m-tthide[aria-pressed="true"]{background:var(--act-soft);border-color:var(--sel)}
+#m-tsheet{grid-template-columns:minmax(0,1fr)}
+@media (max-width:399px){
+  #m-lsheet .shead{flex-wrap:wrap}
+  #m-lsheet .shead h3.vh{position:static;width:auto;height:auto;overflow:visible;clip:auto;flex:1 1 auto;margin:0}
+  #m-lsheet .mltab{order:3;flex:1 1 100%;max-width:none}
+}

@@ -8,17 +8,19 @@
 // staan objecten op (`objs`, js/maps/model/objects.js); zelfde redenering: Maps 0.5.0 laat zo'n kaart met rust. v4 (WP63)
 // = er is terrein geverfd (`terr`, js/maps/model/terrain.js); Maps 0.7.0 laat zo'n kaart met rust. v5 (WP64) = er staat
 // een eigen asset (sha256) op een object (js/maps/model/mine.js); Maps 0.8.0 laat zo'n kaart met rust. v6 (WP73) = er staat
-// fog of war aan (`fog`, js/maps/model/fog.js); Maps 1.4.x laat zo'n kaart met rust (en geeft de fog zo nooit weg).
+// fog of war aan (`fog`, js/maps/model/fog.js); Maps 1.4.x laat zo'n kaart met rust (en geeft de fog zo nooit weg). v7
+// (WP74) = er staan tokens op (`toks`, js/maps/model/tokens.js); Maps 1.5.x laat zo'n kaart met rust.
 import { cleanGrid } from "./grid.js";
 import { cleanBg } from "./bg.js";
 import { cleanObjs } from "./objects.js";
 import { cleanTerr } from "./terrain.js";
 import { isCustom } from "./mine.js";
 import { cleanFog } from "./fog.js";
+import { cleanToks, hasToks } from "./tokens.js";
 import { LIMITS } from "./limits.js";
 
 /** Hoogste schemaversie die deze versie kent. Hoger = niet aanraken (gemaakt door een nieuwere versie). */
-export const SCHEMA = 6;
+export const SCHEMA = 7;
 /** Langste kaartnaam (tekens) */
 export const NAME_MAX = LIMITS.mapName;
 
@@ -59,6 +61,8 @@ export function cleanMap(raw) {
   if (objs.some((o) => isCustom(o.asset))) out.schema = 5; // WP64: eigen assets op de kaart (een oudere versie laat hem met rust)
   const fog = cleanFog(raw.fog); // WP73: ook "uit" bewaren (met tijd), zodat uitzetten een latere schrijver niet verliest
   if (fog) { out.fog = fog; if (fog.on) out.schema = 6; }
+  const toks = cleanToks(raw.toks); // WP74: ook een lege lijst met tijd bewaren (alles verwijderd wint van een oudere schrijver)
+  if (toks) { out.toks = toks; if (hasToks(toks)) out.schema = 7; }
   return out;
 }
 
@@ -83,7 +87,7 @@ export function uniqueName(name, names) {
 /** Kopie van een kaart met nieuwe id, naam en tijden (dupliceren) */
 export function copyMap(m, { id = mapId(), name, now = Date.now() } = {}) {
   const c = cleanMap(m);
-  return c && { ...c, id, name: cleanName(name ?? c.name), createdAt: now, updatedAt: now, ...(c.fog ? { fog: { ...c.fog, at: now } } : {}) }; // WP73: fog van nu
+  return c && { ...c, id, name: cleanName(name ?? c.name), createdAt: now, updatedAt: now, ...(c.fog ? { fog: { ...c.fog, at: now } } : {}), ...(c.toks ? { toks: { ...c.toks, at: now } } : {}) }; // WP73/WP74: fog en tokens van nu
 }
 
 /** Lijstvolgorde: laatst gewijzigd bovenaan, daarna naam, daarna id (stabiel) */
@@ -98,7 +102,7 @@ export function pickStart(list, lastId) {
 /** Geïmporteerde kaart (readFile geeft hem zonder id) als nieuwe kaart: nieuwe id, unieke naam (leeg = "<base> N"),
  *  tijden = nu. Gedeeld door Inn Sight en Initiative (WP69), zodat beide imports dezelfde kaart maken. */
 export function importedDoc(map, names, base, { id = mapId(), now = Date.now() } = {}) {
-  return { ...map, id, name: uniqueName(map.name || newName(base, names), names), createdAt: now, updatedAt: now, ...(map.fog ? { fog: { ...map.fog, at: now } } : {}) }; // WP73: fog van nu
+  return { ...map, id, name: uniqueName(map.name || newName(base, names), names), createdAt: now, updatedAt: now, ...(map.fog ? { fog: { ...map.fog, at: now } } : {}), ...(map.toks ? { toks: { ...map.toks, at: now } } : {}) }; // WP73/WP74: fog en tokens van nu
 }
 
 /** Hoe lang geleden (voor de lijst): { k: "now" | "min" | "hour" | "day", n } tot 7 dagen, daarna (of bij een tijd in de

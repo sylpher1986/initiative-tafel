@@ -10,6 +10,7 @@ import { drawOrder } from "../model/objects.js";
 import { corners, handles } from "../model/hit.js";
 import { cellsOf, known, TERR } from "../model/terrain.js";
 import { fogOn, revOf, FOG } from "../model/fog.js";
+import { tokList, playerToks, tokColor, TOK_EDGE, chars } from "../model/tokens.js";
 
 /** Terreinkleuren (WP63): kaartinhoud, dus vast en niet per thema (zoals de vaste rasterkleuren); vormgeving in WP68.
  *  Ook de kleurvlakken in het paneel (main.js). Onbekend terrein (nieuwere versie) = plaatshouder in de lijnkleur. */
@@ -52,7 +53,10 @@ export function draw(cv, map, v, w, h, dpr, col, opts = {}) {
 }
 
 /** De kaart zelf op g (transformatie van de aanroeper, apparaatpixels W × H vanaf de oorsprong) */
-export function drawBase(g, map, v, w, h, dpr, col, W, H, { img = null, align = false, art = null, fog = "dm" } = {}) {
+// WP74: tokens (map.toks) boven de laag object en onder de fog: spelers zien een token onder fog niet ("player": fog
+// ondoorzichtig erover, verborgen tokens niet getekend), de DM ziet ze gedimd en gearceerd onder de fog. lift = id van
+// een token dat de kaartviewer aan het slepen is (niet in de buffer; drawOver tekent hem op de sleepplek).
+export function drawBase(g, map, v, w, h, dpr, col, W, H, { img = null, align = false, art = null, fog = "dm", lift = null } = {}) {
   const grid = map.grid, b = bounds(grid);
   g.fillStyle = col.page;
   g.fillRect(0, 0, W, H);
@@ -87,6 +91,7 @@ export function drawBase(g, map, v, w, h, dpr, col, W, H, { img = null, align = 
     g.globalAlpha = 1;
   }
   if (!align) things(nf, objs.length);
+  if (!align && map.toks) for (const t of fog === "player" ? playerToks(map.toks) : tokList(map.toks)) if (t.id !== lift) drawTok(g, t, v, w, h, dpr, { hidden: !!t.hide });
   if (fog && !align && fogOn(map.fog)) drawFog(g, map.fog, grid, v, w, h, dpr, W, H, fog); // WP73: boven alles, onder de rand
   // kaartrand: 2 apparaatpixels binnen de kaart (hele pixels, dus scherp)
   const e = Math.max(2, Math.round(dpr * 1.5));
@@ -96,12 +101,56 @@ export function drawBase(g, map, v, w, h, dpr, col, W, H, { img = null, align = 
 }
 
 /** Wat over de kaart ligt (elk frame opnieuw, nooit in de buffer) */
-export function drawOver(g, map, v, w, h, dpr, col, { align = false, art = null, ghost = null, sel = null, cursor = null, brush = null } = {}) {
+// WP74: tsel = geselecteerd token (ring, geen grepen), tghost = token dat een klik zou plaatsen (half doorzichtig),
+// tlift = { t, from } token dat versleept wordt (op 110 % met schaduw; from = gestippelde ring op de oude plek).
+export function drawOver(g, map, v, w, h, dpr, col, { align = false, art = null, ghost = null, sel = null, cursor = null, brush = null, tsel = null, tghost = null, tlift = null } = {}) {
   if (align) return;
   if (ghost) { g.globalAlpha = 0.5; drawObj(g, ghost, v, w, h, dpr, col, art); g.globalAlpha = 1; }
+  if (tghost) { g.globalAlpha = 0.5; drawTok(g, tghost, v, w, h, dpr, {}); g.globalAlpha = 1; }
   if (brush) for (const pts of brush) drawCursor(g, pts, v, dpr, col);
   if (cursor) drawCursor(g, cursor, v, dpr, col);
   if (sel) drawSel(g, sel, v, dpr, col);
+  if (tlift) { drawRing(g, tlift.from, v, dpr, col, true); drawTok(g, tlift.t, v, w, h, dpr, { hidden: !!tlift.t.hide, scale: 1.1, shadow: true }); }
+  if (tsel) drawRing(g, tsel, v, dpr, col, false);
+}
+
+/** WP74: straal van een tokenschijf in CSS-px (iets binnen zijn cellen: buren raken elkaar niet) */
+export const tokRadius = (t, v) => (t.s / 2) * CELL * v.z * 0.86;
+const TOK_FONT = '"DM Sans", system-ui, sans-serif';
+// Eén token: schijf in zijn kleur met een rand van 2 px Walnut en 1 px Ivory erbuiten (UX), label in het midden.
+// hidden (alleen de DM ziet hem) = 50 % dekking en een gestippelde rand. Buiten beeld overgeslagen.
+function drawTok(g, t, v, w, h, dpr, { hidden = false, scale = 1, shadow = false }) {
+  const p = toScreen(v, t.x, t.y), r = tokRadius(t, v) * scale;
+  if (p.x + r < 0 || p.y + r < 0 || p.x - r > w || p.y - r > h) return;
+  const c = tokColor(t.c), X = p.x * dpr, Y = p.y * dpr, R = r * dpr;
+  g.save();
+  if (hidden) g.globalAlpha *= 0.5;
+  if (shadow) { g.shadowColor = "rgba(36,24,17,0.45)"; g.shadowBlur = 10 * dpr; g.shadowOffsetY = 3 * dpr; }
+  g.beginPath(); g.arc(X, Y, R + 1.5 * dpr, 0, Math.PI * 2);
+  g.fillStyle = TOK_EDGE.outer; g.fill();
+  g.shadowColor = "transparent";
+  g.beginPath(); g.arc(X, Y, R, 0, Math.PI * 2);
+  g.fillStyle = c.fill; g.fill();
+  if (hidden) g.setLineDash([4 * dpr, 3 * dpr]);
+  g.lineWidth = 2 * dpr; g.strokeStyle = TOK_EDGE.inner; g.stroke();
+  g.setLineDash([]);
+  if (t.l && R >= 7 * dpr) {
+    const n = chars(t.l).length, fs = R * (n >= 3 ? 0.78 : n === 2 ? 0.95 : 1.15);
+    g.font = `700 ${Math.round(fs)}px ${TOK_FONT}`;
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillStyle = c.ink;
+    g.fillText(t.l, X, Y + fs * 0.04, R * 1.7);
+  }
+  g.restore();
+}
+// Ring om een token: selectie (breed in de kaartkleur, smal in --sel, 3 px buiten de schijf) of gestippeld (oude plek)
+function drawRing(g, t, v, dpr, col, dashed) {
+  const p = toScreen(v, t.x, t.y), R = (tokRadius(t, v) + (dashed ? 0 : 4.5)) * dpr;
+  g.save();
+  g.beginPath(); g.arc(p.x * dpr, p.y * dpr, R, 0, Math.PI * 2);
+  if (dashed) { g.setLineDash([5 * dpr, 4 * dpr]); g.lineWidth = 2 * dpr; g.strokeStyle = col.sel; g.stroke(); }
+  else { g.lineWidth = 5 * dpr; g.strokeStyle = col.map; g.stroke(); g.lineWidth = 2.5 * dpr; g.strokeStyle = col.sel; g.stroke(); }
+  g.restore();
 }
 
 /**
@@ -136,7 +185,7 @@ export function createLayer(make = () => document.createElement("canvas"), now =
     paint(cv, map, v, w, h, dpr, col, opts = {}, extra = []) {
       const W = cv.width, H = cv.height;
       if (!buf || buf.width !== W || buf.height !== H) { buf = buf || make(); buf.width = W; buf.height = H; bg = buf.getContext("2d"); key = null; }
-      const k = [map.grid, map.bg || null, map.terr || null, map.objs || null, map.fog || null, opts.fog, opts.img || null, !!opts.align, col, dpr, W, H, ...extra];
+      const k = [map.grid, map.bg || null, map.terr || null, map.objs || null, map.fog || null, map.toks || null, opts.lift || null, opts.fog, opts.img || null, !!opts.align, col, dpr, W, H, ...extra];
       let mode = "same", settle = 0;
       const t = now();
       if (!same(k, key)) { key = k; full(map, v, w, h, dpr, col, opts); mode = "full"; }

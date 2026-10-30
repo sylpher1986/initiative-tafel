@@ -10,6 +10,7 @@
 // Alles wat gelezen wordt gaat door cleanMap (js/maps/model/map.js); records van een nieuwer schema blijven onaangeroerd.
 import { cleanMap, sortMaps } from "./model/map.js";
 import { cleanFog, mergeFog } from "./model/fog.js";
+import { cleanToks, mergeToks } from "./model/tokens.js";
 import { cleanItem, cleanItems, isCustom } from "./model/mine.js";
 
 export const DB = "kevs-inn-maps", DB_VERSION = 3, LAST_KEY = "maps-last";
@@ -86,7 +87,8 @@ export async function getMap(id) {
 /** Kaart opslaan (vervangt het record met dezelfde id). false als het niet lukte. WP73: in dezelfde transactie eerst de
  *  oude lezen en meteen schrijven (vroege commit blijft: een opslag uit pagehide moet vóór het herladen vaststaan). Was de
  *  fog in de opslag later gewijzigd (Initiative onthulde intussen cellen, mergeFog), dan zet een tweede transactie die fog
- *  terug (putFog): de rest van de kaart komt van dit tabblad, de fog van de laatste die hem wijzigde. */
+ *  terug (putParts): de rest van de kaart komt van dit tabblad, de fog van de laatste die hem wijzigde. WP74: tokens
+ *  (Initiative verschoof er intussen een, mergeToks) precies zo. */
 export async function putMap(doc) {
   if (!mayWrite()) return true;
   const c = cleanMap(doc);
@@ -95,14 +97,21 @@ export async function putMap(doc) {
   try {
     await tx("maps", "readwrite", (s) => { const g = s.get(c.id); g.onsuccess = () => { old = cleanMap(g.result); }; return s.put(c); });
   } catch { return false; }
-  if (old && old.fog && mergeFog(old.fog, c.fog || null) === old.fog) await putFog(c.id, old.fog);
+  if (!old) return true;
+  const back = {};
+  for (const [k, [, merge]] of Object.entries(PARTS)) if (old[k] && merge(old[k], c[k] || null) === old[k]) back[k] = old[k];
+  if (Object.keys(back).length) await putParts(c.id, back);
   return true;
 }
 
-/** WP73: alleen de fog van kaart id vervangen (kaartviewer in Initiative). Lezen en schrijven in één transactie: de rest
- *  van de kaart blijft zoals hij in de opslag staat, dus een open Inn Sight-tabblad verliest niets. Een fog die in de
- *  opslag later gewijzigd is, wint (mergeFog). → de opgeslagen kaart, of null (kaart weg, nieuwer schema, opslag kapot). */
-export async function putFog(id, fog) {
+/** Velden met twee schrijvers (Inn Sight en de kaartviewer van Initiative): opschonen en "laatste wijziging wint" (at) */
+const PARTS = { fog: [cleanFog, mergeFog], toks: [cleanToks, mergeToks] };
+
+/** WP73/WP74: alleen fog en/of tokens van kaart id vervangen (kaartviewer in Initiative; patch = { fog?, toks? }). Lezen
+ *  en schrijven in één transactie: de rest van de kaart blijft zoals hij in de opslag staat, dus een open Inn Sight-tabblad
+ *  verliest niets. Per veld wint wat in de opslag later gewijzigd is (merge). → de opgeslagen kaart, of null (kaart weg,
+ *  nieuwer schema, opslag kapot). */
+export async function putParts(id, patch) {
   let out = null;
   try {
     await tx("maps", "readwrite", (s) => {
@@ -110,15 +119,28 @@ export async function putFog(id, fog) {
       g.onsuccess = () => {
         const old = cleanMap(g.result);
         if (!old) return;
-        const f = mergeFog(old.fog || null, cleanFog(fog));
-        if (f === old.fog) { out = old; return; }
-        out = cleanMap({ ...old, fog: f, updatedAt: Math.max(Date.now(), old.updatedAt + 1) });
+        const next = {};
+        for (const [k, [clean, merge]] of Object.entries(PARTS)) {
+          if (!(k in patch)) continue;
+          // WP74: een functie krijgt het opgeslagen veld en geeft het nieuwe (of null = niets doen): zo werkt de viewer
+          // altijd op de opgeslagen lijst en gaat een token dat Inn Sight intussen plaatste nooit stil verloren
+          const raw = typeof patch[k] === "function" ? patch[k](old[k] || null) : patch[k];
+          if (raw === null && typeof patch[k] === "function") continue;
+          const v = merge(old[k] || null, clean(raw));
+          if (v !== old[k]) next[k] = v;
+        }
+        if (!Object.keys(next).length) { out = old; return; }
+        out = cleanMap({ ...old, ...next, updatedAt: Math.max(Date.now(), old.updatedAt + 1) });
         s.put(out);
       };
     }, false);
     return out;
   } catch { return null; }
 }
+/** WP73: alleen de fog (zie putParts) */
+export const putFog = (id, fog) => putParts(id, { fog });
+/** WP74: alleen de tokens (zie putParts); toks mag een functie (opgeslagen tokens → nieuwe, of null) zijn */
+export const putToks = (id, toks) => putParts(id, { toks });
 
 /** WP69: geïmporteerde kaart + zijn afbeeldingen in één transactie, zodat gcAssets (start van een Inn Sight-tabblad)
  *  nooit net bewaarde assets zonder kaart ziet en wist. assets = Map(sha → record); een bestaande sha blijft zoals hij is

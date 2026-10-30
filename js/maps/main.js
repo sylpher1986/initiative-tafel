@@ -11,7 +11,7 @@
 // verven (tab Terrein in paneel Bibliotheek: penseel, breed, vullen, wissen); WP64: eigen assets (tab Eigen: Mijn assets,
 // toevoegen, plaatsen, hernoemen, verwijderen, mee in export en import); WP65: zijpaneel vanaf 768 px, sneltoetsenoverzicht
 // (?), uitleg in een lege kaart, verven met het toetsenbord, naam Inn Sight (docs/g4-inn-the-grid.md); WP73: fog of war
-// (groep in paneel Kaart, fogmodus met eigen dock).
+// (groep in paneel Kaart, fogmodus met eigen dock); WP74: vrije tokens (tab Tokens in Bibliotheek, selecteren, paneel Token).
 import { initI18n, t, i18n } from "../i18n/boot.js";
 import { APP, VERSION } from "./version.js";
 import { cleanGrid, parseCells, bounds, LIMITS, cellAt, cellCenter, cellPoly, inside } from "./model/grid.js";
@@ -25,6 +25,7 @@ import { FILE_MAX } from "./model/file.js";
 import { exportMap, importFile } from "./ui/export.js";
 import { readColors, fitCanvas, createLayer, draw, TERR_COLORS } from "./render/canvas.js";
 import { TERRAINS, TOOLS, paintCells, brushCells, strokeCells, footprint, fillCells, countTerr } from "./model/terrain.js";
+import { TOK, TOK_SIZES, SIZE_ID, TOK_COLORS, TOK_COLOR_IDS, tokList, hasToks, stampToks, mergeToks, cleanLabel, bumpLabel, newTok, mapTok, moveTok, sizeTok, hitTok, dupTok, removeTok, tokAt } from "./model/tokens.js";
 import { stampFog, fogOn, setFogOn, revealCells, revealAll, countFog, fogStroke, mergeFog, FOG_TOOLS, FOG_TOOL_KEY } from "./model/fog.js";
 import { createArt } from "./render/art.js";
 import { createHistory } from "./model/history.js";
@@ -52,7 +53,10 @@ async function boot() {
   const cv = $("m-canvas"), wrap = $("m-stage");
   // cur = de geopende kaart (document zoals in de opslag) of null (verwijderd, lijst open); map = wat de render tekent
   let cur = null;
-  const map = { grid: cleanGrid(), bg: null, objs: [], terr: null, fog: null };
+  const map = { grid: cleanGrid(), bg: null, objs: [], terr: null, fog: null, toks: null };
+  // WP74: tokenselectie, gekozen kleur (Plaatsen), label en grootte voor de volgende, spookbeeld (sectie "vrije tokens")
+  const tsheet = $("m-tsheet"), hideBtn = $("m-ohide");
+  let selTk = null, tokPick = null, tokL = "1", tokS = 1, tghost = null;
   // WP59: tekenbare achtergronden per asset (sha → afbeelding; null = ontbreekt in de opslag), assets in het geheugen als
   // er geen opslag is (privémodus), en de uitlijnmodus
   const imgs = new Map(), memAssets = new Map();
@@ -85,7 +89,7 @@ async function boot() {
     queued = false;
     fitCanvas(cv, w, h, dpr);
     const r = layer.paint(cv, map, view, w, h, dpr, col, { img: (map.bg && imgs.get(map.bg.asset)) || null, align: aligning, art, ghost,
-      sel: selObj(), cursor: kbd && !selId && viewName === "edit" ? cellPoly(map.grid, kbd.c, kbd.r) : null,
+      sel: selObj(), cursor: kbd && !selId && !selTk && viewName === "edit" ? cellPoly(map.grid, kbd.c, kbd.r) : null, tsel: selTok(), tghost,
       brush: fogFrame ? [fogFrame] : brushAt && painting() ? brushAt.cells.map((q) => cellPoly(map.grid, q.c, q.r)) : null }, [art.ver()]); // WP73: kader van Rechthoek
     lastMode = r.mode;
     if (r.settle) { clearTimeout(settleT); settleT = setTimeout(later, r.settle); } // WP66: na het zoomen scherp tekenen
@@ -101,7 +105,7 @@ async function boot() {
   // Passend maken in het deel dat niet onder het paneel Kaart ligt (WP57). auto = de view is nog "passend": dan blijft hij
   // passend bij een ander raster, schermformaat of paneel; elke eigen pan/zoom zet auto uit.
   // WP61: het open paneel (Kaart of Bibliotheek; nooit allebei)
-  const openSheet = () => [$("m-sheet"), $("m-lsheet"), $("m-osheet")].find((el) => !el.hidden) || null; // WP62: ook paneel Object
+  const openSheet = () => [$("m-sheet"), $("m-lsheet"), $("m-osheet"), tsheet].find((el) => !el.hidden) || null; // WP62: ook paneel Object; WP74: paneel Token
   // WP65: vanaf 768 px is een paneel een zijpaneel rechts (css/maps.css): dan is het vrije deel links ervan, anders erboven
   const sideMq = matchMedia("(min-width:768px)"), side = () => sideMq.matches;
   const freeH = () => { const el = openSheet(); return !el || side() ? h : Math.max(48, Math.min(h, el.getBoundingClientRect().top - wrap.getBoundingClientRect().top)); };
@@ -125,7 +129,7 @@ async function boot() {
   function chrome() {
     const open = !!openSheet();
     document.body.classList.toggle("mside", open && side());
-    const empty = viewName === "edit" && !!cur && !open && !aligning && !fogging && !map.bg && !map.objs.length && !map.terr;
+    const empty = viewName === "edit" && !!cur && !open && !aligning && !fogging && !map.bg && !map.objs.length && !map.terr && !hasToks(map.toks);
     if (emptyEl.hidden === empty) emptyEl.hidden = !empty;
     // WP68b: raster-chip niet in de lijst, tijdens uitlijnen, onder een paneel van onderen, naast de uitleg of in de meetstand
     const showChip = viewName === "edit" && !!cur && !aligning && !fogging && !(open && !side()) && emptyEl.hidden && BENCH_MODE === null; // ook niet in de meetstand
@@ -457,12 +461,17 @@ async function boot() {
     if (!cur || BENCH_MODE !== null || saver.status === "off") return;
     const id = cur.id, d = await store.getMap(id).catch(() => null);
     if (!d || !cur || cur.id !== id || stroking) return;
-    const f = d.fog || null;
-    if (!f || mergeFog(f, map.fog) !== f) return;
-    // geschiedenis weg: Ongedaan van een oudere fogstap zou de onthullingen uit Initiative stil terugdraaien
-    map.fog = f; cur.fog = f; hist.clear(); histBtns();
-    if (fogging && !fogOn(f)) setFogMode(false, false);
+    const f = d.fog || null, k = d.toks || null;
+    const newF = !!f && mergeFog(f, map.fog) === f && f !== map.fog && (f.at || 0) > ((map.fog && map.fog.at) || 0);
+    const newT = !!k && mergeToks(k, map.toks) === k && (k.at || 0) > ((map.toks && map.toks.at) || 0); // WP74: tokens verschoven in Initiative
+    if (!newF && !newT) return;
+    // geschiedenis weg: Ongedaan van een oudere stap zou de onthullingen of verschuivingen uit Initiative stil terugdraaien
+    if (newF) { map.fog = f; cur.fog = f; }
+    if (newT) { map.toks = k; cur.toks = k; if (selTk && !selTok()) selectTok(null, false); else if (selTk) paintSel(); }
+    hist.clear(); histBtns();
+    if (fogging && !fogOn(map.fog)) setFogMode(false, false);
     if (!sheet.hidden) syncFog();
+    if (newT) chrome();
     later();
   }
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !gone) fogSync(); });
@@ -472,7 +481,7 @@ async function boot() {
   // Elke wijziging aan raster, achtergrond of objecten gaat via edit(): patch toepassen (put) en als stap vastleggen.
   // Ongedaan/Opnieuw passen de patch van de stap toe. Per geopende kaart, alleen in het geheugen (model/history.js).
   const hist = createHistory();
-  const docField = (k) => (k === "grid" ? map.grid : k === "bg" ? map.bg || undefined : k === "terr" ? map.terr || undefined : k === "fog" ? map.fog || undefined : map.objs.length ? map.objs : undefined);
+  const docField = (k) => (k === "grid" ? map.grid : k === "bg" ? map.bg || undefined : k === "terr" ? map.terr || undefined : k === "fog" ? map.fog || undefined : k === "toks" ? map.toks || undefined : map.objs.length ? map.objs : undefined);
   /** Patch toepassen op wat de render tekent en op het document (zonder geschiedenis) */
   function put(patch) {
     if ("grid" in patch) { map.grid = cleanGrid(patch.grid); if (cur) cur.grid = map.grid; }
@@ -489,6 +498,11 @@ async function boot() {
       map.fog = f ? stampFog(f, at) : map.fog ? { at, on: false } : null;
       if (cur) { if (map.fog) cur.fog = map.fog; else delete cur.fog; }
     }
+    if ("toks" in patch) { // WP74: zoals fog: elke tokenwijziging (ook Ongedaan) is de nieuwste, ook "geen tokens" (lege lijst met tijd)
+      const at = Math.max(Date.now(), ((map.toks && map.toks.at) || 0) + 1);
+      map.toks = patch.toks ? stampToks(patch.toks, at) : map.toks ? { at, list: [] } : null;
+      if (cur) { if (map.toks) cur.toks = map.toks; else delete cur.toks; }
+    }
   }
   /** Na een patch: panelen, label, bewaren, tekenen, knoppen */
   function refresh(patch) {
@@ -497,10 +511,15 @@ async function boot() {
     if ("grid" in patch || (!sheet.hidden && "bg" in patch)) syncBg();
     if ("fog" in patch) { if (!sheet.hidden) syncFog(); if (fogging && !fogOn(map.fog)) setFogMode(false, false); } // WP73
     changed();
-    if (("bg" in patch || "objs" in patch || "terr" in patch) && (!emptyEl.hidden || (!map.bg && !map.objs.length && !map.terr))) chrome(); // WP65: uitleg aan/uit alleen als de kaart leeg is of was (geen DOM-werk per sleepbeweging)
+    if (("bg" in patch || "objs" in patch || "terr" in patch || "toks" in patch) && (!emptyEl.hidden || (!map.bg && !map.objs.length && !map.terr && !hasToks(map.toks)))) chrome(); // WP65: uitleg aan/uit alleen als de kaart leeg is of was (geen DOM-werk per sleepbeweging)
     if ("grid" in patch) { if (kbd) kbd = clampCell(kbd); if (auto) fit(); else set(view); } else later();
     if ("objs" in patch) { if (selId && !selObj()) select(null, false); else if (!osheet.hidden) syncObj(); } // WP62: na Ongedaan kan het object weg zijn
     if ("objs" in patch && !lsheet.hidden && libTab === "own") paintMyRow(); // WP64: gebruik in de beheerrij (plaatsen, Ongedaan)
+    if ("toks" in patch && selTk) { // WP74: na Ongedaan kan het token weg zijn; geen DOM-werk per sleepbeweging (alleen wat echt veranderde)
+      const x = selTok();
+      if (!x) selectTok(null, false);
+      else { if (hideBtn.getAttribute("aria-pressed") !== String(!!x.hide)) hideBtn.setAttribute("aria-pressed", String(!!x.hide)); if (!tsheet.hidden) syncTok(); }
+    }
     const pk = hist.peek(), hk = `${hist.canUndo}${hist.canRedo}`;
     if (pk.undo !== lastPeek.undo || pk.redo !== lastPeek.redo || hk !== lastPeek.k) histBtns(); // slepen in één groep: geen DOM-werk per beweging
   }
@@ -516,7 +535,7 @@ async function boot() {
   }
   const assetName = (id) => (builtin(id) ? t("maps.asset." + id) : isCustom(id) ? itemName(mineItem(id)) : id); // WP64: eigen = naam in Mijn assets
   const terrName = (id) => (TERRAINS.includes(id) ? t("maps.terr." + id) : id); // WP63: onbekend terrein (nieuwere versie) = id
-  const stepName = (m) => (!m ? "" : m.id ? t("maps.hist." + m.k, { name: assetName(m.id) }) : m.t ? t("maps.hist." + m.k, { name: terrName(m.t) }) : t("maps.hist." + m.k)); // WP62: elke objectstap noemt het onderdeel
+  const stepName = (m) => (!m ? "" : m.tok ? t("maps.hist." + m.k, { name: tokName(m.tok) }) : m.id ? t("maps.hist." + m.k, { name: assetName(m.id) }) : m.t ? t("maps.hist." + m.k, { name: terrName(m.t) }) : t("maps.hist." + m.k)); // WP62: elke objectstap noemt het onderdeel
   const undoBtn = $("m-undo"), redoBtn = $("m-redo");
   function histBtns() {
     lastPeek = { ...hist.peek(), k: `${hist.canUndo}${hist.canRedo}` };
@@ -564,22 +583,25 @@ async function boot() {
   const pressTiles = () => { for (const b of lsheet.querySelectorAll(".mtile[data-id]")) b.setAttribute("aria-pressed", String(b.dataset.id === active)); paintMyRow(); };
   function paintTiles() {
     press("m-ltab", libTab);
-    const terr = libTab === "terrain", own = libTab === "own";
-    for (const id of ["m-cats", "m-tiles"]) $(id).hidden = terr || own;
+    const terr = libTab === "terrain", own = libTab === "own", tok = libTab === "tokens";
+    for (const id of ["m-cats", "m-tiles"]) $(id).hidden = terr || own || tok;
+    $("m-tok").hidden = !tok; // WP74
     snapBtn.hidden = terr;
     $("m-terr").hidden = !terr; $("m-tools-f").hidden = !terr; $("m-my").hidden = !own;
     if (terr) { paintTerr(); return; }
     snapBtn.setAttribute("aria-pressed", String(snap));
     if (own) { paintMine(); return; }
+    if (tok) { paintTokTab(); return; }
     press("m-cats", libCat);
     tiles.innerHTML = inCat(libCat).map((id) => `<button type="button" class="mtile" data-id="${esc(id)}" aria-pressed="${id === active}"><img src="${esc(assetUrl(id))}" alt="" width="40" height="40"><span>${esc(assetName(id))}</span></button>`).join("");
   }
   function paintStrip() {
     $("m-terr-h").hidden = !(libTab === "terrain" && !lsheet.hidden && !mat); // WP65: uitleg tot er een terrein gekozen is
     if (stripT) return; // de korte melding "Tik binnen de kaart" staat er nog
-    const on = placing(), pt = painting();
-    pstrip.hidden = !on && !pt;
-    if (on) pstrip.textContent = t("maps.lib.placing", { name: assetName(active) });
+    const on = placing(), pt = painting(), pk = placingTok();
+    pstrip.hidden = !on && !pt && !pk;
+    if (pk) pstrip.textContent = t("maps.lib.placing", { name: tokName({ l: tokL, c: tokPick }) }); // WP74
+    else if (on) pstrip.textContent = t("maps.lib.placing", { name: assetName(active) });
     else if (pt) pstrip.textContent = mat === "erase" ? t({ brush: "maps.paint.eraseBrush", wide: "maps.paint.eraseWide", fill: "maps.paint.eraseFill" }[tool]) : t("maps.paint." + tool, { name: terrName(mat) });
   }
   // WP63: terreintegels (kleurvlak + naam, 5 kolommen) en de gereedschap-seg
@@ -594,7 +616,7 @@ async function boot() {
   const setMat = (id) => { mat = id; brushAt = null; pressTerr(); paintStrip(); later(); };
   function setTab(v) {
     if (v === libTab) return;
-    libTab = v; active = null; ghost = null; mat = null; brushAt = null; renaming = false;
+    libTab = v; active = null; ghost = null; mat = null; brushAt = null; renaming = false; tokPick = null; tghost = null;
     clearTimeout(stripT); stripT = 0;
     paintTiles(); paintStrip(); later();
   }
@@ -602,7 +624,7 @@ async function boot() {
   const setActive = (id) => { active = id; ghost = null; pressTiles(); paintStrip(); later(); };
   const setSnap = (v) => { // WP62: één instelling, schakelaar in Bibliotheek en in paneel Object
     snap = v;
-    for (const b of [snapBtn, $("m-osnap")]) b.setAttribute("aria-pressed", String(snap));
+    for (const b of [snapBtn, $("m-osnap"), $("m-tsnap")]) b.setAttribute("aria-pressed", String(snap));
     try { localStorage.setItem("maps-snap", snap ? "1" : "0"); } catch { /* alleen deze sessie */ }
   };
   function openLib() {
@@ -622,7 +644,7 @@ async function boot() {
     lsheet.hidden = true; btnLib.setAttribute("aria-expanded", "false");
     dockFocus(true);
     chrome();
-    active = null; ghost = null; mat = null; brushAt = null; renaming = false; // WP63: ook Verven stopt
+    active = null; ghost = null; mat = null; brushAt = null; renaming = false; tokPick = null; tghost = null; // WP63: ook Verven stopt; WP74: en tokens plaatsen
     clearTimeout(stripT); stripT = 0;
     paintStrip();
     if (focus) btnLib.focus();
@@ -853,12 +875,15 @@ async function boot() {
     }
     const same = g && ghost && g.asset === ghost.asset && g.x === ghost.x && g.y === ghost.y;
     if (!same && (g || ghost)) { ghost = g; later(); } // alleen tekenen als het spookbeeld echt verschuift
+    let tg = null; // WP74: token dat een klik zou plaatsen
+    if (sx != null && placingTok()) { const p = toMap(view, sx, sy), b = bounds(map.grid); if (p.x >= b.x && p.y >= b.y && p.x <= b.x + b.w && p.y <= b.y + b.h) tg = { id: "", ...tokAt(map.grid, tokS, p.x, p.y, snap), s: tokS, c: tokPick, l: tokL }; }
+    if (!(tg && tghost && tg.x === tghost.x && tg.y === tghost.y && tg.s === tghost.s && tg.c === tghost.c) && (tg || tghost)) { tghost = tg; later(); }
     // WP62: muiswijzer laat zien wat een klik doet (greep, verplaatsen, selecteren)
     let c = "";
     if (sx != null && painting()) c = "crosshair";
     else if (sx != null && !placing() && editing()) {
-      const o = selObj(), hd = o && handleAt(o, view, sx, sy), p = toMap(view, sx, sy);
-      c = hd === "rot" ? "crosshair" : hd === "size" ? "nwse-resize" : o && onObj(o, p.x, p.y) ? "move" : hitAll(map.objs, p.x, p.y).length ? "pointer" : "";
+      const o = selObj(), hd = o && handleAt(o, view, sx, sy), p = toMap(view, sx, sy), tk = selTok();
+      c = tk && hitTok([tk], p.x, p.y) ? "move" : hitTok(tokList(map.toks), p.x, p.y) ? "pointer" : hd === "rot" ? "crosshair" : hd === "size" ? "nwse-resize" : o && onObj(o, p.x, p.y) ? "move" : hitAll(map.objs, p.x, p.y).length ? "pointer" : "";
     }
     if (cv.style.cursor !== c) cv.style.cursor = c;
   }
@@ -876,29 +901,37 @@ async function boot() {
   const padNow = () => HANDLE / 2 / (CELL * view.z); // tikvlak minstens 44 × 44 px rond een klein object
   /** Welke dock zichtbaar is: lijst, uitlijnen, selectie of de gewone */
   function docks() {
-    const isList = viewName === "list", s = !isList && !aligning && !fogging && !!selObj();
+    const isList = viewName === "list", s = !isList && !aligning && !fogging && !!(selObj() || selTok()); // WP74: ook een token
     $("m-dock").hidden = isList || aligning || fogging || s; // WP73: fogmodus heeft een eigen dock
     odock.hidden = !s;
   }
   const odockFocus = (on) => { for (const b of odock.querySelectorAll("button")) on ? b.removeAttribute("tabindex") : b.setAttribute("tabindex", "-1"); };
   function paintSel() {
-    const o = selObj();
+    const o = selObj(), tk = selTok();
     docks();
-    sstrip.hidden = !o || viewName !== "edit";
-    if (o) { const txt = t("maps.sel.strip", { name: objName(o) }); if (sstrip.textContent !== txt) sstrip.textContent = txt; }
+    sstrip.hidden = !(o || tk) || viewName !== "edit";
+    if (o || tk) { const txt = t("maps.sel.strip", { name: o ? objName(o) : tokName(tk) }); if (sstrip.textContent !== txt) sstrip.textContent = txt; }
+    // WP74: een token heeft Verbergen voor spelers op de plek van Draaien; Meer opent paneel Token
+    $("m-orot").hidden = !!tk; hideBtn.hidden = !tk;
+    if (tk) hideBtn.setAttribute("aria-pressed", String(!!tk.hide));
+    btnMore.setAttribute("aria-controls", tk ? "m-tsheet" : "m-osheet");
     if (!o) closeObj(false);
     else if (!osheet.hidden) syncObj();
+    if (!tk) closeTok(false);
+    else if (!tsheet.hidden) syncTok();
   }
   /** Object selecteren (id) of de selectie opheffen (null); say = voorlezen */
   function select(id, say = true) {
-    const was = selId, f = document.activeElement;
+    const was = selId, f = document.activeElement, hadT = selTk;
+    if (selTk) { selTk = null; closeTok(false); } // WP74: een object selecteren of alles opheffen heft ook het token op
     selId = id && map.objs.some((o) => o.id === id) ? id : null;
     nudgeG = null; hist.seal();
     if (selId) kbd = null;
     paintSel(); later();
-    if (!selId && f && (odock.contains(f) || osheet.contains(f))) cv.focus({ preventScroll: true }); // de knop met focus verdwijnt
+    if (!selId && f && (odock.contains(f) || osheet.contains(f) || tsheet.contains(f))) cv.focus({ preventScroll: true }); // de knop met focus verdwijnt
     if (selId && selId !== was) { const o = selObj(), hy = o.y - o.h / 2 - (HANDLE_OFF + HANDLE / 2) / (CELL * view.z); reveal(o.x, Math.min(o.y, hy)); } // draaigreep in beeld
     if (say && selId !== was) sr(selId ? t("maps.sel.selected", { name: objName(selObj()) }) : t("maps.sel.cleared"));
+    else if (say && !selId && hadT) sr(t("maps.sel.cleared"));
   }
   const sameObj = (a, b) => a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h && a.rot === b.rot && a.layer === b.layer;
   /** Nieuw object n op zijn plek in de lijst als undo-stap (niets als het niet verandert) */
@@ -936,21 +969,27 @@ async function boot() {
     if (kind === "mouse" && document.activeElement !== cv) cv.focus({ preventScroll: true }); // toetsen werken daarna op de kaart
     if (fogging) return fogGrab(sx, sy); // WP73: in de fogmodus werkt één vinger alleen op de fog
     if (painting()) return tool === "fill" ? null : paintGrab(sx, sy); // WP63: verven gaat voor selecteren (een veeg over een meubel breekt niet af)
-    if (!editing() || placing()) return null;
-    const p = toMap(view, sx, sy), o = selObj();
+    if (!editing() || placing() || placingTok()) return null;
+    const p = toMap(view, sx, sy), o = selObj(), tk = selTok();
+    if (tk && hitTok([tk], p.x, p.y, padNow())) return tokGrab(tk, p); // WP74: alleen een sleep op het geselecteerde token verplaatst (touch)
+    const mt = kind === "mouse" ? hitTok(tokList(map.toks), p.x, p.y) : null; // muis: een token boven het geselecteerde object wint (review)
+    if (mt) { selectTok(mt.id); justSel = true; return tokGrab(mt, p); }
     if (o) {
       const hd = handleAt(o, view, sx, sy);
       if (hd === "rot") return rotGrab(o);
       if (hd === "size") return sizeGrab(o, p);
       if (onObj(o, p.x, p.y, padNow())) return moveGrab(o, p);
     }
-    if (kind === "mouse") { const hit = hitAll(map.objs, p.x, p.y)[0]; if (hit) { select(hit.id); justSel = true; return moveGrab(hit, p); } }
+    if (kind === "mouse") {
+      const hit = hitAll(map.objs, p.x, p.y)[0]; if (hit) { select(hit.id); justSel = true; return moveGrab(hit, p); }
+    }
     return null;
   }
   /** Tik (of klik zonder slepen): Plaatsen plaatst, anders selecteren */
   function onTap(sx, sy) {
     if (fogging) return; // WP73: de veeg deed het werk al (ook een tik)
     if (placing()) { place(sx, sy); return; }
+    if (placingTok()) { placeTok(sx, sy); return; } // WP74
     if (painting()) { // WP63: Penseel/Breed verfde al bij het neerzetten; naast de kaart even de strook
       if (tool === "fill") fillAt(sx, sy);
       else { const p = toMap(view, sx, sy), c = cellAt(map.grid, p.x, p.y); if (!inside(map.grid, c.c, c.r)) stripMsg(t("maps.lib.outside")); }
@@ -960,10 +999,18 @@ async function boot() {
     if (justSel) { justSel = false; return; } // net met de muis geselecteerd: niet meteen doorschuiven
     const o = selObj();
     if (o && handleAt(o, view, sx, sy)) return;
-    const p = toMap(view, sx, sy), hits = hitAll(map.objs, p.x, p.y);
-    if (o && hits.includes(o)) { select(hits[(hits.indexOf(o) + 1) % hits.length].id); return; } // het object eronder
-    const top = hits[0] || hitObj(map.objs, p.x, p.y, padNow());
-    select(top ? top.id : null);
+    const p = toMap(view, sx, sy), hits = hitAll(map.objs, p.x, p.y), toks = tokList(map.toks), ht = hitTok(toks, p.x, p.y), tk = selTok();
+    // WP74: tokens liggen boven de objecten. Nog eens tikken op het geselecteerde token = het object eronder; de cyclus
+    // over de objecten komt daarna weer bij het token uit.
+    if (tk && ht && ht.id === tk.id) { if (hits[0]) select(hits[0].id); return; }
+    if (o && hits.includes(o)) { const i = hits.indexOf(o) + 1; if (i >= hits.length && ht) selectTok(ht.id); else select(hits[i % hits.length].id); return; } // het object eronder
+    if (ht) { selectTok(ht.id); return; }
+    const top = hits[0];
+    if (top) { select(top.id); return; }
+    const pt = hitTok(toks, p.x, p.y, padNow());
+    if (pt) { selectTok(pt.id); return; }
+    const po = hitObj(map.objs, p.x, p.y, padNow());
+    select(po ? po.id : null);
   }
   // acties (dock, paneel, toetsen)
   const turn = (dir) => { const o = selObj(); if (o) setObj(turn90(map.grid, o, dir, snap), "rotate"); };
@@ -981,6 +1028,7 @@ async function boot() {
     edit({ objs: reorder(mapObj(map.objs, o.id, (x) => layerObj(x, v)), o.id, "front") }, { k: "layer", id: o.asset });
   }
   function dupSel() {
+    if (selTok()) { dupTokSel(); return; } // WP74
     const o = selObj();
     if (!o) return;
     const r = dupObj(map.grid, map.objs, o.id, snap);
@@ -989,6 +1037,7 @@ async function boot() {
     select(r.id);
   }
   function delSel() { // zonder bevestiging; melding met Ongedaan (de gewone undo als de stap nog bovenaan staat)
+    if (selTok()) { delTokSel(); return; } // WP74
     const o = selObj();
     if (!o) return;
     const id = cur.id, idx = map.objs.indexOf(o);
@@ -1018,6 +1067,8 @@ async function boot() {
     reveal(m.x, m.y); later();
   }
   function nudgeSel(dx, dy, fine) {
+    const tk = selTok();
+    if (tk) { nudgeTok(tk, dx, dy, fine); return; } // WP74
     const o = selObj();
     if (!o) return;
     if (!nudgeG) nudgeG = "nudge" + ++gN;
@@ -1032,6 +1083,9 @@ async function boot() {
     if (!kbd) kbd = centerCell();
     const m = cellCenter(map.grid, kbd.c, kbd.r);
     if (placing()) { const s = toScreen(view, m.x, m.y); place(s.x, s.y); later(); return; }
+    if (placingTok()) { const s = toScreen(view, m.x, m.y); placeTok(s.x, s.y); later(); return; } // WP74
+    const ht = hitTok(tokList(map.toks), m.x, m.y);
+    if (ht) { selectTok(ht.id); return; }
     const hit = hitAll(map.objs, m.x, m.y)[0];
     if (hit) select(hit.id); else { sr(t("maps.sel.none")); later(); }
   }
@@ -1045,11 +1099,12 @@ async function boot() {
     if (next !== map.terr) { edit({ terr: next || undefined }, meta); sr(stepName(meta)); }
     later();
   }
-  function nextObj(dir) { // N / Shift+N: objecten aflopen in tekenvolgorde
-    const { list } = drawOrder(map.objs);
+  function nextObj(dir) { // N / Shift+N: objecten aflopen in tekenvolgorde, daarna de tokens (WP74, UX)
+    const list = [...drawOrder(map.objs).list.map((o) => ({ o })), ...tokList(map.toks).map((o) => ({ o, tk: true }))];
     if (!list.length) return;
-    const i = list.findIndex((o) => o.id === selId), n = list[i < 0 ? (dir > 0 ? 0 : list.length - 1) : (i + dir + list.length) % list.length];
-    select(n.id); reveal(n.x, n.y);
+    const i = list.findIndex((e) => (e.tk ? e.o.id === selTk : !selTk && e.o.id === selId)), n = list[i < 0 ? (dir > 0 ? 0 : list.length - 1) : (i + dir + list.length) % list.length];
+    if (n.tk) selectTok(n.o.id); else select(n.o.id);
+    reveal(n.o.x, n.o.y);
   }
   // paneel Object
   const num = (v) => { const x = String(v ?? "").trim().replace(",", "."); return /^-?(\d+(\.\d*)?|\.\d+)$/.test(x) ? +x : NaN; };
@@ -1112,7 +1167,7 @@ async function boot() {
   $("m-orot").addEventListener("click", () => turn(1));
   $("m-odup").addEventListener("click", dupSel);
   $("m-odel").addEventListener("click", delSel);
-  btnMore.addEventListener("click", () => (osheet.hidden ? openObj() : closeObj()));
+  btnMore.addEventListener("click", () => (selTok() ? (tsheet.hidden ? openTok() : closeTok()) : osheet.hidden ? openObj() : closeObj())); // WP74: paneel Token
   $("m-odone").addEventListener("click", () => select(null));
   $("m-oclose").addEventListener("click", () => closeObj());
   $("m-oleft").addEventListener("click", () => turn(-1));
@@ -1122,18 +1177,169 @@ async function boot() {
   $("m-ofront").addEventListener("click", () => order("front"));
   $("m-osnap").addEventListener("click", () => setSnap(!snap));
 
+  // ---- WP74: vrije tokens ----
+  // Tab Tokens in Bibliotheek: label (telt na plaatsen op), grootte (D&D) en kleur; een staal kiezen zet Plaatsen aan.
+  // Een token selecteren (tik; tokens liggen boven alle objecten) geeft dezelfde selectiedock met Verbergen voor spelers
+  // op de plek van Draaien, en Meer = paneel Token. De tokens staan in het document (toks = { at, list }); put() geeft
+  // elke tokenwijziging (ook Ongedaan) een nieuwe tijd, store.putMap houdt tokens die Initiative later verschoof
+  // (mergeToks), en bij terugkomen naar dit tabblad lezen we die in (partSync). UX-besluiten: CLAUDE.md.
+  function selTok() { return (selTk && tokList(map.toks).find((x) => x.id === selTk)) || null; } // functies: ook vóór deze sectie bruikbaar
+  function placingTok() { return !!tokPick && libTab === "tokens" && !lsheet.hidden && !aligning && viewName === "edit" && !!cur; }
+  const colorName = (c) => (TOK_COLORS[c] ? t("maps.tok.c." + c) : c);
+  const tokName = (x) => (x.l ? t("maps.tok.name", { l: x.l }) : t("maps.tok.nameColor", { color: colorName(x.c) }));
+  // zonder label staat de kleur al in de naam ("Red token"): niet nog eens (vertaalcontrole)
+  const tokDesc = (x) => t(x.l ? (x.hide ? "maps.tok.descHidden" : "maps.tok.desc") : x.hide ? "maps.tok.descNoLabelHidden" : "maps.tok.descNoLabel", { name: tokName(x), color: colorName(x.c), size: t("maps.tok.size." + SIZE_ID[x.s]) });
+  const sizeHint = (s) => t("maps.tok.sizeHint", { size: t("maps.tok.size." + SIZE_ID[s]), cells: s < 1 ? t("maps.tok.cellsHalf") : s === 1 ? t("maps.tok.cells1") : t("maps.tok.cellsN", { n: s }) });
+  const sizeSeg = (el, cur) => {
+    if (!el.firstChild) el.innerHTML = TOK_SIZES.map((s) => `<button type="button" data-s="${s}" aria-label="${esc(t("maps.tok.size." + SIZE_ID[s]))}">${esc(t("maps.tok.short." + SIZE_ID[s]))}</button>`).join("");
+    for (const b of el.children) b.setAttribute("aria-pressed", String(+b.dataset.s === cur));
+  };
+  const swatches = (el, cur, l) => { // één keer opbouwen, daarna alleen bijwerken (een aangeklikte knop blijft bestaan: focus)
+    if (el.firstChild) { for (const b of el.children) { b.setAttribute("aria-pressed", String(b.dataset.c === cur)); const sp = b.firstChild; if (sp.textContent !== l) sp.textContent = l; } return; }
+    el.innerHTML = TOK_COLOR_IDS.map((c) => { const k = TOK_COLORS[c]; return `<button type="button" class="mtc" data-c="${c}" aria-pressed="${c === cur}" aria-label="${esc(colorName(c))}"><span style="background:${k.fill};color:${k.ink}">${esc(l)}</span></button>`; }).join("");
+  };
+  function paintTokTab() {
+    if (document.activeElement !== $("m-tl")) $("m-tl").value = tokL;
+    $("m-tl-h").textContent = t("maps.tok.labelHint", { n: TOK.label }); // review: grens uit LIMITS, niet vast in de tekst
+    sizeSeg($("m-tsize"), tokS);
+    $("m-tsize-h").textContent = sizeHint(tokS);
+    swatches($("m-tcolors"), tokPick, tokL);
+  }
+  const setPick = (c) => { tokPick = c; tghost = null; paintTokTab(); paintStrip(); later(); };
+  $("m-tsize").addEventListener("click", (e) => { const s = +e.target.closest("button")?.dataset.s; if (TOK_SIZES.includes(s)) { tokS = s; tghost = null; paintTokTab(); later(); } });
+  $("m-tcolors").addEventListener("click", (e) => { const c = e.target.closest(".mtc")?.dataset.c; if (c) setPick(tokPick === c ? null : c); });
+  const tl = $("m-tl");
+  tl.addEventListener("input", () => { const v = cleanLabel(tl.value); if (v) { tokL = v; for (const sp of $("m-tcolors").querySelectorAll(".mtc span")) sp.textContent = v; if (placingTok()) paintStrip(); } });
+  const tlDone = () => { const v = cleanLabel(tl.value); if (v) tokL = v; tl.value = tokL; }; // leeg = het laatste geldige label terug (UX)
+  tl.addEventListener("change", tlDone);
+  tl.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); tlDone(); tl.blur(); } });
+  function placeTok(sx, sy) {
+    const p = toMap(view, sx, sy), list = tokList(map.toks);
+    if (list.length >= TOK.max) { toast(t("maps.tok.max", { n: i18n().num(TOK.max) }), { bad: true }); return; }
+    const n = newTok(map.grid, list, p.x, p.y, { s: tokS, c: tokPick, l: tokL }, snap);
+    if (!n) { stripMsg(t("maps.lib.outside")); return; }
+    edit({ toks: { at: 0, list: [...list, n] } }, { k: "tplace", tok: n });
+    sr(t("maps.lib.placed", { name: tokName(n) }));
+    tokL = bumpLabel(tokL); tghost = null; paintTokTab(); paintStrip();
+  }
+  /** Token n op zijn plek in de lijst als undo-stap (niets als het niet verandert) */
+  const sameTok = (a, b) => a.x === b.x && a.y === b.y && a.s === b.s && a.c === b.c && a.l === b.l && !!a.hide === !!b.hide;
+  function setTok(n, k, group = null) {
+    const list = tokList(map.toks), c = list.find((x) => x.id === n.id);
+    if (!c || sameTok(c, n)) return null;
+    return edit({ toks: { at: 0, list: mapTok(list, n.id, () => n) } }, { k, tok: n }, group);
+  }
+  const tokGrab = (x0, p0) => {
+    const g = "drag" + ++gN, dx = p0.x - x0.x, dy = p0.y - x0.y;
+    return { move(x, y) { const q = toMap(view, x, y); setTok(moveTok(map.grid, x0, q.x - dx, q.y - dy, snap), "tmove", g); }, end: () => hist.seal() };
+  };
+  /** Token selecteren (id) of opheffen (null); heft een objectselectie op */
+  function selectTok(id, say = true) {
+    const was = selTk, f = document.activeElement;
+    if (selId) { selId = null; closeObj(false); }
+    selTk = id && tokList(map.toks).some((x) => x.id === id) ? id : null;
+    nudgeG = null; hist.seal();
+    if (selTk) kbd = null;
+    paintSel(); later();
+    if (!selTk && f && (odock.contains(f) || tsheet.contains(f))) cv.focus({ preventScroll: true });
+    if (selTk && selTk !== was) { const x = selTok(); reveal(x.x, x.y); }
+    if (say && selTk !== was) sr(selTk ? t("maps.sel.selected", { name: tokDesc(selTok()) }) : t("maps.sel.cleared"));
+  }
+  function toggleHide() {
+    const x = selTok();
+    if (!x) return;
+    const n = { ...x, hide: !x.hide };
+    if (!n.hide) delete n.hide;
+    setTok(n, x.hide ? "tshow" : "thide");
+    sr(t(x.hide ? "maps.tok.shown" : "maps.tok.hiddenDone", { name: tokName(x) }));
+  }
+  function dupTokSel() {
+    const x = selTok();
+    if (!x) return;
+    const r = dupTok(map.grid, tokList(map.toks), x.id, snap);
+    if (!r) { toast(t("maps.tok.max", { n: i18n().num(TOK.max) }), { bad: true }); return; }
+    edit({ toks: { at: 0, list: r.list } }, { k: "tdup", tok: x });
+    selectTok(r.id);
+  }
+  function delTokSel() {
+    const x = selTok();
+    if (!x) return;
+    const id = cur.id, idx = tokList(map.toks).indexOf(x);
+    const step = edit({ toks: { at: 0, list: removeTok(tokList(map.toks), x.id) } }, { k: "tdel", tok: x });
+    selectTok(null, false);
+    sr(t("maps.sel.deleted", { name: tokName(x) }));
+    toast(t("maps.sel.deleted", { name: tokName(x) }), { btn: { label: t("maps.msg.undo"), run: () => {
+      const list = tokList(map.toks);
+      if (!cur || cur.id !== id || list.some((y) => y.id === x.id) || !editing()) return;
+      if (hist.isTop(step)) undo();
+      else if (list.length >= TOK.max) { toast(t("maps.tok.max", { n: i18n().num(TOK.max) }), { bad: true }); return; }
+      else { const l = list.slice(); l.splice(Math.min(idx, l.length), 0, x); edit({ toks: { at: 0, list: l } }, { k: "tundel", tok: x }); }
+      selectTok(x.id, false);
+    } } });
+  }
+  function nudgeTok(x, dx, dy, fine) {
+    if (!nudgeG) nudgeG = "nudge" + ++gN;
+    let n;
+    if (fine) n = moveTok(map.grid, x, x.x + dx * 0.1, x.y + dy * 0.1, false);
+    else if (snap && map.grid.type === "hex") { const c = clampCell(cellAt(map.grid, x.x, x.y)), d = clampCell({ c: c.c + dx, r: c.r + dy }), m = cellCenter(map.grid, d.c, d.r); n = moveTok(map.grid, x, m.x, m.y, true); }
+    else n = moveTok(map.grid, x, x.x + dx * Math.max(1, x.s), x.y + dy * Math.max(1, x.s), snap);
+    setTok(n, "tmove", nudgeG);
+    reveal(n.x, n.y);
+  }
+  // paneel Token
+  function syncTok() {
+    const x = selTok();
+    if (!x) return;
+    $("m-t-t").textContent = tokName(x);
+    if (document.activeElement !== $("m-ttl")) $("m-ttl").value = x.l;
+    sizeSeg($("m-ttsize"), x.s);
+    $("m-ttsize-h").textContent = sizeHint(x.s);
+    swatches($("m-ttcolors"), x.c, x.l);
+    $("m-tthide").setAttribute("aria-pressed", String(!!x.hide));
+    $("m-tsnap").setAttribute("aria-pressed", String(snap));
+  }
+  function openTok() {
+    if (!selTok()) return;
+    tsheet.hidden = false; btnMore.setAttribute("aria-expanded", "true");
+    odockFocus(side());
+    chrome();
+    syncTok();
+    tsheet.focus();
+    if (auto) fit();
+  }
+  function closeTok(focus = true) {
+    if (tsheet.hidden) return;
+    tsheet.hidden = true; btnMore.setAttribute("aria-expanded", "false");
+    odockFocus(true);
+    chrome();
+    if (focus && !odock.hidden) btnMore.focus();
+    if (auto) fit(); else later();
+  }
+  const ttl = $("m-ttl");
+  const ttlDone = () => { const x = selTok(); if (!x) return; const v = cleanLabel(ttl.value); if (v && v !== x.l) setTok({ ...x, l: v }, "tlabel"); ttl.value = (selTok() || x).l; };
+  ttl.addEventListener("change", ttlDone);
+  ttl.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); ttlDone(); } });
+  $("m-ttsize").addEventListener("click", (e) => { const x = selTok(), s = +e.target.closest("button")?.dataset.s; if (x && TOK_SIZES.includes(s) && s !== x.s) setTok(sizeTok(map.grid, x, s, snap), "tsize"); });
+  $("m-ttcolors").addEventListener("click", (e) => { const x = selTok(), c = e.target.closest(".mtc")?.dataset.c; if (x && c && c !== x.c) setTok({ ...x, c }, "tcolor"); });
+  $("m-tthide").addEventListener("click", toggleHide);
+  hideBtn.addEventListener("click", toggleHide);
+  $("m-tsnap").addEventListener("click", () => setSnap(!snap));
+  $("m-tclose").addEventListener("click", () => closeTok());
+
   // ---- WP58: kaart openen en Mijn kaarten ----
   /** Kaart in de editor zetten (document uit de opslag of net gemaakt) */
   const openDoc = (doc) => {
     if (aligning) setAlign(false, false);
     if (fogging) setFogMode(false, false); // WP73
     selId = null; kbd = null; closeObj(false); // WP62: selectie hoort bij één kaart
+    selTk = null; tghost = null; closeTok(false); // WP74
     cur = doc;
     map.grid = cleanGrid(doc.grid);
     map.bg = cleanBg(doc.bg);
     map.objs = doc.objs || [];
     map.terr = doc.terr || null; // WP63
     map.fog = doc.fog || null; // WP73
+    map.toks = doc.toks || null; // WP74
     hist.clear(); histBtns(); // WP61: geschiedenis hoort bij één kaart
     ghost = null;
     trimImgs();
@@ -1398,7 +1604,7 @@ async function boot() {
     ["maps.keys.grpCursor", [[kb("←", "↑", "↓", "→"), "maps.keys.cursor"], [or(kb("Enter"), kb(t("maps.keys.space"))), "maps.keys.enter"],
       [or(kb("N"), kb("Shift", "N")), "maps.keys.next"], [kb("Esc"), "maps.keys.esc"]]],
     ["maps.keys.grpSel", [[kb("←", "↑", "↓", "→"), "maps.keys.move"], [or(kb("R"), kb("Shift", "R")), "maps.keys.rot"], [or(kb("]"), kb("[")), "maps.keys.order"],
-      [kb(MOD, "D"), "maps.keys.dup"], [or(kb("Delete"), kb("Backspace")), "maps.keys.del"]]],
+      [kb(MOD, "D"), "maps.keys.dup"], [or(kb("Delete"), kb("Backspace")), "maps.keys.del"], [kb("H"), "maps.keys.hide"]]], // WP74: alleen een token
   ];
   const keysOpen = () => !keysW.hidden;
   function openKeys() {
@@ -1436,6 +1642,7 @@ async function boot() {
     if (fogging && menu.hidden && e.key === "Escape") { e.preventDefault(); setFogMode(false); return; } // WP73: Esc = Klaar
     if (e.key === "Escape" && !sheet.hidden) { e.preventDefault(); closePanel(); return; }
     if (e.key === "Escape" && !osheet.hidden) { e.preventDefault(); closeObj(); return; } // WP62: eerst het paneel, dan de selectie
+    if (e.key === "Escape" && !tsheet.hidden) { e.preventDefault(); closeTok(); return; } // WP74
     if (e.key === "Escape" && !lsheet.hidden) { e.preventDefault(); closeLib(); return; } // WP61: Plaatsen stoppen
     if (viewName !== "edit" || !menu.hidden) return;
     const field = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
@@ -1447,7 +1654,7 @@ async function boot() {
       return;
     }
  // WP62: objecttoetsen. Pijltjes, Enter/spatie en N alleen op de kaart (canvas met focus); de rest overal buiten tekstvelden.
-    const o = selObj(), onCv = e.target === cv;
+    const o = selObj() || selTok(), onCv = e.target === cv, tk = selTok(); // WP74: een token telt hier als selectie
     if (o && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && !field && k === "d") { e.preventDefault(); dupSel(); return; } // Ctrl/⌘+D (niet de bladwijzer)
     if (!field && !e.metaKey && !e.ctrlKey && !e.altKey && !aligning && cur) {
       const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
@@ -1458,11 +1665,12 @@ async function boot() {
       else if (k === "n" && onCv && (painting() || fogging)) { /* WP63: in Verven niet selecteren */ }
       else if ((e.key === "Enter" || e.key === " ") && onCv) enterKey();
       else if (k === "n" && onCv) nextObj(e.shiftKey ? -1 : 1);
-      else if (o && k === "r") turn(e.shiftKey ? -1 : 1);
-      else if (o && e.key === "]") order("front");
-      else if (o && e.key === "[") order("back");
+      else if (tk && k === "h") toggleHide(); // WP74: verbergen voor spelers aan/uit
+      else if (o && !tk && k === "r") turn(e.shiftKey ? -1 : 1);
+      else if (o && !tk && e.key === "]") order("front");
+      else if (o && !tk && e.key === "[") order("back");
       else if (o && (e.key === "Delete" || e.key === "Backspace")) delSel();
-      else if (e.key === "Escape" && o) { kbd = onCv ? clampCell(cellAt(map.grid, o.x, o.y)) : null; select(null); if (kbd) later(); }
+      else if (e.key === "Escape" && o) { kbd = onCv ? clampCell(cellAt(map.grid, o.x, o.y)) : null; if (tk) selectTok(null); else select(null); if (kbd) later(); }
       else if (e.key === "Escape" && kbd) { kbd = null; later(); }
       else did = false;
       if (did) { e.preventDefault(); return; }
@@ -1496,7 +1704,7 @@ async function boot() {
   }
 
   // WP65: draaien of venster smaller/breder over 768 px: zijpaneel ↔ paneel van onderen (dock bereikbaar, passend blijft passend)
-  const onSide = () => { dockFocus(side() || (sheet.hidden && lsheet.hidden)); odockFocus(side() || osheet.hidden); chrome(); if (auto) fit(); else set(view); };
+  const onSide = () => { dockFocus(side() || (sheet.hidden && lsheet.hidden)); odockFocus(side() || (osheet.hidden && tsheet.hidden)); chrome(); if (auto) fit(); else set(view); };
   try { sideMq.addEventListener("change", onSide); } catch { try { sideMq.addListener(onSide); } catch { /* geen live wissel */ } }
   if (window.ResizeObserver) new ResizeObserver(measure).observe(wrap);
   window.addEventListener("resize", measure);
@@ -1549,13 +1757,14 @@ async function boot() {
       return { n, of: a.length / 4 };
     },
     paint: () => ({ painting: painting(), tab: libTab, mat, tool, cells: countTerr(map.grid, map.terr), ids: map.terr ? [...map.terr.ids] : [] }),
+    toks: () => ({ list: tokList(map.toks).map((x) => ({ ...x })), at: (map.toks && map.toks.at) || 0, sel: selTk, pick: tokPick, label: tokL, size: tokS, placing: placingTok() }), // WP74
     fog: () => ({ on: fogOn(map.fog), mode: fogging, act: fogAct, tool: fogTool, at: (map.fog && map.fog.at) || 0, ...countFog(map.grid, map.fog) }), // WP73
     mine: () => mine.map((i) => ({ sha: i.sha, name: i.name, w: i.w, h: i.h, thumb: !!i.thumb })), // WP64
     art: (sha) => !!art.get(sha, 48) };
 
   // WP66: volledige tekening zonder buffer (diagnose: tekentijd en vergelijking met de buffer)
   const fullDraw = (c, v) => draw(c, map, v, w, h, dpr, col, { img: (map.bg && imgs.get(map.bg.asset)) || null, align: aligning, art, ghost, sel: selObj(),
-    cursor: kbd && !selId && viewName === "edit" ? cellPoly(map.grid, kbd.c, kbd.r) : null });
+    cursor: kbd && !selId && !selTk && viewName === "edit" ? cellPoly(map.grid, kbd.c, kbd.r) : null, tsel: selTok(), tghost });
   // ---- WP66: meetstand ----
   let benchRes = null;
   const raf = () => new Promise((res) => requestAnimationFrame(res));

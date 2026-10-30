@@ -141,6 +141,9 @@ const DYNAMIC = [
   [/^maps\.bench\.ph\.(pan|far|zoom)$/, "js/maps/ui/bench.js (PHASES in js/maps/model/bench.js)"],
   [/^maps\.manifest\.desc$/, "tools/pages.mjs mapsManifest (WP68d)"],
   [/^init\.map\.err\./, "js/ui/encmap.js errLine (WP69)"],
+  [/^maps\.hist\.t(place|move|hide|show|dup|del|undel|label|color|size)$/, "js/maps/main.js stepName (meta.tok, WP74)"],
+  [/^maps\.tok\.(c|size|short)\./, "js/maps/main.js colorName, sizeSeg, sizeHint (TOK_COLORS, SIZE_ID in js/maps/model/tokens.js; WP74)"],
+  [/^init\.map\.tok\.c\./, "js/ui/mapview.js tokName (WP74)"],
 ];
 
 test("ongebruikte sleutels zijn een fout (sinds WP33); samengestelde sleutels via DYNAMIC", () => {
