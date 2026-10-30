@@ -989,6 +989,8 @@ export default {
   "init.map.share.on": "[Shöwñ tö pláýérs ······]",
   "init.map.share.hint": "[Öñlý thé pláýér víéw öñ thís dévíçé ·············]",
   "init.map.share.fail": "[Thís máp çöüldñ't bé shöwñ tö pláýérs. Trý ágáíñ. ··················]",
+  "init.map.share.hintRoom": "[Pláýér víéw öñ thís dévíçé áñd íñ rööm {code} ··············]",
+  "init.map.share.sending": "[Séñdíñg tö rööm {code}… ······]",
   "init.enc.shareHint": "[Sháré mákés á fílé wíth thé éñçöüñtér áñd íts çüstöm möñstérs, för áñöthér dévíçé ör á çö-DM. ·································]",
   "init.enc.already": "[Ålréádý íñ thé líst: {what}. ········]",
   "init.enc.stops": "[Répláçíñg éñds thé çömbát. ··········]",

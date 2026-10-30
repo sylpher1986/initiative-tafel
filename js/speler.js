@@ -346,7 +346,7 @@ function dmBack() { clearTimeout(dmT); dmT = 0; if (dmGone) { dmGone = false; ba
 function handler(c) {
   return (m) => {
     if (m.t === "dm") c.send({ t: "hallo" }); // DM-scherm (opnieuw) gestart, of kamer (opnieuw) verbonden
-    else if (m.t === "stand") { const V = cleanView(m.d); if (V) { $("#pv-join").hidden = true; if (c === local) paintMap(V.map || null); paint(V); } }
+    else if (m.t === "stand") { const V = cleanView(m.d); if (V) { $("#pv-join").hidden = true; if (c === local || !m.mapWait) paintMap(V.map || null, c === local ? "local" : "room"); paint(V); } }
     else if (c === room && m.t === "einde") leave(t("player.room.ended"));
     else if (c === room && m.t === "stop") pause();
     else if (c === room && m.t === "dmnet") m.on ? dmBack() : dmAway();
@@ -373,19 +373,22 @@ function join(k) {
   tvQr(); fitTv();
 }
 
-/* ---------- WP71: kaart die de DM toont (alleen via het lokale kanaal; de kamer stuurt hem niet, WP72) ---------- */
-// Alleen een stand uit het lokale kanaal zet of haalt de kaart: is dit scherm ook met een kamer verbonden, dan laat een
-// stand van de kamer (zonder kaart) hem staan. Altijd passend (contain): spelers pannen of zoomen niet (UX WP71).
-let local = null, mapK = "", mapUrl = "";
-function paintMap(m) {
+/* ---------- WP71/WP72: kaart die de DM toont (lokaal kanaal of kamer) ---------- */
+// Een stand zet of haalt de kaart; een stand zonder kaart haalt alleen een kaart weg die via hetzelfde kanaal kwam (zit
+// dit scherm aan beide, dan beslist het kanaal dat hem zette). Kamer: een stand met een kaart die nog niet helemaal binnen
+// is (mapWait) laat de oude staan; de kamer stuurt de stand opnieuw zodra hij compleet is (js/share.js, UX WP72).
+// Altijd passend (contain): spelers pannen of zoomen niet (UX WP71).
+let local = null, mapK = "", mapUrl = "", mapFrom = "";
+function paintMap(m, from) {
   const fig = $("#pv-map"), img = $("#pv-mapimg");
   if (!m) {
-    if (!mapK) return;
+    if (!mapK || (from && mapFrom !== from)) return;
     mapK = ""; fig.hidden = true; img.removeAttribute("src");
     if (mapUrl) URL.revokeObjectURL(mapUrl);
     mapUrl = "";
   } else {
-    if (m.k === mapK) return;
+    if (m.k === mapK) return; // zelfde kaart via het andere kanaal: het kanaal dat hem zette blijft eigenaar
+    mapFrom = from || "";
     const old = mapUrl;
     mapK = m.k; mapUrl = URL.createObjectURL(m.img);
     img.width = m.w; img.height = m.h; // maat vooraf: de lijst springt niet als het beeld laadt

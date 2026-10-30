@@ -2,7 +2,7 @@
 // Staat in Instellingen → Spelersscherm. Kamer (code + DM-token) in localStorage: na herladen loopt het delen door.
 // Alleen UI- en verbindingstoestand: niets hiervan zit in undo, opslag of export.
 import { APP } from "../version.js";
-import { roomChannel, dmLink, createRoom, normCode, fmtCode, noMap } from "../share.js";
+import { roomChannel, dmLink, createRoom, normCode, fmtCode } from "../share.js";
 import { $, esc, toast, toastHtml, closeToast, toastBad } from "./util.js";
 import { canWrite } from "../storage.js";
 import { qrSvg } from "../qr.js";
@@ -18,6 +18,7 @@ let room = null, ch = null, link = null, off = null;
 let st = "off", n = 0, err = "", lostT = 0, warned = false; // st = verbindingscode (geen tekst); err = catalogussleutel of ""
 // pauze: de kamer stopte het delen na 30 min zonder gewijzigde stand. missed = melding "Spelers zien dit niet" al getoond (één per pauze)
 let paused = false, resuming = false, missed = false;
+let mapBusy = false; // WP72: kaartbeeld onderweg naar de kamer (hint in de kaartviewer)
 // SC7: again = Opnieuw delen na Stop loopt (verlopen kamer → stil een nieuwe); ask = bevestigvak "Nieuwe code…" open
 let again = false, ask = false;
 // stopping = kanaal dat nog "stop" probeert te sturen (offline: tot 5 s); making = Nieuwe code wordt aangemaakt
@@ -65,7 +66,7 @@ function disconnect() {
   if (off) off(); off = null;
   if (link) addLink(link, false); link = null;
   if (ch) ch.close(); ch = null;
-  lost(false); n = 0; setPaused(false);
+  lost(false); n = 0; mapBusy = false; setPaused(false);
 }
 
 function connect() {
@@ -73,6 +74,7 @@ function connect() {
   ch = roomChannel(room.code, room.token, { allow: canWrite });
   off = ch.on((m) => {
     if (m.t === "n") { n = Math.max(0, m.n | 0); paint(); }
+    else if (m.t === "mapst") { if (mapBusy !== !!m.busy) { mapBusy = !!m.busy; changed(); } }
     else if (m.t === "pauze") { if (!paused) { setPaused(true); paint(); } }
     else if (m.t === "hervat") { const was = paused || again; again = false; setPaused(false); paint(); if (was) toast(t("init.room.back")); }
     else if (m.t === "gemist") {
@@ -115,7 +117,7 @@ function detach() {
   const c = ch; ch = null;
   if (off) off(); off = null;
   if (link) addLink(link, false); link = null;
-  lost(false); n = 0; setPaused(false);
+  lost(false); n = 0; mapBusy = false; setPaused(false);
   return c;
 }
 
@@ -186,6 +188,11 @@ export function kamerStat() {
   return { t: t("init.room.connecting"), warn };
 }
 const changed = () => document.dispatchEvent(new Event("it-kamer"));
+/** WP72: kamer waar spelers nu meekijken ({ code, busy: kaartbeeld onderweg }), of null (geen, gestopt, gepauzeerd, verbinding weg) */
+export function roomMap() {
+  if (!room || room.stopped || paused || st !== "open" || document.documentElement.classList.contains("kamer-lost")) return null;
+  return { code: fmtCode(room.code), busy: mapBusy };
+}
 
 const codeHtml = (still) => `<p class="kamer-code${still ? " stil" : ""}" aria-label="${esc(t("init.room.codeAria", { code: room.code.split("").join(" ") }))}">${esc(fmtCode(room.code))}</p>
     <p class="kamer-url">${esc(shareUrl())}</p>`;
@@ -281,10 +288,8 @@ export function dropSharing() { disconnect(); }
  * de render-updates. Een bewaarde kamer gaat direct weer open.
  */
 export function bindSharing(view, links) {
-  // WP71: de kamer krijgt de snapshot zonder kaart (pas in WP72), per snapshot één keer: een nieuw kaartbeeld is dan
-  // geen nieuwe stand voor de kamer (geen "gemist" tijdens een pauze)
-  const bare = new WeakMap();
-  getView = () => { const v = view(); let b = bare.get(v); if (!b) { b = noMap(v); bare.set(v, b); } return b; };
+  // WP72: de kamer krijgt de snapshot mét kaart; roomChannel stuurt het beeld apart in stukken
+  getView = view;
   addLink = links;
   if (!$("#kamer-box") && window.__itErr) window.__itErr("Sharing: the share box is missing from the page (old index.html?)"); // diagnose voor de ontwikkelaar, niet vertaald
   $("#kamer-box")?.addEventListener("click", (e) => {

@@ -5,6 +5,7 @@
 // het opstarten, en ontbreekt die offline (Maps-cache is best effort), dan zijn kaarten "niet bereikbaar" in plaats van
 // dat Initiative breekt. Lezen gaat door store.listMaps (cleanMap); importeren door Inn Sights eigen controles
 // (importFile) en komt in de Inn Sight-bibliotheek (Michiel, WP69), met een nieuwe id en unieke naam (importedDoc).
+import { ROOM_MAP_MAX } from "../share.js";
 import { t, i18n } from "../i18n/boot.js";
 import { normLang, DEFAULT, pathFor } from "../i18n/lang.js";
 import { esc } from "./util.js";
@@ -206,14 +207,33 @@ export async function flatMap(id) {
   await new Promise((r) => setTimeout(r, 0)); // eigen assets: createArt zet ze een microtask later klaar
   ping = null;
   draw();
-  const blob = await new Promise((r) => { try { cv.toBlob(r, "image/jpeg", 0.85); } catch { r(null); } });
+  const fit = await fitJpeg(cv), blob = fit && fit.b;
   if (img && img.close) img.close();
   for (const x of own.values()) if (x && x.close) x.close();
   art.trim(new Set());
   cv.width = cv.height = 0;
   if (!blob) return null;
-  return { flat: { k: `m${Date.now().toString(36)}${++flatN}`, w: W, h: H, img: blob }, at: map.updatedAt || 0 };
+  return { flat: { k: `m${Date.now().toString(36)}${++flatN}`, w: fit.w, h: fit.h, img: blob }, at: map.updatedAt || 0 };
 }
+/** WP72: JPEG ≤ ROOM_MAP_MAX (past in de kamer): eerst lagere kwaliteit, dan kleiner (± 75 % per stap). Eén beeld voor
+ *  alle spelersschermen; bijna elke kaart past al op 0,85. → { b: Blob, w, h } of null (mislukt). */
+export async function fitJpeg(cv) {
+  const jpg = (c, q) => new Promise((r) => { try { c.toBlob(r, "image/jpeg", q); } catch { r(null); } });
+  let b = null;
+  for (const q of FLAT_Q) { b = await jpg(cv, q); if (!b) return null; if (b.size <= ROOM_MAP_MAX) return { b, w: cv.width, h: cv.height }; }
+  for (let i = 0, c = cv; i < 4; i++) {
+    const s = document.createElement("canvas");
+    s.width = Math.max(1, Math.round(c.width * 0.75)); s.height = Math.max(1, Math.round(c.height * 0.75));
+    s.getContext("2d").drawImage(c, 0, 0, s.width, s.height);
+    if (c !== cv) c.width = c.height = 0; // vorige verkleining loslaten (het origineel ruimt flatMap op)
+    c = s;
+    b = await jpg(c, FLAT_Q.at(-1));
+    const w = c.width, h = c.height;
+    if (!b || b.size <= ROOM_MAP_MAX || i === 3) { c.width = c.height = 0; return b && b.size <= ROOM_MAP_MAX ? { b, w, h } : null; }
+  }
+  return null;
+}
+const FLAT_Q = [0.85, 0.72, 0.6];
 /** updatedAt van kaart id (0 = weg of niet bereikbaar): is het gedeelde beeld nog actueel? */
 export async function mapStamp(id) {
   try { const M = await viewMods(); const m = (await M.s.available()) ? await M.s.getMap(id) : null; return (m && m.updatedAt) || 0; } catch { return 0; }

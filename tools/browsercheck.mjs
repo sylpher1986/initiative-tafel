@@ -24,6 +24,7 @@ import { extname, join, normalize } from "node:path";
 import { isDutch } from "./i18n-audit.mjs";
 import { pathFor, langBase } from "../js/i18n/lang.js";
 import { enRedirect } from "../worker/index.js";
+import { Room, rt as roomRt, MAX_MSG } from "../worker/room.js";
 import { BUILTIN, BUILTIN_IDS } from "../js/maps/model/assets.js";
 import { placeAt } from "../js/maps/model/objects.js";
 import { handles } from "../js/maps/model/hit.js";
@@ -163,6 +164,35 @@ const LEGACY = { format: "initiative-tafel", version: 2, exported: "2026-10-20T1
   party: [{ pid: "pa", name: "Aria", ac: 15, hp: 24, max: 24, dex: 3, lvl: 3 }], lairs: {}, custom: [], imported: [], encounters: [] };
 
 // Scenario's. Elk begint op een verse pagina (rondleiding uit, lege opslag).
+// WP72: kamer in Node met de echte Room (worker/room.js) achter Playwrights routeWebSocket: DM en spelers in aparte
+// browsercontexten praten zo via dezelfde kamer als op Cloudflare (opslag en sockets nagebootst zoals tests/room.test.js).
+function kamerSim() {
+  const m = new Map(), socks = [], big = [];
+  const storage = {
+    m, get: async (k) => m.get(k), put: async (k, v) => { if (typeof k === "object") for (const [a, b] of Object.entries(k)) m.set(a, b); else m.set(k, v); },
+    delete: async (k) => (Array.isArray(k) ? k.forEach((x) => m.delete(x)) : m.delete(k)), list: async ({ prefix }) => new Map([...m].filter(([k]) => k.startsWith(prefix)).sort(([a], [b]) => (a < b ? -1 : 1))),
+    deleteAll: async () => m.clear(), setAlarm: async () => {}, getAlarm: async () => null, deleteAlarm: async () => {},
+  };
+  const ctx = { storage, acceptWebSocket: (ws, tags) => { ws.tags = tags; socks.push(ws); }, getWebSockets: (tag) => socks.filter((w) => !w.closed && (!tag || w.tags.includes(tag))), getTags: (ws) => ws.tags };
+  const room = new Room(ctx, {}), code = "K7M3QX", token = "t".repeat(32);
+  const ready = (async () => {
+    const h = Buffer.from(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token))).toString("base64url");
+    await room.fetch(new Request("https://kamer/init", { method: "POST", body: JSON.stringify({ hash: h }) }));
+  })();
+  async function attach(bctx) {
+    await bctx.routeWebSocket(/\/api\/room\/[^/]+\/ws/, async (ws) => {
+      await ready;
+      const server = { tags: [], closed: false, accept() {}, send: (s) => { try { ws.send(s); } catch { /* dicht */ } }, close: (c) => { if (!server.closed) { server.closed = true; try { ws.close({ code: c }); } catch { /* dicht */ } } } };
+      roomRt.pair = () => [{}, server];
+      roomRt.upgraded = () => ({ status: 101 });
+      await room.fetch(new Request(ws.url().replace(/^ws/, "http")));
+      ws.onMessage((d) => { if (typeof d === "string" && d.length > MAX_MSG) big.push(d.length); room.webSocketMessage(server, d); });
+      ws.onClose(() => { server.closed = true; room.webSocketClose(server, 1000); });
+    });
+  }
+  return { code, token, room: { code, token, at: Date.now() }, attach, storage: m, big };
+}
+
 const SCEN = {
   async welcome(page) { await page.waitForSelector("#welcome-sample"); },
   async prep(page) { await tap(page, "#welcome-sample"); await page.waitForSelector("#start:not([disabled])"); },
@@ -2153,6 +2183,79 @@ const SCEN = {
     await tap(page, '#order [data-enc="map"]');
     await tap(page, '#mapview [data-mv="pv"]');
     await page.waitForFunction(() => document.querySelector('#mapview [data-mv="pv"]').classList.contains("on"));
+  },
+  // WP72: spelerskaart via de kamer. DM deelt een kamer (kamerSim), speler in een eigen browsercontext (geen
+  // BroadcastChannel: de kaart kan alleen via de kamer komen). Hint noemt de kamer; aan = kaart in stukken (elk bericht
+  // ≤ MAX_MSG) en compleet in de kamer; speler toont hem; een later scherm krijgt hem bij "hallo"; uit = weg. Daarnaast:
+  // fitJpeg houdt een kaart met veel ruis onder ROOM_MAP_MAX. --shots=wp72: viewer met hint, speler.
+  async wp72(page, base) {
+    const sim = kamerSim();
+    await sim.attach(page.context());
+    await page.evaluate((r) => localStorage.setItem("it-room", JSON.stringify(r)), sim.room);
+    await page.reload(); await page.waitForSelector("#dock");
+    await SCEN.fight(page);
+    await page.evaluate(async () => {
+      const st = await import("/js/maps/store.js"), M = await import("/js/maps/model/map.js");
+      await st.putMap({ ...M.newMap({ id: "kaart00001", name: "Grot der goblins" }), grid: { type: "square", cols: 20, rows: 15 }, objs: [{ id: "o1", asset: "table", x: 5, y: 5 }, { id: "o2", asset: "tree", x: 12, y: 8 }] });
+      const { app } = await import("/js/state.js"), F = await import("/js/rules/fight.js"), R = await import("/js/ui/render.js");
+      F.addEnc(app.S, { name: "Grot", notes: "", map: { id: "kaart00001", name: "Grot der goblins" } }, true);
+      R.render();
+    });
+    const lang = await page.evaluate(() => document.documentElement.lang);
+    const scheme = await page.evaluate(() => (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+    const players = [];
+    const openPv = async () => {
+      const c = await page.context().browser().newContext({ viewport: page.viewportSize(), hasTouch: true, isMobile: true, colorScheme: scheme, deviceScaleFactor: 2, serviceWorkers: "block" });
+      await sim.attach(c);
+      const pv = await c.newPage();
+      players.push(c);
+      await pv.goto(base + pathFor(lang, "/initiative/player/") + "?k=" + sim.code);
+      await pv.waitForSelector("#pv-list .pvc", { timeout: 8000 });
+      return pv;
+    };
+    const pv = await openPv();
+    if (!(await pv.locator("#pv-map").isHidden())) throw new Error("kaart bij de speler zonder delen");
+    await tap(page, '#order [data-enc="map"]');
+    await page.waitForSelector('#mapview .mvtoon:not([hidden]) [data-mv="pv"]');
+    const code = sim.code.slice(0, 3) + " " + sim.code.slice(3);
+    await page.waitForFunction((c) => document.querySelector("#mapview .mvthint").textContent.includes(c), code, { timeout: 8000 });
+    await tap(page, '#mapview [data-mv="pv"]');
+    await pv.waitForFunction(() => { const i = document.querySelector("#pv-mapimg"); return !document.querySelector("#pv-map").hidden && i.complete && i.naturalWidth > 100; }, null, { timeout: 15000 });
+    await page.waitForFunction((c) => { const h = document.querySelector("#mapview .mvthint").textContent; return h.includes(c) && !h.includes("…"); }, code, { timeout: 8000 });
+    await snap(page, "wp72", "viewer");
+    const mm = sim.storage.get("mapm");
+    if (!mm || mm.got !== mm.n || sim.big.length) throw new Error("kamer: " + JSON.stringify({ mm, big: sim.big }));
+    const ph = await pv.evaluate(() => ({ hs: document.documentElement.scrollWidth - innerWidth, h: document.querySelector("#pv-mapimg").getBoundingClientRect().height, max: innerHeight * 0.45 + 1 }));
+    if (ph.hs > 0 || ph.h > ph.max) throw new Error("speler: " + JSON.stringify(ph));
+    if (SHOTS.has("wp72") && page.viewportSize().width === 320) await pv.screenshot({ path: join(ROOT, "shots", `wp72-speler-${lang}-320-${scheme}.png`) });
+    // later scherm: krijgt de kaart bij "hallo"
+    const pv2 = await openPv();
+    await pv2.waitForFunction(() => !document.querySelector("#pv-map").hidden && document.querySelector("#pv-mapimg").naturalWidth > 100, null, { timeout: 15000 });
+    // gewone wijziging (Volgende): kaart blijft, geen nieuwe stukken
+    const n0 = [...sim.storage.keys()].filter((k) => k.startsWith("map:")).length;
+    await tap(page, "#next");
+    await pv.waitForTimeout(400);
+    if (await pv.locator("#pv-map").isHidden()) throw new Error("kaart weg na Volgende");
+    if ([...sim.storage.keys()].filter((k) => k.startsWith("map:")).length !== n0 || sim.storage.get("mapm").k !== mm.k) throw new Error("kaart opnieuw gestuurd na Volgende");
+    // uit = weg bij beide spelers en uit de kamer
+    await tap(page, '#mapview [data-mv="pv"]');
+    await pv.waitForSelector("#pv-map", { state: "hidden" });
+    await pv2.waitForSelector("#pv-map", { state: "hidden" });
+    if (sim.storage.get("mapm")) throw new Error("kaart nog in de kamer");
+    for (const c of players) await c.close();
+    // budget: een kaart met veel ruis (2048 px) blijft onder ROOM_MAP_MAX
+    const fit = await page.evaluate(async () => {
+      const { fitJpeg } = await import("/js/ui/encmap.js"), { ROOM_MAP_MAX } = await import("/js/share.js");
+      const cv = document.createElement("canvas"); cv.width = cv.height = 2048;
+      const g = cv.getContext("2d"), d = g.createImageData(2048, 2048);
+      let x = 2463534242; // xorshift32: echte ruis, comprimeert slecht (dwingt het verkleinpad af)
+      for (let i = 0; i < d.data.length; i++) { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; d.data[i] = (i & 3) === 3 ? 255 : x & 255; }
+      g.putImageData(d, 0, 0);
+      const r = await fitJpeg(cv);
+      return r && { size: r.b.size, max: ROOM_MAP_MAX, w: r.w, h: r.h };
+    });
+    if (!fit || fit.size > fit.max || fit.w >= 2048 || fit.w < 256) throw new Error("fitJpeg: " + JSON.stringify(fit));
+    await tap(page, '#mapview [data-mv="close"]');
   },
   // WP70: kaart bekijken in Gevecht (DM, alleen kijken). Twee ingeladen encounters met elk een kaart (één bestaat niet).
   // Knop "Kaarten (2)" in de encounterstrip; viewer vol scherm tot aan de dock: canvas getekend, Volgende blijft bruikbaar

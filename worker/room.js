@@ -11,11 +11,14 @@
 //                                         blijven; "hervat" deelt weer met dezelfde code. Weg na IDLE_MS.
 //                { t: "wis" }             kamer opheffen ("Nieuwe code"): spelers krijgen "einde", alles weg
 //                { t: "hervat" }          na een pauze weer delen (zelfde code en token); de DM pusht daarna de stand
+//                { t: "mp", k, i, n, ty, d } WP72: stuk i van n van de spelerskaart k (base64, ty = beeldtype); i = 0 begint een
+//                                         nieuwe kaart (de oude stukken gaan weg), daarna strikt op volgorde. { t: "mp", k: null } = geen kaart.
 //   speler →     { t: "hallo" }           kamer stuurt de bewaarde portretten en de laatste stand
 //   kamer → DM   { t: "n", n }            aantal verbonden spelersschermen
+//                { t: "mk", k }           WP72: bij verbinden de kaart die compleet in de kamer staat ("" = geen); de DM stuurt opnieuw als hij afwijkt
 //                { t: "hervat" }          bevestiging van "hervat"
 //                { t: "pauze" }           delen gepauzeerd (PAUSE_MS zonder gewijzigde stand); ook bij verbinden tijdens een pauze
-//   kamer → speler: de doorgestuurde "img"/"stand", { t: "stop" } (pauze: socket blijft open) en { t: "einde" } (kamer weg)
+//   kamer → speler: de doorgestuurde "img"/"mp"/"stand" (bij "hallo": portretten, dan kaartstukken, dan de stand), { t: "stop" } (pauze: socket blijft open) en { t: "einde" } (kamer weg)
 //                { t: "dmnet", on }       DM-verbinding weg (0: laatste DM-socket dicht) of terug (1); een nieuw scherm krijgt
 //                                         altijd de huidige status (de bewaarde stand zegt niets over de DM). Wachten (DM-telefoon even vergrendeld) doet de speler
 //                                         zelf: de kamer heeft geen timers (hibernation).
@@ -30,6 +33,12 @@ export const CODE_RE = /^[2-9A-HJKMNP-TV-Z]{6}$/;
 export const MAX_MSG = 96 * 1024;     // één bericht van de DM (snapshot zonder portretten is ± 20 KB)
 export const MAX_IMG = 64 * 1024;     // één portret (cleanImg staat 60 000 tekens toe)
 export const MAX_IMGS = 40;
+// WP72: spelerskaart in stukken (eigen sleutels map:NN + mapm, los van de portretten). 60 000 tekens = 45 000 bytes per stuk
+// (veelvoud van 4: elk stuk is los te decoderen), max 32 stukken ≈ 1,4 MB beeld. Gelijk aan PART/PARTS in js/share.js (test).
+export const MAX_PART = 60000;
+export const MAX_PARTS = 32;
+const MAP_K = /^[A-Za-z0-9_.-]{1,64}$/;
+export const MAP_TY = ["image/jpeg", "image/png", "image/webp"]; // gelijk aan js/share.js en js/playerview.js (test)
 export const MAX_PLAYER_MSG = 256;    // spelers sturen alleen "hallo"
 export const IDLE_MS = 12 * 3600e3;   // kamer weg na 12 uur zonder iets van de DM
 export const PAUSE_MS = 30 * 60e3;    // delen pauzeert na 30 min zonder gewijzigde stand (vast, niet instelbaar)
@@ -110,6 +119,10 @@ export class Room {
     if (dm) {
       // "pauze" vóór "n": de DM-kant weet bij "n" dat de kamer niet gepauzeerd is (oude pauze in een ander tabblad opgeheven)
       if (await st.get("paused")) sendTo(server, PAUZE);
+      // onvolledige kaart (DM herlaadde tijdens het versturen) weg: anders krijgt elke "hallo" nutteloze stukken
+      let mm = await st.get("mapm");
+      if (mm && mm.got !== mm.n) { await this.dropMap(); mm = null; }
+      sendTo(server, JSON.stringify({ t: "mk", k: mm ? mm.k : "" }));
       sendTo(server, JSON.stringify({ t: "n", n: this.players().length }));
       for (const w of this.players()) sendTo(w, DM_ON);
     } else {
@@ -140,6 +153,7 @@ export class Room {
       if (ws.serializeAttachment) ws.serializeAttachment({ h: Date.now() });
       const imgs = await st.list({ prefix: "img:" });
       for (const [k, d] of imgs) sendTo(ws, JSON.stringify({ t: "img", id: k.slice(4), d }));
+      for (const p of (await st.list({ prefix: "map:" })).values()) sendTo(ws, p); // ook een onvolledige kaart: de rest komt live
       if (await st.get("paused")) return sendTo(ws, STOP);
       const s = await st.get("stand");
       if (s) sendTo(ws, s);
@@ -166,6 +180,8 @@ export class Room {
       } else return;
       const s = JSON.stringify({ t: "img", id, d: m.d == null ? null : m.d });
       for (const w of this.players()) sendTo(w, s);
+    } else if (m.t === "mp") {
+      await this.mapPart(m);
     } else if (m.t === "stop") {
       // gestopt = pauze: spelers wachten met dezelfde code; opruimen 12 u na nu
       await st.put("at", Date.now());
@@ -180,6 +196,32 @@ export class Room {
       await this.plan();
       sendTo(ws, JSON.stringify({ t: "hervat" })); // de DM pusht hierna de stand; die gaat naar alle spelers, ook als hij gelijk is
     }
+  }
+
+  /** WP72: één kaartstuk opslaan en doorsturen (of k: null = kaart weg). Ongeldig of niet op volgorde = negeren. */
+  async mapPart(m) {
+    const st = this.ctx.storage;
+    if (await st.get("paused")) return; // zoals een stand: pas weer na "hervat"
+    if (m.k === null) {
+      if (!(await st.get("mapm"))) return;
+      await this.dropMap();
+      const s = JSON.stringify({ t: "mp", k: null });
+      for (const w of this.players()) sendTo(w, s);
+      return;
+    }
+    const { k, i, n, ty, d } = m;
+    if (typeof k !== "string" || !MAP_K.test(k) || !Number.isInteger(n) || n < 1 || n > MAX_PARTS || !Number.isInteger(i) || i < 0 || i >= n) return;
+    if (!MAP_TY.includes(ty) || typeof d !== "string" || !d.length || d.length > MAX_PART) return;
+    const meta = await st.get("mapm");
+    if (i === 0) await this.dropMap();
+    else if (!meta || meta.k !== k || meta.n !== n || meta.ty !== ty || meta.got !== i) return;
+    const s = JSON.stringify({ t: "mp", k, i, n, ty, d });
+    await st.put({ ["map:" + String(i).padStart(2, "0")]: s, mapm: { k, n, ty, got: i + 1 } });
+    for (const w of this.players()) sendTo(w, s);
+  }
+  async dropMap() {
+    const st = this.ctx.storage;
+    await st.delete([...(await st.list({ prefix: "map:" })).keys(), "mapm"]); // één aanroep (max 128 sleutels; hier ≤ 33)
   }
 
   /** Eerstvolgende alarm: pauze (act + PAUSE_MS, niet tijdens een pauze) of opruimen (at + IDLE_MS) */

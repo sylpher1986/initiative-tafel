@@ -989,6 +989,8 @@ export default {
   "init.map.share.on": "Shown to players",
   "init.map.share.hint": "Only the player view on this device",
   "init.map.share.fail": "This map couldn't be shown to players. Try again.",
+  "init.map.share.hintRoom": "Player view on this device and in room {code}",
+  "init.map.share.sending": "Sending to room {code}…",
   "init.enc.shareHint": "Share makes a file with the encounter and its custom monsters, for another device or a co-DM.",
   "init.enc.already": "Already in the list: {what}.",
   "init.enc.stops": "Replacing ends the combat.",

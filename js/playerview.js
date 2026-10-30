@@ -202,12 +202,12 @@ export function toPlayerView(S, metaOf = () => "", vis = VIS, prev = null, opts 
   return out;
 }
 
-/* ---------- WP71: spelerskaart (plat beeld, alleen lokaal) ---------- */
+/* ---------- WP71/WP72: spelerskaart (plat beeld) ---------- */
 // De DM deelt een kaart bewust (schakelaar in de kaartviewer) en rendert hem zelf tot één plat beeld (js/ui/encmap.js,
 // flatMap): achtergrond, terrein, objecten en raster, zonder editor-overlays. Naar spelers gaat alleen dat beeld met
 // zijn maat en een sleutel, nooit het kaartdocument (raster, objecten, assets, naam, id). Het beeld is een Blob: goedkoop
-// over het lokale kanaal (structured clone) en geen base64 in de JSON-vergelijking van dmLink. De kamer stuurt het niet
-// (roomChannel haalt map eruit; via de kamer pas in WP72).
+// over het lokale kanaal (structured clone) en geen base64 in de JSON-vergelijking van dmLink. Via de kamer (WP72) gaat
+// het beeld apart in stukken (roomChannel, js/share.js); de spelerskant zet de Blob terug in de stand vóór cleanView.
 export const MAP_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const MAP_MAX = 8 * 1048576; // bytes; een plat beeld van ≤ 2048 px in JPEG is ruim kleiner
 export const MAP_PX = 4096;          // breedte en hoogte

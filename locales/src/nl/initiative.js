@@ -917,6 +917,8 @@ export default {
   "init.map.share.on": "Getoond aan spelers",
   "init.map.share.hint": "Alleen het spelersscherm op dit apparaat",
   "init.map.share.fail": "Deze kaart kon niet aan spelers getoond worden. Probeer het opnieuw.",
+  "init.map.share.hintRoom": "Spelersscherm op dit apparaat en in kamer {code}", // WP72
+  "init.map.share.sending": "Versturen naar kamer {code}…", // WP72
   "init.enc.shareHint": "Delen maakt een bestand met de encounter en de eigen monsters erin, voor een ander apparaat of een co-DM.",
   "init.enc.already": "Al in de lijst: {what}.",
   "init.enc.stops": "Vervangen stopt het gevecht.",

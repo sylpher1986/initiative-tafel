@@ -2,7 +2,7 @@ import "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import worker from "../worker/index.js";
-import { Room, rt, newCode, CODE_RE, CODE_ABC, MAX_MSG, MAX_IMG, MAX_IMGS, IDLE_MS, PAUSE_MS, ROOM_LIMIT_N } from "../worker/room.js";
+import { Room, rt, newCode, CODE_RE, CODE_ABC, MAX_MSG, MAX_IMG, MAX_IMGS, IDLE_MS, PAUSE_MS, ROOM_LIMIT_N, MAX_PART, MAX_PARTS } from "../worker/room.js";
 import { readFileSync } from "node:fs";
 
 /* ---------- nagebootste Durable Object-runtime ---------- */
@@ -25,7 +25,7 @@ function fakeStorage() {
     m, get alarm() { return alarm; },
     get: async (k) => m.get(k),
     put: async (k, v) => { if (typeof k === "object") for (const [a, b] of Object.entries(k)) m.set(a, b); else m.set(k, v); },
-    delete: async (k) => m.delete(k),
+    delete: async (k) => (Array.isArray(k) ? k.forEach((x) => m.delete(x)) : m.delete(k)),
     list: async ({ prefix }) => new Map([...m].filter(([k]) => k.startsWith(prefix))),
     deleteAll: async () => m.clear(),
     setAlarm: async (t) => { alarm = t; }, getAlarm: async () => alarm, deleteAlarm: async () => { alarm = null; },
@@ -177,7 +177,7 @@ test("DM schrijft, speler leest; nieuwe speler krijgt portretten en de laatste s
   const { code, token } = await make();
   const dm = await open(code, token);
   assert.deepEqual(dm.ws.tags, ["dm"]);
-  assert.deepEqual(dm.ws.msgs(), [{ t: "n", n: 0 }]);
+  assert.deepEqual(dm.ws.msgs(), [{ t: "mk", k: "" }, { t: "n", n: 0 }]);
   const p1 = await open(code);
   assert.deepEqual(p1.ws.tags, ["p"]);
   assert.deepEqual(dm.ws.msgs().at(-1), { t: "n", n: 1 }, "DM ziet het aantal schermen");
@@ -360,7 +360,7 @@ test("pauze: na 30 min stop naar spelers, pauze naar DM; code, stand en portrett
   assert.deepEqual(p2.ws.msgs(), [{ t: "img", id: "a", d: "data:A" }, { t: "stop" }]);
   // DM herlaadt de pagina: krijgt meteen pauze
   const dm2 = await open(code, token);
-  assert.deepEqual(dm2.ws.msgs(), [{ t: "pauze" }, { t: "n", n: 2 }]);
+  assert.deepEqual(dm2.ws.msgs(), [{ t: "pauze" }, { t: "mk", k: "" }, { t: "n", n: 2 }]);
   // alarm tijdens de pauze pauzeert niet nog eens
   const n1 = p.ws.sent.length;
   await room.alarm();
@@ -451,4 +451,81 @@ test("G1 (WP55): snapshot met regels 2024 komt via de kamer ongewijzigd bij het 
   assert.equal(cleanView(p2.ws.msgs().find((m) => m.t === "stand").d).ed, "2024");
   await dm.say({ t: "stand", d: toPlayerView({ ...S, rules: undefined }) });
   assert.equal(cleanView(p1.ws.msgs().filter((m) => m.t === "stand").at(-1).d).ed, undefined, "terug naar 2014: geen ed");
+});
+
+/* ---------- WP72: spelerskaart in stukken ---------- */
+const MP = (k, i, n, d = "QUFB", ty = "image/jpeg") => ({ t: "mp", k, i, n, ty, d });
+const mps = (ws) => ws.msgs().filter((m) => m.t === "mp");
+
+test("WP72 kamer: kaartstukken live naar spelers, bewaard, bij hallo vóór de stand; mk = complete kaart", async () => {
+  const { code, token } = await make();
+  const dm = await open(code, token), p1 = await open(code);
+  for (let i = 0; i < 3; i++) await dm.say(MP("m1", i, 3, "QUF" + i));
+  await dm.say({ t: "stand", d: { v: 2, list: [{ id: "a" }], map: { k: "m1", w: 10, h: 10 } } });
+  assert.deepEqual(mps(p1.ws).map((m) => m.i), [0, 1, 2], "live, op volgorde");
+  assert.deepEqual(dm.room.storage.m.get("mapm"), { k: "m1", n: 3, ty: "image/jpeg", got: 3 });
+  await dm.say({ t: "img", id: "a", d: "data:image/jpeg;base64,AAAA" });
+  const p2 = await open(code);
+  await p2.say({ t: "hallo" });
+  assert.deepEqual(p2.ws.msgs().map((m) => m.t), ["img", "mp", "mp", "mp", "stand"], "portretten, kaart, dan de stand");
+  assert.deepEqual(p2.ws.msgs().filter((m) => m.t === "mp").map((m) => m.d), ["QUF0", "QUF1", "QUF2"]);
+  // DM opnieuw verbonden: kamer meldt de complete kaart
+  const dm2 = await open(code, token);
+  assert.deepEqual(dm2.ws.msgs().find((m) => m.t === "mk"), { t: "mk", k: "m1" });
+});
+
+test("WP72 kamer: onvolledige kaart = mk leeg; nieuwe kaart (i 0) vervangt; k null = weg; fout of buiten volgorde = negeren", async () => {
+  const { code, token } = await make();
+  const dm = await open(code, token), p = await open(code);
+  await dm.say(MP("m1", 0, 3)); await dm.say(MP("m1", 1, 3));
+  assert.deepEqual((await open(code, token)).ws.msgs().find((m) => m.t === "mk"), { t: "mk", k: "" }, "nog niet compleet");
+  const dmB = rooms[code].socks.at(-1), say = (m) => rooms[code].webSocketMessage(dmB, JSON.stringify(m));
+  await say(MP("m1", 0, 3)); await say(MP("m1", 1, 3)); // de nieuwe DM-verbinding ruimde de halve kaart op: opnieuw
+  const before = mps(p.ws).length;
+  for (const bad of [MP("m1", 3, 3), MP("m1", 1, 3), MP("mX", 2, 3), MP("m1", 2, 4), MP("m1", 2, 3, "QUFB", "image/svg+xml"),
+    MP("m1", 2, 3, ""), MP("m1", 2, 3, "Q".repeat(MAX_PART + 1)), MP("<x>", 0, 1), MP("m2", 0, MAX_PARTS + 1), MP("m2", 0, 0),
+    MP("m2", 0.5, 2), { t: "mp", k: "m2", i: 0, n: 1, d: "QUFB" }, MP("m2", 0, 1, 123)]) await say(bad);
+  assert.equal(mps(p.ws).length, before, "niets doorgestuurd");
+  assert.equal(rooms[code].storage.m.get("mapm").got, 2);
+  await say(MP("m2", 0, 1, "QkJC"));
+  assert.deepEqual([...rooms[code].storage.m.keys()].filter((k) => k.startsWith("map")).sort(), ["map:00", "mapm"], "oude stukken weg");
+  assert.equal(JSON.parse(rooms[code].storage.m.get("map:00")).k, "m2");
+  await say({ t: "mp", k: null });
+  assert.deepEqual(mps(p.ws).at(-1), { t: "mp", k: null });
+  assert.equal([...rooms[code].storage.m.keys()].some((k) => k.startsWith("map")), false);
+  const n = p.ws.msgs().length;
+  await say({ t: "mp", k: null }); // al leeg: niets
+  assert.equal(p.ws.msgs().length, n);
+  // spelers kunnen geen kaart sturen
+  await p.say(MP("m3", 0, 1));
+  assert.equal(rooms[code].storage.m.get("mapm"), undefined);
+});
+
+test("WP72 kamer: tijdens een pauze geen kaartstukken; wis haalt de kaart weg; stuk past in MAX_MSG", async () => {
+  const { code, token } = await make();
+  const dm = await open(code, token), p = await open(code);
+  await dm.say(MP("m1", 0, 1));
+  await dm.say({ t: "stop" });
+  const dmB = await open(code, token);
+  await dmB.say(MP("m2", 0, 1));
+  assert.equal(rooms[code].storage.m.get("mapm").k, "m1", "pauze: genegeerd");
+  await dmB.say({ t: "hervat" });
+  await dmB.say(MP("m2", 0, 1));
+  assert.equal(rooms[code].storage.m.get("mapm").k, "m2");
+  assert.ok(JSON.stringify(MP("m".repeat(64), MAX_PARTS - 1, MAX_PARTS, "Q".repeat(MAX_PART), "image/webp")).length < MAX_MSG);
+  await dmB.say({ t: "wis" });
+  assert.equal(rooms[code].storage.m.size, 0);
+  assert.ok(p.ws.closed != null);
+});
+
+test("WP72 kamer: onvolledige kaart weg bij een nieuwe DM-verbinding (geen nutteloze stukken bij hallo)", async () => {
+  const { code, token } = await make();
+  const dm = await open(code, token);
+  await dm.say(MP("m1", 0, 3)); await dm.say(MP("m1", 1, 3));
+  const dm2 = await open(code, token);
+  assert.deepEqual(dm2.ws.msgs().find((m) => m.t === "mk"), { t: "mk", k: "" });
+  assert.equal([...rooms[code].storage.m.keys()].some((k) => k.startsWith("map")), false);
+  const p = await open(code);
+  await p.say({ t: "hallo" });
+  assert.equal(mps(p.ws).length, 0);
 });

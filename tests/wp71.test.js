@@ -1,11 +1,11 @@
 // WP71: spelerskaart op hetzelfde apparaat. De snapshot krijgt alleen een plat beeld (expliciete whitelist), nooit het
-// kaartdocument of DM-lagen; cleanView laat alleen een geldig beeld door; de kamer stuurt de kaart niet (WP72).
+// kaartdocument of DM-lagen; cleanView laat alleen een geldig beeld door; via de kamer: tests/wp72.test.js.
 import "./_nl.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { toPlayerView, cleanView, MAP_MAX } from "../js/playerview.js";
-import { roomChannel, noMap, dmLink } from "../js/share.js";
+import { noMap, dmLink } from "../js/share.js";
 
 const pc = (o) => ({ kind: "pc", cond: [], dex: 0, ac: 15, hp: 20, max: 20, ...o });
 const S = { list: [pc({ id: "a", name: "Aria" })], round: 1, active: "a" };
@@ -48,21 +48,10 @@ test("snapshot en cleanView: alleen een geldig beeld (Blob, jpeg/png/webp, groot
   assert.equal(cleanView({ ...toPlayerView(S), map: "kaart" }).map, undefined);
 });
 
-test("kamer: de kaart gaat nooit via de kamer (pas in WP72); lokaal wel", async () => {
+test("noMap haalt de kaart uit de snapshot; lokaal gaat het beeld mee (kamer: zie wp72.test.js)", () => {
   const V = toPlayerView(S, () => "", undefined, null, { map: { k: "m3", w: 10, h: 10, img: jpg() } });
   assert.equal("map" in noMap(V), false);
   assert.equal(noMap(toPlayerView(S)).list.length, 1);
-  // roomChannel (DM) met een nagebootste WebSocket
-  const out = [];
-  class WS { constructor() { this.readyState = 0; setTimeout(() => { this.readyState = 1; this.onopen(); }, 0); } send(s) { out.push(s); } close() {} }
-  const T = { setTimeout: () => 0, clearTimeout() {}, setInterval: () => 0, clearInterval() {} };
-  const ch = roomChannel("K7M3QX", "tok", { WS, timers: T, base: "wss://app.test" });
-  await new Promise((r) => setTimeout(r, 5));
-  ch.send({ t: "stand", d: V });
-  const stand = out.map((s) => { try { return JSON.parse(s); } catch { return null; } }).find((m) => m && m.t === "stand");
-  assert.ok(stand && !("map" in stand.d), "stand via de kamer zonder map");
-  ch.close();
-  // lokaal kanaal: dezelfde snapshot met het beeld
   const sent = [];
   const local = { send: (m) => sent.push(m), on: (f) => { local.f = f; } };
   dmLink(local, () => V);

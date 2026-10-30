@@ -10,6 +10,7 @@ import { ico } from "./icons.js";
 import { mapViewer, flatMap, mapStamp } from "./encmap.js";
 import { encMaps } from "../rules/fight.js";
 import { render } from "./render.js";
+import { roomMap } from "./kamer.js";
 
 const STEP = 1.25; // zoomstap van + en − (zoals Inn Sight)
 let el = null, cv = null, ctl = null, cur = null, from = null, list = [];
@@ -55,12 +56,16 @@ async function recheck() {
   if (at !== s.at) flatten(s);
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") recheck(); });
+document.addEventListener("it-kamer", () => { if (mapOpen()) paintShare(); });
 function paintShare() {
   if (!el) return;
   const b = el.querySelector("[data-mv=pv]"), on = !!shared && shared.id === cur;
   b.classList.toggle("on", on); // wisselend label, dus geen aria-pressed (anders "Getoond aan spelers, ingedrukt")
   b.textContent = t(on ? "init.map.share.on" : "init.map.share.off");
-  el.querySelector(".mvthint").textContent = t(shareErr ? "init.map.share.fail" : "init.map.share.hint");
+  // WP72 (UX): de hint volgt de kamer; tijdens het versturen van de gedeelde kaart "Versturen naar kamer …" (geen melding)
+  const r = roomMap();
+  el.querySelector(".mvthint").textContent = shareErr ? t("init.map.share.fail")
+    : !r ? t("init.map.share.hint") : t(on && r.busy ? "init.map.share.sending" : "init.map.share.hintRoom", { code: r.code });
   el.querySelector(".mvthint").classList.toggle("err", shareErr);
 }
 
