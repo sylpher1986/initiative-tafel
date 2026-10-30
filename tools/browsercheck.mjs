@@ -125,7 +125,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/", wp68: "/nl/maps/", wp68b: "/nl/maps/", wp68c: "/nl/maps/", wp68d: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/", wp68: "/nl/maps/", wp68b: "/nl/maps/", wp68c: "/nl/maps/", wp68d: "/nl/maps/", wp73m: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
@@ -1488,7 +1488,7 @@ const SCEN = {
     }
     await tap(page, "#m-set"); await page.waitForTimeout(100);
     const g = await page.evaluate(() => [...document.querySelectorAll("#m-sheet .mgrp")].map((e) => getComputedStyle(e).backgroundColor));
-    if (g.length !== 2 || g.some((c) => c === "rgba(0, 0, 0, 0)")) throw new Error("paneel Kaart: twee groepen op --sunk verwacht: " + JSON.stringify(g));
+    if (g.length !== 3 || g.some((c) => c === "rgba(0, 0, 0, 0)")) throw new Error("paneel Kaart: drie groepen op --sunk verwacht (raster, achtergrond, WP73 fog): " + JSON.stringify(g));
     await page.keyboard.press("Escape"); await page.waitForTimeout(50);
     await tap(page, "#m-lib"); await page.waitForTimeout(100);
     await tap(page, "#m-tiles .mtile"); await page.waitForTimeout(100);
@@ -2183,6 +2183,111 @@ const SCEN = {
     await tap(page, '#order [data-enc="map"]');
     await tap(page, '#mapview [data-mv="pv"]');
     await page.waitForFunction(() => document.querySelector('#mapview [data-mv="pv"]').classList.contains("on"));
+  },
+  // WP73 (Inn Sight): fog of war. Paneel Kaart: aan = alles verborgen; Fog bewerken = fogmodus met eigen dock (dock en
+  // paneel weg, strook); penseel veegt een rij, rechthoek onthult een blok bij loslaten, Verbergen + tik, Ongedaan, een tweede
+  // vinger zet een veeg terug; verborgen cel donkerder dan een onthulde; bewaard in de opslag (schema 6). Eindstand: fogmodus.
+  async wp73m(page) {
+    await page.waitForFunction(() => window.__maps && window.__maps.map() && document.getElementById("m-zoom").textContent);
+    const frame = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const F = () => page.evaluate(() => ({ ...window.__maps.fog(), hist: window.__maps.hist().size, view: window.__maps.view(), dock: document.getElementById("m-dock").hidden, fdock: document.getElementById("m-fdock").hidden,
+      sheet: document.getElementById("m-sheet").hidden, strip: document.getElementById("m-fstrip").hidden ? "" : document.getElementById("m-fstrip").textContent }));
+    const ptr = (steps) => page.evaluate((steps) => {
+      const c = document.getElementById("m-canvas"), r = c.getBoundingClientRect();
+      for (const [type, id, x, y] of steps) c.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: "touch", isPrimary: id === 1, clientX: r.left + x, clientY: r.top + y, bubbles: true, cancelable: true, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+    }, steps);
+    const scr = async (mx, my) => { const v = (await F()).view; return { x: mx * 48 * v.z + v.x, y: my * 48 * v.z + v.y }; };
+    const drag = async (x0, y0, x1, y1) => { const a = await scr(x0, y0), b = await scr(x1, y1), st = [["pointerdown", 1, a.x, a.y]]; for (let i = 1; i <= 8; i++) st.push(["pointermove", 1, a.x + ((b.x - a.x) * i) / 8, a.y + ((b.y - a.y) * i) / 8]); st.push(["pointerup", 1, b.x, b.y]); await ptr(st); await frame(); };
+    const tapMap = async (mx, my) => { const p = await scr(mx, my); await ptr([["pointerdown", 1, p.x, p.y], ["pointerup", 1, p.x, p.y]]); await frame(); };
+    // gemiddelde en spreiding van de helderheid over het midden van een cel (arcering = spreiding, ook in het donkere thema)
+    const lum = async (mx, my) => { const a = await scr(mx - 0.3, my - 0.3), b = await scr(mx + 0.3, my + 0.3); return page.evaluate(({ a, b }) => { const c = document.getElementById("m-canvas"), d = devicePixelRatio || 1, x = Math.round(a.x * d), y = Math.round(a.y * d), px = c.getContext("2d").getImageData(x, y, Math.max(1, Math.round((b.x - a.x) * d)), Math.max(1, Math.round((b.y - a.y) * d))).data;
+      let n = 0, sum = 0, lo = 255, hi = 0; for (let i = 0; i < px.length; i += 4) { const l = (px[i] + px[i + 1] + px[i + 2]) / 3; sum += l; n++; lo = Math.min(lo, l); hi = Math.max(hi, l); } return { avg: sum / n, range: hi - lo }; }, { a, b }); };
+    await tap(page, "#m-set"); await page.locator("#m-sheet").waitFor({ state: "visible" });
+    for (const [sel, v] of [["#m-cols", "10"], ["#m-rows", "8"]]) { await page.locator(sel).fill(v); await page.locator(sel).press("Enter"); }
+    if (!(await page.locator("#m-fog-set").isHidden())) throw new Error("fog-knoppen zonder fog");
+    await tap(page, '#m-fog-on [data-v="on"]');
+    let f = await F();
+    if (!f.on || f.rev !== 0 || f.n !== 80 || (await page.locator("#m-fog-set").isHidden())) throw new Error("fog aan: " + JSON.stringify(f));
+    await tap(page, "#m-fog-edit"); await frame();
+    f = await F();
+    if (!f.mode || !f.dock || f.fdock || !f.sheet || !f.strip) throw new Error("fogmodus: " + JSON.stringify(f));
+    await tap(page, '#m-ftool [data-v="brush"]'); await tap(page, '#m-fact [data-v="reveal"]');
+    const h0 = (await F()).hist;
+    await drag(0.5, 1.5, 4.5, 1.5);
+    f = await F();
+    if (f.rev !== 5 || f.hist !== h0 + 1) throw new Error("penseel: " + JSON.stringify(f));
+    await tap(page, '#m-ftool [data-v="rect"]');
+    await drag(6.2, 4.2, 8.8, 6.8);
+    if ((await F()).rev !== 14) throw new Error("rechthoek: " + JSON.stringify(await F()));
+    const dark = await lum(2.5, 5.5), light = await lum(2.5, 1.5);
+    if (!(dark.range > 25 && light.range < 10 && (dark.avg < light.avg - 40 || light.avg < 80))) throw new Error(`fog niet herkenbaar: ${JSON.stringify({ dark, light })}`); // licht: donkerder; donker thema: de arcering
+    await tap(page, '#m-fact [data-v="hide"]'); await tap(page, '#m-ftool [data-v="brush"]');
+    await tapMap(0.5, 1.5);
+    if ((await F()).rev !== 13) throw new Error("verbergen: " + JSON.stringify(await F()));
+    await tap(page, "#m-undo"); await frame();
+    if ((await F()).rev !== 14) throw new Error("ongedaan: " + JSON.stringify(await F()));
+    await tap(page, '#m-fact [data-v="reveal"]');
+    const a = await scr(0.5, 7.5), b = await scr(1.5, 7.5);
+    await ptr([["pointerdown", 1, a.x, a.y], ["pointerdown", 2, b.x, b.y], ["pointerup", 2, b.x, b.y], ["pointerup", 1, a.x, a.y]]); await frame();
+    if ((await F()).rev !== 14) throw new Error("tweede vinger: " + JSON.stringify(await F()));
+    await tap(page, "#m-fdone"); await frame();
+    f = await F();
+    if (f.mode || f.sheet || !f.fdock) throw new Error("klaar: " + JSON.stringify(f));
+    await page.waitForFunction(() => window.__maps.status() === "saved");
+    const kept = await page.evaluate(async () => { const st = await import("/js/maps/store.js"), m = (await st.listMaps())[0]; return { schema: m.schema, on: !!(m.fog && m.fog.on) }; });
+    if (kept.schema !== 6 || !kept.on) throw new Error("opslag: " + JSON.stringify(kept));
+    await snap(page, "wp73m", "panel");
+    await tap(page, "#m-fog-edit"); await frame(); // eindstand: fogmodus
+    await snap(page, "wp73m", "mode");
+  },
+  // WP73 (Initiative): fog in de kaartviewer. Kaart met fog (blok linksboven onthuld): knop met wolkje boven + en −;
+  // spelersbeeld heeft de fog ondoorzichtig ingebakken; fogmodus = balk, pil weg, + en − erboven; een tik onthult en gaat
+  // naar de opslag en het spelersbeeld; Klaar = terug. Eindstand: fogmodus.
+  async wp73(page, base) {
+    await SCEN.fight(page);
+    await page.evaluate(async () => {
+      const st = await import("/js/maps/store.js"), M = await import("/js/maps/model/map.js"), Fg = await import("/js/maps/model/fog.js"), G = await import("/js/maps/model/grid.js");
+      const grid = G.cleanGrid({ type: "square", cols: 20, rows: 15 }), cells = [];
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) cells.push({ c, r });
+      await st.putMap({ ...M.newMap({ id: "kaart00001", name: "Grot der goblins" }), grid, fog: Fg.revealCells(Fg.setFogOn(true), grid, cells, true) });
+      const { app } = await import("/js/state.js"), F = await import("/js/rules/fight.js"), R = await import("/js/ui/render.js");
+      F.addEnc(app.S, { name: "Grot", notes: "", map: { id: "kaart00001", name: "Grot der goblins" } }, true);
+      R.render();
+    });
+    const lang = await page.evaluate(() => document.documentElement.lang);
+    const pv = await page.context().newPage();
+    await pv.setViewportSize({ width: 390, height: 740 });
+    await pv.goto(base + pathFor(lang, "/initiative/player/"));
+    await pv.waitForSelector("#pv-list .pvc");
+    await tap(page, '#order [data-enc="map"]');
+    await page.waitForSelector('#mapview [data-mv="fog"]:not([hidden])');
+    await tap(page, '#mapview [data-mv="pv"]');
+    await pv.waitForFunction(() => { const i = document.querySelector("#pv-mapimg"); return !document.querySelector("#pv-map").hidden && i.complete && i.naturalWidth > 100; }, null, { timeout: 8000 });
+    const px = () => pv.evaluate(() => { const i = document.querySelector("#pv-mapimg"), c = document.createElement("canvas"); c.width = i.naturalWidth; c.height = i.naturalHeight; const g = c.getContext("2d"); g.drawImage(i, 0, 0);
+      const at = (cx, cy) => { const d = g.getImageData(Math.round((cx / 20) * c.width), Math.round((cy / 15) * c.height), 1, 1).data; return (d[0] + d[1] + d[2]) / 3; };
+      return { open: at(2.5, 2.5), fog: at(15.5, 10.5), src: i.src }; });
+    const p0 = await px();
+    if (!(p0.fog < 60 && p0.open > 180)) throw new Error("spelersbeeld zonder ingebakken fog: " + JSON.stringify(p0));
+    await tap(page, '#mapview [data-mv="fog"]');
+    await page.waitForSelector("#mapview .mvfog:not([hidden])");
+    const lay = await page.evaluate(() => { const q = (s) => document.querySelector(s), z = q("#mapview .mvzoom").getBoundingClientRect(), b = q("#mapview .mvfog").getBoundingClientRect();
+      return { toon: getComputedStyle(q("#mapview .mvtoon")).display, above: z.bottom <= b.top + 1, strip: !q("#mapview .mvfstrip").hidden, fogBtn: q('#mapview [data-mv="fog"]').hidden }; });
+    if (lay.toon !== "none" || !lay.above || !lay.strip || !lay.fogBtn) throw new Error("fogmodus viewer: " + JSON.stringify(lay));
+    const count = () => page.evaluate(async () => { const st = await import("/js/maps/store.js"), Fg = await import("/js/maps/model/fog.js"), G = await import("/js/maps/model/grid.js"), m = await st.getMap("kaart00001"); return Fg.countFog(G.cleanGrid(m.grid), m.fog).rev; });
+    const before = await count();
+    await tap(page, '#mapview [data-mv="tool"][data-v="wide"]'); await tap(page, '#mapview [data-mv="act"][data-v="reveal"]');
+    await page.evaluate(() => { const c = document.querySelector("#mapview canvas"), r = c.getBoundingClientRect(), x = r.left + r.width * 0.8, y = r.top + r.height * 0.6;
+      for (const t of ["pointerdown", "pointerup"]) c.dispatchEvent(new PointerEvent(t, { pointerId: 1, pointerType: "touch", isPrimary: true, clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: t === "pointerup" ? 0 : 1 })); });
+    const t0 = Date.now();
+    while ((await count()) <= before) { if (Date.now() - t0 > 5000) throw new Error("fog niet bewaard"); await page.waitForTimeout(100); }
+    await pv.waitForFunction((src) => document.querySelector("#pv-mapimg").src !== src, p0.src, { timeout: 8000 });
+    await snap(page, "wp73", "fog");
+    await tap(page, '#mapview [data-mv="fdone"]');
+    await page.waitForSelector('#mapview .mvtoon:not([hidden]) [data-mv="pv"]');
+    if (!(await page.locator("#mapview .mvfog").isHidden())) throw new Error("balk na Klaar");
+    await pv.close();
+    await tap(page, '#mapview [data-mv="fog"]'); // eindstand: fogmodus
+    await page.waitForSelector("#mapview .mvfog:not([hidden])");
   },
   // WP72: spelerskaart via de kamer. DM deelt een kamer (kamerSim), speler in een eigen browsercontext (geen
   // BroadcastChannel: de kaart kan alleen via de kamer komen). Hint noemt de kamer; aan = kaart in stukken (elk bericht

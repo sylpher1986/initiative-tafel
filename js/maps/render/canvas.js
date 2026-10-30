@@ -9,6 +9,7 @@ import { bgRect } from "../model/bg.js";
 import { drawOrder } from "../model/objects.js";
 import { corners, handles } from "../model/hit.js";
 import { cellsOf, known, TERR } from "../model/terrain.js";
+import { fogOn, revOf, FOG } from "../model/fog.js";
 
 /** Terreinkleuren (WP63): kaartinhoud, dus vast en niet per thema (zoals de vaste rasterkleuren); vormgeving in WP68.
  *  Ook de kleurvlakken in het paneel (main.js). Onbekend terrein (nieuwere versie) = plaatshouder in de lijnkleur. */
@@ -51,7 +52,7 @@ export function draw(cv, map, v, w, h, dpr, col, opts = {}) {
 }
 
 /** De kaart zelf op g (transformatie van de aanroeper, apparaatpixels W × H vanaf de oorsprong) */
-export function drawBase(g, map, v, w, h, dpr, col, W, H, { img = null, align = false, art = null } = {}) {
+export function drawBase(g, map, v, w, h, dpr, col, W, H, { img = null, align = false, art = null, fog = "dm" } = {}) {
   const grid = map.grid, b = bounds(grid);
   g.fillStyle = col.page;
   g.fillRect(0, 0, W, H);
@@ -86,6 +87,7 @@ export function drawBase(g, map, v, w, h, dpr, col, W, H, { img = null, align = 
     g.globalAlpha = 1;
   }
   if (!align) things(nf, objs.length);
+  if (fog && !align && fogOn(map.fog)) drawFog(g, map.fog, grid, v, w, h, dpr, W, H, fog); // WP73: boven alles, onder de rand
   // kaartrand: 2 apparaatpixels binnen de kaart (hele pixels, dus scherp)
   const e = Math.max(2, Math.round(dpr * 1.5));
   g.strokeStyle = col.edge;
@@ -134,7 +136,7 @@ export function createLayer(make = () => document.createElement("canvas"), now =
     paint(cv, map, v, w, h, dpr, col, opts = {}, extra = []) {
       const W = cv.width, H = cv.height;
       if (!buf || buf.width !== W || buf.height !== H) { buf = buf || make(); buf.width = W; buf.height = H; bg = buf.getContext("2d"); key = null; }
-      const k = [map.grid, map.bg || null, map.terr || null, map.objs || null, opts.img || null, !!opts.align, col, dpr, W, H, ...extra];
+      const k = [map.grid, map.bg || null, map.terr || null, map.objs || null, map.fog || null, opts.fog, opts.img || null, !!opts.align, col, dpr, W, H, ...extra];
       let mode = "same", settle = 0;
       const t = now();
       if (!same(k, key)) { key = k; full(map, v, w, h, dpr, col, opts); mode = "full"; }
@@ -273,19 +275,21 @@ function drawObj(g, o, v, w, h, dpr, col, art) {
 // Vierkant: aaneengesloten cellen in een rij als één rechthoek op hele apparaatpixels; hex: zeshoeken zoals hexPath.
 // Alleen de zichtbare cellen binnen de kaart (culling); cellen buiten de kaart (raster verkleind) blijven onzichtbaar.
 // WP66: geen eigen buffer per zoomniveau; de hele kaart staat in de buffer van createLayer.
-function drawTerr(g, terr, grid, v, w, h, dpr, col) {
+// Paden per sleutel voor de zichtbare kaartcellen (WP73: gedeeld door terrein en fog). key(c, r) → 0 (geen pad) of 1…n;
+// geeft paths[k] (Path2D, of null als sleutel k niet voorkomt), of null als er niets in beeld is. paths = voorgevulde
+// lijst (een pad waar de cellen bij komen).
+function cellPaths(grid, v, w, h, dpr, n, key, paths = Array.from({ length: n + 1 }, () => null)) {
   const C = visibleCells(grid, visibleRect(v, w, h));
-  if (C.c0 > C.c1) return;
-  const a = cellsOf(terr), n = terr.ids.length, W = TERR.w;
-  const paths = Array.from({ length: n + 1 }, () => null), path = (k) => paths[k] || (paths[k] = new Path2D());
+  if (C.c0 > C.c1) return null;
+  const path = (k) => paths[k] || (paths[k] = new Path2D());
   if (grid.type !== "hex") {
     const X = (c) => Math.round(toScreen(v, c, 0).x * dpr), Y = (r) => Math.round(toScreen(v, 0, r).y * dpr);
     for (let r = C.r0; r <= C.r1; r++) {
       const y0 = Y(r), y1 = Y(r + 1);
       for (let c = C.c0; c <= C.c1;) {
-        const k = a[r * W + c];
+        const k = key(c, r);
         let e = c + 1;
-        while (e <= C.c1 && a[r * W + e] === k) e++;
+        while (e <= C.c1 && key(e, r) === k) e++;
         if (k) { const x0 = X(c); path(k).rect(x0, y0, X(e) - x0, y1 - y0); }
         c = e;
       }
@@ -301,9 +305,9 @@ function drawTerr(g, terr, grid, v, w, h, dpr, col) {
     const pt = (P, m, i, first) => (first ? P.moveTo(m[0] + off[i][0], m[1] + off[i][1]) : P.lineTo(m[0] + off[i][0], m[1] + off[i][1]));
     const [o0, o1] = py ? [C.r0, C.r1] : [C.c0, C.c1], [i0, i1] = py ? [C.c0, C.c1] : [C.r0, C.r1];
     for (let o = o0; o <= o1; o++) for (let i = i0; i <= i1;) {
-      const k = py ? a[o * W + i] : a[i * W + o];
+      const k = py ? key(i, o) : key(o, i);
       let e = i + 1;
-      while (e <= i1 && (py ? a[o * W + e] : a[e * W + o]) === k) e++;
+      while (e <= i1 && (py ? key(e, o) : key(o, e)) === k) e++;
       if (k) {
         const P = path(k), cell = (j) => (py ? at(j, o) : at(o, j));
         if (py) { // linksboven, dan per cel boven + rechtsboven, rechtsonder van de laatste, terug per cel onder + linksonder
@@ -322,6 +326,13 @@ function drawTerr(g, terr, grid, v, w, h, dpr, col) {
       i = e;
     }
   }
+  return paths;
+}
+
+function drawTerr(g, terr, grid, v, w, h, dpr, col) {
+  const a = cellsOf(terr), n = terr.ids.length, W = TERR.w;
+  const paths = cellPaths(grid, v, w, h, dpr, n, (c, r) => a[r * W + c]);
+  if (!paths) return;
   for (let k = 1; k <= n; k++) {
     if (!paths[k]) continue;
     const id = terr.ids[k - 1];
@@ -330,4 +341,39 @@ function drawTerr(g, terr, grid, v, w, h, dpr, col) {
     g.fill(paths[k]);
     g.globalAlpha = 1;
   }
+}
+
+/** WP73: fogkleuren (UX). Kaartinhoud, dus vast (niet per thema): de DM ziet verborgen cellen als Walnut op 55 % met een
+ *  arcering in Parchment (herkenbaar ook op een donkere achtergrond, waar alleen een donkere laag wegvalt), spelers
+ *  ondoorzichtig Walnut zonder patroon (geen JPEG-ruis, rustig op een tv). */
+export const FOG_COL = { dm: "rgba(36,24,17,0.55)", hatch: "rgba(242,235,220,0.3)", player: "#241811" };
+const HATCH = 8; // CSS-px tussen de arceerlijnen
+// Fog. "dm": alleen de verborgen cellen in beeld; de arcering hangt aan de kaartoorsprong (toScreen), zodat een strook
+// van de buffer (createLayer) naadloos aansluit. "player": alles wat niet onthuld is ondoorzichtig, ook buiten de cellen
+// (hoekjes van een hexkaart, rand van het beeld): één pad = de hele tekening min de onthulde cellen (evenodd), dus
+// ingebakken en zonder naden; rasterlijnen liggen eronder.
+function drawFog(g, fog, grid, v, w, h, dpr, W, H, mode) {
+  const a = revOf(fog), FW = FOG.w;
+  if (mode === "player") {
+    const P = new Path2D();
+    P.rect(0, 0, W, H);
+    cellPaths(grid, v, w, h, dpr, 1, (c, r) => a[r * FW + c], [null, P]);
+    g.fillStyle = FOG_COL.player;
+    g.fill(P, "evenodd");
+    return;
+  }
+  const p = cellPaths(grid, v, w, h, dpr, 1, (c, r) => 1 - a[r * FW + c]);
+  if (!p || !p[1]) return;
+  g.fillStyle = FOG_COL.dm;
+  g.fill(p[1]);
+  g.save();
+  g.clip(p[1]);
+  const o = toScreen(v, 0, 0), step = HATCH * dpr, k0 = (o.x + o.y) * dpr; // lijnen x + y = k0 + n·step
+  const n0 = Math.floor(-k0 / step) - 1, n1 = Math.ceil((W + H - k0) / step) + 1;
+  g.beginPath();
+  for (let n = n0; n <= n1; n++) { const k = k0 + n * step; g.moveTo(k, 0); g.lineTo(k - H, H); }
+  g.lineWidth = Math.max(1, Math.round(dpr));
+  g.strokeStyle = FOG_COL.hatch;
+  g.stroke();
+  g.restore();
 }

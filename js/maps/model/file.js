@@ -127,6 +127,8 @@ export async function readFile(size, text, { hash, migrate = MIGRATE } = {}) {
   if (m.bg != null && !map.bg) return { ok: false, code: "badmap" };
   // WP63: idem terrein: onbruikbaar terwijl er cellen geverfd lijken = weigeren (een echt leeg terrein mag)
   if (m.terr != null && !map.terr && !(plain(m.terr) && typeof m.terr.cells === "string" && !/[1-9a-z]/.test(m.terr.cells))) return { ok: false, code: "badmap" };
+  // WP73: idem fog: een fog-veld dat geen fog is, weigeren (cleanFog maakt kapotte cellen veilig "alles verborgen")
+  if (m.fog != null && !map.fog) return { ok: false, code: "badmap" };
   const assets = new Map(), names = new Map(), all = doc.assets;
   for (const sha of usedAssets(map)) { // WP64: achtergrond én eigen assets op objecten, elk met dezelfde controles
     const a = plain(all) && own(all, sha) ? all[sha] : null;

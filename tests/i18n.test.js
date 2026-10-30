@@ -126,7 +126,7 @@ const DYNAMIC = [
   [/^maps\.imp\.err\./, "js/maps/main.js impErr"],
   [/^maps\.my\.err\.(quota|max)$/, "js/maps/main.js myErr (WP64)"],
   [/^maps\.asset\./, "js/maps/main.js assetName (BUILTIN in js/maps/model/assets.js)"],
-  [/^maps\.hist\.(grid|bg|align|place|move|rotate|size|dup|del|undel|layer|order|paint|fill|erase|eraseFill)$/, "js/maps/main.js stepName (meta.k)"],
+  [/^maps\.hist\.(grid|bg|align|place|move|rotate|size|dup|del|undel|layer|order|paint|fill|erase|eraseFill|fogOn|fogOff|fogRev|fogHide|fogRevAll|fogHideAll)$/, "js/maps/main.js stepName (meta.k; WP73: fog)"],
   [/^maps\.terr\./, "js/maps/main.js terrName (TERRAINS in js/maps/model/terrain.js)"],
   [/^maps\.paint\.(brush|wide|fill)$/, "js/maps/main.js paintStrip (TOOLS in js/maps/model/terrain.js)"],
   [/^init\.custom\.f\.(act|re|la|tr)$/, "js/data/statparse.js n()"],

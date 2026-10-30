@@ -920,6 +920,21 @@ export default {
   "init.map.share.fail": "This map couldn't be shown to players. Try again.",
   "init.map.share.hintRoom": "Player view on this device and in room {code}", // WP72: kamer open (UX)
   "init.map.share.sending": "Sending to room {code}…", // WP72: gedeelde kaart onderweg naar de kamer
+  "init.map.fog.edit": "Edit fog of war", // WP73: knop met wolkje in de kaartviewer (alleen als de kaart fog heeft)
+  "init.map.fog.bar": "Fog of war controls",
+  "init.map.fog.act": "Fog action",
+  "init.map.fog.reveal": "Reveal",
+  "init.map.fog.hide": "Hide",
+  "init.map.fog.done": "Done",
+  "init.map.fog.tool": "Tool",
+  "init.map.fog.brush": "Brush",
+  "init.map.fog.wide": "Wide",
+  "init.map.fog.rect": "Rectangle",
+  "init.map.fog.stripRev": "Fog: Reveal · swipe across the map",
+  "init.map.fog.stripHide": "Fog: Hide · swipe across the map",
+  "init.map.fog.stripRevRect": "Fog: Reveal · drag a rectangle",
+  "init.map.fog.stripHideRect": "Fog: Hide · drag a rectangle",
+  "init.map.fog.fail": "Fog of war couldn’t be saved. Try again.",
   "init.enc.shareHint": "Share makes a file with the encounter and its custom monsters, for another device or a co-DM.",
   "init.enc.already": "Already in the list: {what}.",
   "init.enc.stops": "Replacing ends the combat.",

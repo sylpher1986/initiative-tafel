@@ -10,14 +10,14 @@ function fakeIdb() {
     close() {},
     transaction() {
       if (broken.v) { const e = new Error("Connection to Indexed Database server lost"); e.name = "InvalidStateError"; throw e; }
-      const t = { commit() { queueMicrotask(() => t.oncomplete && t.oncomplete()); } };
+      const t = { commit() {} }; // WP73: oncomplete pas na de verzoeken (putMap leest eerst, schrijft in onsuccess)
       t.objectStore = () => ({
         put(v) { data.set(v.id, v); return { result: v.id }; },
-        get(k) { return { result: data.get(k) }; },
+        get(k) { const r = { result: data.get(k) }; queueMicrotask(() => r.onsuccess && r.onsuccess()); return r; },
         getKey(k) { return { result: data.has(k) ? k : undefined }; },
         getAll() { return { result: [...data.values()] }; },
       });
-      queueMicrotask(() => t.oncomplete && t.oncomplete());
+      setTimeout(() => t.oncomplete && t.oncomplete(), 0);
       return t;
     },
   });

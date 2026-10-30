@@ -148,7 +148,7 @@ test("scaleBg, moveBg en stepFor", () => {
 });
 
 test("kaartdocument: schema 2 alleen mét achtergrond; kapotte achtergrond weg; nieuwer schema niet aanraken", () => {
-  assert.equal(SCHEMA, 5); // WP61: 3 = met objecten, WP63: 4 = met terrein (tests/maps-terrain.test.js), WP64: 5 = met eigen assets (tests/maps-mine.test.js)
+  assert.equal(SCHEMA, 6); // WP61: 3 = met objecten, WP63: 4 = met terrein (tests/maps-terrain.test.js), WP64: 5 = met eigen assets (tests/maps-mine.test.js), WP73: 6 = fog aan (tests/maps-fog.test.js)
   const m = newMap({ id: "abcdef1", name: "Grot", now: 5 });
   assert.equal(m.schema, 1);
   const withBg = cleanMap({ ...m, bg: { asset: SHA, w: 2100, h: 1400, ppc: 70, x: 0, y: 0 } });
@@ -157,7 +157,7 @@ test("kaartdocument: schema 2 alleen mét achtergrond; kapotte achtergrond weg; 
   const broken = cleanMap({ ...m, schema: 2, bg: { asset: "nope" } });
   assert.equal(broken.schema, 1);
   assert.equal("bg" in broken, false);
-  assert.equal(cleanMap({ ...m, schema: 6 }), null); // 3 = objecten, 4 = terrein, 5 = eigen assets, 6 = nieuwer
+  assert.equal(cleanMap({ ...m, schema: SCHEMA + 1 }), null); // 3 = objecten, 4 = terrein, 5 = eigen assets, 6 = fog, hoger = nieuwer
   assert.deepEqual(copyMap(withBg, { id: "zzzzzz9", now: 9 }).bg, withBg.bg, "dupliceren deelt de asset");
   assert.deepEqual(cleanMap(JSON.parse(JSON.stringify(withBg))), withBg, "acceptatie (4): rondreis precies gelijk");
 });

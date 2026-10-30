@@ -196,7 +196,7 @@ test("history: een groep (uitlijnsessie) is één stap; seal sluit; per saldo ni
 });
 
 test("kaartdocument: objecten → schema 3 (Maps 0.5.0 laat zo'n kaart met rust), zonder objecten v1/v2; kopie houdt ze", () => {
-  assert.equal(SCHEMA, 5); // WP63: 4 = terrein, WP64: 5 = eigen assets
+  assert.equal(SCHEMA, 6); // WP63: 4 = terrein, WP64: 5 = eigen assets, WP73: 6 = fog
   const m = newMap({ id: "abc123", name: "Crypte" });
   assert.equal(cleanMap(m).schema, 1);
   assert.equal("objs" in cleanMap({ ...m, objs: [] }), false);
@@ -204,7 +204,7 @@ test("kaartdocument: objecten → schema 3 (Maps 0.5.0 laat zo'n kaart met rust)
   const c = cleanMap({ ...m, objs });
   assert.equal(c.schema, 3);
   assert.deepEqual(c.objs, objs);
-  assert.equal(cleanMap({ ...m, schema: 6 }), null); // WP63: 4 = terrein, WP64: 5 = eigen assets, 6 = nieuwer
+  assert.equal(cleanMap({ ...m, schema: SCHEMA + 1 }), null); // WP63: 4 = terrein, WP64: 5 = eigen assets, WP73: 6 = fog, hoger = nieuwer
   const k = copyMap(c, { id: "def456", name: "Kopie" });
   assert.deepEqual(k.objs, objs);
 });
@@ -237,7 +237,7 @@ test("import: kwaadaardige objecten worden opgeschoond of geweigerd, een bestand
   assert.match(r.map.objs[0].id, /^[a-z0-9]{1,16}$/);
   assert.equal(r.map.objs[0].onload, undefined);
   assert.deepEqual([r.map.objs[1].x, r.map.objs[1].y, r.map.objs[1].w], [OBJ.maxPos, -OBJ.maxPos, OBJ.minSize]);
-  t = file({ ...base, schema: 6 }); // WP63: 4 = terrein, WP64: 5 = eigen assets
+  t = file({ ...base, schema: SCHEMA + 1 }); // WP63: 4 = terrein, WP64: 5 = eigen assets, WP73: 6 = fog
   r = await readFile(t.length, t, { hash });
   assert.deepEqual(r, { ok: false, code: "newer" });
 });

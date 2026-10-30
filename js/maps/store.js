@@ -9,6 +9,7 @@
 // geheugen en zegt de status "wordt niet bewaard" (js/maps/main.js). Laatst geopende kaart in localStorage (LAST_KEY).
 // Alles wat gelezen wordt gaat door cleanMap (js/maps/model/map.js); records van een nieuwer schema blijven onaangeroerd.
 import { cleanMap, sortMaps } from "./model/map.js";
+import { cleanFog, mergeFog } from "./model/fog.js";
 import { cleanItem, cleanItems, isCustom } from "./model/mine.js";
 
 export const DB = "kevs-inn-maps", DB_VERSION = 3, LAST_KEY = "maps-last";
@@ -42,15 +43,16 @@ export function openDb() {
 }
 
 /* Transactie. Is de database al open, dan start hij synchroon in dezelfde taak: zo staat een schrijfactie uit pagehide
-   (herladen of tabblad sluiten direct na een wijziging) al vast vóór de pagina weggaat; commit() waar dat bestaat. */
-function tx(store, mode, fn) {
+   (herladen of tabblad sluiten direct na een wijziging) al vast vóór de pagina weggaat; commit() waar dat bestaat.
+   early = false: fn doet nog een verzoek in een onsuccess (putFog: lezen en dan schrijven, WP73), dus niet meteen committen. */
+function tx(store, mode, fn, early = true) {
   const go = (db) => new Promise((resolve, reject) => {
     const t = db.transaction(store, mode);
     const r = fn(t.objectStore(store));
     t.oncomplete = () => resolve(r && r.result);
     t.onerror = () => reject(t.error);
     t.onabort = () => reject(t.error || new Error("aborted"));
-    if (mode === "readwrite" && t.commit) t.commit();
+    if (early && mode === "readwrite" && t.commit) t.commit();
   });
   // WP67: verloren verbinding (oudere iPads: "Connection to Indexed Database server lost") = InvalidStateError bij
   // db.transaction; die transactie is nooit gestart, dus één keer opnieuw openen en proberen is veilig.
@@ -81,12 +83,41 @@ export async function getMap(id) {
   try { return cleanMap(await tx("maps", "readonly", (s) => s.get(id))); } catch { return null; }
 }
 
-/** Kaart opslaan (vervangt het record met dezelfde id). false als het niet lukte. */
+/** Kaart opslaan (vervangt het record met dezelfde id). false als het niet lukte. WP73: in dezelfde transactie eerst de
+ *  oude lezen en meteen schrijven (vroege commit blijft: een opslag uit pagehide moet vóór het herladen vaststaan). Was de
+ *  fog in de opslag later gewijzigd (Initiative onthulde intussen cellen, mergeFog), dan zet een tweede transactie die fog
+ *  terug (putFog): de rest van de kaart komt van dit tabblad, de fog van de laatste die hem wijzigde. */
 export async function putMap(doc) {
   if (!mayWrite()) return true;
   const c = cleanMap(doc);
   if (!c) return false;
-  try { await tx("maps", "readwrite", (s) => s.put(c)); return true; } catch { return false; }
+  let old = null;
+  try {
+    await tx("maps", "readwrite", (s) => { const g = s.get(c.id); g.onsuccess = () => { old = cleanMap(g.result); }; return s.put(c); });
+  } catch { return false; }
+  if (old && old.fog && mergeFog(old.fog, c.fog || null) === old.fog) await putFog(c.id, old.fog);
+  return true;
+}
+
+/** WP73: alleen de fog van kaart id vervangen (kaartviewer in Initiative). Lezen en schrijven in één transactie: de rest
+ *  van de kaart blijft zoals hij in de opslag staat, dus een open Inn Sight-tabblad verliest niets. Een fog die in de
+ *  opslag later gewijzigd is, wint (mergeFog). → de opgeslagen kaart, of null (kaart weg, nieuwer schema, opslag kapot). */
+export async function putFog(id, fog) {
+  let out = null;
+  try {
+    await tx("maps", "readwrite", (s) => {
+      const g = s.get(id);
+      g.onsuccess = () => {
+        const old = cleanMap(g.result);
+        if (!old) return;
+        const f = mergeFog(old.fog || null, cleanFog(fog));
+        if (f === old.fog) { out = old; return; }
+        out = cleanMap({ ...old, fog: f, updatedAt: Math.max(Date.now(), old.updatedAt + 1) });
+        s.put(out);
+      };
+    }, false);
+    return out;
+  } catch { return null; }
 }
 
 /** WP69: geïmporteerde kaart + zijn afbeeldingen in één transactie, zodat gcAssets (start van een Inn Sight-tabblad)

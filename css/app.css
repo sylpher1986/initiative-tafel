@@ -1193,6 +1193,20 @@ a.btn.encsave{display:flex;align-items:center;justify-content:center;color:var(-
 .mvthint.err{color:var(--fg);font-weight:700}
 .encrow2 .encmap.on{border-color:var(--sel);box-shadow:inset 0 0 0 1px var(--sel);font-weight:700}
 .mvzoom .mvz{width:44px;min-height:44px;padding:0;display:grid;place-items:center;font-size:1.3rem;font-weight:700;background:var(--surface)}
+.mvzoom .mvz[hidden]{display:none}
+.mvzoom .mvz .li{width:22px;height:22px}
+/* WP73: fogmodus in de viewer: balk van twee rijen onderaan (Onthullen | Verbergen + Klaar, gereedschap), + en − erboven,
+   schakelaar "Tonen aan spelers" weg, strook bovenin */
+.mvfog{position:absolute;left:0;right:0;bottom:0;display:grid;gap:6px;padding:8px max(8px,env(safe-area-inset-right,0px)) 8px max(8px,env(safe-area-inset-left,0px));background:var(--surface);border-top:1px solid var(--line)}
+.mvfog[hidden]{display:none}
+.mvfrow{display:flex;gap:8px;align-items:center}
+.mvfrow .seg{flex:1 1 auto}
+.mvfrow .mvfdone{flex:0 0 auto;min-height:44px}
+.mapview.fogging .mvtoon{display:none}
+.mapview{--mvfog-h:110px}
+.mapview.fogging .mvzoom{bottom:calc(var(--mvfog-h) + 8px)}
+.mvfstrip{position:absolute;top:8px;left:50%;transform:translateX(-50%);margin:0;width:max-content;max-width:calc(100% - 24px);box-sizing:border-box;background:var(--surface);color:var(--fg);border:1px solid var(--sel);border-radius:999px;padding:6px 14px;font-size:.9rem;font-weight:600;text-align:center;pointer-events:none}
+.mvfstrip[hidden]{display:none}
 .enclink{width:100%;margin-top:12px}
 
 /* GV2: samenvatting bij Gevecht afronden */

@@ -36,6 +36,7 @@
   <canvas id="m-canvas" role="application" tabindex="0" aria-describedby="m-khelp"></canvas>
   <!-- WP59: strook bovenin zolang de uitlijnmodus aan staat -->
   <p class="mstrip" id="m-astrip" hidden>{{t:maps.bg.alignHint}}</p>
+  <p class="mstrip" id="m-fstrip" hidden></p>
   <!-- WP61: strook bovenin zolang Plaatsen aan staat (welk onderdeel; even "Tik binnen de kaart" na een tik ernaast) -->
   <p class="mstrip" id="m-pstrip" hidden></p>
   <!-- WP62: strook bovenin zolang er een object geselecteerd is (welk object, hoe je het verplaatst) -->
@@ -103,6 +104,15 @@
   </div>
   <button type="button" class="btn primary" id="m-adone">{{t:maps.bg.done}}</button>
 </nav>
+<!-- WP73: fogmodus (UX: zoals de uitlijnmodus). Vervangt de dock: rij 1 Onthullen | Verbergen + Klaar, rij 2 het
+     gereedschap (Penseel | Breed | Rechthoek, zelfde set als de kaartviewer in Initiative). Eén vinger werkt, twee pannen. -->
+<nav class="mdock mfdock" id="m-fdock" aria-label="{{t:maps.fog.dock}}" hidden>
+  <div class="mfrow">
+    <div class="seg" id="m-fact" role="group" aria-label="{{t:maps.fog.act}}"><button type="button" data-v="reveal">{{t:maps.fog.reveal}}</button><button type="button" data-v="hide">{{t:maps.fog.hide}}</button></div>
+    <button type="button" class="btn primary" id="m-fdone">{{t:maps.fog.done}}</button>
+  </div>
+  <div class="seg" id="m-ftool" role="group" aria-label="{{t:maps.tool.title}}"><button type="button" data-v="brush">{{t:maps.tool.brush}}</button><button type="button" data-v="wide">{{t:maps.tool.wide}}</button><button type="button" data-v="rect">{{t:maps.tool.rect}}</button></div>
+</nav>
 <!-- WP62: dock zolang er een object geselecteerd is (vervangt de gewone dock, zoals de uitlijnmodus): Draaien 90°,
      Dupliceren, Verwijderen, Meer (paneel Object), Klaar (selectie weg). -->
 <nav class="mdock" id="m-odock" aria-label="{{t:maps.sel.dock}}" hidden>
@@ -163,6 +173,18 @@
       <button type="button" class="btn mdel" id="m-bg-del">{{t:maps.bg.remove}}</button>
     </div>
     <p class="ferr" id="m-bg-e" role="alert" hidden></p>
+  </div>
+  <!-- WP73: fog of war. Aan = alles verborgen, de DM onthult (Fog bewerken = fogmodus, paneel dicht). Alles verbergen /
+       Alles onthullen en uitzetten zijn elk één undo-stap met een melding met Ongedaan (geen bevestigingsvraag). -->
+  <div class="mgrp" id="m-fog" role="group" aria-labelledby="m-fog-l">
+    <div class="mfield"><span class="lab" id="m-fog-l">{{t:maps.fog.title}}</span>
+      <div class="seg" id="m-fog-on" role="group" aria-labelledby="m-fog-l"><button type="button" data-v="on">{{t:maps.fog.on}}</button><button type="button" data-v="off">{{t:maps.fog.off}}</button></div></div>
+    <p class="hint" id="m-fog-h">{{t:maps.fog.hint}}</p>
+    <div class="mfog-set" id="m-fog-set" hidden>
+      <button type="button" class="btn" id="m-fog-edit">{{t:maps.fog.edit}}</button>
+      <div class="mbg-row"><button type="button" class="btn" id="m-fog-hide">{{t:maps.fog.hideAll}}</button><button type="button" class="btn" id="m-fog-rev">{{t:maps.fog.revealAll}}</button></div>
+      <p class="hint" id="m-fog-n"></p>
+    </div>
   </div>
   <!-- WP65: versie en de link naar het sneltoetsenoverzicht (ook met de toets ?) -->
   <div class="mfoot"><p class="hint mver">{{t:maps.title}} <span id="m-ver"></span></p><button type="button" class="link mkeys" id="m-keys" aria-keyshortcuts="?" aria-haspopup="dialog">{{t:maps.keys.btn}}</button></div>

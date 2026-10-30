@@ -101,24 +101,29 @@ const ERR = { empty: "read", read: "read", notjson: "format", format: "format", 
 // geen Inn Sight-tabbladslot (claimTab), dus een open Inn Sight-tabblad merkt hier niets van.
 let vmods = null;
 const viewMods = () => (vmods ||= Promise.all([store(), import("../maps/render/canvas.js"), import("../maps/render/art.js"),
-  import("../maps/model/view.js"), import("../maps/model/grid.js"), import("../maps/ui/input.js"), import("../maps/ui/upload.js"), import("../maps/model/assets.js")])
-  .then(([s, canvas, art, view, grid, input, upload, assets]) => ({ s, canvas, art, view, grid, input, upload, assets })))
+  import("../maps/model/view.js"), import("../maps/model/grid.js"), import("../maps/ui/input.js"), import("../maps/ui/upload.js"), import("../maps/model/assets.js"),
+  import("../maps/model/fog.js")])
+  .then(([s, canvas, art, view, grid, input, upload, assets, fog]) => ({ s, canvas, art, view, grid, input, upload, assets, fog })))
   .catch((e) => { vmods = null; throw e; });
 
 /**
  * Kaart met deze id op canvas cv tonen. on(state, map) bij elke toestandswissel: "loading" | "ok" | "gone" (kaart weg) |
  * "off" (opslag of kaartcode niet bereikbaar). v0 = onthouden view (UX: per kaart, alleen in ui) of null = passend.
- * Geeft { fit, zoom(f), size(), view(), close() }; size() na een maatwissel (midden en zoom blijven, daarna begrensd).
- * onZoom(min, max): zoomgrenzen bereikt (knoppen − en + uit).
+ * Geeft { fit, zoom(f), size(), view(), close(), fog(mode) }; size() na een maatwissel (midden en zoom blijven,
+ * daarna begrensd). onZoom(min, max): zoomgrenzen bereikt (knoppen − en + uit).
+ * WP73: fog(mode) met mode = { reveal, tool } zet de fogmodus aan (één vinger onthult of verbergt, fogStroke uit Inn
+ * Sight), null = kijken. Na elke veeg alleen de fog naar de kaart in Inn Sight schrijven (putFog: de rest van de kaart blijft
+ * zoals hij in de opslag staat); onFog(doc) met de opgeslagen kaart, of onFog(null) als schrijven mislukte (dan staat de
+ * fog op het scherm terug zoals in de opslag).
  */
-export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {} } = {}) {
+export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {}, onFog = () => {} } = {}) {
   let M = null, map = null, img = null, art = null, layer = null, view = v0 ? { ...v0 } : null, w = 0, h = 0, dpr = 1, col = null;
-  let queued = false, dead = false, settleT = 0, lim = "";
+  let queued = false, dead = false, settleT = 0, lim = "", fogMode = null, frame = null, writing = Promise.resolve();
   const paint = () => {
     queued = false;
     if (dead || !map || !view || w < 2 || h < 2) return;
     M.canvas.fitCanvas(cv, w, h, dpr);
-    const r = layer.paint(cv, map, view, w, h, dpr, col, { img, art }, [art.ver()]);
+    const r = layer.paint(cv, map, view, w, h, dpr, col, { img, art, brush: frame ? [frame] : null }, [art.ver()]);
     if (r.settle) { clearTimeout(settleT); settleT = setTimeout(later, r.settle); }
     const lo = view.z <= M.view.ZMIN, hi = view.z >= M.view.ZMAX;
     if (lim !== `${lo}${hi}`) { lim = `${lo}${hi}`; onZoom(lo, hi); }
@@ -146,13 +151,42 @@ export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {} 
     map = doc; layer = M.canvas.createLayer();
     const rec = async (sha) => { const r = await M.s.getAsset(sha); return r ? M.upload.assetImage(r) : null; };
     art = M.art.createArt(later, { custom: rec });
-    M.input.attachInput(cv, { get: () => view || { x: 0, y: 0, z: 1 }, set }); // één vinger/muis = pannen, knijpen en wiel = zoomen (Inn Sight)
+    // één vinger/muis = pannen, knijpen en wiel = zoomen (Inn Sight); WP73: in de fogmodus pakt één vinger de fog op
+    M.input.attachInput(cv, { get: () => view || { x: 0, y: 0, z: 1 }, set, grab: (x, y) => (fogMode && !dead ? fogGrab(x, y) : null) });
     on("ok", map);
     w = 0; size();
     if (map.bg && map.bg.asset) { const d = await rec(map.bg.asset).catch(() => null); if (dead) { if (d && d.close) d.close(); return; } img = d; later(); } // ontbreekt: raster zonder achtergrond
   })();
+  // WP73: één veeg. Tekenen per beweging, schrijven bij loslaten (achter elkaar, nooit twee tegelijk); een tweede vinger
+  // zet terug (knijpen zoomt). Het kader van Rechthoek gaat als brush mee naar drawOver.
+  // Ook na sluiten (dead) wordt een veeg in de wachtrij nog bewaard en gemeld (een gedeelde kaart krijgt zo zijn nieuwe
+  // beeld); alleen het tekenen valt dan weg. s = de store vastgelegd bij de veeg (close() laat M los).
+  const save = (f) => {
+    const s = M.s;
+    writing = writing.then(async () => {
+      const doc = await s.putFog(id, f).catch(() => null);
+      if (doc) { if (!dead && map.fog === f) { map.fog = doc.fog; later(); } onFog(doc); return; } // intussen een nieuwe veeg: die blijft staan (wordt hierna bewaard)
+      const now = await s.getMap(id).catch(() => null);
+      if (!now) { if (!dead) on("gone"); return; } // kaart weg (of van een nieuwere versie): viewer zegt "ontbreekt", fogmodus uit
+      if (!dead && map.fog === f) { map.fog = now.fog; later(); } // mislukt: terug naar wat er echt bewaard is
+      onFog(null);
+    }).catch(() => {});
+  };
+  function fogGrab(x, y) {
+    if (!map || !view || !M.fog.fogOn(map.fog)) return null;
+    const p = (sx, sy) => M.view.toMap(view, sx, sy);
+    const st = M.fog.fogStroke({ grid: map.grid, get: () => map.fog, set: (f) => { map.fog = f; later(); }, tool: fogMode.tool, reveal: fogMode.reveal, at: p(x, y) });
+    const show = () => { frame = st.frame(); later(); };
+    show();
+    return {
+      move(sx, sy) { if (!dead) { st.move(p(sx, sy)); show(); } }, // viewer dicht tijdens een veeg (Esc, syncMap): niets meer
+      end() { if (dead) return; const ch = st.end(); frame = null; later(); if (ch) save(map.fog); },
+      cancel() { if (dead) return; st.cancel(); frame = null; later(); },
+    };
+  }
   return {
     fit, size,
+    fog(mode) { fogMode = mode || null; if (!fogMode && frame) { frame = null; later(); } },
     zoom(f) { if (map && view) set(M.view.zoomAt(view, f, w / 2, h / 2)); },
     view: () => (view ? { ...view } : null),
     /** Kleuren opnieuw lezen (themawissel terwijl de kaart open is) */
@@ -170,8 +204,8 @@ export function mapViewer(cv, id, { v0 = null, on = () => {}, onZoom = () => {} 
 
 /* ---------- WP71: plat spelersbeeld ---------- */
 // Eén JPEG van de hele kaart (achtergrond, terrein, objecten, raster en rand) voor het spelersscherm. Alleen drawBase,
-// nooit drawOver (selectie, spookbeeld, cursor): wat later voor de DM alleen is (fog, WP73) hoort hier ook buiten te
-// blijven. Vaste kleuren (kaartinhoud, niet het thema van de DM): het beeld verandert niet als de DM van thema wisselt.
+// nooit drawOver (selectie, spookbeeld, cursor). WP73: fog ondoorzichtig ingebakken (drawBase fog "player"): verborgen
+// cellen verlaten het DM-apparaat nooit, ook niet als masker. Vaste kleuren (kaartinhoud, niet het thema van de DM): het beeld verandert niet als de DM van thema wisselt.
 export const FLAT_MAX = 2048; // langste zijde in pixels
 const FLAT_PPC = [8, 64];     // pixels per cel (onder- en bovengrens)
 const FLAT_COL = { page: "#fffbf3", map: "#fffbf3", line: "#8c7d6b", edge: "#241811", sel: "#7a5512" };
@@ -199,7 +233,7 @@ export async function flatMap(id) {
   cv.width = W; cv.height = H;
   let ping = null;
   const art = M.art.createArt(() => ping && ping(), { custom: (sha) => own.get(sha) || null });
-  const draw = () => { const g = cv.getContext("2d"); g.setTransform(1, 0, 0, 1, 0, 0); M.canvas.drawBase(g, map, v, W, H, 1, FLAT_COL, W, H, { img, art }); };
+  const draw = () => { const g = cv.getContext("2d"); g.setTransform(1, 0, 0, 1, 0, 0); M.canvas.drawBase(g, map, v, W, H, 1, FLAT_COL, W, H, { img, art, fog: "player" }); };
   const builtins = [...new Set((map.objs || []).map((o) => o.asset).filter((a) => !own.has(a)))];
   draw(); // start het laden van alle tekeningen
   const until = Date.now() + 4000;

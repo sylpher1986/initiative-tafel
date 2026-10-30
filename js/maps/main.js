@@ -10,7 +10,8 @@
 // slepen, draaien en schalen met handgrepen, eigen dock en paneel Object, toetsenbord met cursorcel; WP63: terrein per cel
 // verven (tab Terrein in paneel Bibliotheek: penseel, breed, vullen, wissen); WP64: eigen assets (tab Eigen: Mijn assets,
 // toevoegen, plaatsen, hernoemen, verwijderen, mee in export en import); WP65: zijpaneel vanaf 768 px, sneltoetsenoverzicht
-// (?), uitleg in een lege kaart, verven met het toetsenbord, naam Inn Sight (docs/g4-inn-the-grid.md).
+// (?), uitleg in een lege kaart, verven met het toetsenbord, naam Inn Sight (docs/g4-inn-the-grid.md); WP73: fog of war
+// (groep in paneel Kaart, fogmodus met eigen dock).
 import { initI18n, t, i18n } from "../i18n/boot.js";
 import { APP, VERSION } from "./version.js";
 import { cleanGrid, parseCells, bounds, LIMITS, cellAt, cellCenter, cellPoly, inside } from "./model/grid.js";
@@ -24,6 +25,7 @@ import { FILE_MAX } from "./model/file.js";
 import { exportMap, importFile } from "./ui/export.js";
 import { readColors, fitCanvas, createLayer, draw, TERR_COLORS } from "./render/canvas.js";
 import { TERRAINS, TOOLS, paintCells, brushCells, strokeCells, footprint, fillCells, countTerr } from "./model/terrain.js";
+import { stampFog, fogOn, setFogOn, revealCells, revealAll, countFog, fogStroke, mergeFog, FOG_TOOLS, FOG_TOOL_KEY } from "./model/fog.js";
 import { createArt } from "./render/art.js";
 import { createHistory } from "./model/history.js";
 import { CATS, BUILTIN_IDS, builtin, inCat, assetUrl } from "./model/assets.js";
@@ -50,7 +52,7 @@ async function boot() {
   const cv = $("m-canvas"), wrap = $("m-stage");
   // cur = de geopende kaart (document zoals in de opslag) of null (verwijderd, lijst open); map = wat de render tekent
   let cur = null;
-  const map = { grid: cleanGrid(), bg: null, objs: [], terr: null };
+  const map = { grid: cleanGrid(), bg: null, objs: [], terr: null, fog: null };
   // WP59: tekenbare achtergronden per asset (sha → afbeelding; null = ontbreekt in de opslag), assets in het geheugen als
   // er geen opslag is (privémodus), en de uitlijnmodus
   const imgs = new Map(), memAssets = new Map();
@@ -84,7 +86,7 @@ async function boot() {
     fitCanvas(cv, w, h, dpr);
     const r = layer.paint(cv, map, view, w, h, dpr, col, { img: (map.bg && imgs.get(map.bg.asset)) || null, align: aligning, art, ghost,
       sel: selObj(), cursor: kbd && !selId && viewName === "edit" ? cellPoly(map.grid, kbd.c, kbd.r) : null,
-      brush: brushAt && painting() ? brushAt.cells.map((q) => cellPoly(map.grid, q.c, q.r)) : null }, [art.ver()]);
+      brush: fogFrame ? [fogFrame] : brushAt && painting() ? brushAt.cells.map((q) => cellPoly(map.grid, q.c, q.r)) : null }, [art.ver()]); // WP73: kader van Rechthoek
     lastMode = r.mode;
     if (r.settle) { clearTimeout(settleT); settleT = setTimeout(later, r.settle); } // WP66: na het zoomen scherp tekenen
     const n = zoomPct(view), z = $("m-zoom");
@@ -123,10 +125,10 @@ async function boot() {
   function chrome() {
     const open = !!openSheet();
     document.body.classList.toggle("mside", open && side());
-    const empty = viewName === "edit" && !!cur && !open && !aligning && !map.bg && !map.objs.length && !map.terr;
+    const empty = viewName === "edit" && !!cur && !open && !aligning && !fogging && !map.bg && !map.objs.length && !map.terr;
     if (emptyEl.hidden === empty) emptyEl.hidden = !empty;
     // WP68b: raster-chip niet in de lijst, tijdens uitlijnen, onder een paneel van onderen, naast de uitleg of in de meetstand
-    const showChip = viewName === "edit" && !!cur && !aligning && !(open && !side()) && emptyEl.hidden && BENCH_MODE === null; // ook niet in de meetstand
+    const showChip = viewName === "edit" && !!cur && !aligning && !fogging && !(open && !side()) && emptyEl.hidden && BENCH_MODE === null; // ook niet in de meetstand
     if (chip.hidden === showChip) chip.hidden = !showChip;
   }
   /** WP68b: inhoud van de raster-chip (na elke rasterwijziging en bij het openen van een kaart) */
@@ -157,6 +159,7 @@ async function boot() {
     press("m-color", g.color);
     press("m-alpha", String(g.alpha));
     for (const id of ["m-color", "m-alpha"]) for (const b of $(id).querySelectorAll("button")) b.disabled = !g.show;
+    syncFog(); // WP73
   };
   const update = (patch) => edit({ grid: cleanGrid({ ...map.grid, ...patch }) }, { k: "grid" }); // nieuwe rasterwaarden: één undo-stap
   const fields = { "m-cols": "cols", "m-rows": "rows" };
@@ -367,11 +370,109 @@ async function boot() {
   adock.addEventListener("click", (e) => { const d = e.target.closest("[data-nudge]")?.dataset.nudge; if (d) nudge(d); });
   const dragBg = (dx, dy) => { if (map.bg) setBg(moveBg(map.bg, dx / (CELL * view.z), dy / (CELL * view.z)), { k: "align" }, alignGroup); };
 
+  // ---- WP73: fog of war ----
+  // Groep in paneel Kaart (aan/uit, Fog bewerken, Alles verbergen/onthullen, aantal) en de fogmodus met een eigen dock
+  // (#m-fdock, zoals de uitlijnmodus): één vinger onthult of verbergt met Penseel, Breed of Rechthoek (fogStroke, gedeeld
+  // met de kaartviewer van Initiative), twee vingers pannen/zoomen; elke veeg = één undo-stap. De fog staat in het
+  // document: put() geeft elke fogwijziging (ook Ongedaan) een nieuwe tijd, store.putMap houdt een fog die Initiative later
+  // veranderde (mergeFog), en bij terugkomen naar dit tabblad lezen we die in (fogSync).
+  const fdock = $("m-fdock"), fstrip = $("m-fstrip");
+  let fogging = false, fogAct = "reveal", fogTool = "brush", fogFrame = null;
+  try { const v = localStorage.getItem(FOG_TOOL_KEY); if (FOG_TOOLS.includes(v)) fogTool = v; } catch { /* standaard Penseel */ }
+  const FOG_STRIP = { reveal: "maps.fog.stripRev", hide: "maps.fog.stripHide" }, FOG_STRIP_RECT = { reveal: "maps.fog.stripRevRect", hide: "maps.fog.stripHideRect" };
+  function syncFog() {
+    const on = fogOn(map.fog);
+    press("m-fog-on", on ? "on" : "off");
+    $("m-fog-set").hidden = !on;
+    if (on) { const n = countFog(map.grid, map.fog); $("m-fog-n").textContent = t("maps.fog.count", { n: i18n().num(n.rev), total: i18n().num(n.n) }); }
+  }
+  function paintFogDock() {
+    press("m-fact", fogAct); press("m-ftool", fogTool);
+    fstrip.textContent = t((fogTool === "rect" ? FOG_STRIP_RECT : FOG_STRIP)[fogAct]);
+  }
+  function setFogMode(on, back = true) {
+    if (on === fogging || (on && (!cur || !fogOn(map.fog)))) return;
+    fogging = on;
+    if (on) select(null, false);
+    fdock.hidden = !on; fstrip.hidden = !on; docks(); chrome();
+    if (on) { paintFogDock(); closeLib(false); closePanel(false); $("m-fdone").focus(); }
+    else { fogFrame = null; if (back) { openPanel(); (fogOn(map.fog) ? $("m-fog-edit") : $("m-fog-on").querySelector("[data-v=on]")).focus(); } }
+    later();
+  }
+  /** Fog-stap met een melding met Ongedaan (uitzetten, alles verbergen/onthullen: geen bevestigingsvraag, UX) */
+  const fogEdit = (fog, k, msg) => {
+    const step = edit({ fog }, { k });
+    if (step && msg) toast(t(msg), { btn: { label: t("maps.msg.undo"), run: () => { if (hist.isTop(step) && !stroking) undo(); } } });
+  };
+  $("m-fog-on").addEventListener("click", (e) => {
+    const v = e.target.closest("button")?.dataset.v;
+    if (!v || !cur || (v === "on") === fogOn(map.fog)) return;
+    fogEdit(setFogOn(v === "on"), v === "on" ? "fogOn" : "fogOff", v === "on" ? null : "maps.fog.offDone");
+  });
+  $("m-fog-edit").addEventListener("click", () => setFogMode(true));
+  $("m-fog-hide").addEventListener("click", () => { const n = revealAll(map.fog, false); if (n !== map.fog) fogEdit(n, "fogHideAll", "maps.fog.allHidden"); });
+  $("m-fog-rev").addEventListener("click", () => { const n = revealAll(map.fog, true); if (n !== map.fog) fogEdit(n, "fogRevAll", "maps.fog.allRevealed"); });
+  $("m-fact").addEventListener("click", (e) => { const v = e.target.closest("button")?.dataset.v; if (v) { fogAct = v; paintFogDock(); } });
+  $("m-ftool").addEventListener("click", (e) => {
+    const v = e.target.closest("button")?.dataset.v;
+    if (!FOG_TOOLS.includes(v)) return;
+    fogTool = v; paintFogDock();
+    try { localStorage.setItem(FOG_TOOL_KEY, v); } catch { /* alleen deze sessie */ }
+  });
+  $("m-fdone").addEventListener("click", () => setFogMode(false));
+  /** Eén veeg in de fogmodus: tijdens de veeg alleen tekenen en bewaren (put), bij loslaten één undo-stap; een tweede
+   *  vinger zet terug zonder stap (knijpen zoomt), met updatedAt zoals vóór de veeg (zoals verven, WP63). */
+  function fogGrab(sx, sy) {
+    if (!cur || !fogOn(map.fog)) return null;
+    const before = map.fog, at = cur.updatedAt, k = fogAct === "reveal" ? "fogRev" : "fogHide";
+    stroking = true;
+    const st = fogStroke({ grid: map.grid, get: () => map.fog, set: (f) => { put({ fog: f }); changed(); later(); }, tool: fogTool, reveal: fogAct === "reveal", at: toMap(view, sx, sy) });
+    const frame = () => { fogFrame = st.frame(); later(); };
+    frame();
+    let live = true;
+    return {
+      move(x, y) { if (live) { st.move(toMap(view, x, y)); frame(); } },
+      end() {
+        if (!live) return; live = false; stroking = false;
+        const ch = st.end(); fogFrame = null; later();
+        if (ch) { const after = { fog: map.fog }; hist.record({ fog: before }, after, null, { k }); refresh(after); }
+      },
+      cancel() {
+        if (!live) return; live = false; stroking = false; fogFrame = null;
+        if (map.fog !== before) { map.fog = before; if (cur) { if (before) cur.fog = before; else delete cur.fog; cur.updatedAt = at; saver.touch(); } } // zonder nieuwe tijd: inhoud gelijk aan vóór de veeg
+        later();
+      },
+    };
+  }
+  /** WP65-patroon: Enter/spatie op de cursorcel in de fogmodus (Penseel/Breed; Rechthoek = die ene cel) */
+  function fogKey() {
+    if (!kbd || !fogOn(map.fog)) return;
+    const cells = footprint(map.grid, [{ c: kbd.c, r: kbd.r }], fogTool === "wide" ? "wide" : "brush");
+    const n = revealCells(map.fog, map.grid, cells, fogAct === "reveal");
+    if (n !== map.fog) { const k = fogAct === "reveal" ? "fogRev" : "fogHide"; edit({ fog: n }, { k }); sr(t("maps.hist." + k)); }
+  }
+  /** Fog die intussen in de opslag nieuwer is (Initiative onthulde cellen terwijl dit tabblad op de achtergrond stond):
+   *  overnemen zonder undo-stap en zonder te bewaren. */
+  async function fogSync() {
+    if (!cur || BENCH_MODE !== null || saver.status === "off") return;
+    const id = cur.id, d = await store.getMap(id).catch(() => null);
+    if (!d || !cur || cur.id !== id || stroking) return;
+    const f = d.fog || null;
+    if (!f || mergeFog(f, map.fog) !== f) return;
+    // geschiedenis weg: Ongedaan van een oudere fogstap zou de onthullingen uit Initiative stil terugdraaien
+    map.fog = f; cur.fog = f; hist.clear(); histBtns();
+    if (fogging && !fogOn(f)) setFogMode(false, false);
+    if (!sheet.hidden) syncFog();
+    later();
+  }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !gone) fogSync(); });
+  window.addEventListener("focus", () => { if (!gone) fogSync(); }); // twee vensters naast elkaar: geen tabwissel
+
   // ---- WP61: undo/redo ----
   // Elke wijziging aan raster, achtergrond of objecten gaat via edit(): patch toepassen (put) en als stap vastleggen.
   // Ongedaan/Opnieuw passen de patch van de stap toe. Per geopende kaart, alleen in het geheugen (model/history.js).
   const hist = createHistory();
-  const docField = (k) => (k === "grid" ? map.grid : k === "bg" ? map.bg || undefined : k === "terr" ? map.terr || undefined : map.objs.length ? map.objs : undefined);
+  const docField = (k) => (k === "grid" ? map.grid : k === "bg" ? map.bg || undefined : k === "terr" ? map.terr || undefined : k === "fog" ? map.fog || undefined : map.objs.length ? map.objs : undefined);
   /** Patch toepassen op wat de render tekent en op het document (zonder geschiedenis) */
   function put(patch) {
     if ("grid" in patch) { map.grid = cleanGrid(patch.grid); if (cur) cur.grid = map.grid; }
@@ -383,12 +484,18 @@ async function boot() {
     }
     if ("objs" in patch) { map.objs = patch.objs || []; if (cur) { if (map.objs.length) cur.objs = map.objs; else delete cur.objs; } }
     if ("terr" in patch) { map.terr = patch.terr || null; if (cur) { if (map.terr) cur.terr = map.terr; else delete cur.terr; } } // WP63
+    if ("fog" in patch) { // WP73: elke fogwijziging (ook Ongedaan) is de nieuwste, ook "geen fog" (dan uit met een tijd)
+      const at = Math.max(Date.now(), ((map.fog && map.fog.at) || 0) + 1), f = patch.fog || null; // alleen uit fog.js of de geschiedenis
+      map.fog = f ? stampFog(f, at) : map.fog ? { at, on: false } : null;
+      if (cur) { if (map.fog) cur.fog = map.fog; else delete cur.fog; }
+    }
   }
   /** Na een patch: panelen, label, bewaren, tekenen, knoppen */
   function refresh(patch) {
     if ("grid" in patch) { label(); syncPanel(); paintChip(); if (!sheet.hidden) syncFields(); }
     // slepen in de uitlijnmodus: paneel dicht, geen DOM-werk per pointermove (openPanel synct)
     if ("grid" in patch || (!sheet.hidden && "bg" in patch)) syncBg();
+    if ("fog" in patch) { if (!sheet.hidden) syncFog(); if (fogging && !fogOn(map.fog)) setFogMode(false, false); } // WP73
     changed();
     if (("bg" in patch || "objs" in patch || "terr" in patch) && (!emptyEl.hidden || (!map.bg && !map.objs.length && !map.terr))) chrome(); // WP65: uitleg aan/uit alleen als de kaart leeg is of was (geen DOM-werk per sleepbeweging)
     if ("grid" in patch) { if (kbd) kbd = clampCell(kbd); if (auto) fit(); else set(view); } else later();
@@ -769,8 +876,8 @@ async function boot() {
   const padNow = () => HANDLE / 2 / (CELL * view.z); // tikvlak minstens 44 × 44 px rond een klein object
   /** Welke dock zichtbaar is: lijst, uitlijnen, selectie of de gewone */
   function docks() {
-    const isList = viewName === "list", s = !isList && !aligning && !!selObj();
-    $("m-dock").hidden = isList || aligning || s;
+    const isList = viewName === "list", s = !isList && !aligning && !fogging && !!selObj();
+    $("m-dock").hidden = isList || aligning || fogging || s; // WP73: fogmodus heeft een eigen dock
     odock.hidden = !s;
   }
   const odockFocus = (on) => { for (const b of odock.querySelectorAll("button")) on ? b.removeAttribute("tabindex") : b.setAttribute("tabindex", "-1"); };
@@ -827,6 +934,7 @@ async function boot() {
   function grab(sx, sy, kind) {
     justSel = false;
     if (kind === "mouse" && document.activeElement !== cv) cv.focus({ preventScroll: true }); // toetsen werken daarna op de kaart
+    if (fogging) return fogGrab(sx, sy); // WP73: in de fogmodus werkt één vinger alleen op de fog
     if (painting()) return tool === "fill" ? null : paintGrab(sx, sy); // WP63: verven gaat voor selecteren (een veeg over een meubel breekt niet af)
     if (!editing() || placing()) return null;
     const p = toMap(view, sx, sy), o = selObj();
@@ -841,6 +949,7 @@ async function boot() {
   }
   /** Tik (of klik zonder slepen): Plaatsen plaatst, anders selecteren */
   function onTap(sx, sy) {
+    if (fogging) return; // WP73: de veeg deed het werk al (ook een tik)
     if (placing()) { place(sx, sy); return; }
     if (painting()) { // WP63: Penseel/Breed verfde al bij het neerzetten; naast de kaart even de strook
       if (tool === "fill") fillAt(sx, sy);
@@ -1017,12 +1126,14 @@ async function boot() {
   /** Kaart in de editor zetten (document uit de opslag of net gemaakt) */
   const openDoc = (doc) => {
     if (aligning) setAlign(false, false);
+    if (fogging) setFogMode(false, false); // WP73
     selId = null; kbd = null; closeObj(false); // WP62: selectie hoort bij één kaart
     cur = doc;
     map.grid = cleanGrid(doc.grid);
     map.bg = cleanBg(doc.bg);
     map.objs = doc.objs || [];
     map.terr = doc.terr || null; // WP63
+    map.fog = doc.fog || null; // WP73
     hist.clear(); histBtns(); // WP61: geschiedenis hoort bij één kaart
     ghost = null;
     trimImgs();
@@ -1057,7 +1168,7 @@ async function boot() {
     const isList = v === "list";
     list.hidden = !isList; ldock.hidden = !isList;
     wrap.hidden = isList;
-    if (isList) { select(null, false); layer.clear(); } // WP62; WP66: kaartbuffer vrij zolang de lijst open is
+    if (isList) { if (fogging) setFogMode(false, false); select(null, false); layer.clear(); } // WP62; WP73; WP66: kaartbuffer vrij zolang de lijst open is
     docks();
     head(); chrome();
     histBtns(); paintStrip();
@@ -1322,6 +1433,7 @@ async function boot() {
       if (e.key === "Escape") { e.preventDefault(); setAlign(false); return; }
       if (dir && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); nudge(dir); return; }
     }
+    if (fogging && menu.hidden && e.key === "Escape") { e.preventDefault(); setFogMode(false); return; } // WP73: Esc = Klaar
     if (e.key === "Escape" && !sheet.hidden) { e.preventDefault(); closePanel(); return; }
     if (e.key === "Escape" && !osheet.hidden) { e.preventDefault(); closeObj(); return; } // WP62: eerst het paneel, dan de selectie
     if (e.key === "Escape" && !lsheet.hidden) { e.preventDefault(); closeLib(); return; } // WP61: Plaatsen stoppen
@@ -1341,8 +1453,9 @@ async function boot() {
       const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
       let did = true;
       if (dir && onCv) { if (o) nudgeSel(dir[0], dir[1], e.shiftKey); else moveCursor(dir[0], dir[1]); }
+      else if ((e.key === "Enter" || e.key === " ") && onCv && fogging) { if (!e.repeat) fogKey(); } // WP73
       else if ((e.key === "Enter" || e.key === " ") && onCv && painting()) { if (!e.repeat) paintKey(); } // WP65: verven op de cursorcel (ingedrukt houden verft niet tien keer)
-      else if (k === "n" && onCv && painting()) { /* WP63: in Verven niet selecteren */ }
+      else if (k === "n" && onCv && (painting() || fogging)) { /* WP63: in Verven niet selecteren */ }
       else if ((e.key === "Enter" || e.key === " ") && onCv) enterKey();
       else if (k === "n" && onCv) nextObj(e.shiftKey ? -1 : 1);
       else if (o && k === "r") turn(e.shiftKey ? -1 : 1);
@@ -1436,6 +1549,7 @@ async function boot() {
       return { n, of: a.length / 4 };
     },
     paint: () => ({ painting: painting(), tab: libTab, mat, tool, cells: countTerr(map.grid, map.terr), ids: map.terr ? [...map.terr.ids] : [] }),
+    fog: () => ({ on: fogOn(map.fog), mode: fogging, act: fogAct, tool: fogTool, at: (map.fog && map.fog.at) || 0, ...countFog(map.grid, map.fog) }), // WP73
     mine: () => mine.map((i) => ({ sha: i.sha, name: i.name, w: i.w, h: i.h, thumb: !!i.thumb })), // WP64
     art: (sha) => !!art.get(sha, 48) };
 
