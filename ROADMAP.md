@@ -6,7 +6,7 @@ Codes: **K** = kleine fix of optimalisatie (één sessie, patch- of minor-versie
 
 ## Kleine fixes en optimalisaties
 
-Volgorde = voorstel. K1–K3 merkt de gebruiker, K4–K7 zijn technisch, K8–K9 zijn wensen met lage prio.
+Volgorde = voorstel. K1–K3 merkt de gebruiker, K4–K7 zijn technisch, K8–K9 zijn wensen met lage prio, K10 hoort bij het installeren van Inn Sight (WP68d).
 
 | Code | Wat | Waar | Opmerking |
 |---|---|---|---|
@@ -19,6 +19,7 @@ Volgorde = voorstel. K1–K3 merkt de gebruiker, K4–K7 zijn technisch, K8–K9
 | **K7** | Een sheet die in place wijzigt, wordt bij elke commit opnieuw gestringifyd | `js/histpack.js`, `js/state.js` | Alleen als een meting bij een grote party het rechtvaardigt. |
 | **K8** | Homepage desktop: logo groter, naast de kop en boven de hoofdtekst | `pages/home.html` (eigen inline CSS) | Lage prio. Logo-vorm niet wijzigen; gedeeld bestand, dus Initiative-versie omhoog. |
 | **K9** | Homepage mobiel: heldafbeelding onderaan uitlijnen, bovenkant alleen voor zover er ruimte is (onderkant met taveerne en d20 zegt meer) | `pages/home.html`, `img/hero-tavern-*` | Lage prio. Waarschijnlijk `object-position`/`background-position` op bottom onder een breekpunt. |
+| **K10** | Geneste scope: de Initiative-manifesten hebben `scope "/"` en dekken dus ook `/maps/`. Een link naar Inn Sight vanuit de geïnstalleerde Initiative-app opent in het Initiative-venster; op Android kan een kevs-inn.com/maps/-link van buiten (WhatsApp) in de Initiative-app landen, en bij twee geïnstalleerde apps kan Android verkeerd kiezen | `tools/pages.mjs` (`manifest`), `launchRedirect` (`js/i18n/lang.js`, inline in `pages/initiative.html`), `js/main.js`, tests `pages`/`wp44`/`maps-sw` | Michiel (30-10): oplossen; er zijn buiten tests nog geen installaties, dus de identiteit van de Initiative-app mag nu veranderen. Voorstel: zoals Inn Sight één app per taal, `id`/`scope`/`start_url` `/initiative/` en `/nl/initiative/` (spelersscherm `…/initiative/player/` valt erbinnen), `launchRedirect` weg (springt anders buiten de scope). Besluit vóór het bouwen: dat voorstel of één app met `scope "/initiative/"` en launchRedirect (dan valt `/nl/initiative/` erbuiten). Gedeelde bestanden: Initiative-versie omhoog. Handcheck daarna: oude testinstallatie verwijderen, Initiative en Inn Sight allebei installeren, links over en weer. |
 
 ### Op signaal (pas bouwen als het aan tafel nodig blijkt)
 - Delay/Ready-knop (nu: initiative via ⋯ aanpassen, met de RE9-logica).
