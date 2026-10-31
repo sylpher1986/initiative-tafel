@@ -58,6 +58,9 @@ const PAIRS = [
   ["fg", "btn", TEXT, "tekst op secundaire knop"], ["muted", "btn", TEXT, "bijschrift op knop (Vorige, cijferpad)"], ["good", "btn", TEXT, "Heal-knop"],
   ["warn", "btn", TEXT, "save-knop, LA-chip"], ["bad", "btn", TEXT, "destructieve knop"], ["focus", "btn", UI, "focusring op knop"],
   ["focus", "sunk", UI, "focusring in verzonken paneeltje"], ["line-strong", "sunk", UI, "rand invoerveld op verzonken paneeltje"],
+  // G7 (WP80): worpweergave (css/dice.css) in het aanvalspaneel (--surface): blokje, telt niet, nat 20 (omgekeerd), nat 1 en "crit"
+  ["fg", "sunk", TEXT, "waarde in een steenblokje"], ["line-strong", "surface", UI, "rand steenblokje"], ["muted", "surface", TEXT, "steen die niet telt, label, doel"],
+  ["bg", "fg", TEXT, "nat 20-blokje"], ["bad", "bad-soft", TEXT, "nat 1-blokje"], ["bad", "surface", TEXT, "crit-woord en nat 1"], ["good", "surface", TEXT, "uitslag raak"],
 ];
 // WP39: alleen in donker afgedwongen. In licht is de knoprand bewust decoratief (= --line, WP17: geen drukke lijst; het label draagt de knop),
 // en de melding ligt als walnoot-vlak al los van een licht paneel.

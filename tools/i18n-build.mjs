@@ -9,7 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const SRC_LANGS = ["en", "nl"];
 // namespace-bestand → sleutelvoorvoegsel (docs/i18n.md §3.2); volgorde = volgorde in de uitvoer
-export const NS = { common: "common.", initiative: "init.", rules: "rules.", log: "log.", player: "player.", dnd: "dnd.", pages: "page.", maps: "maps." };
+export const NS = { common: "common.", dice: "dice.", initiative: "init.", rules: "rules.", log: "log.", player: "player.", dnd: "dnd.", pages: "page.", maps: "maps." };
 // G4 (WP56): namespaces met een eigen catalogusbestand per taal (<map><taal>.js), buiten locales/<taal>.js. Inn the Grid
 // heeft een eigen versie en cache (docs/g4-inn-the-grid.md §2.10): een Maps-tekst mag niet in de Initiative-cache hangen.
 export const OWN = { maps: "locales/maps/" };

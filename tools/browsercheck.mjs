@@ -2011,6 +2011,28 @@ const SCEN = {
     await mon.locator("[data-atk]").first().tap(); await page.waitForSelector("#xsheet .xsheet");
     await page.locator("#xsheet [data-xa=tgt]").first().tap(); await page.waitForSelector("#xsheet .xhit");
   },
+  // WP80 (G7): aanvalspaneel met advantage + crit via de gedeelde worpweergave (css/dice.css): nat 20, doorgestreepte d20,
+  // crit-dice los, één aria-label per worp. Vaste worp: d20's 20 en 6, daarna 0,5 voor de schade. --shots=wp80.
+  async wp80(page) {
+    await SCEN.fight(page);
+    await page.evaluate(() => { const q = [0.999, 0.26]; let i = 0; Math.random = () => (i < q.length ? q[i++] : 0.5); });
+    const mon = page.locator("#order .c.k.mon").first();
+    if (!(await mon.evaluate((el) => el.classList.contains("open")))) await mon.locator(".khead").tap();
+    const fold = mon.locator('[data-a="atk-open"]').first(); if (await fold.count()) await fold.tap();
+    await mon.locator("[data-atk]").first().tap(); await page.waitForSelector("#xsheet .xsheet");
+    await tap(page, '#xsheet [data-xa="adv"][data-v="1"]');
+    await page.locator("#xsheet [data-xa=tgt]").first().tap(); await page.waitForSelector("#xsheet .xhit .droll");
+    const st = await page.evaluate(() => {
+      const x = document.querySelector("#xsheet");
+      return { n20: x.querySelectorAll(".xhit .drd.n20").length, no: x.querySelectorAll(".xhit s.drd.no").length, crit: x.querySelectorAll(".xdmg .drc .drd").length,
+        aria: [...x.querySelectorAll(".droll[role=img]")].map((e) => e.getAttribute("aria-label")), over: [...x.querySelectorAll(".droll")].some((e) => e.scrollWidth > e.clientWidth + 1) };
+    });
+    if (st.n20 !== 1 || st.no !== 1) throw new Error(`WP80: nat 20/doorgestreept ${JSON.stringify(st)}`);
+    if (!st.crit) throw new Error("WP80: geen crit-dice zichtbaar");
+    if (st.aria.some((a) => !a || /⟦/.test(a))) throw new Error(`WP80: aria-label ${JSON.stringify(st.aria)}`);
+    if (st.over) throw new Error("WP80: worp breder dan het paneel");
+    await snap(page, "wp80", "aanval");
+  },
   // WP48: SRD 5.2-monster (Aboleth, ed 2024) aan de beurt; aanvalspaneel met een vaste conditie als hint ("Grappled (escape DC 14)")
   async wp48(page) {
     await SCEN.fight(page);

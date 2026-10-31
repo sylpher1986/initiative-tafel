@@ -18,8 +18,10 @@ import { ORD, pickList, splitSpells, edFor, sheetEd } from "../rules/spells.js";
 import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus, saveKnown, targetMode, drText, drKind, DR_LBL, saveAdv } from "../rules/aoe.js";
 import { spellItem } from "../data/spells.js";
 import { diceify, syncSB, monCard, isPhone, edTag as monEdTag } from "./statblock.js";
-import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, partText, atkDamage, atkAdv, withAdv, atkMods, modTail } from "../rules/attacks.js";
+import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, atkDamage, atkAdv, withAdv, atkMods } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
+import { diceHtml } from "../dice/view.js";
+import { fromAtk, fromDmg } from "./rolls.js";
 import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
 import { defRows } from "../rules/statform.js";
 import { hasUF, ufDc, ufNeed, ufInfo, riderWhat, riderFor, parryOf, canParry } from "../rules/monrules.js";
@@ -1438,11 +1440,13 @@ function atkPick(x, by) {
     <div class="afoot"><button type="button" class="link" data-xa="free">${esc(t("init.atk.free"))}</button><span></span></div>`;
 }
 
-/** "d20 [14, <s>6</s>] +11 = 25 vs AC 16": de d20 die niet telt doorgestreept */
-function atkHtml(r, ac) {
-  const used = r.d.length > 1 ? r.d.indexOf(r.nat) : 0;
-  const dice = r.d.map((v, i) => (i === used ? String(v) : `<s>${v}</s>`)).join(", ");
-  return `d20 [${dice}] ${r.bo >= 0 ? "+" : "−"}${Math.abs(r.bo)}${esc(modTail(r.m))} = ${r.tot}${ac ? ` vs AC ${ac}` : ""}`;
+/** G7 (WP80): to-hit als gedeelde worpweergave (js/dice/view.js); het uitslagwoord staat boven het totaal. Log en toast: atkText. */
+const atkHtml = (r, ac, word, cls) => diceHtml(fromAtk(r, ac || undefined), { head: { txt: word, cls } });
+/** Schade per deel (crit-dice los), met een somregel bij meer dan één deel: de geworpen som vóór resist/×2 (res.raw;
+ *  wat er werkelijk afgaat staat in de HP-regel eronder; open besluit G7-O2). Log en toast: partText. */
+function dmgHtml(parts, res) {
+  const rows = parts.map((p) => diceHtml(fromDmg([p], res.crit), { sub: p.type, sm: true })).join("");
+  return `<div class="xdmg">${rows}${parts.length > 1 ? `<p class="drsum"><span>${esc(t("dice.sum"))}</span><b>${res.raw}</b></p>` : ""}</div>`;
 }
 
 /** Welke modus en waarom: "Advantage (Ayla Prone)", "Handmatig: Advantage · auto: dis (Invisible)" */
@@ -1474,7 +1478,7 @@ function atkRes(x, c, by) {
       : uf && uf.dc ? ` · ${esc(t("init.dmg.uf", { dc: uf.dc }))}`
       : was > 0 && sim.hp <= 0 ? ` · <b class="bad">${esc(t(c.kind === "pc" ? "init.dmg.unc" : "init.card.down"))}</b>${uf && uf.skip ? ` · ${esc(t("init.atk.noUf", { why: uf.skip }))}` : ""}`
       : c.kind === "pc" && was <= 0 && res.dealt ? ` · <b class="bad">${esc(res.crit ? t("init.atk.twoFail") : t("rules.aoeRes.dsf"))}</b>` : "";
-    body = `${x.parts.length ? `<div class="xdmg">${x.parts.map((p) => esc(partText(p, res.crit))).join("<br>")}</div>` : `<p class="hint">${esc(t("init.atk.noRoll"))}</p>`}
+    body = `${x.parts.length ? dmgHtml(x.parts, res) : `<p class="hint">${esc(t("init.atk.noRoll"))}</p>`}
       ${res.types.map((ty) => `<div class="xmode"><span class="qlbl">${esc(ty.type || t("init.atk.dmgW"))}${ty.mode !== 1 && ty.mode === targetMode(c, null, ty.type).mode ? (targetMode(c, null, ty.type).eff ? " · Rage" : c.kind === "pc" ? ` · ${esc(t("init.aoe.saved"))}` : "") : ""}</span><div class="seg2 sm" role="group" aria-label="${esc(t("init.atk.resAria", { type: ty.type }))}">${XMODES.map(([v, l]) => `<button type="button" data-xa="mode" data-t="${esc(ty.type)}" data-v="${v}" aria-pressed="${ty.mode === v}">${esc(t(l))}</button>`).join("")}</div></div>`).join("")}
       <div class="xrow"><button type="button" class="btn small" data-xa="crit" aria-pressed="${res.crit}">${esc(t("init.atk.critBtn"))}</button>
       <span class="acalc">${c.max ? `${n0(c.hp)} → ${n0(sim.hp)} HP${end}` : esc(t("init.sp.hpUnknown"))}</span></div>
@@ -1491,7 +1495,7 @@ function atkRes(x, c, by) {
     foot = `<button type="button" class="link" data-xa="force">${esc(t("init.atk.force"))}</button><button type="button" class="btn primary qgo" data-xa="${spend ? "miss" : nx ? "next" : "close"}">${spend ? esc(t("init.atk.closeLa", { n: x.la.cost })) : nx ? `${esc(t("init.atk.nextAtk", { name: nx }))} ${chev(false)}` : esc(t("common.close"))}</button>`;
   }
   return `<button type="button" class="link xback" data-xa="back">${esc(t("init.atk.other"))}</button>
-    <p class="xhit"><b class="${res.hit ? "ok" : "bad"}">${word}</b> ${atkHtml(r, ac)}</p>
+    <div class="xhit">${atkHtml(r, ac, word, res.crit || !res.hit ? "bad" : "ok")}</div>
     ${how ? `<p class="xhow">${how}</p>` : ""}
     ${hints.length ? `<p class="hint">${hints.join("<br>")}</p>` : ""}
     ${x.la ? laToggle(x, by) : ""}

@@ -1,0 +1,29 @@
+/* Gedeelde dobbelsteenweergave (G7, WP80; js/dice/view.js). Alleen tokens uit css/app.css, geen hex, geen goud
+   (goud = primaire actie). Rood alleen voor kritiek: het woord "crit" en nat 1. "Telt niet" = doorgestreept + gestippeld + gedimd,
+   niet alleen kleur. Breken alleen tussen groepen, nooit binnen een groep. Geen tikdoelen: alleen weergave. */
+.droll{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:4px 0}
+.drterm{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;min-width:0}
+.drg,.drm,.drc{display:inline-flex;gap:4px;align-items:center;white-space:nowrap}
+.drg{flex-wrap:wrap;max-width:100%} /* veel stenen (8d6, 4d12 + crit): binnen de groep breken in plaats van overlopen */
+.drl{font-size:.78rem;font-weight:600;color:var(--muted)}
+.drlab{white-space:normal;overflow-wrap:anywhere}
+.drd{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-width:26px;height:26px;padding:0 4px;
+  border-radius:var(--r-s);border:1px solid var(--line-strong);background:var(--sunk);color:var(--fg);font-size:.95rem;font-weight:700;line-height:1;text-decoration:none}
+.drd.sm{min-width:22px;height:22px;font-size:.85rem}
+.drd.no{background:transparent;border:1px dashed var(--line-strong);color:var(--muted);font-weight:400;text-decoration:line-through}
+.drd.n20{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.drd.n1{background:var(--bad-soft);border:2px solid var(--bad);color:var(--bad)}
+.drn{font-size:.72rem;font-weight:700;color:var(--fg)}
+.drn.bad{color:var(--bad)}
+.drc{border-left:1px solid var(--line-strong);padding-left:6px}
+.drcw{font-size:.72rem;font-weight:700;color:var(--bad);text-transform:uppercase;letter-spacing:.04em}
+.drm{font-size:.85rem;color:var(--muted)}
+.drm b{color:var(--fg);font-weight:700;font-size:.95rem}
+.drtot{display:flex;flex-direction:column;align-items:flex-end;text-align:right;white-space:nowrap}
+.drh{font-size:.85rem;font-weight:700}
+.drh.ok{color:var(--good)}.drh.bad{color:var(--bad)}
+.drnum{font-family:var(--display);font-weight:700;font-size:1.5rem;line-height:1.05}
+.droll.sm .drnum{font-size:1.2rem}
+.drv{font-size:.78rem;color:var(--muted)}
+.drsum{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);margin:2px 0 0;padding-top:6px;font-size:.9rem;color:var(--muted)}
+.drsum b{color:var(--fg);font-size:1.05rem}
