@@ -32,7 +32,6 @@ Volgorde = voorgestelde uitvoervolgorde (gepland 31-10-2026): WP76 (bugs aan taf
 - Inn Sight: meervoudige selectie (WP62/WP74: later, op signaal).
 
 ## Operationeel (Michiel, geen code)
-- `*.workers.dev`: doorsturen naar `kevs-inn.com` of uitzetten (besluit open, `docs/DECISIONS.md` O1).
 - Live check 2.3.0/2.3.1: `kevs-inn.com/en/initiative/` → 301 naar `/initiative/`; `/` = Engelse homepage; versie 2.3.1 onderaan Instellingen; app offline openen vanaf het beginscherm.
 - Live check G1 (2.11.x) op de telefoon: Instellingen → Regels → 2024; "Start met voorbeeld" geeft Goblin Warriors; zoek "zombie 2024" en voeg toe; Exhaustion 4 op een speler halveert max HP niet; wisselen tijdens een gevecht kan niet; spelersscherm (QR) legt Grappled uit volgens 2024; export → import houdt "2024" in Instellingen; terug naar 2014 en offline openen werkt.
 - Inn Sight: handcheck installeren op Android en iPhone (uit G4).

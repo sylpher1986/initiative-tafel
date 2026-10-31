@@ -36,7 +36,7 @@ export const APP_PAGES = { "initiative/": "pages/initiative.html", "initiative/p
 export const dirOf = (lang, rest = "") => pathFor(lang, "/" + rest).slice(1);
 /** Publieke homepage per taal (WP30): "/" (Engels) en "/{taal}/" */
 export const HOME_PAGE = "pages/home.html";
-/** Canonieke host (V1): canonical, hreflang, sitemap en Open Graph wijzen hierheen, ook vanaf *.workers.dev */
+/** Canonieke host (V1): canonical, hreflang, sitemap en Open Graph wijzen hierheen (*.workers.dev staat uit, O1) */
 export const SITE = "https://kevs-inn.com";
 /** Hele site verborgen voor zoekmachines (besluit Michiel 26-10): robots.txt = Disallow: /. Op false zetten om te
  *  laten indexeren (dan gelden canonical, hreflang, noindex van de app en de sitemap, die al klaarstaan). */

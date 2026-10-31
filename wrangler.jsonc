@@ -6,6 +6,9 @@
   "name": "initiative-tafel",
   "main": "worker/index.js",
   "compatibility_date": "2025-09-01",
+  // O1 (31-10-2026): alleen kevs-inn.com (custom domain, in het dashboard); het *.workers.dev-adres en preview-URL's staan uit
+  "workers_dev": false,
+  "preview_urls": false,
   "assets": {
     "directory": ".",
     "binding": "ASSETS",

@@ -50,7 +50,7 @@ Regels in het kort; het hoe, de stappen voor een nieuwe tool of taal en de revie
 
 ### Product en communicatie
 - Kev’s Inn itiative: initiative/encounter tracker voor D&D 5e (regels 2014 of 2024, per tafel) van Michiel (voorheen Initiative Tafel; onderdeel van Kev’s Inn). Eén DM, aan tafel op telefoon of tablet. De repo bevat ook **Inn Sight** (kaartenmaker, G4; tot WP65 Inn the Grid) op `/maps/`, los van Initiative met een eigen versie (zie "Inn Sight" hieronder).
-- Live: https://kevs-inn.com (canoniek) en https://initiative-tafel.ft4mgzj72j.workers.dev (toekomst open: O1).
+- Live: alleen https://kevs-inn.com. **O1 (besluit Michiel 31-10-2026)**: het `*.workers.dev`-adres staat uit (`"workers_dev": false` in `wrangler.jsonc`), niet doorsturen: werd niet meer gebruikt, en lokale gegevens gaan per domein toch niet mee. Afgewezen: doorsturen (vraagt de Worker vóór elk verzoek).
 - **Communicatie**: Nederlands, pragmatisch en technisch direct. App-teksten in Engels en Nederlands via de catalogus; in het Nederlands blijven D&D-termen Engels (Concentrating, Recharge, Legendary actions).
 
 ### Basis
@@ -305,7 +305,7 @@ Overgenomen uit `docs/g4-inn-the-grid.md` §5. Uitwerking per pakket hierboven o
 ---
 
 ## Meertaligheid: besluiten V1–V7
-Primaire bron: `docs/i18n.md` §0 (niet hier herhaald). V1 (domein `kevs-inn.com`) is genomen; wat er met `*.workers.dev` gebeurt is open (O1 hieronder). V7 (licentie D&D-termen) speelt pas bij een derde taal (roadmap G6).
+Primaire bron: `docs/i18n.md` §0 (niet hier herhaald). V1 (domein `kevs-inn.com`) is genomen; `*.workers.dev` staat uit (O1, onder "Product en communicatie"). V7 (licentie D&D-termen) speelt pas bij een derde taal (roadmap G6).
 
 ---
 
@@ -330,4 +330,4 @@ Punten die een besluit van Michiel vragen of waar de documentatie elkaar tegensp
 
 | # | Punt | Wat er staat | Nodig |
 |---|---|---|---|
-| **O1** | `*.workers.dev` doorsturen naar `kevs-inn.com` of uitzetten | `docs/i18n.md` §0 V1: "nog open"; ook in `docs/BACKLOG.md` (Operationeel) | Besluit Michiel (Cloudflare-dashboard, geen code) |
+| — | Geen open besluiten (31-10-2026) | — | — |

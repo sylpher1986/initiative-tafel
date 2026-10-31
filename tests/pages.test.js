@@ -223,7 +223,7 @@ test("robots.txt: verborgen = Disallow alles; open = crawlen mag (noindex moet l
   const two = sitemap(["en", "nl"]);
   assert.equal((two.match(/<url>/g) || []).length, 2);
   assert.equal((two.match(/hreflang="x-default" href="https:\/\/kevs-inn\.com\/"/g) || []).length, 2, "elke url met alle alternates");
-  assert.equal(SITE, "https://kevs-inn.com", "V1: canonieke host, ook vanaf workers.dev");
+  assert.equal(SITE, "https://kevs-inn.com", "V1: canonieke host");
 });
 
 test("404-pagina's: zetten een ongeldig prefix recht via redirect.js, linken naar homepage en app in hun taal", () => {
