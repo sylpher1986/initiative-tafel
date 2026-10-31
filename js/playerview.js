@@ -5,7 +5,7 @@ import { sortOrder, isOut, groupOf, nextUp, isSurprised, skipsTurn, reactUsed, d
 import { effName } from "./rules/effects.js";
 import { iconId, cleanImg } from "./ui/avatar.js";
 import { esc } from "./ui/util.js";
-import { t } from "./i18n/boot.js";
+import { t, i18n } from "./i18n/boot.js";
 import { isMsg } from "./i18n/msg.js";
 import { rulesOf } from "./rules/edition.js";
 
@@ -381,7 +381,7 @@ export function logLines(a, b) {
     }
     const same = a.tg === b.tg, t0 = same ? loud(o) : new Map(), t1 = same ? loud(c) : new Map();
     const add = [...t1].filter(([x]) => !t0.has(x)).map(([, v]) => v), gone = [...t0].filter(([x]) => !t1.has(x)).map(([, v]) => v);
-    if (add.length) parts.push(add.join(", "));
+    if (add.length) parts.push(i18n().list(add)); // WP76 (K3): opsomming zoals player.log.gone
     if (gone.length) parts.push(t("player.log.gone", { what: gone }));
     if (!parts.length) continue;
     out.push(`${pvName(c)}${tight ? " " : ": "}${parts.join(" · ")}`);

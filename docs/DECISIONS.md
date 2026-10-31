@@ -32,6 +32,7 @@ Centrale bron voor alle geldende keuzes: techniek, meertaligheid, UX/huisstijl, 
 - `c.max` 0 betekent "HP onbekend": een effect of exhaustion zet max HP nooit lager dan 1 (op 0 = dood via de regels).
 - Undo dekt alleen `S`. Wijzigingen aan partyleden die niet aan tafel zitten, encounters en spellnotities vallen erbuiten; wissen daarvan krijgt een eigen Ongedaan-knop. Normalisatie (`tidy`) draait in `commit()` én `resetBaseline()`, anders wordt hij een onuitwisbare undo-stap.
 - Geen meldingen, pop-ups of stippen die bij het opstarten aan tafel verschijnen; herinneringen staan als strook in Voorbereiden.
+- Foutbalk (inline foutvanger in `pages/initiative.html`, WP76): alleen fouten van de eigen app. `isOwnError` toont bij een bestand van de eigen origin, of zonder bestand bij een stack met de eigen origin of zonder adressen; rejection zonder stack: tonen. Extensies (`webkit-masked-url://`, `*-extension://`), andere origins en "Script error." zonder bestand → `console.warn`. Liever één keer te veel tonen dan een eigen fout missen. Test `tests/errfilter.test.js` leest de functie uit het sjabloon.
 - Geen CSP in de repo (geen `_headers`). Komt die er, dan hebben de inline scripts (thema, launch, foutbalk) een hash nodig.
 
 ## Meertaligheid (geldt voor elke tool)
@@ -97,7 +98,7 @@ Regels in het kort; het hoe, de stappen voor een nieuwe tool of taal en de revie
 
 ### Initiative en beurten
 - Start gevecht met levende spelers opent het initiative-paneel (`#isheet`, eigen cijferpad, Rol = d20 + `initBonus ?? dex`; monsters idem: 2024-statblock geeft `initBonus`, WP48); zonder spelers start het direct. Monsters: **Houden | Opnieuw rollen** (`it-init-reroll`; alleen onaangeroerde worpen). Verrast: **Niemand | Monsters | Spelers**; zonder spelers de schakelaar "Monsters verrast" naast Start. Alles in één undo-stap met de start.
-- Monsters uit het vorige gevecht bij Start: vraag in de dock (Oude wissen en starten / Toch starten).
+- Monsters uit het vorige gevecht bij Start: vraag in de dock (Oude wissen en starten / Toch starten). Bij "Oude wissen" telt het initiative-paneel (hint, Houden/Opnieuw rollen, "Verrast: monsters") alleen wie blijft (`keptMons`, WP76).
 - Surprise (PHB 2014): verrasten slaan ronde 1 over (`c.sur`), reaction uit; individueel via ⋯. Bij regels 2024: disadvantage op initiative (zie Gevecht, WP51).
 - Groepen (`grp`, `groupOf`) zijn **alleen weergave**: elk lid houdt een eigen beurt (recharge, saves, condities). Afgewezen: één groepsbeurt.
 - Initiative wijzigen tijdens een gevecht (`initPlan`, `turnOrder`, `S.ai`): al geweest en naar achteren = deze ronde overgeslagen; zelf aan de beurt = beurt loopt door; nog niet geweest en naar voren = direct na de huidige beurt. Geen Delay/Ready-knop.
@@ -146,7 +147,7 @@ Regels in het kort; het hoe, de stappen voor een nieuwe tool of taal en de revie
 - Verbinding: spelerskant toont "Geen verbinding · stand van HH:MM" en dimt de lijst, na 2 min weg; "De DM is even weg" na 45 s zonder DM (`dmnet`). Een oude stand mag op een tv nooit als live lezen.
 - "Dit ben ik" per apparaat (`it-pv-me`): eigen kaart met HP, death saves en slots, "Jij bent aan de beurt", trillen waar mogelijk.
 - Tv (`body.tv`: liggend, ≥ 900 × ≥ 501): één brede regel per deelnemer, letter passend op de hoogte (`js/tvfit.js`), twee kolommen als dat groter uitvalt; QR rechtsonder in de wachtstand.
-- Mini-log "Wat er net gebeurde": alleen afgeleid uit twee opeenvolgende snapshots (`logLines`), nooit uit het DM-logboek.
+- Mini-log "Wat er net gebeurde": alleen afgeleid uit twee opeenvolgende snapshots (`logLines`), nooit uit het DM-logboek. Meerdere condities (erbij of weg) als opsomming via `i18n().list` ("Poisoned and Prone", WP76).
 - Kaart (WP71–WP73): optioneel `map` (plat beeld als Blob, fog ondoorzichtig ingebakken), lokaal als Blob en via de kamer in stukken; zie "Inn Sight → Spelerskaart op hetzelfde apparaat", "→ Spelerskaart via de kamer" en "→ Fog of war".
 
 ### Huisstijl

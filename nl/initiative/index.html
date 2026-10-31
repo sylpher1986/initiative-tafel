@@ -9,7 +9,7 @@
 <meta name="description" content="Initiative tracker voor D&amp;D 5e, regels 2014 of 2024: spelers, SRD-monsters, condities, spell slots en logboek.">
 <meta name="theme-color" content="#241811" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1d130d" media="(prefers-color-scheme: dark)">
-<meta name="it-version" content="2.18.0">
+<meta name="it-version" content="2.18.1">
 <script src="/js/theme.js"></script>
 <!-- Fouten zichtbaar maken (telefoon heeft geen console): rode balk bovenaan, alleen bij een fout -->
 <script>
@@ -19,9 +19,25 @@
     if (!b) { b = document.createElement("div"); b.id = "errbar"; b.setAttribute("role", "alert"); b.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;background:#a7453e;color:#fff;font:14px/1.3 sans-serif;padding:8px 12px;white-space:pre-wrap;overflow-wrap:anywhere"; (document.body || document.documentElement).appendChild(b); b.onclick = function () { b.remove(); }; }
     b.textContent += (b.textContent ? "\n" : "Fout (tik om te sluiten): ") + t;
   }
+  // WP76 (K1): alleen fouten van de eigen app; extensies (webkit-masked-url, *-extension://, andere origin) naar console.warn
+  // msg = melding van een error-event (rejection: geen)
+  function isOwnError(file, stack, own, msg) {
+    if (file) return file === own || file.indexOf(own + "/") === 0;
+    stack = stack ? String(stack) : "";
+    if (!stack) return !/^Script error\.?$/.test(msg || ""); // "Script error." zonder bestand: niet; de rest (ook rejection zonder stack) wel
+    return stack.indexOf(own + "/") >= 0 || !/[a-z][a-z0-9+.-]*:\/\//i.test(stack); // stack zonder adressen: tonen
+  }
+  function warn(t) { try { console.warn("[ext] " + t); } catch (x) { /* geen console */ } }
   window.__itErr = show;
-  addEventListener("error", function (e) { if (e.message) show(e.message + (e.filename ? " · " + e.filename.replace(location.origin, "") + ":" + e.lineno : "")); });
-  addEventListener("unhandledrejection", function (e) { show(String(e.reason && (e.reason.stack || e.reason.message) || e.reason)); });
+  addEventListener("error", function (e) {
+    if (!e.message) return;
+    var t = e.message + (e.filename ? " · " + e.filename.replace(location.origin, "") + ":" + e.lineno : "");
+    if (isOwnError(e.filename || "", e.error && e.error.stack, location.origin, e.message)) show(t); else warn(t);
+  });
+  addEventListener("unhandledrejection", function (e) {
+    var r = e.reason, t = String(r && (r.stack || r.message) || r);
+    if (isOwnError("", r && r.stack, location.origin)) show(t); else warn(t);
+  });
 })();
 </script>
 <link rel="manifest" href="/nl/manifest.webmanifest">

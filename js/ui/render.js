@@ -39,7 +39,7 @@ import { paintEnd, endBanner } from "./einde.js";
 import { PAS, passives, pasText, sheetPassives, percList } from "../rules/passives.js";
 import { pcReact } from "./pcreact.js";
 import { clsLevel } from "../rules/encounters.js";
-import { oldMons, oldText } from "../rules/fight.js";
+import { oldMons, oldText, keptMons } from "../rules/fight.js";
 import { logRound, logMsg, logWhy } from "../log.js";
 import { exportDue, nudgeState, lastExportText } from "../exportnudge.js";
 
@@ -1514,9 +1514,10 @@ export function paintAtk() {
 
 /* ---------- initiative van spelers bij Start gevecht ---------- */
 /** GV5: Monsters Houden | Opnieuw rollen (alleen met onaangeroerde worpen; ingevuld of aangepast blijft altijd) */
-function monRollHtml(mons) {
+function monRollHtml(ms) {
+  const mons = ms.length;
   if (!mons) return "";
-  const fresh = app.S.list.filter(freshRoll).length, fixed = mons - fresh;
+  const fresh = ms.filter(freshRoll).length, fixed = mons - fresh;
   if (!fresh) return `<p class="hint">${esc(t("init.ini.monFixed", { n: mons }))}</p>`;
   const v = initRoll();
   return `<div class="isur"><span id="i-mon">${esc(t("init.aoe.selMons"))}</span><div class="seg2" role="group" aria-labelledby="i-mon">${[["keep", "init.ini.keep"], ["roll", "init.ini.reroll"]].map(([k, l]) => `<button type="button" data-ia="mroll" data-v="${k}" aria-pressed="${v === k}">${esc(t(l))}</button>`).join("")}</div></div>
@@ -1527,13 +1528,13 @@ const SUR_HINT = [["init.ini.surNone", "init.ini.surSome"], ["init.ini.surNone24
 export function paintInit() {
   const el = $("#isheet"), x = ui.initDraft;
   if (!x) { el.hidden = true; el.innerHTML = ""; return; }
-  const L = initPcs(app.S.list), mons = app.S.list.filter((c) => c.kind === "monster").length;
+  const L = initPcs(app.S.list), ms = keptMons(app.S, ui.oldGo === "drop"), mons = ms.length; // WP76 (K2): bij "Oude wissen" alleen wie blijft
   const last = L.length && L[L.length - 1].id === x.act;
   el.innerHTML = `<div class="dim" data-ia="close"></div>
     <div class="sheet qsheet isheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="i-title">
       <div class="grab" aria-hidden="true"></div>
       <div class="shead"><h3 id="i-title">Initiative</h3><button type="button" class="link" data-ia="close">${esc(t("common.cancel"))}</button></div>
-      ${monRollHtml(mons)}
+      ${monRollHtml(ms)}
       <div class="isur"><span id="i-sur">${esc(t("init.card.sur"))}</span><div class="seg2" role="group" aria-labelledby="i-sur">${[["none", "init.aoe.selNone"], ["mon", "init.aoe.selMons"], ["pc", "init.aoe.selPcs"]].map(([k, l]) => `<button type="button" data-ia="sur" data-v="${k}" aria-pressed="${(x.sur || "none") === k}" ${k === "mon" && !mons ? "disabled" : ""}>${esc(t(l))}</button>`).join("")}</div></div>
       <p class="hint isurh" id="i-surh">${esc(t(SUR_HINT[rulesOf(app.S) === "2024" ? 1 : 0][(x.sur || "none") === "none" ? 0 : 1]))}</p>${percLine()}
       <div class="ilist">${L.map((c) => `<div class="ir ${c.id === x.act ? "act" : ""}">

@@ -294,3 +294,21 @@ test("headHtml: geen zichtbare beurt na ronde 1 → 'Ronde N', niet 'Gevecht beg
   const h = headHtml({ round: 3, active: null, next: "b", list: [{ id: "b", name: "B" }] });
   assert.match(h, /<b>Ronde 3<\/b>/); assert.doesNotMatch(h, /Gevecht begint/); assert.match(h, /Daarna/);
 });
+
+test("WP76 (K3): mini-log somt toegevoegde condities op (NL en EN), één conditie ongewijzigd", async () => {
+  const { initI18n } = await import("../js/i18n/boot.js");
+  const { logLines } = await import("../js/playerview.js");
+  const lang = (l) => initI18n({ doc: { documentElement: { lang: l } }, search: "", storage: null });
+  const view = (s) => cleanView(JSON.parse(JSON.stringify(toPlayerView(s, () => ""))));
+  const S0 = S([pc({ id: "p", name: "Aria" })], { round: 2, active: "p" });
+  const S1 = S([pc({ id: "p", name: "Aria", cond: ["Poisoned", "Prone"] })], { round: 2, active: "p" });
+  const S2 = S([pc({ id: "p", name: "Aria", cond: ["Prone"] })], { round: 2, active: "p" });
+  try {
+    await lang("en");
+    assert.deepEqual(logLines(view(S0), view(S1)), ["Aria: Poisoned and Prone"]);
+    assert.deepEqual(logLines(view(S0), view(S2)), ["Aria: Prone"]);
+    await lang("nl");
+    assert.deepEqual(logLines(view(S0), view(S1)), ["Aria: Poisoned en Prone"]);
+    assert.deepEqual(logLines(view(S0), view(S2)), ["Aria: Prone"]);
+  } finally { await lang("nl"); } // _nl.js: de rest van dit bestand verwacht Nederlands
+});

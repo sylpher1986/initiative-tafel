@@ -6,13 +6,10 @@ Kleine punten: bugs, kleine functionele, UX/UI- en technische verbeteringen, los
 
 ## Open punten
 
-Volgorde = voorgestelde uitvoervolgorde (gepland 31-10-2026): WP76 (bugs aan tafel) → WP77 (pdf.js) → WP78 (homepage). Uitwerking in `docs/work-packages/`. K11 heeft geen eigen WP (meenemen bij een wijziging in die bestanden); K6 (besluit O2 genomen) heeft nog geen WP; K7 wacht op een meting.
+Volgorde = voorgestelde uitvoervolgorde (gepland 31-10-2026): WP77 (pdf.js) → WP78 (homepage). Uitwerking in `docs/work-packages/`. K11 heeft geen eigen WP (meenemen bij een wijziging in die bestanden); K6 (besluit O2 genomen) heeft nog geen WP; K7 wacht op een meting.
 
 | Code | Soort | Onderdeel | Prio | WP | Status | Wat | Waar | Opmerking |
 |---|---|---|---|---|---|---|---|---|
-| **K2** | Bug | Initiative | H | WP76 | Gepland | Initiative-paneel telt monsters uit het vorige gevecht mee in de monster-hint, ook als "Oude wissen en starten" ze weghaalt | `monRollHtml` in `js/ui/render.js` (via `paintInit`) | Telt alle monsters in `S.list`. Bekend sinds 1.37.0. |
-| **K1** | Bug | Initiative | H | WP76 | Gepland | Foutbalk toont fouten van browserextensies als app-fout (Safari: `webkit-masked-url://hidden/`, "runtime.sendMessage(). Tab not found") | inline foutvanger in `pages/initiative.html` (r. 16–26; het spelersscherm heeft er geen) | Pure `isOwnError(file, stack, own = location.origin)`: alleen tonen als bestand of stack bij de eigen origin hoort; rejection zonder stack wel tonen; "Script error." zonder bestand niet. Rest naar `console.warn`. Test `tests/errfilter.test.js` met `webkit-masked-url`, `safari-web-extension://`, `chrome-extension://`, `moz-extension://`. Geen tekstwijziging. |
-| **K3** | Bug | Spelersscherm | M | WP76 | Gepland | Mini-log: toegevoegde condities nog met komma ("Poisoned, Prone"), weggevallen al als opsomming ("Poisoned and Prone ended") | `js/playerview.js` | Array-param aan de sleutel, zoals `player.log.gone`. |
 | **K4** | Techniek | Initiative | L | WP77 | Gepland | pdf.js als echte Worker laden in plaats van op de hoofdthread | `js/ddb.js` | Kan sinds het zelf hosten (2.2.1). Meten op een oudere iPad. |
 | **K5** | Techniek | Initiative | L | WP77 | Gepland | pdf.js geminificeerd (nu ± 2,5 MB in een eigen sw-cache, voor iedereen) | `vendor/pdfjs/`, `sw.js` | De release-zip had geen min-build en npm/cdnjs waren niet bereikbaar. Nieuwe cachenaam bij een wissel. |
 | **K8** | UX/UI | Homepage | L | WP78 | Gepland | Desktop: logo groter, naast de kop en boven de hoofdtekst | `pages/home.html` (eigen inline CSS) | Logo-vorm niet wijzigen; gedeeld bestand, dus Initiative-versie omhoog. |

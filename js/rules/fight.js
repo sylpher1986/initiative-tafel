@@ -108,6 +108,13 @@ export function oldMons(S) {
   const ids = new Set(Array.isArray(es.all) ? es.all : (es.mons || []).map((m) => m.id)); // samenvatting van vóór 1.37.0: zonder all
   return S.list.filter((c) => c.kind === "monster" && ids.has(c.id));
 }
+/** WP76 (K2): monsters die bij Start blijven; bij drop ("Oude wissen en starten") zonder die van het vorige gevecht */
+export function keptMons(S, drop) {
+  const L = S.list.filter((c) => c.kind === "monster");
+  if (!drop) return L;
+  const old = new Set(oldMons(S).map((c) => c.id));
+  return old.size ? L.filter((c) => !old.has(c.id)) : L;
+}
 /** "Nog 3 monsters uit het vorige gevecht: Adult Red Dragon 83/178 HP, Goblin 1, Goblin 2 +1." (max 3 namen) */
 export function oldText(L) {
   const nm = (c) => (c.max && c.hp < c.max ? `${c.name} ${Math.max(0, c.hp)}/${c.max} HP` : c.name);

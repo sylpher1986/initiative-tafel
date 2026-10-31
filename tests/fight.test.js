@@ -1,7 +1,7 @@
 import { nl } from "./_nl.js"; // WP27: Nederlandse catalogus voor descriptoren
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addEnc, encName, cleanEnc, tidy, startFight, endSummary, endCalc, endText, toggleFlip } from "../js/rules/fight.js";
+import { addEnc, encName, cleanEnc, tidy, startFight, endSummary, endCalc, endText, toggleFlip, keptMons } from "../js/rules/fight.js";
 import { clearMonsters } from "../js/rules/turns.js";
 import { app, commit, logAs, relog, resetBaseline, undo } from "../js/state.js";
 import { parseImport } from "../js/backup.js";
@@ -138,4 +138,13 @@ test("dezelfde encounter tweemaal inladen: naam één keer", () => {
   const S = { list: [] };
   addEnc(S, { name: "Brug", notes: "" }, false); addEnc(S, { name: "Brug", notes: "" }, false);
   assert.equal(encName(S), "Brug");
+});
+
+test("WP76 (K2): keptMons telt bij 'Oude wissen en starten' alleen de blijvende monsters", () => {
+  const m = (id) => ({ id, kind: "monster", name: id, hp: 5, max: 5, cond: [] });
+  const S = { list: [m("o1"), m("o2"), m("n1"), { id: "p", kind: "pc", name: "Aria", cond: [] }], endSum: { all: ["o1", "o2", "p"] } };
+  assert.deepEqual(keptMons(S, true).map((c) => c.id), ["n1"], "drop: alleen het nieuwe monster");
+  assert.equal(keptMons(S, false).length, 3, "keep: alle monsters");
+  assert.equal(keptMons({ ...S, endSum: null }, true).length, 3, "geen oude monsters: ongewijzigd");
+  assert.equal(keptMons({ ...S, list: S.list.filter((c) => c.id !== "n1") }, true).length, 0, "alleen oude: niets over (Verrast: monsters uit)");
 });

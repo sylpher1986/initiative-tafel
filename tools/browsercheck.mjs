@@ -2046,6 +2046,22 @@ const SCEN = {
     if (st.length !== n0 + 1) throw new Error("Goblin niet ingeladen: " + JSON.stringify(st));
   },
   async initp(page) { await SCEN.prep(page); await tap(page, "#start"); await page.waitForSelector("#isheet .isheet"); },
+  // WP76 (K2): voorbeeldmonsters als "vorig gevecht" + één nieuw monster → Start → "Oude wissen en starten": het
+  // initiative-paneel telt alleen het nieuwe monster (1) en "Verrast: monsters" blijft aan. --shots=wp76: paneel.
+  async wp76(page) {
+    await SCEN.einde(page); await tap(page, '#esheet .shead [data-end="close"]'); await page.waitForSelector("#esheet .esheet", { state: "hidden" });
+    await page.evaluate(async () => { const { app } = await import("/js/state.js"), { render } = await import("/js/ui/render.js");
+      for (const c of app.S.list) if (c.kind === "monster") c.init = 30; // oude monsters: aangepast, dus niet "fresh"
+      app.S.list.push({ id: "wp76m", name: "Ogre", kind: "monster", init: 9, dex: -1, ac: 11, hp: 59, max: 59, cond: [] },
+        { id: "wp76n", name: "Orc", kind: "monster", init: 14, roll: 13, dex: 1, ac: 13, hp: 15, max: 15, cond: [] }); render(); });
+    await tap(page, "#start"); await tap(page, "#old-start"); await page.waitForSelector("#isheet .isheet");
+    if (!(await page.locator('#isheet [data-ia="mroll"]').count())) throw new Error("Houden | Opnieuw rollen ontbreekt (Orc is fresh)");
+    await tap(page, '#isheet [data-ia="mroll"][data-v="roll"]');
+    const hint = await page.locator("#isheet .hint").first().innerText();
+    if (!/\(1\)/.test(hint)) throw new Error("monster-hint telt oude monsters mee: " + hint); // init.ini.kept: alleen de Ogre
+    if (await page.locator('#isheet [data-ia="sur"][data-v="mon"][disabled]').count()) throw new Error("Verrast: monsters uit terwijl er een monster blijft");
+    await snap(page, "wp76", "panel");
+  },
   async logp(page) { await SCEN.fight(page); await tap(page, "#logopen"); await page.waitForSelector("#gsheet .gsheet"); },
   async keyhelp(page) { await SCEN.fight(page); await page.evaluate(async () => (await import("/js/ui/keys.js")).openKeys()); await page.waitForSelector("#hsheet .hsheet"); },
   async meer(page) { await SCEN.fight(page); await page.locator('#order .c.k.open [data-a="panel"][data-p="more"]').first().tap(); await page.waitForSelector("#order .kpanel.more"); },
