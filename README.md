@@ -35,6 +35,7 @@ data/spells.json      SRD 5.1 spells (gemaakt met tools/spells_srd.py uit 5e-bit
 data/spells-2024.json SRD 5.2 spells (gemaakt met tools/spells_srd2024.py uit open5e-api)
 sw.js                 service worker (offline)
 tests/                tests voor de regels
+CLAUDE.md, docs/       werkinstructies voor Claude, besluiten, roadmap, backlog en werkpakketten (niet gepubliceerd)
 ```
 
 Geen build-stap: de browser laadt de modules direct.
@@ -53,7 +54,7 @@ Cloudflare Workers publiceert automatisch bij elke push naar `main` (instellinge
 
 ## Nieuwe versie uitbrengen
 
-Verhoog `VERSION` in `sw.js`, `js/version.js` én `<meta name="it-version">` in `pages/initiative.html` (daarna `node tools/pages.mjs`), anders blijven geïnstalleerde apps de oude bestanden uit hun cache gebruiken.
+Verhoog `VERSION` in `sw.js`, `js/version.js` én `<meta name="it-version">` in `pages/initiative.html` (daarna `node tools/pages.mjs`), anders blijven geïnstalleerde apps de oude bestanden uit hun cache gebruiken. Inn Sight heeft een eigen versie (`js/maps/version.js` en `MAPS_VERSION` in `sw.js`); de volledige regels staan in `CLAUDE.md` ("Bij elke wijziging").
 
 ## Licentie van de monsterdata
 
