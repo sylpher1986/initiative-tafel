@@ -1442,11 +1442,12 @@ function atkPick(x, by) {
 
 /** G7 (WP80): to-hit als gedeelde worpweergave (js/dice/view.js); het uitslagwoord staat boven het totaal. Log en toast: atkText. */
 const atkHtml = (r, ac, word, cls) => diceHtml(fromAtk(r, ac || undefined), { head: { txt: word, cls } });
-/** Schade per deel (crit-dice los), met een somregel bij meer dan één deel: de geworpen som vóór resist/×2 (res.raw;
- *  wat er werkelijk afgaat staat in de HP-regel eronder; open besluit G7-O2). Log en toast: partText. */
+/** Schade per deel (crit-dice los). Somregel "Totaal" bij meer delen of als Resist/×2/Immuun het bedrag verandert: de geworpen som
+ *  (res.raw) en daarachter wat er werkelijk afgaat (res.dealt), zoals "27 → 13" (G7-O2, Michiel 31-10-2026: beide). Log en toast: partText. */
 function dmgHtml(parts, res) {
   const rows = parts.map((p) => diceHtml(fromDmg([p], res.crit), { sub: p.type, sm: true })).join("");
-  return `<div class="xdmg">${rows}${parts.length > 1 ? `<p class="drsum"><span>${esc(t("dice.sum"))}</span><b>${res.raw}</b></p>` : ""}</div>`;
+  const diff = res.dealt !== res.raw;
+  return `<div class="xdmg">${rows}${parts.length > 1 || diff ? `<p class="drsum"><span>${esc(t("dice.sum"))}</span><b>${res.raw}${diff ? ` → ${res.dealt}` : ""}</b></p>` : ""}</div>`;
 }
 
 /** Welke modus en waarom: "Advantage (Ayla Prone)", "Handmatig: Advantage · auto: dis (Invisible)" */

@@ -2032,6 +2032,11 @@ const SCEN = {
     if (st.aria.some((a) => !a || /⟦/.test(a))) throw new Error(`WP80: aria-label ${JSON.stringify(st.aria)}`);
     if (st.over) throw new Error("WP80: worp breder dan het paneel");
     await snap(page, "wp80", "aanval");
+    // G7-O2: bij Resist de geworpen som én wat er afgaat ("10 → 5")
+    await tap(page, '#xsheet [data-xa="mode"][data-v="0.5"]');
+    const sum = (await page.locator("#xsheet .drsum b").innerText()).trim();
+    if (!/^\d+ → \d+$/.test(sum)) throw new Error(`G7-O2: somregel "${sum}"`);
+    await snap(page, "wp80", "resist");
   },
   // WP48: SRD 5.2-monster (Aboleth, ed 2024) aan de beurt; aanvalspaneel met een vaste conditie als hint ("Grappled (escape DC 14)")
   async wp48(page) {
