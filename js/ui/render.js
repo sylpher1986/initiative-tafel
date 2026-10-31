@@ -15,13 +15,13 @@ import { isExh, exhLevel, exhSummary, exhEd, exhMod, SUR, condName } from "../ru
 import { term } from "../i18n/term.js";
 import * as R from "../rules/combat.js";
 import { ORD, pickList, splitSpells, edFor, sheetEd } from "../rules/spells.js";
-import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, rollText, saveBonus, saveKnown, targetMode, drText, drKind, DR_LBL, saveAdv } from "../rules/aoe.js";
+import { DTYPES, ABS, MODE_LBL, clampDmg, pickFor, aoeOutcome, saveBonus, saveKnown, targetMode, drText, drKind, DR_LBL, saveAdv } from "../rules/aoe.js";
 import { spellItem } from "../data/spells.js";
 import { diceify, syncSB, monCard, isPhone, edTag as monEdTag } from "./statblock.js";
 import { monsterActions, dmgKey, useful, isSaveAoe, rcIndex, atkResult, atkDamage, atkAdv, withAdv, atkMods } from "../rules/attacks.js";
 import { sgn } from "../rules/dice.js";
 import { diceHtml } from "../dice/view.js";
-import { fromAtk, fromDmg } from "./rolls.js";
+import { fromAtk, fromDmg, fromSaveAs } from "./rolls.js";
 import { laList, laStatus, laOptions, NO_ACT } from "../rules/legendary.js";
 import { defRows } from "../rules/statform.js";
 import { hasUF, ufDc, ufNeed, ufInfo, riderWhat, riderFor, parryOf, canParry } from "../rules/monrules.js";
@@ -70,7 +70,7 @@ export const ui = {
   aoeLast: { type: "", ab: "DEX", dc: "", tab: "dmg" }, // laatst gebruikte type/save/DC/tab (bijv. dezelfde breath weapon)
   atk: null,           // { by, n, label, bo, key, adv, tid, r, parts, modes, force } = aanvalspaneel open (to-hit-knop)
   atkAdv: null,        // { by, v }: advantage/disadvantage blijft staan voor de volgende aanval van dezelfde aanvaller
-  initDraft: null,     // { v: { id: tekst }, act: id, fresh, rolls: { id: tekst } } = initiative-paneel bij Start gevecht
+  initDraft: null,     // { v: { id: tekst }, act: id, fresh, rolls: { id: worp (worpformaat, WP81) } } = initiative-paneel bij Start gevecht
   atkPrev: null,       // { by, id }: vorige doel van deze aanvaller (bovenaan in de lijst)
   edit: null,          // { id, name, ac, max, init } = concept in het bewerkpaneel (⋯)
   effWho: null,        // { id, i } = preset met concentratie wacht op "Wie cast?"
@@ -1086,6 +1086,8 @@ const SAVES0 = [["fail", "init.sv.fail"], ["none", "init.aoe.ok0"]]; // save-act
 /** Uitkomst van een geslaagde save in dit paneel */
 export const okSave = (a) => (a && a.half === false ? "none" : "half");
 
+/** WP81: gerolde save per doel als compacte worp (één regel); log en meldingen houden rollText */
+export const saveHtml = (x, ab, dc, why) => diceHtml(fromSaveAs(x, ab, dc, why), { compact: true });
 /** RE11/RE16: "adv (Rage)" / "dis (Exhaustion 3)" bij een save, vóór het rollen (spelers rollen zelf) */
 const advHint = (c, ab) => { const v = saveAdv(c, ab); return v.v ? `${v.v > 0 ? "adv" : "dis"} (${esc(v.why)})` : ""; };
 
@@ -1094,7 +1096,7 @@ function aoeRow(a, c, p, o, n) {
   const end = !n ? "" : o.res ? ` · <b class="bad">${esc(o.res)}</b>` : c.hp > 0 ? ` · ${n0(c.hp)} → ${n0(o.hp)} HP` : "";
   const mods = p.roll ? [] : saveMods(c, a.ab);
   const info = [
-    p.roll ? `${esc(a.ab)} save ${esc(rollText(p.roll, dc))}` : mods.length ? esc(t("init.aoe.mods", { mods: modsText(mods) })) : "",
+    p.roll ? saveHtml(p.roll, a.ab, dc) : mods.length ? esc(t("init.aoe.mods", { mods: modsText(mods) })) : "",
     p.roll ? "" : advHint(c, a.ab),
     p.auto && p.mode !== 1 && a.type ? esc(`${t(MODE_LBL[p.mode])} (${p.def && p.def.eff ? "Rage" : c.kind === "pc" ? t("init.aoe.saved") : t("init.aoe.sb")})`) : "",
     p.auto && p.def.cond ? esc(t("init.aoe.note", { what: p.def.cond })) : "",
@@ -1200,7 +1202,7 @@ export function paintAoe() {
   const src = $("#a-src");
   src.hidden = !a.roll;
   const edited = a.rtot != null && clampDmg(a.dmg) !== a.rtot ? ` · ${t("init.aoe.edited", { n: a.rtot })}` : "";
-  if (a.roll) src.innerHTML = `${esc(a.roll + edited)} <button type="button" class="link" data-ao="reroll">${esc(t("init.aoe.reroll"))}</button>${a.extra ? `<br>${esc(t("init.aoe.extra", { what: a.extra }))}` : ""}${a.alt ? `<br>${esc(t("init.aoe.alt", { type: a.alt }))}` : ""}${a.used ? `<br><b class="bad">${esc(t("init.aoe.notRc", { name: a.act }))}</b>` : ""}`;
+  if (a.roll) src.innerHTML = `${a.dr ? `${diceHtml(a.dr, { compact: true })}${esc(edited)}` : esc(a.roll + edited)} <button type="button" class="link" data-ao="reroll">${esc(t("init.aoe.reroll"))}</button>${a.extra ? `<br>${esc(t("init.aoe.extra", { what: a.extra }))}` : ""}${a.alt ? `<br>${esc(t("init.aoe.alt", { type: a.alt }))}` : ""}${a.used ? `<br><b class="bad">${esc(t("init.aoe.notRc", { name: a.act }))}</b>` : ""}`;
   const L = aoeTargets(a.src), n = clampDmg(a.dmg);
   const rows = L.map((c) => { const p = aoePick(a, c); return { c, p, o: p.sel && n ? aoeOutcome(c, p, n) : { dealt: 0, steps: [], res: "", hp: c.hp } }; });
   const sel = rows.filter((x) => x.p.sel);
@@ -1246,7 +1248,7 @@ function spellRow(a, sp, caster, c, p) {
   const res = !p.sel ? "" : p.immune ? `<b class="sres zero">${esc(t("init.sp.immune"))}</b>` : p.ok || p.lr ? `<b class="sres zero">${esc(t("init.sp.noEff"))}</b>`
     : `<b class="sres">${esc(sp.eff || sp.conds.join(" + "))}</b>`;
   const mods = p.roll ? [] : sp.ab ? saveMods(c, sp.ab) : [];
-  const info = p.roll ? `${esc(sp.ab)} save ${esc(rollText(p.roll, dc))}` : [mods.length ? esc(t("init.aoe.mods", { mods: modsText(mods) })) : "", sp.ab ? advHint(c, sp.ab) : ""].filter(Boolean).join(" · ");
+  const info = p.roll ? saveHtml(p.roll, sp.ab, dc) : [mods.length ? esc(t("init.aoe.mods", { mods: modsText(mods) })) : "", sp.ab ? advHint(c, sp.ab) : ""].filter(Boolean).join(" · ");
   const lrLeft = c.lr ? n0(c.lr.left) : 0;
   const lrBtn = p.lr ? `<span class="hint">${esc(t("init.aoe.lrOk"))}</span>`
     : sp.ab && !p.ok && !p.immune && lrLeft > 0 ? `<button type="button" class="link" data-ao="slr" data-id="${id}">${esc(t("init.aoe.lrUse", { n: lrLeft }))}</button>` : "";
@@ -1400,7 +1402,7 @@ function riderRow(x, c, ri) {
   return `<div class="xrider">${fix}<p class="qlbl">${head}</p>${roll}
     <div class="xrow">${canRoll ? `<button type="button" class="btn small" data-xa="rroll" aria-label="${esc(t("init.sv.rollAria", { name: c.name, ab: rd.ab, dc: rd.dc }))}">${esc(t("init.sv.roll", { b: sgn(svBonus(c, rd.ab)) }))}</button>` : ""}
     <div class="seg2 sm" role="group" aria-label="Save ${esc(c.name)}">${[["fail", "init.sv.fail"], ["ok", "init.sv.ok"], ...(rd.only ? [["na", "init.atk.notApp"]] : [])].map(([v, l]) => `<button type="button" data-xa="rs" data-v="${v}" aria-pressed="${x.rs === v}">${esc(t(l))}</button>`).join("")}</div></div>
-    ${x.rx ? `<p class="hint">${esc(`${rd.ab} ${rollText(x.rx, rd.dc)}`)}</p>` : ""}${only}</div>`;
+    ${x.rx ? `<p class="hint">${saveHtml(x.rx, rd.ab, rd.dc)}</p>` : ""}${only}</div>`;
 }
 
 /** Effectieve worp tegen dit doel: Auto = advantage/disadvantage uit condities (atkAdv), anders de handmatige stand */
@@ -1543,7 +1545,7 @@ export function paintInit() {
       <div class="isur"><span id="i-sur">${esc(t("init.card.sur"))}</span><div class="seg2" role="group" aria-labelledby="i-sur">${[["none", "init.aoe.selNone"], ["mon", "init.aoe.selMons"], ["pc", "init.aoe.selPcs"]].map(([k, l]) => `<button type="button" data-ia="sur" data-v="${k}" aria-pressed="${(x.sur || "none") === k}" ${k === "mon" && !mons ? "disabled" : ""}>${esc(t(l))}</button>`).join("")}</div></div>
       <p class="hint isurh" id="i-surh">${esc(t(SUR_HINT[rulesOf(app.S) === "2024" ? 1 : 0][(x.sur || "none") === "none" ? 0 : 1]))}</p>${percLine()}
       <div class="ilist">${L.map((c) => `<div class="ir ${c.id === x.act ? "act" : ""}">
-        <button type="button" class="irn" data-ia="sel" data-id="${esc(c.id)}" aria-pressed="${c.id === x.act}" aria-label="${esc(t("init.ini.rowAria", { name: c.name, v: x.v[c.id] || t("init.ini.empty") }))}"><span>${esc(c.name)}</span>${x.rolls[c.id] ? `<small>${esc(x.rolls[c.id])}</small>` : ""}</button>
+        <button type="button" class="irn" data-ia="sel" data-id="${esc(c.id)}" aria-pressed="${c.id === x.act}" aria-label="${esc(t("init.ini.rowAria", { name: c.name, v: x.v[c.id] || t("init.ini.empty") }))}"><span>${esc(c.name)}</span>${x.rolls[c.id] ? `<small>${diceHtml(x.rolls[c.id], { compact: true })}</small>` : ""}</button>
         <b class="iv" aria-hidden="true">${x.v[c.id] !== "" && x.v[c.id] != null ? esc(x.v[c.id]) : "—"}</b>
         <button type="button" class="btn small" data-ia="roll" data-id="${esc(c.id)}" aria-label="${esc(t("init.ini.rollAria", { name: c.name }))}">${esc(t("init.pc.roll"))}</button></div>`).join("")}</div>
       <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button type="button" data-ia="d" data-v="${n}">${n}</button>`).join("")}<button type="button" data-ia="back" aria-label="${esc(t("init.card.padBack"))}">⌫</button><button type="button" data-ia="d" data-v="0">0</button><button type="button" data-ia="clear" aria-label="${esc(t("init.ini.clear"))}">C</button></div>

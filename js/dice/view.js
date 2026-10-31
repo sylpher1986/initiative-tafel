@@ -28,7 +28,7 @@ function natAt(r, g) {
   return k.length === 1 ? k[0] : -1;
 }
 
-function groupHtml(r, g) {
+function groupHtml(r, g, noLbl = false) {
   const v = g.vals, k = new Set(kept(g)), at = natAt(r, g), f = natFlags(r);
   const dice = v.map((x, i) => {
     if (!k.has(i)) return `<s class="drd no">${num(x)}</s>`;
@@ -37,7 +37,31 @@ function groupHtml(r, g) {
   }).join("");
   const x = xs(g);
   const crit = x.length ? `<span class="drc"><span class="drcw">${esc(t("dice.crit"))}</span>${x.map((y) => `<span class="drd">${num(y)}</span>`).join("")}</span>` : "";
-  return `<span class="drg">${g.s === -1 ? "−" : ""}<span class="drl">${gLbl(g)}</span>${dice}</span>${crit}`;
+  return `<span class="drg">${g.s === -1 ? "−" : ""}${noLbl ? "" : `<span class="drl">${gLbl(g)}</span>`}${dice}</span>${crit}`;
+}
+
+/** Som van de modifiers (vast + gerolde modifier-stenen), zoals total() in roll.js */
+const mSum = (m) => (okNum(m.b) ? m.b : okNum(m.die) && m.die && okNum(m.v) ? Math.sign(m.die) * m.v : 0);
+
+/**
+ * Compacte variant (WP81): één regel voor lange lijsten (AoE per doel), het initiative-paneel en meldingen.
+ * Geen groepslabel bij alleen een d20, modifiers opgeteld met hun namen klein erachter (volledig in het aria-label),
+ * totaal inline en ✓/✗ als tekst. toast: kleuren op de --toast-*-tokens.
+ */
+function compactHtml(r, opts) {
+  const one = r.g.length === 1 && r.g[0].die === 20 && r.g[0].s !== -1;
+  const names = r.m.map((m) => m.n).filter(Boolean);
+  const mods = r.m.length ? `<span class="drm"><b>${sgn(r.m.reduce((s, m) => s + mSum(m), 0))}</b>${names.length ? `<span class="drmn">${esc(names.join(", "))}</span>` : ""}</span>` : "";
+  const h = opts.head && opts.head.txt ? `<span class="drh${opts.head.cls === "ok" || opts.head.cls === "bad" ? " " + opts.head.cls : ""}">${esc(opts.head.txt)}</span>` : "";
+  const ok = r.ok === true ? `<span class="drk ok">✓</span>` : r.ok === false ? `<span class="drk bad">✗</span>` : "";
+  // één tellende steen zonder modifiers en crit-dice: "= 15" herhaalt alleen de steen (death save)
+  // alleen een vaste waarde zonder naam (vaste schade "28"): alleen het getal, geen "+28 = 28"
+  if (!r.g.length && r.m.length === 1 && !r.m[0].n && okNum(r.m[0].b) && r.m[0].b === r.tot)
+    return `<span class="droll cp${opts.toast ? " drts" : ""}" role="img" aria-label="${esc(diceText(r, opts))}">${r.label ? `<span class="drl drlab">${esc(r.label)}</span>` : ""}${h}<span class="drq"><b class="drnum">${num(r.tot)}</b>${ok}</span></span>`;
+  const bare = !r.m.length && r.g.length === 1 && !xs(r.g[0]).length && r.g[0].s !== -1 && kept(r.g[0]).length === 1 && r.g[0].vals[kept(r.g[0])[0]] === r.tot;
+  return `<span class="droll cp${opts.toast ? " drts" : ""}" role="img" aria-label="${esc(diceText(r, opts))}">`
+    + `${r.label ? `<span class="drl drlab">${esc(r.label)}</span>` : ""}${r.g.map((g) => groupHtml(r, g, one)).join("")}${mods}${h}`
+    + `<span class="drq">${bare ? "" : `=<b class="drnum">${okNum(r.tot) ? num(r.tot) : "?"}</b>`}${ok}</span></span>`;
 }
 
 function modHtml(m) {
@@ -49,10 +73,12 @@ function modHtml(m) {
 
 /**
  * Worp → HTML. opts: { head: { txt, cls: "ok"|"bad" } (uitslagwoord van de tool, boven het totaal), sub (tekst onder het totaal
- * in plaats van "vs AC 16", bijv. een damage type), sm (kleiner totaal, bijv. schadedelen) }. Alles via esc(); onbekende velden genegeerd.
+ * in plaats van "vs AC 16", bijv. een damage type), sm (kleiner totaal, bijv. schadedelen), compact (één regel, WP81),
+ * toast (bij compact: in een melding) }. Alles via esc(); onbekende velden genegeerd.
  */
 export function diceHtml(r, opts) {
   r = norm(r); opts = opts || {};
+  if (opts.compact) return compactHtml(r, opts);
   const terms = [
     r.label ? `<span class="drl drlab">${esc(r.label)}</span>` : "",
     ...r.g.map((g) => groupHtml(r, g)),
@@ -81,6 +107,8 @@ export function diceText(r, opts) {
     else if (okNum(m.die) && m.die) out.push(`${n}${m.die < 0 ? "−" : ""}d${Math.abs(m.die)} ${okNum(m.v) ? m.v : "?"}`);
   }
   const sub = opts.sub != null && opts.sub !== "" ? ` ${opts.sub}` : r.vs && okNum(r.vs.n) ? ` ${t("dice.vsSr", { k: r.vs.k, n: r.vs.n })}` : "";
-  out.push(`${t("dice.total")} ${okNum(r.tot) ? num(r.tot) : "?"}${sub}`);
+  // compact zonder uitslagwoord: ✓/✗ staat alleen als teken op het scherm, dus hier voluit
+  const ok = opts.compact && !(opts.head && opts.head.txt) && typeof r.ok === "boolean" ? `, ${t(r.ok ? "dice.okSr" : "dice.failSr")}` : "";
+  out.push(`${t("dice.total")} ${okNum(r.tot) ? num(r.tot) : "?"}${sub}${ok}`);
   return `${opts.head && opts.head.txt ? `${opts.head.txt}: ` : ""}${out.join("; ")}`;
 }

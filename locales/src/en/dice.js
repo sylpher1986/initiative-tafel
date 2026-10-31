@@ -10,4 +10,6 @@ export default {
   "dice.sum": "Total", // somregel onder meerdere schadedelen
   "dice.vs": "vs {k} {n}", // op het scherm; k = AC of DC (afkortingen, taalneutraal)
   "dice.vsSr": "vs {k} {n}", // schermlezer (NL: "tegen", "vs" klinkt als "vee es")
+  "dice.okSr": "success", // schermlezer, achter het totaal in de compacte weergave (op het scherm ✓)
+  "dice.failSr": "failure", // idem (op het scherm ✗)
 };

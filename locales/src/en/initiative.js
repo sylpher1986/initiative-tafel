@@ -517,6 +517,7 @@ export default {
   "init.sv.roll": "Roll {b}", // b = +4
   "init.sv.okAria": "{name}: {ab} save succeeded",
   "init.sv.ok": "Success", // save
+  "init.sv.lbl": "{ab} save", // label boven een gerolde save in de compacte worpweergave (WP81); ab = DEX, WIS …
   "init.sv.failAria": "{name}: {ab} save failed",
   "init.sv.fail": "Fail", // save
   "init.sv.expires": "expires on Next",
@@ -785,7 +786,6 @@ export default {
   "init.keys.hint": "Next and Prev work in Combat, when no panel is open and not in an input field.",
   "init.card.dsMini": "Death saves: {s} succeeded, {f} failed",
   "init.sb.crit": "critical!", // losse worp met een natuurlijke 20
-  "init.sb.fumble": "nat 1", // losse worp met een natuurlijke 1
   "init.sb.pinTip": "Pin column: a turn change won't change it",
   "init.sb.pinned": "Pinned",
   "init.sb.pin": "Pin",

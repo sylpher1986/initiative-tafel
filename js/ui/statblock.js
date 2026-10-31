@@ -5,6 +5,8 @@ import { findMon, edTagOf, monEd } from "../data/monsters.js";
 import { cleanEd, rulesOf } from "../rules/edition.js";
 import { app } from "../state.js";
 import { rollExpr, mod, sgn } from "../rules/dice.js";
+import { diceHtml } from "../dice/view.js";
+import { fromExpr } from "./rolls.js";
 import { ORD, legInfo, castInfo } from "../rules/spells.js";
 import { rollDmg, parseAction, monsterActions } from "../rules/attacks.js";
 import { sortOrder, readAhead } from "../rules/turns.js";
@@ -40,10 +42,10 @@ export const linkSpells = (txt, atk) => String(txt).split("\n").map((line) =>
 export function doRoll(expr, label, isHit) {
   const r = rollExpr(expr);
   if (!r) return;
-  let extra = "";
-  if (isHit && r.rolls[0] === 20) extra = ` <span class="crit">${esc(t("init.sb.crit"))}</span>`;
-  if (isHit && r.rolls[0] === 1) extra = ` <span class="fumble">${esc(t("init.sb.fumble"))}</span>`;
-  toastHtml(`${label ? esc(label) + ": " : ""}${esc(expr)} → [${r.rolls.join(", ")}]${r.mod ? ` ${sgn(r.mod)}` : ""} = <b>${r.total}</b>${extra}`);
+  // WP81: gedeelde compacte weergave (nat 20/nat 1 markeert die zelf); bij een to-hit nog "kritiek!" erachter
+  const w = fromExpr(expr, r.rolls, r.total);
+  const extra = isHit && r.rolls[0] === 20 ? ` <span class="crit">${esc(t("init.sb.crit"))}</span>` : "";
+  toastHtml(`${label ? esc(label) + ": " : ""}${w ? diceHtml(w, { compact: true, toast: true }) : `${esc(expr)} → [${r.rolls.join(", ")}]${r.mod ? ` ${sgn(r.mod)}` : ""} = <b>${r.total}</b>`}${extra}`);
 }
 
 const headBtns = () => `<div class="sbbtns"><button class="btn small sbpin" id="sbpin" aria-pressed="${sb.pin}" title="${esc(t("init.sb.pinTip"))}">${esc(t(sb.pin ? "init.sb.pinned" : "init.sb.pin"))}</button><button class="btn small sbbig" id="sbbig" aria-pressed="false">${esc(t("init.sb.big"))}</button><button class="btn small closebtn" id="sbclose">${esc(t("common.close"))}</button></div>`;

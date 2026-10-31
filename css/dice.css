@@ -27,3 +27,28 @@
 .drv{font-size:.78rem;color:var(--muted)}
 .drsum{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);margin:2px 0 0;padding-top:6px;font-size:.9rem;color:var(--muted)}
 .drsum b{color:var(--fg);font-size:1.05rem}
+/* Compact (WP81): één regel, geen groepslabel bij alleen een d20, modifiers opgeteld, totaal inline met ✓/✗ als tekst. Blokjes 22 px. */
+.droll.cp{display:inline-flex;flex-wrap:wrap;gap:2px 6px;align-items:center;padding:0;vertical-align:middle;max-width:100%}
+.droll.cp .drd{min-width:22px;height:22px;font-size:.85rem}
+.droll.cp .drg,.droll.cp .drm,.droll.cp .drc,.droll.cp .drq,.droll.cp .drd{display:inline-flex;overflow:visible}
+.droll.cp .drl,.droll.cp .drmn,.droll.cp .drn,.droll.cp .drk,.droll.cp .drh,.droll.cp .drcw{display:inline;overflow:visible}
+/* ↑ ook binnen een container die zijn spans als blok zet (initiative-paneel: .irn span) */
+.droll.cp .drg{flex:0 0 auto} /* groep niet samendrukken in een smalle kolom (initiative-paneel); lange groepen breken via max-width */
+.droll.cp .drnum{font-size:1.05rem;line-height:1.2}
+.droll.cp .drm b{font-size:.9rem}
+.drmn{margin-left:4px;font-size:.78rem}
+.drq{display:inline-flex;gap:4px;align-items:baseline;white-space:nowrap;color:var(--muted)}
+.drq .drnum{color:var(--fg)}
+.drk{font-weight:700}
+.drk.ok{color:var(--good)}.drk.bad{color:var(--bad)}
+/* In een melding (--toast-*): eigen vlak, dus eigen tinten; telt niet blijft doorgestreept + gestippeld */
+.drts .drl,.drts .drm,.drts .drq,.drts .drn,.drts .drd.no{color:var(--toast-fg)}
+.drts .drd{background:transparent;border-color:var(--toast-fg);color:var(--toast-fg)}
+.drts .drd.no{border-color:var(--toast-fg)}
+.drts .drd.n20{background:var(--toast-fg);border-color:var(--toast-fg);color:var(--toast-bg)}
+.drts .drd.n1{background:transparent;border-color:var(--t-bad);color:var(--t-bad)}
+.drts .drn.bad,.drts .drcw,.drts .drk.bad,.drts .drh.bad{color:var(--t-bad)}
+.drts .drk.ok,.drts .drh.ok{color:var(--t-good)}
+.drts .drm b,.drts .drq .drnum{color:var(--toast-fg)}
+.drts .drm b{font-size:.95rem}
+.drts .drq .drnum{font-size:1.25rem}

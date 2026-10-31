@@ -1,7 +1,8 @@
 // G7 (WP79): adapters van Initiative-worpen naar het gedeelde worpformaat (js/dice/roll.js). Puur, geen DOM.
 // js/rules/ blijft ongewijzigd: de regels leveren tot en ok, de adapters zetten alleen om. Niet opslaan of exporteren.
-import { HD_RE } from "../dice/roll.js";
-import { atkResult } from "../rules/attacks.js";
+import { HD_RE, toRoll, d20 } from "../dice/roll.js";
+import { t } from "../i18n/boot.js";
+import { atkResult, actionAoe, rollDmg, partsKey } from "../rules/attacks.js";
 import { initThrow } from "../rules/turns.js";
 
 const keepOf = (adv) => (adv > 0 ? "high" : adv < 0 ? "low" : "all");
@@ -63,4 +64,42 @@ export function fromInit(dd, bo, em = null) {
 /** Death save: één d20, 10+ geslaagd (nat 20 en nat 1 markeert de weergave; de gevolgen staan in dsResult) */
 export function fromDs(r) {
   return { g: [d20g([r], 0)], m: [], tot: r, nat: r, adv: 0, vs: { k: "DC", n: 10 }, ok: r >= 10 };
+}
+
+/* ---------- WP81: uitrol naar de overige worpen ---------- */
+
+/**
+ * Save met label voor de compacte weergave: "DEX save", bij twee d20's met de reden erachter ("DEX save · adv (Rage)",
+ * zoals de hint vóór het rollen). why = reden (standaard x.aw van rollSave); "" = alleen "adv"/"dis".
+ */
+export function fromSaveAs(x, ab, dc, why = x.aw) {
+  const note = x.r2 != null ? `${x.av < 0 ? "dis" : "adv"}${why ? ` (${why})` : ""}` : "";
+  return { ...fromSave(x, dc), label: `${t("init.sv.lbl", { ab })}${note ? ` · ${note}` : ""}` };
+}
+
+/**
+ * Uitdrukking plus al gerolde stenen (rollExpr, rollDice: { rolls }) → worp; tot = de uitkomst van de tool (bijv. HP
+ * minstens 1, schade geklemd op 0..999). null als uitdrukking en stenen niet kloppen (dan toont de aanroeper de tekst).
+ */
+export const fromExpr = (e, rolls, tot, label) => toRoll(e, rolls || [], { tot, label });
+
+/** Initiative-d20('s) via de gedeelde module: twee bij disadvantage (surprise 2024), anders één */
+export const initDice = (dis, rng = Math.random) => d20({ adv: dis ? -1 : 0 }, rng).g[0].vals;
+/** Eén d20 via de gedeelde module (death save, initiative bij toevoegen) */
+export const oneD20 = (rng = Math.random) => d20({}, rng).g[0].vals[0];
+
+/**
+ * Save-actie voor het AoE-paneel (actionAoe) plus dr = dezelfde worp in het worpformaat (alleen de delen van het eerste
+ * damage type, zoals de schade die actionAoe invult). Eerst rollen met rollDmg, dan die stenen aan actionAoe teruggeven,
+ * zodat tekst (log) en weergave dezelfde worp tonen; js/rules blijft ongewijzigd. null zoals actionAoe.
+ */
+export function aoeAct(act, roll, types = []) {
+  const rec = act && Array.isArray(act.dmg) && act.dmg.length ? rollDmg(partsKey(act.dmg), roll) : null;
+  if (!rec) return actionAoe(act, roll, types);
+  const q = rec.parts.filter((p) => !/^\d+$/.test(p.e)); // rollDmg rolt alleen niet-vaste delen, in deze volgorde
+  let i = 0;
+  const x = actionAoe(act, () => { const p = q[i++]; return p ? { rolls: p.rolls, mod: p.mod, total: p.total } : null; }, types);
+  if (!x) return x;
+  const t0 = rec.parts[0].type;
+  return { ...x, dr: { ...fromDmg(rec.parts.filter((p) => p.type === t0)), tot: x.dmg } };
 }

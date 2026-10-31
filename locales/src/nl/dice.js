@@ -8,4 +8,6 @@ export default {
   "dice.sum": "Totaal",
   "dice.vs": "vs {k} {n}",
   "dice.vsSr": "tegen {k} {n}",
+  "dice.okSr": "geslaagd",
+  "dice.failSr": "gefaald",
 };

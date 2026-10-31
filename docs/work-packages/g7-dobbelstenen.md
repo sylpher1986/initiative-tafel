@@ -1,6 +1,6 @@
 # G7 · Dobbelstenen zichtbaar maken (gedeelde module)
 
-Werkpakketten WP81–WP83; het fundament (WP79: `js/dice/roll.js`, adapters `js/ui/rolls.js`) en de weergave (WP80: `js/dice/view.js`, `css/dice.css`, aanvalspaneel) staan er. Eerste gebruiker is Initiative; de module is vanaf het begin gedeeld zodat Innhabitants en andere Kev’s Inn-tools (G5) hem kunnen hergebruiken zonder hem opnieuw te bouwen. Architectuur en besluiten: `docs/DECISIONS.md` → "Techniek" (bullet **Gedeelde dobbelsteenmodule (G7)**).
+Werkpakketten WP82–WP83; het fundament (WP79: `js/dice/roll.js`, adapters `js/ui/rolls.js`), de weergave (WP80: `js/dice/view.js`, `css/dice.css`, aanvalspaneel) en de uitrol naar de overige worpen (WP81: compacte variant, saves/AoE, initiative, death saves, HP, statblock-melding) staan er. Eerste gebruiker is Initiative; de module is vanaf het begin gedeeld zodat Innhabitants en andere Kev’s Inn-tools (G5) hem kunnen hergebruiken zonder hem opnieuw te bouwen. Architectuur en besluiten: `docs/DECISIONS.md` → "Techniek" (bullet **Gedeelde dobbelsteenmodule (G7)**).
 
 ## Inventaris (31-10-2026)
 - `js/rules/dice.js`: alleen `d`, `rollExpr`, `HD_RE`, `avgExpr` en de hulpjes `mod`, `sgn`, `uid`.
@@ -39,18 +39,6 @@ Nieuwe velden zijn altijd optioneel; de weergave negeert wat ze niet kent. Een t
 
 ---
 
-## WP81 · Uitrol naar de overige worpen · M — Gepland
-- Roadmap: G7 stap 1.
-- Doel en scope: dezelfde weergave in saves/AoE (`rollSave`, `actionAoe`, schade-spells), initiative-paneel (`initThrow`, party-rol), death saves, HP rollen bij toevoegen, en de toast na een statblock-tik (`data-roll`). Buiten scope: log en spelersscherm.
-- Functionele eisen: elke worp toont stenen, welke telt, modifiers met naam (Bless/Bane-d4, cover, Exhaustion 2024), totaal en ✓/✗ tegen de DC waar die bekend is. Lange lijsten (AoE met veel doelen) blijven compact: per doel één regel.
-- Technische uitwerking: de directe `d(20)`-aanroepen in `js/ui/actions.js` lopen via `js/dice/roll.js` (`d20(…)`), resultaat via de adapters in `js/ui/rolls.js`; tekst voor log en meldingen ongewijzigd (`rollText`, `initThrow().txt`).
-- Relevante besluiten: DECISIONS → "Initiative en beurten", "Gevecht: kaarten en panelen", besluiten G1 (Exhaustion/surprise per editie).
-- Afhankelijk van: WP80 (af, 2.19.0).
-- Acceptatiecriteria: adapters per worpsoort getest; G1-tests (`wp55`, `room` "G1") ongewijzigd groen; browsercheck-scenario `wp81` (AoE met save + Bless, initiative-paneel met 2024-disadvantage, death save) plus de geraakte bestaande scenario's; `--lang=en`, `--i18n=xx`; vertaalagent bij nieuwe tekst.
-- Volgorde: na WP80.
-- Versie: Initiative x.y.z.
-- Aandachtspunten: het initiative-paneel heeft een eigen cijferpad; de weergave mag het niet wegduwen op 320 px. Compacte variant nog bouwen (UX-spec bij WP80): `diceHtml(r, { compact: true })`, één regel zonder groepslabel bij alleen een d20, modifiers opgeteld (volledig in het `aria-label`), totaal inline met ✓/✗ als tekst, blokjes 22 px; in toasts op `--toast-*`-tokens (contrast nog toevoegen).
-
 ## WP82 · Vrije dobbelsteenworp in Initiative · M — Gepland
 - Roadmap: G7 stap 1 (besluit Michiel 31-10-2026: meenemen).
 - Doel en scope: een vrije worp voor de DM aan tafel (bijv. `1d20+5`, `4d6kh3`, `8d6`, d20 met advantage), met dezelfde weergave. Buiten scope: worpen bewaren, delen met spelers, macro's.
@@ -58,7 +46,7 @@ Nieuwe velden zijn altijd optioneel; de weergave negeert wat ze niet kent. Een t
 - Technische uitwerking: paneel in een `.sheet-wrap` (rondleiding, sneltoetsen, meldingen); `parseExpr`/`dice` uit `js/dice/roll.js`; tekst `dice.*` (gedeeld) en de Initiative-knop onder `init.*`; invoerveld ≥ 16 px en zonder `inputmode="numeric"` (minteken).
 - **UX vóór het bouwen**: plek van de ingang (bijv. knop in de kopbalk vs. in het ⋯-menu vs. sneltoets) en indeling van het paneel, met mockup ter goedkeuring. Bewaakt: geen stippen of meldingen bij opstarten, tikdoelen ≥ 44 px, duimbereik.
 - Relevante besluiten: DECISIONS → "Techniek" (panelen, invoervelden, UI-toestand), "Modi en indeling".
-- Afhankelijk van: WP80 (weergave); kan parallel aan WP81.
+- Afhankelijk van: WP80 (weergave).
 - Acceptatiecriteria: parser- en rolltests (in `tests/dice.test.js`); paneel getest op ongeldige invoer (melding, geen fout in de console); `tests/tap.test.js` groen; browsercheck-scenario `wp82` op 320/360/390 licht/donker, `--lang=en`, `--i18n=xx`; rondleiding/sneltoetsen kennen het paneel; vertaalagent.
 - Volgorde: na WP80.
 - Versie: Initiative x.y.0.
@@ -71,7 +59,7 @@ Nieuwe velden zijn altijd optioneel; de weergave negeert wat ze niet kent. Een t
 - Technische uitwerking: `js/dice/pref.js` (`diceAnim()`, `setDiceAnim(on)`, localStorage-sleutel `kevs-dice-anim`, try/catch zoals `js/theme.js`); `js/dice/anim.js` (`animate(el)`: CSS-klassen op het element uit `diceHtml`, geen timers die de flow blokkeren); schakelaar in `js/ui/settings.js`. Standaard **aan** (G7-O1, Michiel 31-10-2026): zonder opgeslagen waarde geldt aan; `prefers-reduced-motion` schakelt hem altijd uit.
 - **UX vóór het bouwen**: twee animatievarianten naast elkaar (bijv. waarden die doortellen vs. steen die kantelt), duur en wat er gebeurt bij snel achter elkaar tikken.
 - Relevante besluiten: DECISIONS → "Techniek", "Huisstijl".
-- Afhankelijk van: WP80 (en bij voorkeur WP81/WP82, zodat alle worpen meedoen).
+- Afhankelijk van: WP80 (en bij voorkeur WP82, zodat ook de vrije worp meedoet).
 - Acceptatiecriteria: test op `pref.js` (zonder opgeslagen waarde = aan; onbruikbare localStorage → valt terug op aan zonder fout); test dat `animate` niets doet bij reduced motion of uit; browsercheck met de instelling aan en uit (geen JS-fouten, geen horizontaal scrollen, uitslag direct zichtbaar); volledige Initiative-regressie (x.y.0).
 - Volgorde: laatste.
 - Versie: Initiative x.y.0.

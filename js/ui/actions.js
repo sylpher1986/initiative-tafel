@@ -21,11 +21,13 @@ import { openCond, closeCond, condOpen, condSheetClick } from "./condinfo.js";
 import { showSB, showSheet, monCard, doRoll, doDmgRoll, closeSB, phone, toggleBigSB, togglePinSB, followTurn, wantSB, sbTop, previewSB } from "./statblock.js";
 import { findMon, parseMonsterFile, findKey, keyRef, withEdWord, loadSrd24, srd24Status } from "../data/monsters.js";
 import { parseStatText, foundText, hasStructure, withParsed } from "../data/statparse.js";
-import { d, sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
-import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant, setInit, durWords, saveWords, initBo, monInit, initModText, initThrow, surWho } from "../rules/turns.js";
+import { sgn, uid, rollExpr, HD_RE, avgExpr } from "../rules/dice.js";
+import { step, startCombat, stopCombat, clearMonsters, setInits, initPcs, makeDur, parseInit, isOut, sortOrder, setSurprise, toggleSurprise, rerollMonsters, removeCombatant, setInit, durWords, saveWords, initBo, monInit, surWho } from "../rules/turns.js";
 import * as R from "../rules/combat.js";
 import { applyAoe, saveBonus, clampDmg, newPick, rollSave, rollText, hasMagicRes, saveAdv, DTYPES, targetMode, drToggle, drKind, DR_LBL, cleanDr } from "../rules/aoe.js";
-import { monsterActions, actionAoe, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage, multiSeq, seqAfter } from "../rules/attacks.js";
+import { monsterActions, rcIndex, partsKey, rollAttack, rollDmgCrit, atkResult, atkWhy, atkDamage, multiSeq, seqAfter } from "../rules/attacks.js";
+import { diceHtml } from "../dice/view.js";
+import { fromInit, fromDs, fromExpr, fromSaveAs, initDice, oneD20, aoeAct } from "./rolls.js";
 import { ufNeed, ufApply, ufInfo, monSave, parseRider, applyRider, riderOutcome, parryOf, canParry, useParry } from "../rules/monrules.js";
 import { castInfo, legInfo, rcInfo, pickList, isConc, edFor, ORD } from "../rules/spells.js";
 import { setRulesEd, spellEd } from "./spellrules.js";
@@ -100,23 +102,25 @@ export function addMonsters(name, n, hpmode, initmode, silent, fixed = null, hid
   const nums = S.list.filter((c) => c.ref === name).map((c) => { const x = c.name.match(/ (\d+)$/); return x ? +x[1] : 1; });
   const next = nums.length ? Math.max(...nums) + 1 : 1;
   const set = initmode === "fixed" && Number.isFinite(fixed);
-  const group = initmode === "group" ? d(20) : null;
+  const group = initmode === "group" ? oneD20() : null;
   const grp = n > 1 && (group !== null || set) ? uid() : undefined; // groepsbeurt in de weergave (groupOf)
   const out = [];
   for (let i = 0; i < n; i++) {
-    const r = set ? undefined : group ?? d(20);
-    let hp = m.hp;
-    if (hpmode === "roll" && m.hd) { const x = rollExpr(m.hd); if (x) hp = Math.max(1, x.total); }
+    const r = set ? undefined : group ?? oneD20();
+    let hp = m.hp, hpr = null;
+    if (hpmode === "roll" && m.hd) { const x = rollExpr(m.hd); if (x) { hp = Math.max(1, x.total); hpr = fromExpr(m.hd, x.rolls, hp, "HP"); } }
     const label = n > 1 || nums.length ? `${m.n} ${next + i}` : m.n;
     // WP48: monInit = d20 + Initiative uit een 2024-statblock (initBonus), anders + Dex; tiebreak blijft Dex
     const c = { id: uid(), name: label, kind: "monster", ref: m.n, ...edField(ed), ...(grp ? { grp } : {}), ...(hidden ? { hidden: true } : {}), ...(anon ? { anon: nextAnon(S.list) } : {}), ...monInit(m, r, fixed), ac: parseInt(m.ac) || 10, hp, max: hp, cond: [], ...legInfo(m), rc: rcInfo(m), casting: castInfo(m) };
-    S.list.push(c); out.push(c);
+    S.list.push(c); out.push({ c, hpr });
     because(J([set ? M("log.w.initSet") : `d20 [${r}] ${sgn(initBo(c))}`, group !== null && n > 1 ? M("log.w.grp") : null, hpmode === "roll" && m.hd ? M("log.w.hpRoll", { hd: m.hd }) : null]), c.id);
   }
   if (!silent) {
     S.sample = false;
-    wantSB(out[out.length - 1].id); // zijkolom toont het net toegevoegde monster
-    toastHtml(out.map((c) => `${esc(c.name)}: ${c.roll === undefined ? "initiative" : `d20 [${c.roll}] ${sgn(initBo(c))} =`} <b>${c.init}</b>`).join("<br>") + (hidden ? `<br>${esc(t("init.mon.hidden"))}` : "") + (anon ? `<br>${esc(t("init.mon.anon"))}` : ""));
+    wantSB(out[out.length - 1].c.id); // zijkolom toont het net toegevoegde monster
+    // WP81: initiative- en HP-worp in de gedeelde compacte weergave, per monster één regel
+    const cp = (r) => diceHtml(r, { compact: true, toast: true });
+    toastHtml(out.map(({ c, hpr }) => `${esc(c.name)}: ${c.roll === undefined ? `initiative <b>${c.init}</b>` : cp(fromInit([c.roll], initBo(c)))}${hpr ? ` ${cp(hpr)}` : ""}`).join("<br>") + (hidden ? `<br>${esc(t("init.mon.hidden"))}` : "") + (anon ? `<br>${esc(t("init.mon.anon"))}` : ""));
   }
 }
 
@@ -290,7 +294,7 @@ const row = {
   sur(c) { const r = toggleSurprise(c, app.S, rulesOf(app.S)); if (!r) return false; apply(r); },
   dropconc(c) { apply(R.dropConc(c, M("log.w.ended"))); },
   topty(c) { const ex = app.party.find((m) => m.name.toLowerCase() === c.name.toLowerCase()); c.pid = ex ? ex.pid : uid(); toast(t("init.msg.toParty", { name: c.name })); },
-  "ds-roll": (c) => dsDone(c, d(20), true),
+  "ds-roll": (c) => dsDone(c, oneD20(), true),
   /* RE15: eigen worp via het cijferpad; pas bij een volledige worp één undo-stap met melding + Ongedaan */
   "ds-own"(c) { ui.dsPad = ui.dsPad && ui.dsPad.id === c.id ? null : { id: c.id, v: "" }; renderFocus(c, ui.dsPad ? '[data-a="ds-k"]:not([disabled])' : '[data-a="ds-own"]'); return false; },
   "ds-k"(c, b) {
@@ -332,7 +336,7 @@ function dsDone(c, r, byApp) {
   if (!f.why.length) { toastBad(t("init.msg.dsNone")); renderFocus(c, '[data-a="ds-own"]', ".khead"); return false; }
   addWhy(f.why);
   renderFocus(c, byApp ? '[data-a="ds-roll"]' : '[data-a="ds-own"]', ".khead");
-  toastHtml(`${esc(dsToast(c, r))} ${undoBtn()}`);
+  toastHtml(`${esc(dsToast(c, r))}${byApp ? ` ${diceHtml(fromDs(r), { compact: true, toast: true })}` : ""} ${undoBtn()}`); // WP81: gerolde worp erbij
   return false;
 }
 /** RE15: "Aria: 14, success (2/3)" / "nat 20, staat op met 1 HP" / "nat 1, twee failures (2/3)" */
@@ -1124,8 +1128,8 @@ export function bindForms() {
     if (pm && pm.lvl !== lvl) { pm.lvl = lvl; saveParty(); render(); }
   });
   $("#pc-roll").addEventListener("click", () => {
-    const b = pcBonus, r = d(20);
-    $("#pc-init").value = r + b; setErr("init", ""); toastHtml(`Initiative: d20 [${r}] ${sgn(b)} = <b>${r + b}</b>`);
+    const b = pcBonus, r = fromInit(initDice(false), b);
+    $("#pc-init").value = r.tot; setErr("init", ""); toastHtml(`Initiative: ${diceHtml(r, { compact: true, toast: true })}`);
   });
   $("#pc-bon").addEventListener("click", (e) => { const b = e.target.closest("[data-bon]"); if (b) stepBonus(+b.dataset.bon); });
   $("#pc-bon").addEventListener("keydown", (e) => { // pijltoetsen op de stepper (toetsenbord)
@@ -1339,11 +1343,12 @@ function svRoll(sid, adv = false, quiet = false) {
   const sa = saveAdv(c, s.ab, adv); // RE11/RE16: Exhaustion 3+ / Rage op STR
   const x = rollSave(svBonus(c, s.ab), sa.v, Math.random, saveMods(c, s.ab), adv && sa.why === "Magic Resistance" ? "" : sa.why);
   const ok = x.tot >= s.dc, txt = `${s.ab} ${rollText(x, s.dc)}`.replace(" (advantage: Magic Resistance)", " (advantage)");
-  return svDone(c, sid, ok, txt, txt, quiet, adv);
+  const dh = diceHtml(fromSaveAs(x, s.ab, s.dc, adv && sa.why === "Magic Resistance" ? "" : x.aw), { compact: true, toast: true }); // WP81
+  return svDone(c, sid, ok, txt, txt, quiet, adv, dh);
 }
 
 /** Uitslag verwerken, renderen en melden met Ongedaan (gefaald monster: Legendary Resistance / Advantage erbij) */
-function svDone(c, sid, ok, note, shown, quiet = false, adv = false) {
+function svDone(c, sid, ok, note, shown, quiet = false, adv = false, dh = "") {
   const s = (app.S.saves || []).find((x) => x.sid === sid);
   if (!s || !isValid(app.S, s)) return ""; // bijv. tweede concentration save nadat de eerste al faalde
   const was = c.hp, f = resolveSave(app.S, sid, ok, note, rulesOf(app.S)); // was vóór de rider-schade
@@ -1354,7 +1359,7 @@ function svDone(c, sid, ok, note, shown, quiet = false, adv = false) {
   const res = s.kind === "conc" ? t(ok ? "init.msg.svConcOk" : "init.msg.svConcFail")
     : s.kind === "rider" ? riderOutcome(s.rd, ok, was - c.hp) + concNote(f)
     : t(ok ? "init.msg.svGone" : "init.msg.svStays", { name: s.n });
-  const line = esc(`${c.name}: ${shown || t(ok ? "init.msg.svOk" : "init.msg.svFail", { ab: s.ab })} · ${res}`);
+  const line = dh ? `${esc(`${c.name}: `)}${dh}${esc(` · ${res}`)}` : esc(`${c.name}: ${shown || t(ok ? "init.msg.svOk" : "init.msg.svFail", { ab: s.ab })} · ${res}`); // dh = gerolde worp (WP81)
   if (quiet) return line;
   ui.svRetry = !ok && c.kind === "monster" ? { sid, id: c.id, step: stepNo() } : null;
   const extra = !ui.svRetry ? ""
@@ -1511,6 +1516,7 @@ function rollNow(a, e) {
   const r = rollDice(e);
   if (!r) return;
   a.dmg = String(r.tot); a.rtot = r.tot; a.roll = `${a.dsp ? a.dsp + " " : ""}${diceText(r)}`;
+  a.dr = fromExpr(r.e, r.rolls, r.tot, a.dsp || ""); // WP81: weergave; a.roll blijft de tekst voor het logboek
 }
 
 /** RE18: schade-spell kiezen (of null = weg): type, save, half en DC invullen, slot terug naar de standaard, meteen rollen */
@@ -1518,7 +1524,7 @@ function chooseDmg(a, sp, sameSpell = false) {
   const c = aoeCaster(a);
   a.dsp = sp ? sp.n : null; a.slot = null; a.dq = "";
   Object.values(a.t).forEach((t) => { t.roll = null; t.lr = false; }); // andere save of DC: oude worpen gelden niet meer
-  if (!sp) { a.half = undefined; a.extra = ""; a.alt = ""; a.roll = ""; a.rtot = null; return; }
+  if (!sp) { a.half = undefined; a.extra = ""; a.alt = ""; a.roll = ""; a.dr = null; a.rtot = null; return; }
   if (DTYPES.includes(sp.type)) a.type = ui.aoeLast.type = sp.type;
   a.ab = ui.aoeLast.ab = sp.ab; a.half = sp.half;
   const dc = c ? casterDC(c, c.ref ? findMon(c.ref, c.ed) : null) : "";
@@ -1575,7 +1581,7 @@ export function bindAoe() {
     if (k === "save") aoeSet(a, id, { save: b.dataset.v, lr: false });
     if (k === "mode") aoeSet(a, id, { mode: +b.dataset.v });
     if (k === "lr") aoeSet(a, id, { save: okSave(a), lr: true });
-    if (k === "reroll") { const x = srcAoe(a); if (x) { a.dmg = String(x.dmg); a.roll = x.roll; a.extra = x.extra; $("#a-dmg").value = a.dmg; } }
+    if (k === "reroll") { const x = srcAoe(a); if (x) { a.dmg = String(x.dmg); a.roll = x.roll; a.dr = x.dr; a.extra = x.extra; $("#a-dmg").value = a.dmg; } }
     if (k === "all") aoeTargets(a.src).forEach((c) => aoeSet(a, c.id, { sel: !!b.dataset.v && c.kind === b.dataset.v }));
     if (k === "roll") {
       const dc = parseInt(a.dc);
@@ -1599,7 +1605,7 @@ export function bindAoe() {
 function srcAoe(a) {
   const c = app.S.list.find((x) => x.id === a.src), A = c && c.ref ? monsterActions(findMon(c.ref, c.ed)) : null;
   const act = A && [...A.main, ...A.other].find((x) => x.n === a.act);
-  return act ? actionAoe(act, (e) => rollExpr(e), DTYPES) : null;
+  return act ? aoeAct(act, (e) => rollExpr(e), DTYPES) : null; // WP81: met de worp (dr) voor de weergave
 }
 
 /** "DC 18 DEX · AoE" op een aanvalsregel: AoE-paneel met gerolde schade, type, save en DC; spelers aangevinkt */
@@ -1612,7 +1618,7 @@ function openActAoe(cid, name) {
   const ri = rcIndex(c.rc, name);
   ui.aoe = null; paintAoe(); // paneel opnieuw opbouwen met de titel van deze actie
   ui.sheet = null; ui.qadd = null; ui.la = null; ui.atk = null;
-  ui.aoe = Object.assign(a, { dmg: String(x.dmg), type: x.type, ab: x.ab, dc: String(x.dc), half: x.half, roll: x.roll, extra: x.extra,
+  ui.aoe = Object.assign(a, { dmg: String(x.dmg), type: x.type, ab: x.ab, dc: String(x.dc), half: x.half, roll: x.roll, dr: x.dr || null, extra: x.extra,
     title: `${name} · ${c.name}`, used: ri >= 0 && !c.rc[ri].ready });
   aoeTargets(a.src).forEach((t) => { if (t.kind === "pc") aoeSet(ui.aoe, t.id, { sel: true }); });
   render();
@@ -1882,8 +1888,8 @@ function initKey(k, v) {
   if (k === "roll") {
     const c = app.S.list.find((t) => t.id === v); if (!c) return;
     // WP50: Exhaustion 2024 op de initiativeworp; WP51: verraste speler in 2024 = disadvantage (twee d20's)
-    const sd = rulesOf(app.S) === "2024" && surWho(c, x.sur || "none"), ir = initThrow(sd ? [d(20), d(20)] : [d(20)], initBo(c), exhMod(c));
-    x.v[c.id] = String(ir.v); x.rolls[c.id] = ir.txt;
+    const sd = rulesOf(app.S) === "2024" && surWho(c, x.sur || "none"), ir = fromInit(initDice(sd), initBo(c), exhMod(c));
+    x.v[c.id] = String(ir.tot); x.rolls[c.id] = ir; // WP81: worp voor de weergave (UI-toestand, niet opgeslagen)
     x.act = c.id; initNext(x);
   }
   paintInit();
@@ -1958,7 +1964,7 @@ export function bindParty() {
   });
   panel.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
-    const rollFor = (m) => { const r = d(20), bo = initBo(m), em = exhMod(m), v = r + bo + (em ? em.b : 0); ui.partyInit[m.pid] = v; return `${esc(m.name)}: d20 [${r}] ${sgn(bo)}${esc(initModText(em))} = <b>${v}</b>`; }; // WP50
+    const rollFor = (m) => { const r = fromInit(initDice(false), initBo(m), exhMod(m)); ui.partyInit[m.pid] = r.tot; return `${esc(m.name)}: ${diceHtml(r, { compact: true, toast: true })}`; }; // WP50; WP81 gedeelde weergave
     const at = new Set(app.S.list.filter((c) => c.pid).map((c) => c.pid));
     if (b.dataset.pupd) { if (ui.pUpd?.st !== "busy") partyFetch(b.dataset.pupd); return; }
     if (b.dataset.pupdno) { ui.pUpd = null; pPaint(pLink(b.dataset.pupdno)); return; }

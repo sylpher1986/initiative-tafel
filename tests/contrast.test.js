@@ -39,7 +39,7 @@ const PAIRS = [
   ["fg", "mon-soft", TEXT, "monster-avatar/tag"], ["fg", "pc-soft", TEXT, "speler-avatar"],
   // WP39: "− Schade" en melding met eigen tokens (in donker geen ivoren vlak meer)
   ["dmg-fg", "dmg", TEXT, "Schade-knop"], ["dmg-line", "card", UI, "rand Schade-knop op kaart"],
-  ["toast-fg", "toast-bg", TEXT, "melding"], ["t-link", "toast-bg", TEXT, "knop op melding"], ["t-good", "toast-bg", TEXT, "crit op melding"], ["t-bad", "toast-bg", TEXT, "fumble/fout-icoon op melding"],
+  ["toast-fg", "toast-bg", TEXT, "melding"], ["t-link", "toast-bg", TEXT, "knop op melding"], ["t-good", "toast-bg", TEXT, "crit op melding"], ["t-bad", "toast-bg", TEXT, "nat 1/fout-icoon op melding"],
   ["toast-line", "bg", UI, "melding op pagina"],
   ["sb-ink", "surface", TEXT, "statblock"],
   // WP17: statblock op perkament (--sb-bg), deelnemerskaart --card, walnoot-kop spelersscherm
@@ -61,6 +61,11 @@ const PAIRS = [
   // G7 (WP80): worpweergave (css/dice.css) in het aanvalspaneel (--surface): blokje, telt niet, nat 20 (omgekeerd), nat 1 en "crit"
   ["fg", "sunk", TEXT, "waarde in een steenblokje"], ["line-strong", "surface", UI, "rand steenblokje"], ["muted", "surface", TEXT, "steen die niet telt, label, doel"],
   ["bg", "fg", TEXT, "nat 20-blokje"], ["bad", "bad-soft", TEXT, "nat 1-blokje"], ["bad", "surface", TEXT, "crit-woord en nat 1"], ["good", "surface", TEXT, "uitslag raak"],
+  // G7 (WP81): compacte worp in een melding (.drts): blokje en rand op het meldingsvlak, nat 20 omgekeerd, nat 1/✗ en ✓
+  ["toast-fg", "toast-bg", UI, "rand steenblokje in melding"], ["toast-bg", "toast-fg", TEXT, "nat 20-blokje in melding"],
+  ["t-bad", "toast-bg", UI, "rand nat 1-blokje in melding"], ["t-good", "toast-bg", TEXT, "✓ in melding"],
+  // compact in AoE-lijst en initiative-paneel (--sunk/--surface): ✓/✗
+  ["good", "sunk", TEXT, "✓ op verzonken vlak"], ["bad", "sunk", TEXT, "✗ op verzonken vlak"],
 ];
 // WP39: alleen in donker afgedwongen. In licht is de knoprand bewust decoratief (= --line, WP17: geen drukke lijst; het label draagt de knop),
 // en de melding ligt als walnoot-vlak al los van een licht paneel.

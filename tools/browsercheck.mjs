@@ -2038,6 +2038,75 @@ const SCEN = {
     if (!/^\d+ → \d+$/.test(sum)) throw new Error(`G7-O2: somregel "${sum}"`);
     await snap(page, "wp80", "resist");
   },
+  // WP81 (G7): compacte worp in AoE (save + Bless, per doel één regel, bron-worp), initiative-paneel met 2024-disadvantage
+  // en Exhaustion, death save en statblock-worp in een melding. Geen worp breder dan zijn regel. --shots=wp81.
+  async wp81(page) {
+    const over = (sel) => page.evaluate((s) => [...document.querySelectorAll(s)].some((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().right > innerWidth + 1), sel);
+    const aria = (sel) => page.evaluate((s) => [...document.querySelectorAll(s)].map((e) => e.getAttribute("aria-label")), sel);
+    // 1. initiative-paneel: regels 2024, spelers verrast (disadvantage), Exhaustion 2024 op de eerste speler
+    await SCEN.prep(page);
+    await page.evaluate(async () => {
+      const { app } = await import("/js/state.js"), { initPcs } = await import("/js/rules/turns.js"); app.S.rules = "2024";
+      const p = initPcs(app.S.list)[0]; p.eff = [...(p.eff || []), { n: "Exhaustion", x: 2, ed: "2024" }];
+    });
+    await tap(page, "#start"); await page.waitForSelector("#isheet .isheet");
+    await tap(page, '#isheet [data-ia="sur"][data-v="pc"]');
+    await page.locator('[data-ia="roll"]').first().tap();
+    const ir = await page.evaluate(() => { const e = document.querySelector("#isheet .ir .droll.cp"); return e && { d: e.querySelectorAll(".drd").length, no: e.querySelectorAll("s.drd.no").length, ex: /Exhaustion/.test(e.textContent) }; });
+    if (!ir || ir.d !== 2 || ir.no !== 1 || !ir.ex) throw new Error(`WP81 initiative-paneel: ${JSON.stringify(ir)}`);
+    if (await over("#isheet .ir")) throw new Error("WP81: initiative-rij breder dan het paneel");
+    if (!(await page.locator("#isheet .pad").isVisible())) throw new Error("WP81: cijferpad weggeduwd");
+    await snap(page, "wp81", "initp");
+    const n = await page.locator('[data-ia="roll"]').count();
+    for (let k = 1; k < n; k++) await page.locator('[data-ia="roll"]').nth(k).tap();
+    await tap(page, '[data-ia="go"]'); await page.waitForSelector("#next");
+    // 2. AoE: Bless op de monsters, 8d6 gerold, monsters rollen hun save (per doel één regel)
+    await page.evaluate(async () => { const { app } = await import("/js/state.js"); for (const m of app.S.list) if (m.kind === "monster") m.eff = [...(m.eff || []), { n: "Bless" }]; });
+    await tap(page, "#aoe"); await page.waitForSelector("#asheet .asheet");
+    await page.fill("#a-dice", "8d6"); await tap(page, '#asheet [data-ao="droll"]');
+    await page.waitForSelector("#a-src .droll.cp");
+    await page.fill("#a-dc", "15"); await page.locator("#a-dc").blur();
+    await tap(page, '#asheet [data-ao="all"][data-v="monster"]');
+    await tap(page, '#asheet [data-ao="roll"]');
+    await page.waitForSelector("#a-list .acalc .droll.cp");
+    const st = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("#a-list .acalc .droll.cp")];
+      return { n: L.length, src: document.querySelectorAll("#a-src .droll.cp .drd").length, ok: L.every((e) => e.querySelector(".drk")),
+        bless: L.every((e) => /Bless/.test(e.getAttribute("aria-label") || "")), lbl: L.every((e) => e.querySelector(".drlab")) };
+    });
+    if (st.n < 1 || st.src !== 8 || !st.ok || !st.lbl || !st.bless) throw new Error(`WP81 AoE: ${JSON.stringify(st)}`);
+    if ((await aria("#asheet .droll")).some((a) => !a || /⟦/.test(a))) throw new Error("WP81 AoE: aria-label");
+    if (await over("#asheet .droll")) throw new Error("WP81 AoE: worp breder dan de regel");
+    await snap(page, "wp81", "aoe");
+    await tap(page, '#asheet .shead [data-ao="close"]');
+    // 3. death save: speler op 0 HP, "Rol death save" → melding met de worp (toast-tokens)
+    const pid = await page.evaluate(async () => { const { app } = await import("/js/state.js"), { render } = await import("/js/ui/render.js"); const p = app.S.list.find((c) => c.kind === "pc"); p.hp = 0; p.ds = { s: 0, f: 0 }; render(); return p.id; });
+    const card = page.locator(`#order .c[data-id="${pid}"]`);
+    if (!(await card.evaluate((el) => el.classList.contains("open")))) await card.locator(".khead").tap();
+    await card.locator('[data-a="ds-roll"]').tap();
+    await page.waitForSelector(".toast .droll.cp.drts");
+    if (await over(".toast .droll")) throw new Error("WP81: worp in melding breder dan de melding");
+    await snap(page, "wp81", "ds");
+    // 4. save-actie van de kaart (statblock → AoE via aoeAct): Acid Breath 12d8 op 320 px
+    const did = await page.evaluate(async () => {
+      const A = await import("/js/ui/actions.js"), { app } = await import("/js/state.js"), { render } = await import("/js/ui/render.js");
+      A.addMonsters("Adult Black Dragon", 1, "avg", "roll", true); render(); return app.S.list[app.S.list.length - 1].id;
+    });
+    const dc = page.locator(`#order .c[data-id="${did}"]`);
+    if (!(await dc.evaluate((el) => el.classList.contains("open")))) await dc.locator(".khead").tap();
+    const fold2 = dc.locator('[data-a="atk-open"]').first(); if (await fold2.count()) await fold2.tap();
+    await dc.locator('[data-aoe="Acid Breath"]').tap();
+    await page.waitForSelector("#a-src .droll.cp");
+    const nd = await page.locator("#a-src .droll.cp .drd").count();
+    if (nd !== 12) throw new Error(`WP81: Acid Breath toont ${nd} stenen`);
+    if (await over("#asheet .droll")) throw new Error("WP81: 12d8 breder dan de regel");
+    await snap(page, "wp81", "breath");
+    await tap(page, '#asheet .shead [data-ao="close"]');
+    // 5. statblock-worp in een melding
+    await page.evaluate(async () => (await import("/js/ui/statblock.js")).doRoll("1d20+5", "DEX save", false));
+    await page.waitForFunction(() => document.querySelectorAll(".toast .droll.cp.drts").length >= 1);
+    if (await over(".toast .droll")) throw new Error("WP81: statblock-worp breder dan de melding");
+  },
   // WP48: SRD 5.2-monster (Aboleth, ed 2024) aan de beurt; aanvalspaneel met een vaste conditie als hint ("Grappled (escape DC 14)")
   async wp48(page) {
     await SCEN.fight(page);
@@ -3247,11 +3316,11 @@ const SCEN = {
     await tap(page, "#start"); await page.waitForSelector("#isheet .isheet");
     await page.locator('[data-ia="roll"]').first().tap(); // eerst gerold, daarna Verrast: die worp moet opnieuw
     await tap(page, '#isheet [data-ia="sur"][data-v="pc"]');
-    if ((await page.locator("#isheet").textContent()).includes("d20 [")) throw new Error("WP51: worp zonder disadvantage bleef staan na Verrast");
+    if (await page.locator("#isheet .ir .droll").count()) throw new Error("WP51: worp zonder disadvantage bleef staan na Verrast"); // WP81: worp als gedeelde weergave
     const hint = await page.locator("#isheet #i-surh").textContent();
     if (!/d20/.test(hint)) throw new Error("WP51: geen 2024-hint bij Verrast: " + hint);
     await page.locator('[data-ia="roll"]').first().tap();
-    if (!(await page.locator("#isheet").textContent()).includes(" dis ")) throw new Error("WP51: verraste speler rolde zonder disadvantage");
+    if ((await page.locator("#isheet .ir .droll .drd").count()) !== 2 || (await page.locator("#isheet .ir .droll s.drd.no").count()) !== 1) throw new Error("WP51: verraste speler rolde zonder disadvantage");
     await snap(page, "wp51", "initp");
     const n = await page.locator('[data-ia="roll"]').count();
     for (let i = 0; i < n; i++) await page.locator('[data-ia="roll"]').nth(i).tap();
