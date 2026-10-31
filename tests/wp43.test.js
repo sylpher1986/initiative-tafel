@@ -118,3 +118,12 @@ test("TS1: pdf.js uit vendor/pdfjs, ongewijzigd (hash uit de README), geen CDN i
   const ign = read(".assetsignore").toString().split("\n").map((l) => l.trim());
   assert.ok(!ign.some((l) => /^\/?vendor/.test(l)), "vendor/ wordt gepubliceerd");
 });
+
+// K4 (WP77): pdf.js parset in een echte Web Worker; het worker-script niet als <script> (dat forceert de "fake worker")
+test("K4: pdf.js met een echte Worker (workerSrc), worker-script niet op de hoofdthread", () => {
+  const ddb = read("js/ddb.js").toString();
+  assert.doesNotMatch(ddb, /loadScript\([^)]*pdf\.worker/, "pdf.worker.js als <script> geladen");
+  assert.match(ddb, /loadScript\(PDFJS \+ "pdf\.js"\)/);
+  assert.match(ddb, /GlobalWorkerOptions\.workerSrc = PDFJS \+ "pdf\.worker\.js"/);
+  assert.doesNotMatch(ddb, /pdfjsWorker\s*=|disableWorker\s*:/, "geen geforceerde hoofdthread");
+});

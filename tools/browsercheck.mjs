@@ -125,11 +125,11 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/", wp68: "/nl/maps/", wp68b: "/nl/maps/", wp68c: "/nl/maps/", wp68d: "/nl/maps/", wp73m: "/nl/maps/", wp74m: "/nl/maps/", wp75m: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", wp77: "/initiative/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/", wp68: "/nl/maps/", wp68b: "/nl/maps/", wp68c: "/nl/maps/", wp68d: "/nl/maps/", wp73m: "/nl/maps/", wp74m: "/nl/maps/", wp75m: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
-const ONCE = new Set(["i18n-mixed", "i18n-switch", "i18n-offline", "i18n-legacy", "homeen", "wp33", "wp43", "wp44"]);
+const ONCE = new Set(["i18n-mixed", "i18n-switch", "i18n-offline", "i18n-legacy", "homeen", "wp33", "wp43", "wp44", "wp77"]);
 // Startpagina in een taal (pathFor: Engels zonder voorvoegsel); /nl/… wordt de pagina in die taal; ONCE blijft zoals het is
 function startFor(name, lang) {
   const p = START[name] || "/";
@@ -1929,8 +1929,40 @@ const SCEN = {
       OFFLINE = true;
       await p.reload(); await p.waitForSelector("#dock");
       await p.locator("#welcome-sample").tap(); await p.waitForSelector("#start:not([disabled])");
+      const workers = []; p.on("worker", (w) => workers.push(new URL(w.url()).pathname)); // WP77: ook offline een echte Worker
       await importPdf(p, "offline");
+      if (!workers.includes("/vendor/pdfjs/pdf.worker.js")) throw new Error("offline: pdf.js draait niet in een echte Worker");
     } finally { OFFLINE = false; await ctx.close(); }
+  },
+  // WP77 (K4): PDF-import met CPU-throttling (4×, via CDP): pdf.js parset in een echte Worker (geen "fake worker",
+  // het worker-script niet als <script>), de hoofdthread blijft vrij (langste longtask) en de rAF-teller loopt door.
+  async wp77(page) {
+    const pdf = join(ROOT, "tests/fixtures/ddb-sheet.pdf"), workers = [], fake = [];
+    page.on("worker", (w) => workers.push(new URL(w.url()).pathname));
+    page.on("console", (m) => { if (/fake worker/i.test(m.text())) fake.push(m.text()); });
+    await SCEN.pcform(page);
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    try {
+      await page.evaluate(() => {
+        const s = (window.__wp77 = { frames: 0, long: 0, run: true });
+        try { new PerformanceObserver((l) => { for (const e of l.getEntries()) s.long = Math.max(s.long, e.duration); }).observe({ type: "longtask" }); } catch { /* geen longtask-api */ }
+        const tick = () => { if (s.run) { s.frames++; requestAnimationFrame(tick); } };
+        requestAnimationFrame(tick);
+      });
+      const t0 = Date.now();
+      await page.setInputFiles("#pc-pdf", pdf);
+      await page.waitForFunction(() => document.getElementById("pc-name")?.value === "Testa Vonk", null, { timeout: 30000 });
+      const ms = Date.now() - t0;
+      const s = await page.evaluate(() => { const s = window.__wp77; s.run = false; return { frames: s.frames, long: Math.round(s.long), tag: !!document.querySelector('script[src*="pdf.worker"]') }; });
+      if (page.viewportSize().width === 320) console.log(`  wp77: import ${ms} ms (CPU 4×), langste blokkade ${s.long} ms, ${Math.round(s.frames / (ms / 1000))} fps, Worker: ${workers.join(", ") || "geen"}`);
+      if (process.env.WP77_MEASURE) return; // alleen meten (vóór/na-vergelijking)
+      if (!workers.some((u) => u.startsWith("/vendor/pdfjs/pdf.worker"))) throw new Error("pdf.js draait niet in een echte Worker");
+      if (fake.length) throw new Error("pdf.js: " + fake[0]);
+      if (s.tag) throw new Error("worker-script als <script> geladen");
+      if (!s.frames) throw new Error("geen enkel frame tijdens de import");
+      if (s.long >= 500) throw new Error(`hoofdthread ${s.long} ms geblokkeerd (gemeten ± 220 ms, met fake worker ± 750 ms)`);
+    } finally { await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 }); await cdp.detach(); }
   },
   // WP23: formulieren met de statische tekst (met --i18n=debug de Engelse pagina)
   async pcform(page) { await SCEN.prep(page); await tap(page, '#dock [data-prep="pc"]'); await page.waitForSelector("#f-pc", { state: "visible" }); },

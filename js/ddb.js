@@ -71,9 +71,10 @@ function loadScript(src) {
 }
 function loadPdfJs() {
   if (!pdfjsReady) {
-    // Worker-script eerst: pdf.js draait dan op de hoofdthread (zoals vóór TS1; een echte Worker kan nu ook, maar is buiten scope)
-    pdfjsReady = loadScript(PDFJS + "pdf.worker.js")
-      .then(() => loadScript(PDFJS + "pdf.js"))
+    // K4 (WP77): alleen pdf.js laden; het parsen gebeurt in een echte Web Worker (workerSrc). Het worker-script niet als
+    // <script> laden: dan zet het window.pdfjsWorker en valt pdf.js terug op de hoofdthread ("fake worker").
+    // Kan de browser geen Worker starten, dan valt pdf.js zelf terug op de hoofdthread (trager, werkt wel).
+    pdfjsReady = loadScript(PDFJS + "pdf.js")
       .then(() => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.js"; return window.pdfjsLib; })
       .catch((e) => { pdfjsReady = null; throw e; });
   }
@@ -82,8 +83,10 @@ function loadPdfJs() {
 
 export async function readSheetPdf(file) {
   const lib = await loadPdfJs();
-  const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  // task.destroy() ook bij een mislukte import (kapotte PDF, wachtwoord): anders blijft de Worker draaien
+  const task = lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
   try {
+    const doc = await task.promise;
     const annots = [];
     for (let i = 1; i <= doc.numPages; i++) {
       const pg = await doc.getPage(i);
@@ -97,7 +100,7 @@ export async function readSheetPdf(file) {
       if (img) break;
     }
     return { sheet, img }; // portret apart: hoort op de deelnemer, niet nog eens in sheet
-  } finally { doc.destroy(); }
+  } finally { task.destroy(); }
 }
 
 /** Portret uit een vak zoals "CHARACTER IMAGE": alleen dat vak renderen (±320 px), kader eraf, blanco → null, max 128 px jpeg. */

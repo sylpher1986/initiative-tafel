@@ -15,6 +15,6 @@ Actieve WP's voor de homepage (`/`, `/nl/`; bron `pages/home.html`). Index en sj
   - `npm test` volledig groen (pagina's, tikdoelen, contrast).
   - Browsercheck `home`, `homeen` en `logo` op 320/360/390, licht en donker, plus `BC_W=1200` (en een tussenmaat rond 900 px): geen horizontaal scrollen, taveerne en d20 zichtbaar op mobiel, embleem niet vervormd. Nieuw scenario `wp78` met schermafbeeldingen.
   - UX-designer vóór het bouwen (meerdere opties), senior developer na het bouwen. Geen vertaalagent (geen tekst).
-- Volgorde: na WP77 (lage prio; de site is nog verborgen, `HIDDEN = true`).
+- Volgorde: na WP77 (afgerond in 2.18.2; lage prio; de site is nog verborgen, `HIDDEN = true`).
 - Versie: homepage is gedeeld bestand → Initiative patch (2.18.x); Inn Sight-versie ongewijzigd. Patch, dus alleen de scenario's die de diff raakt (`home`, `homeen`, `logo`, `wp78`); Maps-scenario's niet.
 - Aandachtspunten en risico's: "naast de kop en boven de hoofdtekst" laat ruimte voor interpretatie; daarom de goedkeuring van de schets. Grotere desktopkop mag de heldafbeelding niet onder de vouw duwen.
