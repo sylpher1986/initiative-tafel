@@ -6,7 +6,7 @@ Kleine punten: bugs, kleine functionele, UX/UI- en technische verbeteringen, los
 
 ## Open punten
 
-Volgorde = voorgestelde uitvoervolgorde (gepland 31-10-2026): WP76 (bugs aan tafel) → WP77 (pdf.js) → WP78 (homepage). Uitwerking in `docs/work-packages/`. K11 heeft geen eigen WP (meenemen bij een wijziging in die bestanden); K6 wacht op O2, K7 op een meting.
+Volgorde = voorgestelde uitvoervolgorde (gepland 31-10-2026): WP76 (bugs aan tafel) → WP77 (pdf.js) → WP78 (homepage). Uitwerking in `docs/work-packages/`. K11 heeft geen eigen WP (meenemen bij een wijziging in die bestanden); K6 (besluit O2 genomen) heeft nog geen WP; K7 wacht op een meting.
 
 | Code | Soort | Onderdeel | Prio | WP | Status | Wat | Waar | Opmerking |
 |---|---|---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@ Volgorde = voorgestelde uitvoervolgorde (gepland 31-10-2026): WP76 (bugs aan taf
 | **K8** | UX/UI | Homepage | L | WP78 | Gepland | Desktop: logo groter, naast de kop en boven de hoofdtekst | `pages/home.html` (eigen inline CSS) | Logo-vorm niet wijzigen; gedeeld bestand, dus Initiative-versie omhoog. |
 | **K9** | UX/UI | Homepage | L | WP78 | Gepland | Mobiel: heldafbeelding onderaan uitlijnen, bovenkant alleen voor zover er ruimte is (onderkant met taveerne en d20 zegt meer) | `pages/home.html`, `img/hero-tavern-*` | Waarschijnlijk `object-position`/`background-position` op bottom onder een breekpunt. |
 | **K11** | Techniek (alleen commentaar) | Alle | L | — | Open | Codecommentaar verwijst nog naar `CLAUDE.md` ("Gemaakte keuzes", "Communicatie", WP63, "Assets hertekend") en naar het opgeheven `docs/g1-regels-2024.md` | o.a. `js/maps/main.js`, `js/maps/model/limits.js`, `js/maps/model/assets.js`, `js/maps/version.js`, `js/i18n/term.js`, `tests/maps-objects.test.js`, `tests/encounters.test.js` | Vervangen door `docs/DECISIONS.md` (zelfde kopnamen). Meenemen bij een eerstvolgende codewijziging in die bestanden; geen eigen release nodig. Ontstaan bij de documentatieherstructurering van 31-10-2026. |
-| **K6** | Techniek | Initiative | — | — | Wacht op besluit | Undo-opslag verder verkleinen: het logboek helemaal buiten de snapshots | `js/state.js`, `js/log.js` | Eerst besluit Michiel (`docs/DECISIONS.md` O2). Nu 147 KB per stap bij 600 logregels (na −23 % in 2.2.1). |
+| **K6** | Techniek | Initiative | L | — | Open | Undo-opslag verder verkleinen: het logboek helemaal buiten de snapshots | `js/state.js`, `js/log.js` | Besluit O2 genomen (`docs/DECISIONS.md` → "Gevecht afronden, undo en logboek"): Ongedaan haalt de regels van de stap weg, dus per stap bijhouden welke regels erbij kwamen. Nu 147 KB per stap bij 600 logregels (na −23 % in 2.2.1). Nog geen WP. |
 | **K7** | Techniek | Initiative | — | — | Op signaal | Een sheet die in place wijzigt, wordt bij elke commit opnieuw gestringifyd | `js/histpack.js`, `js/state.js` | Alleen als een meting bij een grote party het rechtvaardigt. |
 
 ## Op signaal (pas bouwen als het aan tafel nodig blijkt)

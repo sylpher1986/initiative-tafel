@@ -127,6 +127,7 @@ Regels in het kort; het hoe, de stappen voor een nieuwe tool of taal en de revie
 ### Gevecht afronden, undo en logboek
 - Gevecht afronden (`finishFight`, `js/ui/einde.js`): één undo-stap, paneel `#esheet` met rondes, duur, ruwe XP per speler (XP per CR, gelijk in DMG 2014 en SRD 5.2.1), verslagen, gevlucht-chips, condities van spelers wissen; sluit op de telefoon het statblock. Beurtbalk toont "Alle monsters neer · Gevecht afronden". Niet automatisch stoppen.
 - Undo (`js/state.js`): elke stap in IndexedDB (`h:…`, sheets/portretten apart via `js/histpack.js`), na herladen hersteld tenzij de laatste stap > 6 uur oud is of van een andere versie; max 80. Opnieuw alleen in het geheugen (melding na Ongedaan, ⌘⇧Z). Melding na Ongedaan/Opnieuw beschrijft de stap uit de logregels (`stepText`).
+- **Undo en logboek (O2, besluit Michiel 31-10-2026)**: Ongedaan haalt de logregels van de ongedane stap uit het logboek (zoals nu), ook als het logboek later buiten de undo-snapshots wordt opgeslagen (K6). Afgewezen: regels laten staan of een regel "Ongedaan: …" toevoegen.
 - Logboek: hele regel tikbaar voor een reden; in Gevecht als paneel `#gsheet` via de kop; ronde 0 heet "Voorbereiding".
 
 ### Opslag en data
@@ -330,7 +331,6 @@ Punten die een besluit van Michiel vragen of waar de documentatie elkaar tegensp
 | # | Punt | Wat er staat | Nodig |
 |---|---|---|---|
 | **O1** | `*.workers.dev` doorsturen naar `kevs-inn.com` of uitzetten | `docs/i18n.md` §0 V1: "nog open"; ook in `docs/BACKLOG.md` (Operationeel) | Besluit Michiel (Cloudflare-dashboard, geen code) |
-| **O2** | Undo-opslag: logboek helemaal buiten de snapshots (K6) | `docs/BACKLOG.md` K6: "Eerst besluit Michiel" | Besluit Michiel vóór uitvoering |
 | **O3** | Live check 2.3.0/2.3.1: "geïnstalleerde iPhone-app start in het Nederlands" | Sinds K10 (2.11.6) is er één app per taal en geen launch-redirect meer ("Meertaligheid: implementatie"); de check (`docs/BACKLOG.md`, Operationeel) gaat nog uit van het oude gedrag | Michiel: check vervallen verklaren of herformuleren |
 | **O4** | Projectdoc `claude/huisstijl.md` | `brand/README.md` verwijst ernaar als plan en huisstijl; het claude.ai-project heeft (31-10-2026) geen docs | Michiel: bestaat het nog elders? Anders de verwijzing laten vervallen (huisstijl geldt zoals onder "Huisstijl") |
 | **O5** | Projectinstructies claude.ai | Noemen nog "CLAUDE.md = … alle gemaakte keuzes", "lees CLAUDE.md tot Gemaakte keuzes" en `ROADMAP.md` in de root | Michiel: instructies aanpassen aan de structuur van 31-10-2026 (CLAUDE.md is leidend; bij tegenspraak wint de repo) |
