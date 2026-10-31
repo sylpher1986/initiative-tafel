@@ -7,7 +7,7 @@ Uitgewerkte, uitvoerbare werkpakketten (WP) per onderdeel van Kev’s Inn. Eén 
 | Bestand | Onderdeel | Actieve WP's |
 |---|---|---|
 | `initiative.md` | Initiative | — |
-| `g7-dobbelstenen.md` | G7 dobbelstenen (gedeelde module, eerst Initiative) | WP79 (Klaar voor uitvoering), WP80–WP83 (Gepland) |
+| `g7-dobbelstenen.md` | G7 dobbelstenen (gedeelde module, eerst Initiative) | WP80–WP83 (Gepland) |
 
 Geen geplande backlogpunten (31-10-2026; WP77 afgerond in 2.18.2, WP78 in 2.18.3; K5 bleef open, zie de backlog). G7 is uitgewerkt (31-10-2026); de overige open projecten in `docs/ROADMAP.md` nog niet.
 

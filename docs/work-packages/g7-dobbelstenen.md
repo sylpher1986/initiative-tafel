@@ -1,6 +1,6 @@
 # G7 · Dobbelstenen zichtbaar maken (gedeelde module)
 
-Werkpakketten WP79–WP83. Eerste gebruiker is Initiative; de module is vanaf het begin gedeeld zodat Innhabitants en andere Kev’s Inn-tools (G5) hem kunnen hergebruiken zonder hem opnieuw te bouwen. Architectuur en besluiten: `docs/DECISIONS.md` → "Techniek" (bullet **Gedeelde dobbelsteenmodule (G7)**).
+Werkpakketten WP80–WP83; het fundament (WP79: `js/dice/roll.js`, adapters `js/ui/rolls.js`) staat er. Eerste gebruiker is Initiative; de module is vanaf het begin gedeeld zodat Innhabitants en andere Kev’s Inn-tools (G5) hem kunnen hergebruiken zonder hem opnieuw te bouwen. Architectuur en besluiten: `docs/DECISIONS.md` → "Techniek" (bullet **Gedeelde dobbelsteenmodule (G7)**).
 
 ## Inventaris (31-10-2026)
 - `js/rules/dice.js`: alleen `d`, `rollExpr`, `HD_RE`, `avgExpr` en de hulpjes `mod`, `sgn`, `uid`.
@@ -24,9 +24,11 @@ Afhankelijkheden lopen alleen naar binnen: `js/dice/*` importeert uitsluitend `j
 **Worpformaat** (niet opgeslagen; alleen in het geheugen en in de weergave):
 ```
 { label?,                      // "Bite", "Dex save", vrije tekst van de tool (escapen bij tonen)
-  g: [{ c, die, vals, keep, x? }], // c = aantal (1d20 → 1), vals = alle gerolde waarden, keep = "all" | "high" | "low",
-                               //   x = extra waarden (crit-dice), los zichtbaar
-  m: [{ n, b } | { n, die, v }],  // modifiers met naam: vast (+5 Strength) of een steen (Bless 1d4 → 3; negatief die = aftrek)
+  g: [{ c, die, vals, keep, kn?, s?, x?, t? }], // c = aantal stenen (1d20 → 1, advantage → 2), vals = alle gerolde waarden,
+                               //   keep = "all" | "high" | "low", kn = hoeveel er tellen bij high/low (standaard 1; welke: kept()),
+                               //   s = -1 afgetrokken groep, x = extra waarden (crit-dice), los zichtbaar, t = damage type (id)
+  m: [{ n, b, t? } | { n, die, v }], // modifiers met naam: vast (+5 Strength) of een steen (Bless 1d4 → 3; negatief die = aftrek);
+                               //   n "" = bonus zonder naam; een bonus 0 laten de adapters weg
   tot,                         // totaal (tool-uitkomst wint: de module rekent niet opnieuw als tot is gegeven)
   nat?,                        // de d20 die telt (alleen bij één d20-groep)
   adv?,                        // 1 | -1 | 0
@@ -37,28 +39,6 @@ Nieuwe velden zijn altijd optioneel; de weergave negeert wat ze niet kent. Een t
 
 ---
 
-## WP79 · Dobbelsteenmodule: worpformaat, logica en adapters · S/M — Klaar voor uitvoering
-- Roadmap: G7 stap 1 (fundament).
-- Doel en scope: `js/dice/roll.js` met het worpformaat en de rolfuncties; Initiative-adapters in `js/ui/rolls.js`; importgrens bewaakt door een test. **Geen zichtbare wijziging.** Buiten scope: weergave, CSS, tekst.
-- Functionele eisen:
-  - `rollExpr(expr, rng)` met dezelfde uitkomst als nu, plus `toRoll` (worpformaat) voor `NdM±K`, `NdM kh1/kl1` en `d20` met `adv` en modifiers met naam: `d20({ adv, mods, label }, rng)`, `dice(expr, { label }, rng)`. Vrije worpen zoals `4d6kh3`, `2d20kl1+3`, `1d100` (WP82 gebruikt dit).
-  - Parser voor vrije invoer `parseExpr(s)`: meerdere termen (`2d6 + 1d4 + 3`, `−` en `-`), grenzen (max 100 stenen per term, d2–d1000, max 10 termen), ongeldige invoer → `null`, nooit een uitzondering.
-  - `natFlags(roll)`: nat 20/nat 1 alleen bij precies één tellende d20.
-- Technische uitwerking:
-  - `js/rules/dice.js` blijft bestaan en exporteert `d`, `rollExpr`, `HD_RE`, `avgExpr` door vanuit `js/dice/roll.js` (zelfde namen, geen aanroeper aanpassen); `mod`, `sgn`, `uid` blijven daar (Initiative-hulpjes).
-  - `js/ui/rolls.js`: `fromAtk(r, ac)`, `fromDmg(parts, crit)`, `fromSave(x, dc)`, `fromInit(dd, bo, em)`, `fromDs(r)`. Puur, geen DOM.
-  - `js/dice/` en `js/ui/rolls.js` in `ASSETS` van `sw.js`.
-- Relevante besluiten: DECISIONS → "Techniek" (Gedeelde dobbelsteenmodule (G7); geen build-stap; regels puur).
-- Afhankelijk van: —
-- Acceptatiecriteria:
-  - `tests/dice.test.js`: formaat, rng-injectie, `kh/kl`, grenzen en `null` bij rommel, nat-markering, adapters (één test per worpsoort, met de bestaande voorbeeldworpen uit `attacks.test.js`/`rules.test.js`).
-  - Importgrens-test: scant de `import`-regels van `js/dice/*` (alleen `../i18n/*` en `./*`) en laadt `js/dice/roll.js` los in Node zonder Initiative-modules.
-  - Alle bestaande tests ongewijzigd groen, inclusief de sha256-snapshot van `tests/wp48.test.js`; geen enkele logtekst verandert.
-  - Browsercheck: niet nodig (geen zichtbare wijziging); `npm test` volledig.
-- Volgorde: eerst.
-- Versie: Initiative x.y.z (nieuwe bestanden in de cache).
-- Aandachtspunten: geen dubbele rolcode laten staan (`rollExpr` op één plek); geen worpdata in de stand of export.
-
 ## WP80 · Worpweergave en het aanvalspaneel · M — Gepland
 - Roadmap: G7 stap 1.
 - Doel en scope: `js/dice/view.js` + `css/dice.css` en toepassing in het aanvalspaneel (`#xsheet`: to-hit en schade). Buiten scope: andere panelen (WP81), log en spelersscherm (besluit: blijven tekst).
@@ -66,9 +46,9 @@ Nieuwe velden zijn altijd optioneel; de weergave negeert wat ze niet kent. Een t
 - Technische uitwerking: `diceHtml(roll, opts)` (alles via `esc()`), `diceText(roll)` (zelfde inhoud als platte tekst voor `aria-label`); i18n-namespace **`dice.`** (`NS` in `tools/i18n-build.mjs`, `locales/src/{en,nl}/dice.js`, in de hoofdcatalogus); de notatie (`2d10 + 6`, `d20`) is taalneutraal (`docs/i18n.md` §4). `css/dice.css` laden in `pages/initiative.html` en in `ASSETS`. `atkHtml` in `render.js` vervangen door `diceHtml(fromAtk(…))`; tekst voor log en toast blijft `atkText`/`partText`.
 - **UX vóór het bouwen**: UX-agent zet minstens twee opties naast elkaar (bijv. stenen als vormpjes vs. compacte chips), mockup ter goedkeuring aan Michiel. Kleur volgens de eigenaarschapsregels: geen goud, rood alleen voor kritiek (DECISIONS → "Huisstijl").
 - Relevante besluiten: DECISIONS → "Techniek", "Huisstijl", "Gevecht: kaarten en panelen" (aanvalspaneel), "Meertaligheid (geldt voor elke tool)".
-- Afhankelijk van: WP79; goedgekeurde mockup.
+- Afhankelijk van: goedgekeurde mockup (WP79 is af).
 - Acceptatiecriteria: unit-test op `diceHtml`/`diceText` (escapen van `label` en modifiernamen, adv/dis, crit, nat 1, onbekend veld genegeerd); bestaande aanvalstests ongewijzigd; contrasttest dekt de nieuwe kleuren; browsercheck nieuw scenario `wp80` (aanvalspaneel met advantage + crit) op 320/360/390 licht/donker, `--lang=en` en `--i18n=xx`; vertaalagent.
-- Volgorde: na WP79.
+- Volgorde: eerst.
 - Versie: Initiative x.y.0 (zichtbaar nieuw onderdeel).
 - Aandachtspunten: de weergave rekent niets uit; werkt zonder JS-animatie; geen nieuwe tikdoelen in de worp zelf (alleen weergave).
 
