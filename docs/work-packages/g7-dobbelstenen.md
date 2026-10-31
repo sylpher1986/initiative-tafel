@@ -80,12 +80,12 @@ Nieuwe velden zijn altijd optioneel; de weergave negeert wat ze niet kent. Een t
 ## WP83 · Optionele rolanimatie (stap 2) · M — Gepland
 - Roadmap: G7 stap 2.
 - Doel en scope: korte rolanimatie op de bestaande weergave, met één instelling voor alle Kev’s Inn-tools. Buiten scope: 3D, geluid, animatie op het spelersscherm.
-- Functionele eisen: de uitslag staat direct in de DOM en is meteen leesbaar en tikbaar; de animatie is alleen versiering (≤ ± 400 ms) en wacht nooit; uit bij `prefers-reduced-motion`; instelling aan/uit per apparaat, gedeeld door alle tools (besluit Michiel 31-10-2026), te wijzigen in Instellingen van Initiative.
-- Technische uitwerking: `js/dice/pref.js` (`diceAnim()`, `setDiceAnim(on)`, localStorage-sleutel `kevs-dice-anim`, try/catch zoals `js/theme.js`); `js/dice/anim.js` (`animate(el)`: CSS-klassen op het element uit `diceHtml`, geen timers die de flow blokkeren); schakelaar in `js/ui/settings.js`. Standaardwaarde: zie open besluit **G7-O1**.
+- Functionele eisen: de uitslag staat direct in de DOM en is meteen leesbaar en tikbaar; de animatie is alleen versiering (≤ ± 400 ms) en wacht nooit; uit bij `prefers-reduced-motion`; standaard aan; instelling aan/uit per apparaat, gedeeld door alle tools (besluit Michiel 31-10-2026), te wijzigen in Instellingen van Initiative.
+- Technische uitwerking: `js/dice/pref.js` (`diceAnim()`, `setDiceAnim(on)`, localStorage-sleutel `kevs-dice-anim`, try/catch zoals `js/theme.js`); `js/dice/anim.js` (`animate(el)`: CSS-klassen op het element uit `diceHtml`, geen timers die de flow blokkeren); schakelaar in `js/ui/settings.js`. Standaard **aan** (G7-O1, Michiel 31-10-2026): zonder opgeslagen waarde geldt aan; `prefers-reduced-motion` schakelt hem altijd uit.
 - **UX vóór het bouwen**: twee animatievarianten naast elkaar (bijv. waarden die doortellen vs. steen die kantelt), duur en wat er gebeurt bij snel achter elkaar tikken.
 - Relevante besluiten: DECISIONS → "Techniek", "Huisstijl".
-- Afhankelijk van: WP80 (en bij voorkeur WP81/WP82, zodat alle worpen meedoen); besluit G7-O1.
-- Acceptatiecriteria: test op `pref.js` (onbruikbare localStorage → valt terug zonder fout); test dat `animate` niets doet bij reduced motion of uit; browsercheck met de instelling aan en uit (geen JS-fouten, geen horizontaal scrollen, uitslag direct zichtbaar); volledige Initiative-regressie (x.y.0).
+- Afhankelijk van: WP80 (en bij voorkeur WP81/WP82, zodat alle worpen meedoen).
+- Acceptatiecriteria: test op `pref.js` (zonder opgeslagen waarde = aan; onbruikbare localStorage → valt terug op aan zonder fout); test dat `animate` niets doet bij reduced motion of uit; browsercheck met de instelling aan en uit (geen JS-fouten, geen horizontaal scrollen, uitslag direct zichtbaar); volledige Initiative-regressie (x.y.0).
 - Volgorde: laatste.
 - Versie: Initiative x.y.0.
 - Aandachtspunten: een tool met eigen cache (Inn Sight) die later dobbelstenen gebruikt, neemt `js/dice/*` en `css/dice.css` op in zijn eigen assets en catalogus (`dice.` dan ook in die lader); de sleutel `kevs-dice-anim` blijft gelijk.
