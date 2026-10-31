@@ -6,9 +6,12 @@ Uitgewerkte, uitvoerbare werkpakketten (WP) per onderdeel van Kev’s Inn. Eén 
 
 | Bestand | Onderdeel | Actieve WP's |
 |---|---|---|
-| — | — | Geen (31-10-2026). G1 en G4 zijn afgerond; open projecten in `docs/ROADMAP.md` zijn nog niet uitgewerkt. |
+| `initiative.md` | Initiative | WP76 (K1–K3, bugs) · WP77 (K4–K5, pdf.js) |
+| `homepage.md` | Homepage | WP78 (K8–K9) |
 
-Nummering loopt door: het volgende pakket is **WP76**.
+Backlogpunten uit `docs/BACKLOG.md`, gepland 31-10-2026 in de volgorde WP76 → WP77 → WP78. Open projecten in `docs/ROADMAP.md` zijn nog niet uitgewerkt.
+
+Nummering loopt door: het volgende pakket is **WP79**.
 
 ## Bestanden
 Eén bestand per onderdeel, aangemaakt zodra er een eerste WP voor is, met de bestaande namen: `initiative.md` (Initiative), `inn-sight.md` (Inn Sight, pad `/maps/`), `homepage.md`, en later bijvoorbeeld `innhabitants.md`, `inquests.md`, `innelligence.md` (G5). Een project met eigen voorbereiding (zoals G7) mag een eigen bestand krijgen, bijvoorbeeld `g7-dobbelstenen.md`. Werk het overzicht hierboven bij bij elk nieuw, gewijzigd of verwijderd pakket.
