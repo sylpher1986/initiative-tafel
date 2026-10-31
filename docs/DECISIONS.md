@@ -331,7 +331,3 @@ Punten die een besluit van Michiel vragen of waar de documentatie elkaar tegensp
 | # | Punt | Wat er staat | Nodig |
 |---|---|---|---|
 | **O1** | `*.workers.dev` doorsturen naar `kevs-inn.com` of uitzetten | `docs/i18n.md` §0 V1: "nog open"; ook in `docs/BACKLOG.md` (Operationeel) | Besluit Michiel (Cloudflare-dashboard, geen code) |
-| **O3** | Live check 2.3.0/2.3.1: "geïnstalleerde iPhone-app start in het Nederlands" | Sinds K10 (2.11.6) is er één app per taal en geen launch-redirect meer ("Meertaligheid: implementatie"); de check (`docs/BACKLOG.md`, Operationeel) gaat nog uit van het oude gedrag | Michiel: check vervallen verklaren of herformuleren |
-| **O4** | Projectdoc `claude/huisstijl.md` | `brand/README.md` verwijst ernaar als plan en huisstijl; het claude.ai-project heeft (31-10-2026) geen docs | Michiel: bestaat het nog elders? Anders de verwijzing laten vervallen (huisstijl geldt zoals onder "Huisstijl") |
-| **O5** | Projectinstructies claude.ai | Noemen nog "CLAUDE.md = … alle gemaakte keuzes", "lees CLAUDE.md tot Gemaakte keuzes" en `ROADMAP.md` in de root | Michiel: instructies aanpassen aan de structuur van 31-10-2026 (CLAUDE.md is leidend; bij tegenspraak wint de repo) |
-| **O6** | WP65: "handmatige check (3) door Michiel staat nog open" | Alleen in het (opgeschoonde) G4-plan; niet duidelijk welke check (3) bedoeld is | Michiel: uitvoeren of laten vervallen (`docs/BACKLOG.md`, Operationeel) |

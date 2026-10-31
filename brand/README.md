@@ -5,7 +5,7 @@ Aangeleverd door Michiel (23-10-2026). Niet gepubliceerd (`.assetsignore`); de a
 - `kevs-inn-emblem.svg`: embleem (zeshoek, lantaarn, d20), alleen lijnen in goud #D4A448.
 - `kevs-inn-logo.svg`: embleem + woordmerk + tagline. Woordmerk is `<text>` in Georgia, crèmekleurig: alleen voor een donkere ondergrond.
 
-Plan en huisstijl: projectdoc `claude/huisstijl.md` (**[Open]**: niet meer gevonden in het claude.ai-project, zie `docs/DECISIONS.md` O4). Geldende huisstijl: `docs/DECISIONS.md` → "Huisstijl".
+Huisstijl: `docs/DECISIONS.md` → "Huisstijl".
 
 ## Huisstijl 2.0 (WP37, aangeleverd 26-10-2026)
 
