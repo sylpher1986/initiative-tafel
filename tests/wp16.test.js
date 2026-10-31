@@ -20,6 +20,15 @@ test("h1 van beide pagina's heeft het embleem, verborgen voor schermlezers, zelf
   }
 });
 
+// WP78: de homepage heeft het embleem twee keer (header klein, hero groot vanaf 900 px), beide gelijk aan EMBLEM en verborgen
+test("homepage: embleem in header en hero gelijk aan de iconen en aria-hidden", () => {
+  const html = read("pages/home.html").toString();
+  const svgs = [...html.matchAll(/<svg (?:class="emb" )?viewBox="20 2 176 196"([^>]*)>([\s\S]*?)<\/svg>/g)];
+  assert.equal(svgs.length, 2, "twee embleemkopieën verwacht");
+  for (const m of svgs) { assert.match(m[1], /aria-hidden="true"/); assert.equal(m[2], EMBLEM, "embleem wijkt af van tools/icons.mjs"); }
+  assert.match(html, /<div class="hero-txt">\s*<!--[^>]*-->\s*<svg class="emb"/);
+});
+
 test("tagline alleen op het spelersscherm", () => {
   assert.match(read("pages/player.html").toString(), /<p class="pvtag" id="pv-tag">Your home between adventures\.<\/p>/);
   assert.doesNotMatch(read("pages/initiative.html").toString(), /between adventures/);

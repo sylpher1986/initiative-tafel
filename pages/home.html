@@ -37,6 +37,7 @@ a:focus-visible{outline:3px solid var(--focus);outline-offset:3px;border-radius:
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px}
 .mark{display:flex;align-items:center;gap:8px;font-family:var(--brand);font-weight:700;font-size:1.3125rem;line-height:1}
 .mark svg{width:28px;height:31px;color:var(--act);flex:none}
+.emb{display:none}
 .lang{display:flex}
 .lang a{display:flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;color:var(--muted);font-weight:600;font-size:.875rem;letter-spacing:.04em;text-transform:uppercase;text-decoration:none}
 .lang a[aria-current]{color:var(--fg);font-weight:700;text-decoration:underline 3px var(--sel);text-underline-offset:6px}
@@ -44,7 +45,7 @@ a:focus-visible{outline:3px solid var(--focus);outline-offset:3px;border-radius:
 /* hero: telefoon beeld boven de tekst tot de rand, onderkant uitgeveegd; desktop tekst 5 : beeld 7, links/onder sterk uitgeveegd */
 .hero-img{display:block;height:clamp(160px,30vh,260px);height:clamp(160px,30svh,260px);background:linear-gradient(var(--sunk),var(--bg));
   -webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent)}
-.hero-img img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 35%}
+.hero-img img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 100%} /* WP78 (K9): telefoon onderaan uitgelijnd (taveerne en d20 altijd zichtbaar), van de bovenkant alleen wat past */
 .hero-txt{padding:4px var(--pad) 0;padding-right:max(16px,env(safe-area-inset-right))}
 .kicker{margin:0;color:var(--act-ink);font-size:.8125rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
 h1{font-family:var(--brand);font-weight:700;font-size:clamp(1.5rem,8vw,3.25rem);line-height:1.08;margin:6px 0 0}
@@ -63,6 +64,13 @@ h1{font-family:var(--brand);font-weight:700;font-size:clamp(1.5rem,8vw,3.25rem);
     mask-image:linear-gradient(90deg,transparent,#000 22%,#000 94%,transparent),linear-gradient(transparent,#000 6%,#000 80%,transparent);
     mask-composite:intersect}
   .hero-txt{order:1;padding:0}
+  /* WP78 (K8): embleem groot naast kicker + h1 (rij 1–2), lead en knop eronder; het header-embleem valt dan weg (alleen woordmerk) */
+  .hero-txt{display:grid;grid-template-columns:auto 1fr;column-gap:clamp(16px,2.67vw - 8px,24px);align-items:center}
+  .hero-txt>*{grid-column:1/-1;justify-self:start}
+  .hero-txt>.kicker,.hero-txt>h1{grid-column:2}
+  .hero-txt>h1{font-size:clamp(2.75rem,5.2vw,3.25rem)} /* 900–1000 px iets kleiner: de kop blijft op twee regels naast het embleem */
+  .hero-txt>.emb{display:block;grid-column:1;grid-row:1/3;width:80px;width:clamp(64px,9.33vw - 20px,92px);height:auto;color:var(--act)}
+  .top .mark svg{display:none}
 }
 /* tools: een kaart per tool (hele kaart is de link), vanaf 900 px naast elkaar; daaronder de kenmerken van Initiative met een kopje (WP67) */
 .tools{margin-top:36px}
@@ -107,6 +115,8 @@ footer .facts{margin:0 0 12px;font-size:.875rem;color:var(--fg)}
       <img src="/img/hero-tavern-800.webp" width="1347" height="1168" alt="" fetchpriority="high">
     </picture>
     <div class="hero-txt">
+      <!-- WP78: zelfde embleem als in de header (EMBLEM, tools/icons.mjs), groot vanaf 900 px -->
+      <svg class="emb" viewBox="20 2 176 196" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M108 16 181 58v84l-73 42-73-42V58Z" stroke-width="11"/><g transform="translate(0 13)" stroke-width="10"><path d="M100 47v-8q8-10 16 0v8"/><path d="M88 55h40l-8 11H96Z"/><path d="M96 70h24l8 10v42H88V80Z"/><path d="M84 130h48"/></g><path d="M108 102c-9 10-9 19 0 26 9-7 9-16 0-26Z" fill="currentColor" stroke="none"/></svg>
       <p class="kicker" lang="en">{{t:page.home.tagline}}</p>
       <h1 id="h-hero">{{t:page.home.headline}}</h1>
       <p class="lead">{{t:page.home.lead}}</p>

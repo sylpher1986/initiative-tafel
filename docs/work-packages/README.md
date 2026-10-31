@@ -7,9 +7,8 @@ Uitgewerkte, uitvoerbare werkpakketten (WP) per onderdeel van Kev’s Inn. Eén 
 | Bestand | Onderdeel | Actieve WP's |
 |---|---|---|
 | `initiative.md` | Initiative | — |
-| `homepage.md` | Homepage | WP78 (K8–K9) |
 
-Backlogpunten uit `docs/BACKLOG.md`, gepland 31-10-2026: WP78 (WP77 afgerond in 2.18.2; K5 bleef open, zie de backlog). Open projecten in `docs/ROADMAP.md` zijn nog niet uitgewerkt.
+Geen geplande backlogpunten (31-10-2026; WP77 afgerond in 2.18.2, WP78 in 2.18.3; K5 bleef open, zie de backlog). Open projecten in `docs/ROADMAP.md` zijn nog niet uitgewerkt.
 
 Nummering loopt door: het volgende pakket is **WP79**.
 

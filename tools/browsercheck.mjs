@@ -125,7 +125,7 @@ function serve() {
 // Scenario's met een andere startpagina dan "/"; zonder functie in SCEN wordt alleen geladen.
 // "/" staat hier voor de app (sinds WP44 is "/" zelf de Engelse homepage), "/speler" voor het spelersscherm.
 const START = { speler: "/speler", tagline: "/speler", stale: "/speler", "i18n-mixed": "/initiative/player/", home: "/nl/", homeen: "/", notfound: "/nl/404.html",
-  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp43: "/initiative/", wp44: "/", wp77: "/initiative/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/", wp68: "/nl/maps/", wp68b: "/nl/maps/", wp68c: "/nl/maps/", wp68d: "/nl/maps/", wp73m: "/nl/maps/", wp74m: "/nl/maps/", wp75m: "/nl/maps/" };
+  "i18n-switch": "/nl/initiative/", "i18n-offline": "/nl/initiative/", "i18n-legacy": "/initiative/", wp33: "/", wp37: "/nl/", wp78: "/nl/", wp43: "/initiative/", wp44: "/", wp77: "/initiative/", maps: "/nl/maps/", wp57: "/nl/maps/", wp58: "/nl/maps/", wp58priv: "/nl/maps/", wp59: "/nl/maps/", wp60: "/nl/maps/", wp61: "/nl/maps/", wp62: "/nl/maps/", wp63: "/nl/maps/", wp64: "/nl/maps/", wp65: "/nl/maps/", wp66: "/nl/maps/", wp68: "/nl/maps/", wp68b: "/nl/maps/", wp68c: "/nl/maps/", wp68d: "/nl/maps/", wp73m: "/nl/maps/", wp74m: "/nl/maps/", wp75m: "/nl/maps/" };
 // Script vóór het laden van de pagina, per scenario (WP58: privémodus zonder IndexedDB)
 const INIT = { wp58priv: () => { try { Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true }); } catch { /* al weg */ } } };
 // Eigen taalopzet: niet per taal herhalen (WP32)
@@ -2819,6 +2819,35 @@ const SCEN = {
     await tap(page, '.fhead [data-setmode="prep"]');
     await tap(page, "#stop");
     await page.waitForSelector("#esheet .esheet");
+  },
+  // WP78 (K8/K9): telefoon (< 900 px) beeld onderaan uitgelijnd (taveerne en d20), alleen het kleine header-embleem;
+  // vanaf 900 px het grote embleem links naast kicker + h1 en boven de lead, onvervormd, header-embleem weg, kop op ≤ 2 regels,
+  // knop boven de vouw. --shots=wp78: elke breedte (ook BC_W=900,1200).
+  async wp78(page) {
+    await page.waitForLoadState("networkidle");
+    await page.evaluate(() => document.fonts.ready);
+    const r = await page.evaluate(() => {
+      const box = (s) => { const b = document.querySelector(s).getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom, w: b.width, h: b.height }; };
+      const h1 = document.querySelector(".hero-txt h1"), lh = parseFloat(getComputedStyle(h1).lineHeight);
+      return { w: innerWidth, vh: innerHeight, emb: box(".hero-txt .emb"), h1: box(".hero-txt h1"), kick: box(".kicker"), lead: box(".lead"), cta: box(".cta"),
+        lines: Math.round(h1.getBoundingClientRect().height / lh), mark: getComputedStyle(document.querySelector(".top .mark svg")).display,
+        pos: getComputedStyle(document.querySelector(".hero-img img")).objectPosition, hid: document.querySelector(".hero-txt .emb").getAttribute("aria-hidden") };
+    });
+    if (r.hid !== "true") throw new Error("groot embleem niet aria-hidden");
+    if (r.w < 900) {
+      if (r.emb.w) throw new Error("groot embleem zichtbaar op " + r.w);
+      if (r.mark === "none") throw new Error("header-embleem weg op " + r.w);
+      if (!/100%$/.test(r.pos)) throw new Error("beeld niet onderaan uitgelijnd: " + r.pos);
+    } else {
+      if (r.mark !== "none") throw new Error("header-embleem nog zichtbaar op " + r.w);
+      if (r.emb.w < 60 || r.emb.w > 96) throw new Error("embleem " + Math.round(r.emb.w) + " px");
+      if (Math.abs(r.emb.h / r.emb.w - 196 / 176) > 0.02) throw new Error("embleem vervormd: " + Math.round(r.emb.w) + "×" + Math.round(r.emb.h));
+      if (r.emb.r > r.h1.l || r.emb.b > r.lead.t + 1 || r.emb.t < r.kick.t - 20) throw new Error("embleem niet naast de kop en boven de lead: " + JSON.stringify(r));
+      if (r.lines > 2) throw new Error(`h1 op ${r.lines} regels`);
+      if (r.cta.b > r.vh) throw new Error(`knop onder de vouw (${Math.round(r.cta.b)} > ${r.vh})`);
+    }
+    if (SHOTS.has("wp78")) { const dark = await page.evaluate(() => matchMedia("(prefers-color-scheme: dark)").matches);
+      await page.screenshot({ path: join(ROOT, "shots", `wp78-${await page.evaluate(() => document.documentElement.lang)}-${r.w}-${dark ? "dark" : "light"}.png`) }); }
   },
   // WP37 (HS14): homepage huisstijl 2.0. Illustratie geladen (AVIF/WebP via <picture>) en niet hoger dan 260 px op de telefoon,
   // kop op één regel, gouden knop boven de vouw en de enige Lantern-knop, taalkiezer met aria-current, toolkaart ≥ 72 px en
